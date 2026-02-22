@@ -96,7 +96,16 @@ def handle_alerts():
         if not word:
             return jsonify({"status": "error", "message": "Missing word"}), 400
             
-        save_alert_word(word, color, is_active)
+        try:
+            save_alert_word(word, color, is_active)
+        except Exception as e:
+            if "no such table" in str(e).lower():
+                from database import init_db
+                init_db()
+                save_alert_word(word, color, is_active)
+            else:
+                return jsonify({"status": "error", "message": str(e)}), 500
+
         return jsonify({"status": "success"})
         
     elif request.method == 'DELETE':
@@ -108,7 +117,16 @@ def handle_alerts():
         return jsonify({"status": "success"})
         
     # GET request
-    alerts = get_alert_words()
+    try:
+        alerts = get_alert_words()
+    except Exception as e:
+        if "no such table" in str(e).lower():
+            from database import init_db
+            init_db()
+            alerts = get_alert_words()
+        else:
+            return jsonify({"status": "error", "message": str(e)}), 500
+            
     return jsonify(alerts)
 
 # SSE Setup

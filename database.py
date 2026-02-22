@@ -142,6 +142,15 @@ def get_alert_words():
     """Retrieve all alert words."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    # Ensure table exists in case container wasn't restarted after update
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS alert_words (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            word TEXT UNIQUE NOT NULL,
+            color TEXT NOT NULL,
+            is_active INTEGER DEFAULT 1
+        )
+    ''')
     c.execute('SELECT id, word, color, is_active FROM alert_words')
     rows = c.fetchall()
     conn.close()
@@ -160,6 +169,15 @@ def save_alert_word(word, color, is_active=True):
     """Create or update an alert word."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    # Ensure table exists
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS alert_words (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            word TEXT UNIQUE NOT NULL,
+            color TEXT NOT NULL,
+            is_active INTEGER DEFAULT 1
+        )
+    ''')
     c.execute('INSERT OR REPLACE INTO alert_words (word, color, is_active) VALUES (?, ?, ?)',
               (word, color, 1 if is_active else 0))
     conn.commit()
