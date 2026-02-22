@@ -110,11 +110,11 @@
                         hour: '2-digit', minute: '2-digit', second: '2-digit'
                     });
 
-                    const displayAddress = alarm.alias ? `${alarm.alias} <br><small class="capcode-sub">(${alarm.address})</small>` : alarm.address;
+                    const displayAddress = alarm.alias ? alarm.alias : alarm.address;
 
                     tr.innerHTML = `
                         <td class="ts-cell">${time}</td>
-                        <td class="addr-cell"><span class="badge">${displayAddress}</span></td>
+                        <td class="addr-cell"><span class="badge" title="${alarm.address}">${displayAddress}</span></td>
                         <td class="msg-cell">${formatMessage(alarm.message)}</td>
                     `;
                     alarmsBody.appendChild(tr);
@@ -132,13 +132,16 @@
             evtSource.onmessage = function (event) {
                 const newMsg = JSON.parse(event.data);
 
-                // Unshift to local array and re-render if it matches search
-                allAlarms.unshift(newMsg);
-                // Keep only top 100 max in memory (matches backend get limit)
-                if (allAlarms.length > 100) allAlarms.pop();
+                // Unshift to local array
+                // Ensure we don't duplicate if already exists (safeguard)
+                if (!allAlarms.some(a => a.id === newMsg.id)) {
+                    allAlarms.unshift(newMsg);
+                    // Keep only top 100 max in memory (matches backend get limit)
+                    if (allAlarms.length > 100) allAlarms.pop();
 
-                loading.style.display = 'none';
-                renderAlarms();
+                    loading.style.display = 'none';
+                    renderAlarms();
+                }
             };
 
             evtSource.onerror = function (err) {

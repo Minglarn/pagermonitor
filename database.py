@@ -77,8 +77,24 @@ def save_message(address, message, alias=''):
 def get_recent_messages(limit=100):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # Handle older schema versions safely by using PRAGMA table_info or just fetching everything
-    c.execute('SELECT * FROM messages ORDER BY id DESC LIMIT ?', (limit,))
+    
+    # Check if we have the is_hidden column in aliases
+    c.execute('PRAGMA table_info(aliases)')
+    columns = [col[1] for col in c.fetchall()]
+    has_hidden = 'is_hidden' in columns
+    
+    if has_hidden:
+        # Join with aliases table to filter out hidden messages
+        query = '''
+            SELECT m.* FROM messages m
+            LEFT JOIN aliases a ON m.address = a.address
+            WHERE a.is_hidden IS NULL OR a.is_hidden = 0
+            ORDER BY m.id DESC LIMIT ?
+        '''
+    else:
+        query = 'SELECT * FROM messages ORDER BY id DESC LIMIT ?'
+        
+    c.execute(query, (limit,))
     rows = c.fetchall()
     
     # Detect position by reading description
