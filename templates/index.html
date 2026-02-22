@@ -55,7 +55,61 @@
         </main>
     </div>
 
+    <!-- Quick Alias Modal -->
+    <div id="aliasModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeAliasModal()">&times;</button>
+            <div class="modal-header">
+                <h2>Skapa/Ändra Alias</h2>
+                <p>Koppla ett läsbart namn till denna CapCode.</p>
+            </div>
+            <form id="aliasModalForm">
+                <div class="form-group">
+                    <label for="modal_address">CapCode Address</label>
+                    <input type="text" id="modal_address" name="address" readonly style="opacity: 0.7;">
+                </div>
+                <div class="form-group">
+                    <label for="modal_alias">Alias (Larmnamn)</label>
+                    <input type="text" id="modal_alias" name="alias" placeholder="T.ex. Räddningstjänsten" required>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="modal_is_hidden" name="is_hidden">
+                        Dölj meddelanden från denna adress (Mute)
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="modalSaveBtn" class="primary-btn">Spara Alias</button>
+                </div>
+            </form>
+            <div id="modalStatus" class="status-message"></div>
+        </div>
+    </div>
+
     <script>
+        // Global Modal Functions
+        function openAliasModal(address) {
+            document.getElementById('modal_address').value = address;
+            document.getElementById('modal_alias').value = '';
+            document.getElementById('modal_is_hidden').checked = false;
+
+            // Try to pre-fill if alias exists in memory
+            if (window.currentAlarmsData) {
+                const existing = window.currentAlarmsData.find(a => a.address === address);
+                if (existing && existing.alias) {
+                    document.getElementById('modal_alias').value = existing.alias;
+                    // We can't know is_hidden simply from history, but users can re-mute
+                }
+            }
+
+            document.getElementById('aliasModal').classList.add('show');
+            document.getElementById('modal_alias').focus();
+        }
+
+        function closeAliasModal() {
+            document.getElementById('aliasModal').classList.remove('show');
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const alarmsBody = document.getElementById('alarmsBody');
             const searchInput = document.getElementById('searchInput');
@@ -84,6 +138,7 @@
                     }
 
                     allAlarms = data;
+                    window.currentAlarmsData = allAlarms; // expose for modal
                     renderAlarms();
                 } catch (error) {
                     console.error('Error fetching alarms:', error);
@@ -115,7 +170,7 @@
 
                     tr.innerHTML = `
                         <td class="ts-cell">${time}</td>
-                        <td class="addr-cell"><span class="badge" title="${alarm.address}">${displayAddress}</span></td>
+                        <td class="addr-cell"><span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span></td>
                         <td class="msg-cell">${formatMessage(alarm.message)}</td>
                     `;
                     alarmsBody.appendChild(tr);
@@ -164,6 +219,59 @@
             evtSource.onerror = function (err) {
                 console.error("EventSource failed. Reconnecting...", err);
             };
+            // Modal Form Submission Handling
+            const aliasModalForm = document.getElementById('aliasModalForm');
+            const modalStatus = document.getElementById('modalStatus');
+            const modalSaveBtn = document.getElementById('modalSaveBtn');
+
+            aliasModalForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                modalSaveBtn.innerText = 'Sparar...';
+                modalSaveBtn.disabled = true;
+
+                const payload = {
+                    address: document.getElementById('modal_address').value,
+                    alias: document.getElementById('modal_alias').value,
+                    is_hidden: document.getElementById('modal_is_hidden').checked
+                };
+
+                fetch('/api/aliases', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            // Apply alias immediately to local data matching address
+                            allAlarms.forEach(alarm => {
+                                if (alarm.address === payload.address) alarm.alias = payload.alias;
+                            });
+
+                            // If hidden, remove from array
+                            if (payload.is_hidden) {
+                                allAlarms = allAlarms.filter(a => a.address !== payload.address);
+                            }
+                            renderAlarms(); // Re-render table
+
+                            closeAliasModal();
+                        } else {
+                            modalStatus.innerText = 'Något gick fel: ' + data.message;
+                            modalStatus.className = 'status-message error show';
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        modalStatus.innerText = 'Nätverksfel vid sparning.';
+                        modalStatus.className = 'status-message error show';
+                    })
+                    .finally(() => {
+                        modalSaveBtn.innerText = 'Spara Alias';
+                        modalSaveBtn.disabled = false;
+                        setTimeout(() => modalStatus.classList.remove('show'), 5000);
+                    });
+            });
+
         });
     </script>
 </body>
