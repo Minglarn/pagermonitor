@@ -7,6 +7,13 @@
     <title>PagerMonitor Inställningar</title>
     <link rel="stylesheet" href="/static/style.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+    <script>
+        // Apply theme immediately to prevent flickering
+        (function () {
+            const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
 </head>
 
 <body>
@@ -50,8 +57,21 @@
                         <small>Frivilligt. Används om du har flera USB-mottagare inkopplade.</small>
                     </div>
 
+                    <hr class="separator">
+                    <h3>UI & Utseende</h3>
+
+                    <div class="form-group">
+                        <label for="theme">Färgtema</label>
+                        <select id="theme" class="form-input"
+                            style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary); cursor: pointer;">
+                            <option value="dark">Mörkt tema (Standard)</option>
+                            <option value="light">Ljust tema</option>
+                        </select>
+                        <small>Välj det tema som känns bäst för dina ögon.</small>
+                    </div>
+
                     <div class="form-actions">
-                        <button type="submit" id="saveBtn" class="primary-btn">Spara och Starta Om SDR</button>
+                        <button type="submit" id="saveBtn" class="primary-btn">Spara Inställningar</button>
                     </div>
                 </form>
 
@@ -79,6 +99,11 @@
                     showStatus("Kunde inte hämta inställningar från servern.", "error");
                 });
 
+            // Ladda tema från localStorage
+            const currentTheme = localStorage.getItem('pagermonitor-theme') || 'dark';
+            document.getElementById('theme').value = currentTheme;
+            document.documentElement.setAttribute('data-theme', currentTheme);
+
             // Spara ändringar
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -91,6 +116,11 @@
                     device_serial: document.getElementById('device_serial').value
                 };
 
+                // Spara tema i localStorage
+                const themeVal = document.getElementById('theme').value;
+                localStorage.setItem('pagermonitor-theme', themeVal);
+                document.documentElement.setAttribute('data-theme', themeVal);
+
                 fetch('/api/settings', {
                     method: 'POST',
                     headers: {
@@ -101,7 +131,7 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data.status === 'success') {
-                            showStatus('Inställningar sparades! Radion startas om i bakgrunden.', 'success');
+                            showStatus('Inställningar sparades!', 'success');
                         } else {
                             showStatus('Något gick fel vid sparning.', 'error');
                         }
@@ -111,7 +141,7 @@
                         showStatus('Nätverksfel vid sparning.', 'error');
                     })
                     .finally(() => {
-                        saveBtn.innerText = 'Spara och Starta Om SDR';
+                        saveBtn.innerText = 'Spara Inställningar';
                         saveBtn.disabled = false;
                     });
             });

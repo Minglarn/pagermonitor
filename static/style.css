@@ -1,4 +1,5 @@
 :root {
+    /* Base Colors - Dark Theme (Default) */
     --bg-color: #0b0e14;
     --panel-bg: rgba(17, 21, 28, 0.75);
     --panel-border: rgba(255, 255, 255, 0.1);
@@ -12,6 +13,30 @@
     --warning: #f59e0b;
     --success: #10b981;
     --badge-bg: rgba(56, 189, 248, 0.15);
+    --input-bg: rgba(13, 17, 23, 0.6);
+    --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    --table-header-bg: rgba(255, 255, 255, 0.02);
+    --table-row-hover: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="light"] {
+    --bg-color: #f8fafc;
+    --panel-bg: rgba(255, 255, 255, 0.85);
+    --panel-border: rgba(0, 0, 0, 0.1);
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --accent: #0ea5e9;
+    --accent-vibrant: #0284c7;
+    --accent-glow: rgba(14, 165, 233, 0.2);
+    --danger: #ef4444;
+    --danger-vibrant: #dc2626;
+    --warning: #d97706;
+    --success: #16a34a;
+    --badge-bg: rgba(14, 165, 233, 0.1);
+    --input-bg: rgba(255, 255, 255, 0.8);
+    --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    --table-header-bg: rgba(0, 0, 0, 0.02);
+    --table-row-hover: rgba(0, 0, 0, 0.03);
 }
 
 * {
@@ -115,7 +140,7 @@ header p {
 #searchInput {
     width: 100%;
     padding: 1rem 1rem 1rem 3rem;
-    background: rgba(13, 17, 23, 0.6);
+    background: var(--input-bg);
     border: 1px solid var(--panel-border);
     border-radius: 50px;
     color: var(--text-primary);
@@ -129,7 +154,7 @@ header p {
     outline: none;
     border-color: var(--accent);
     box-shadow: 0 0 15px var(--accent-glow);
-    background: rgba(13, 17, 23, 0.8);
+    background: var(--input-bg);
 }
 
 .search-icon {
@@ -166,7 +191,7 @@ header p {
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
     border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    box-shadow: var(--card-shadow);
     overflow: hidden;
 }
 
@@ -207,7 +232,7 @@ table {
 }
 
 th {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--table-header-bg);
     padding: 1rem 1.5rem;
     font-weight: 600;
     color: var(--text-secondary);
@@ -219,8 +244,8 @@ th {
 
 td {
     padding: 1rem 1.5rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-    color: #c9d1d9;
+    border-bottom: 1px solid var(--panel-border);
+    color: var(--text-primary);
     font-size: 0.95rem;
 }
 
@@ -229,7 +254,7 @@ tr:last-child td {
 }
 
 tr:hover td {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--table-row-hover);
 }
 
 /* Time Grouping Dividers */
@@ -436,8 +461,8 @@ tr:hover td {
 .nav-link.active {
     background: var(--badge-bg);
     color: var(--accent);
-    border: 1px solid rgba(88, 166, 255, 0.3);
-    box-shadow: 0 0 15px rgba(88, 166, 255, 0.1);
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 15px var(--accent-glow);
 }
 
 .form-container {
@@ -486,7 +511,7 @@ tr:hover td {
 .form-group input {
     width: 100%;
     padding: 0.8rem 1rem;
-    background: rgba(1, 4, 9, 0.5);
+    background: var(--input-bg);
     border: 1px solid var(--panel-border);
     border-radius: 6px;
     color: var(--text-primary);
