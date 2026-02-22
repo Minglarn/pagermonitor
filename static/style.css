@@ -353,7 +353,7 @@ tr:hover td {
 
 /* Alert Word Styling */
 .alert-row {
-    background: rgba(239, 68, 68, 0.05) !important;
+    background: rgba(239, 68, 68, 0.03) !important;
 }
 
 .alert-row td:first-child {
@@ -366,54 +366,22 @@ tr:hover td {
     left: 0;
     top: 0;
     bottom: 0;
-    width: 4px;
+    width: 3px;
     background: var(--danger);
-    box-shadow: 0 0 15px var(--danger);
+    opacity: 0.6;
     z-index: 1;
     border-top-left-radius: 8px;
     border-bottom-left-radius: 8px;
 }
 
 .alert-word {
-    background: var(--danger);
-    color: white;
-    padding: 0.1rem 0.3rem;
-    border-radius: 4px;
-    font-weight: 800;
-    animation: pulse-red 2s infinite;
+    color: var(--danger);
+    font-weight: 700;
+    border-bottom: 2px solid var(--danger);
+    padding-bottom: 1px;
 }
 
-@keyframes pulse-red {
-    0% {
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
-    }
-
-    70% {
-        box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
-    }
-
-    100% {
-        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
-    }
-}
-
-.alert-pulse-bg {
-    animation: alert-flash 3s infinite;
-}
-
-@keyframes alert-flash {
-    0% {
-        background: rgba(239, 68, 68, 0.05);
-    }
-
-    50% {
-        background: rgba(239, 68, 68, 0.15);
-    }
-
-    100% {
-        background: rgba(239, 68, 68, 0.05);
-    }
-}
+/* .alert-pulse-bg class exists in HTML but intentionally has no styles */
 
 /* Animations */
 @keyframes fadeInSlide {
