@@ -95,26 +95,49 @@
                 saveBtn.innerText = 'Sparar...';
                 saveBtn.disabled = true;
 
-                const payload = {
-                    word: document.getElementById('word').value.toUpperCase(),
-                    color: '#ef4444', // Default to red pulse
-                    is_active: true
-                };
+                const inputVal = document.getElementById('word').value.toUpperCase();
+                // Split by comma and clean up whitespace, ignoring empty strings
+                const words = inputVal.split(',').map(w => w.trim()).filter(w => w.length > 0);
+
+                if (words.length === 0) {
+                    status.innerText = 'Ange minst ett ord.';
+                    status.className = 'status-message error show';
+                    saveBtn.innerText = 'Lägg till i bevakning';
+                    saveBtn.disabled = false;
+                    setTimeout(() => status.classList.remove('show'), 3000);
+                    return;
+                }
 
                 try {
-                    const res = await fetch('/api/alerts', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
+                    // Create an array of Promises for each word to save
+                    const savePromises = words.map(word => {
+                        const payload = {
+                            word: word,
+                            color: '#ef4444', // Default to red pulse
+                            is_active: true
+                        };
+                        return fetch('/api/alerts', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
                     });
-                    if (res.ok) {
-                        status.innerText = 'Ord tillagt!';
+
+                    // Wait for all to complete
+                    const results = await Promise.all(savePromises);
+
+                    const allOk = results.every(res => res.ok);
+
+                    if (allOk) {
+                        status.innerText = words.length > 1 ? `${words.length} ord tillagda!` : 'Ord tillagt!';
                         status.className = 'status-message success show';
                         document.getElementById('word').value = '';
                         fetchAlerts();
+                    } else {
+                        throw new Error("Ett eller flera ord kunde inte sparas.");
                     }
                 } catch (e) {
-                    status.innerText = 'Något gick fel.';
+                    status.innerText = 'Något gick fel: ' + e.message;
                     status.className = 'status-message error show';
                 } finally {
                     saveBtn.innerText = 'Lägg till i bevakning';
