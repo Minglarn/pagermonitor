@@ -14,9 +14,11 @@ and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 - Premium web UI with dark mode, glassmorphism design, and real-time dashboard.
 - Settings management UI to dynamically change SDR Frequency, Gain, and Device Serial without restarting the container.
 - Alias system (CapCode -> Name mappings) with UI page to manage and identify incoming messages.
+- Quick Alias Modal directly on the Dashboard to instantly attach names to CapCodes without navigating away.
 - Mute/Hide feature to ignore messages from specific spam CapCodes.
 - Server-Sent Events (SSE) implementation to push new alarm messages to the frontend instantly, removing the need for HTTP interval polling.
 - Text parsing to translate pager strings to Swedish characters (Å, Ä, Ö) and convert `<CR><LF>` into proper HTML line breaks.
+- Set default Docker timezone to `Europe/Stockholm` so logs and timestamps are correct.
 
 ### Fixed
 - Fixed an infinite "death loop" crashing the container (Exit Code 137) due to unhandled `rtl_fm` pipe closures causing Memory Leaks / OOM errors.

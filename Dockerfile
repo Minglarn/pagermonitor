@@ -28,7 +28,10 @@ FROM python:3.11-slim-bookworm
 
 RUN apt-get update && apt-get install -y \
     libusb-1.0-0 \
+    tzdata \
     && rm -rf /var/lib/apt/lists/*
+
+ENV TZ="Europe/Stockholm"
 
 # Copy binaries from builder
 COPY --from=builder /usr/local/bin/rtl_fm /usr/local/bin/

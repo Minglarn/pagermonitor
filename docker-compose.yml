@@ -15,5 +15,6 @@ services:
       - MQTT_PORT=1883
       - MQTT_USER=home-assistant-server
       - MQTT_PASS=${MQTT_PASS:-}
+      - TZ=${TZ:-Europe/Stockholm}
     ports:
       - "5000:5000"
