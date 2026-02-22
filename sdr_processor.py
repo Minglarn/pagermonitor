@@ -32,7 +32,7 @@ new_message_callbacks = []
 def on_new_message(callback):
     new_message_callbacks.append(callback)
 
-def parse_multimon_line(line):
+def parse_multimon_line(line, settings):
     # Example format: POCSAG1200: Address: 1234567  Function: 3  Alpha:   THIS IS A TEST MESSAGE<NUL>
     if "POCSAG" in line and "Alpha:" in line:
         try:
@@ -167,7 +167,7 @@ def run_sdr_process():
                 
                 if "POCSAG" in line and "Alpha:" in line:
                     logger.info(f"RAW: {line}")
-                    parsed = parse_multimon_line(line)
+                    parsed = parse_multimon_line(line, settings)
                     
                     if parsed:
                         address = parsed['address']
