@@ -136,6 +136,25 @@ header p {
     color: var(--text-secondary);
 }
 
+/* RX Indicator */
+.rx-status-dot {
+    position: absolute;
+    right: 1.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #3fb950;
+    opacity: 0.2;
+    transition: opacity 0.1s ease-in-out, box-shadow 0.1s ease-in-out;
+}
+
+.rx-status-dot.active {
+    opacity: 1;
+    box-shadow: 0 0 12px 4px rgba(46, 160, 67, 0.8);
+}
+
 /* Glassmorphism Panel */
 .glass-panel {
     background: var(--panel-bg);

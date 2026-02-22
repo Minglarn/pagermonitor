@@ -138,6 +138,12 @@ def run_sdr_process():
                         
                         if is_hidden:
                             logger.info(f"DROPPED (Hidden Alias) -> Address: {address}, Msg: {message}")
+                            # Send a ping so the UI knows activity happened
+                            for cb in list(new_message_callbacks):
+                                try:
+                                    cb({'type': 'ping'})
+                                except Exception:
+                                    pass
                             continue
                             
                         logger.info(f"DECODED -> Address: {address}, Alias: {alias}, Msg: {message}")
@@ -146,6 +152,7 @@ def run_sdr_process():
                         publish_message(address, message, timestamp, alias)
                         
                         msg_data = {
+                            'type': 'message',
                             'id': timestamp, # use timestamp as temporary ID for SSE
                             'timestamp': timestamp,
                             'address': address,

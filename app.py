@@ -12,6 +12,10 @@ from sdr_processor import start_sdr_thread, restart_sdr, on_new_message
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Disable werkzeug HTTP request logs
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
+
 app = Flask(__name__)
 
 @app.route('/')

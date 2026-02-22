@@ -32,6 +32,11 @@
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
+                <div id="rx-indicator" class="rx-status-dot" title="Tar emot data"></div>
+                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
             </div>
         </header>
 
@@ -129,13 +134,29 @@
             // Setup Server-Sent Events (SSE) for Real-Time UI updates without polling
             const evtSource = new EventSource("/stream");
 
-            evtSource.onmessage = function (event) {
-                const newMsg = JSON.parse(event.data);
+            // RX Indicator flash function
+            const rxIndicator = document.getElementById('rx-indicator');
+            function flashRx() {
+                rxIndicator.classList.add('active');
+                setTimeout(() => {
+                    rxIndicator.classList.remove('active');
+                }, 500); // flash duration
+            }
 
-                // Unshift to local array
-                // Ensure we don't duplicate if already exists (safeguard)
-                if (!allAlarms.some(a => a.id === newMsg.id)) {
-                    allAlarms.unshift(newMsg);
+            evtSource.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+
+                // Flash the indicator for any activity (message or ping)
+                flashRx();
+
+                if (data.type === 'ping') {
+                    // It's just a keep-alive or a blocked message, do nothing else.
+                    return;
+                }
+
+                // If it's a real message, process it
+                if (!allAlarms.some(a => a.id === data.id)) {
+                    allAlarms.unshift(data);
                     // Keep only top 100 max in memory (matches backend get limit)
                     if (allAlarms.length > 100) allAlarms.pop();
 
