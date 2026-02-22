@@ -5,18 +5,15 @@ services:
     build: .
     container_name: pagermonitor
     restart: unless-stopped
-    # devices:
-    #   # Map the USB devices for RTL-SDR to work (uncomment on Linux host)
-    #   - /dev/bus/usb:/dev/bus/usb
+    devices:
+      # Map the USB devices for RTL-SDR to work (uncomment on Linux host)
+      - /dev/bus/usb:/dev/bus/usb
     volumes:
       - ./data:/app/data
     environment:
-      # Set RTL_TCP_ADDRESS if you want to use rtl_tcp instead of a local USB device
-      # Example: RTL_TCP_ADDRESS=192.168.1.10:1234
-      - RTL_TCP_ADDRESS=
       - MQTT_BROKER=192.168.1.121
       - MQTT_PORT=1883
       - MQTT_USER=home-assistant-server
-      - MQTT_PASS=*
+      - MQTT_PASS=${MQTT_PASS:-}
     ports:
       - "5000:5000"

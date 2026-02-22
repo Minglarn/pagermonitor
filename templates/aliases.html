@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PagerMonitor Alias</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="background-effects">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+    </div>
+
+    <div class="container">
+        <nav class="top-nav">
+            <a href="/" class="nav-link">Dashboard</a>
+            <a href="/aliases" class="nav-link active">Alias</a>
+            <a href="/settings" class="nav-link">Inställningar</a>
+        </nav>
+
+        <header>
+            <h1><span class="highlight">CapCode Alias</span></h1>
+            <p>Koppla adresser till namn och ignorera spam</p>
+        </header>
+
+        <main>
+            <div class="glass-panel form-container">
+                <form id="aliasForm">
+                    <div class="form-group row-group">
+                        <div class="col">
+                            <label for="address">CapCode / Adress</label>
+                            <input type="text" id="address" name="address" placeholder="T.ex. 1234567" required>
+                        </div>
+                        <div class="col">
+                            <label for="alias">Alias Namn</label>
+                            <input type="text" id="alias" name="alias" placeholder="T.ex. Räddningstjänsten" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="is_hidden" name="is_hidden">
+                            Mute / Dölj larm från denna adress (sparas ej i DB)
+                        </label>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" id="saveAliasBtn" class="primary-btn">Spara Alias</button>
+                    </div>
+                </form>
+
+                <div id="statusMessage" class="status-message"></div>
+
+                <hr class="separator">
+
+                <h3>Befintliga Alias</h3>
+                <div class="table-container">
+                    <table class="glass-table">
+                        <thead>
+                            <tr>
+                                <th>CapCode</th>
+                                <th>Alias</th>
+                                <th>Status</th>
+                                <th>Åtgärd</th>
+                            </tr>
+                        </thead>
+                        <tbody id="aliasTableBody">
+                            <tr>
+                                <td colspan="4" style="text-align:center;">Laddar...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('aliasForm');
+            const statusMsg = document.getElementById('statusMessage');
+            const saveBtn = document.getElementById('saveAliasBtn');
+            const tbody = document.getElementById('aliasTableBody');
+
+            function loadAliases() {
+                fetch('/api/aliases')
+                    .then(res => res.json())
+                    .then(data => {
+                        tbody.innerHTML = '';
+                        if (Object.keys(data).length === 0) {
+                            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Inga alias inlagda ännu.</td></tr>';
+                            return;
+                        }
+
+                        for (const [address, info] of Object.entries(data)) {
+                            const isHidden = info.is_hidden;
+                            const statusBadge = isHidden ? '<span class="badge danger">Muted</span>' : '<span class="badge success">Aktiv</span>';
+
+                            tbody.innerHTML += `
+                                <tr>
+                                    <td><span class="badge">${address}</span></td>
+                                    <td>${info.alias}</td>
+                                    <td>${statusBadge}</td>
+                                    <td>
+                                        <button class="action-btn delete-btn" onclick="deleteAlias('${address}')">Ta bort</button>
+                                        <button class="action-btn edit-btn" onclick="editAlias('${address}', '${info.alias}', ${isHidden})">Redigera</button>
+                                    </td>
+                                </tr>
+                            `;
+                        }
+                    })
+                    .catch(err => console.error("Fel vid hämtning:", err));
+            }
+
+            window.deleteAlias = function (address) {
+                if (!confirm(`Är du säker på att du vill ta bort alias för ${address}?`)) return;
+
+                fetch('/api/aliases', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ address })
+                }).then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            loadAliases();
+                            showStatus('Alias borttaget!', 'success');
+                        }
+                    });
+            };
+
+            window.editAlias = function (address, alias, isHidden) {
+                document.getElementById('address').value = address;
+                document.getElementById('alias').value = alias;
+                document.getElementById('is_hidden').checked = isHidden;
+            };
+
+            loadAliases();
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                saveBtn.innerText = 'Sparar...';
+                saveBtn.disabled = true;
+
+                const payload = {
+                    address: document.getElementById('address').value,
+                    alias: document.getElementById('alias').value,
+                    is_hidden: document.getElementById('is_hidden').checked
+                };
+
+                fetch('/api/aliases', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showStatus('Alias sparades!', 'success');
+                            loadAliases();
+                            document.getElementById('address').value = '';
+                            document.getElementById('alias').value = '';
+                            document.getElementById('is_hidden').checked = false;
+                        } else {
+                            showStatus('Något gick fel: ' + data.message, 'error');
+                        }
+                    })
+                    .finally(() => {
+                        saveBtn.innerText = 'Spara Alias';
+                        saveBtn.disabled = false;
+                    });
+            });
+
+            function showStatus(text, type) {
+                statusMsg.innerText = text;
+                statusMsg.className = `status-message ${type} show`;
+                setTimeout(() => {
+                    statusMsg.classList.remove('show');
+                }, 5000);
+            }
+        });
+    </script>
+</body>
+
+</html>

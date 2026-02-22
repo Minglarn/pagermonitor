@@ -27,7 +27,7 @@ def init_mqtt():
         logger.error(f"Failed to connect to MQTT broker: {e}")
         mqtt_client = None
 
-def publish_message(address, message, timestamp):
+def publish_message(address, message, timestamp, alias=''):
     global mqtt_client
     if not mqtt_client:
         return
@@ -35,7 +35,8 @@ def publish_message(address, message, timestamp):
     payload = {
         'timestamp': timestamp,
         'address': address,
-        'message': message
+        'message': message,
+        'alias': alias
     }
     
     try:

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PagerMonitor Inställningar</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="background-effects">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+    </div>
+
+    <div class="container">
+        <nav class="top-nav">
+            <a href="/" class="nav-link">Dashboard</a>
+            <a href="/settings" class="nav-link active">Inställningar</a>
+        </nav>
+
+        <header>
+            <h1><span class="highlight">Inställningar</span></h1>
+            <p>Konfigurera SDR-mottagaren</p>
+        </header>
+
+        <main>
+            <div class="glass-panel form-container">
+                <form id="settingsForm">
+
+                    <div class="form-group">
+                        <label for="frequency">Frekvens (MHz)</label>
+                        <input type="text" id="frequency" name="frequency" placeholder="T.ex. 169.8M" required>
+                        <small>Standard är 169.8M för POCSAG i Sverige. Använd M för MHz.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="gain">RF Gain</label>
+                        <input type="text" id="gain" name="gain" placeholder="auto eller värde, t.ex. 42">
+                        <small>Lämna som "auto" om du är osäker, annars ange siffervärde.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="device_serial">Device Serial (RTL-SDR)</label>
+                        <input type="text" id="device_serial" name="device_serial" placeholder="T.ex. 00000001">
+                        <small>Frivilligt. Används om du har flera USB-mottagare inkopplade.</small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" id="saveBtn" class="primary-btn">Spara och Starta Om SDR</button>
+                    </div>
+                </form>
+
+                <div id="statusMessage" class="status-message"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('settingsForm');
+            const statusMsg = document.getElementById('statusMessage');
+            const saveBtn = document.getElementById('saveBtn');
+
+            // Hämta nuvarande inställningar
+            fetch('/api/settings')
+                .then(res => res.json())
+                .then(data => {
+                    if (data.frequency) document.getElementById('frequency').value = data.frequency;
+                    if (data.gain) document.getElementById('gain').value = data.gain;
+                    if (data.device_serial) document.getElementById('device_serial').value = data.device_serial;
+                })
+                .catch(err => {
+                    console.error("Fel vid hämtning av inställningar", err);
+                    showStatus("Kunde inte hämta inställningar från servern.", "error");
+                });
+
+            // Spara ändringar
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                saveBtn.innerText = 'Sparar...';
+                saveBtn.disabled = true;
+
+                const payload = {
+                    frequency: document.getElementById('frequency').value,
+                    gain: document.getElementById('gain').value,
+                    device_serial: document.getElementById('device_serial').value
+                };
+
+                fetch('/api/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            showStatus('Inställningar sparades! Radion startas om i bakgrunden.', 'success');
+                        } else {
+                            showStatus('Något gick fel vid sparning.', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        showStatus('Nätverksfel vid sparning.', 'error');
+                    })
+                    .finally(() => {
+                        saveBtn.innerText = 'Spara och Starta Om SDR';
+                        saveBtn.disabled = false;
+                    });
+            });
+
+            function showStatus(text, type) {
+                statusMsg.innerText = text;
+                statusMsg.className = `status-message ${type} show`;
+                setTimeout(() => {
+                    statusMsg.classList.remove('show');
+                }, 5000);
+            }
+        });
+    </script>
+</body>
+
+</html>

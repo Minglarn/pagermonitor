@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="sv">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="/static/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
+
 <body>
     <div class="background-effects">
         <div class="glow glow-1"></div>
@@ -14,12 +16,22 @@
     </div>
 
     <div class="container">
+        <nav class="top-nav">
+            <a href="/" class="nav-link active">Dashboard</a>
+            <a href="/aliases" class="nav-link">Alias</a>
+            <a href="/settings" class="nav-link">Inställningar</a>
+        </nav>
+
         <header>
             <h1><span class="highlight">Pager</span>Monitor</h1>
-            <p>Realtidsövervakning av POCSAG-larm (169.800 MHz)</p>
+            <p>Realtidsövervakning av POCSAG-larm</p>
             <div class="search-container">
                 <input type="text" id="searchInput" placeholder="Sök larm eller adresser...">
-                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
             </div>
         </header>
 
@@ -29,7 +41,7 @@
                     <thead>
                         <tr>
                             <th>Tidstämpel</th>
-                            <th>Adress</th>
+                            <th>CapCode (Alias)</th>
                             <th>Meddelande</th>
                         </tr>
                     </thead>
@@ -49,21 +61,27 @@
             const loading = document.getElementById('loading');
             let allAlarms = [];
 
-            // Fetch and render alarms
+            // Formatter helper
+            function formatMessage(msgStr) {
+                // Ensure newlines are converted to HTML breaks for proper display
+                // (Though sdr_processor.py cleans <CR><LF> into \n now, we also handle raw text just in case)
+                let formatted = msgStr.replace(/<CR><LF>/g, '<br>').replace(/\n/g, '<br>');
+                return formatted;
+            }
+
+            // Fetch and render historical alarms initially
             const fetchAlarms = async () => {
                 try {
                     const response = await fetch('/api/messages');
                     if (!response.ok) throw new Error('Network response was not ok');
                     const data = await response.json();
-                    
+
                     if (data.length > 0) {
                         loading.style.display = 'none';
-                    } else if (allAlarms.length === 0) {
+                    } else {
                         loading.innerText = 'Inga larm hittades.';
                     }
 
-                    // Check if new data arrived to trigger animation (simple length check for POC)
-                    const isNewData = data.length > allAlarms.length;
                     allAlarms = data;
                     renderAlarms();
                 } catch (error) {
@@ -74,10 +92,11 @@
             const renderAlarms = () => {
                 const query = searchInput.value.toLowerCase();
                 alarmsBody.innerHTML = '';
-                
-                const filtered = allAlarms.filter(alarm => 
-                    alarm.address.toLowerCase().includes(query) || 
+
+                const filtered = allAlarms.filter(alarm =>
+                    alarm.address.toLowerCase().includes(query) ||
                     alarm.message.toLowerCase().includes(query) ||
+                    (alarm.alias && alarm.alias.toLowerCase().includes(query)) ||
                     new Date(alarm.timestamp).toLocaleString('sv-SE').includes(query)
                 );
 
@@ -85,16 +104,18 @@
                     const tr = document.createElement('tr');
                     tr.className = 'fade-in';
                     tr.style.animationDelay = `${index * 0.05}s`;
-                    
+
                     const time = new Date(alarm.timestamp).toLocaleString('sv-SE', {
-                        year: 'numeric', month: '2-digit', day: '2-digit', 
-                        hour: '2-digit', minute:'2-digit', second:'2-digit'
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit'
                     });
+
+                    const displayAddress = alarm.alias ? `${alarm.alias} <br><small class="capcode-sub">(${alarm.address})</small>` : alarm.address;
 
                     tr.innerHTML = `
                         <td class="ts-cell">${time}</td>
-                        <td class="addr-cell"><span class="badge">${alarm.address}</span></td>
-                        <td class="msg-cell">${alarm.message}</td>
+                        <td class="addr-cell"><span class="badge">${displayAddress}</span></td>
+                        <td class="msg-cell">${formatMessage(alarm.message)}</td>
                     `;
                     alarmsBody.appendChild(tr);
                 });
@@ -102,11 +123,29 @@
 
             searchInput.addEventListener('input', renderAlarms);
 
-            // Initial fetch
+            // Fetch historical logic
             fetchAlarms();
-            // Poll every 3 seconds
-            setInterval(fetchAlarms, 3000);
+
+            // Setup Server-Sent Events (SSE) for Real-Time UI updates without polling
+            const evtSource = new EventSource("/stream");
+
+            evtSource.onmessage = function (event) {
+                const newMsg = JSON.parse(event.data);
+
+                // Unshift to local array and re-render if it matches search
+                allAlarms.unshift(newMsg);
+                // Keep only top 100 max in memory (matches backend get limit)
+                if (allAlarms.length > 100) allAlarms.pop();
+
+                loading.style.display = 'none';
+                renderAlarms();
+            };
+
+            evtSource.onerror = function (err) {
+                console.error("EventSource failed. Reconnecting...", err);
+            };
         });
     </script>
 </body>
+
 </html>
