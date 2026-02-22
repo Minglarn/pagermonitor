@@ -114,16 +114,17 @@ def run_sdr_process():
         logger.info(f"Starting multimon-ng: {' '.join(multimon_cmd)}")
 
         try:
-            current_p1 = subprocess.Popen(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            current_p1 = subprocess.Popen(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)
             current_p2 = subprocess.Popen(multimon_cmd, stdin=current_p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
             
             # Read stderr in a separate thread so it doesn't block p1
             def log_p1_stderr(p_err):
                 try:
-                    for err_line in iter(p_err.readline, ''):
+                    for err_line in iter(p_err.readline, b''):
                         if err_line:
-                            logger.error(f"rtl_fm stderr: {err_line.strip()}")
-                except ValueError:
+                            decoded_line = err_line.decode('utf-8', errors='replace').strip()
+                            logger.error(f"rtl_fm stderr: {decoded_line}")
+                except (ValueError, Exception) as e:
                     # Occurs when the file is closed on terminated process
                     pass
             
@@ -134,10 +135,18 @@ def run_sdr_process():
 
             # Poll for output or restart requests
             while not restart_event.is_set():
-                line = current_p2.stdout.readline()
+                line = ""
+                try:
+                    line = current_p2.stdout.readline()
+                except Exception:
+                    # Likely process killed
+                    break
+
                 if not line:
-                    if current_p2.poll() is not None:
-                        # Process exited
+                    p2_status = current_p2.poll()
+                    p1_status = current_p1.poll()
+                    if p2_status is not None or p1_status is not None:
+                        logger.warning(f"SDR processes exited. p2 logic: {p2_status}, p1 status: {p1_status}")
                         break
                     time.sleep(0.1)
                     continue
@@ -237,3 +246,5 @@ def restart_sdr():
     """Trigger a restart of the SDR processing thread to apply new settings."""
     logger.info("Restarting SDR processes to apply new settings...")
     restart_event.set()
+    # Immediately kill processes to force the thread to loop and reload settings
+    cleanup_subprocesses()
