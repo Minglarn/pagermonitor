@@ -144,7 +144,7 @@
                         // Uses a negative lookahead to ignore everything before a closing `>` 
                         // if there wasn't an opening `<` first.
                         const regex = new RegExp(`(${aw.word})(?![^<]*>)`, 'gi');
-                        highlighted = highlighted.replace(regex, `<span class="alert-word" style="background: ${aw.color || '#ef4444'}">$1</span>`);
+                        highlighted = highlighted.replace(regex, `<span class="alert-word" style="color: ${aw.color || '#ef4444'}; border-bottom-color: ${aw.color || '#ef4444'}">$1</span>`);
                     }
                 });
                 return highlighted;
