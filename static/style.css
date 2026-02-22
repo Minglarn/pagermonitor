@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inconsolata:wght@400;700&family=JetBrains+Mono:wght@400;500;800&family=Roboto+Mono:wght@400;500;700&family=Source+Code+Pro:wght@400;600;800&family=Space+Mono:wght@400;700&family=Ubuntu+Mono:wght@400;700&family=Courier+Prime:wght@400;700&family=VT323&display=swap');
+
 :root {
     /* Base Colors - Dark Theme (Default) */
     --bg-color: #0b0e14;
@@ -17,6 +19,10 @@
     --card-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     --table-header-bg: rgba(255, 255, 255, 0.02);
     --table-row-hover: rgba(255, 255, 255, 0.05);
+
+    /* Font Settings */
+    --msg-font: 'JetBrains Mono', monospace;
+    --msg-size: 1rem;
 }
 
 [data-theme="light"] {
@@ -292,8 +298,8 @@ tr:hover td {
     color: var(--accent);
     padding: 0.3rem 0.6rem;
     border-radius: 6px;
-    font-family: monospace;
-    font-size: 0.9rem;
+    font-family: var(--msg-font);
+    font-size: calc(var(--msg-size) * 0.9);
     font-weight: 600;
     cursor: pointer;
     transition: background 0.2s ease, transform 0.1s ease;
@@ -305,8 +311,11 @@ tr:hover td {
 }
 
 .msg-cell {
+    font-family: var(--msg-font);
+    font-size: var(--msg-size);
     font-weight: 400;
     line-height: 1.5;
+    white-space: pre-wrap;
 }
 
 .ts-cell {

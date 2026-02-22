@@ -116,6 +116,47 @@
                         <small>Välj det tema som känns bäst för dina ögon.</small>
                     </div>
 
+                    <hr class="separator">
+                    <h3>Pagerskärm & Font</h3>
+
+                    <div class="row-group">
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="message_font">Typsnitt (Monospace)</label>
+                                <select id="message_font" name="message_font" class="form-input"
+                                    style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
+                                    <option value="JetBrains Mono">JetBrains Mono (Modern)</option>
+                                    <option value="Fira Code">Fira Code</option>
+                                    <option value="IBM Plex Mono">IBM Plex Mono</option>
+                                    <option value="Roboto Mono">Roboto Mono</option>
+                                    <option value="Source Code Pro">Source Code Pro</option>
+                                    <option value="Space Mono">Space Mono</option>
+                                    <option value="Ubuntu Mono">Ubuntu Mono</option>
+                                    <option value="Courier Prime">Courier Prime (Klassisk)</option>
+                                    <option value="Inconsolata">Inconsolata</option>
+                                    <option value="VT323">VT323 (Retro Pager)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="message_font_size_slider">Textstorlek (<span id="font_size_val">1.0</span>
+                                    rem)</label>
+                                <input type="range" id="message_font_size_slider" min="0.5" max="2.0" step="0.1"
+                                    value="1.0" style="width: 100%; margin-top: 0.8rem;">
+                                <input type="hidden" id="message_font_size" name="message_font_size" value="1.0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Förhandsgranskning</label>
+                        <div id="fontPreview"
+                            style="padding: 1rem; background: var(--input-bg); border: 1px solid var(--accent); border-radius: 8px; min-height: 80px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                            <span id="previewText">BRANDALARM: STORGATAN 1 - 12:45</span>
+                        </div>
+                    </div>
+
                     <div class="form-actions">
                         <button type="submit" id="saveBtn" class="primary-btn">Spara Inställningar</button>
                     </div>
@@ -139,9 +180,15 @@
                     if (data.frequency) document.getElementById('frequency').value = data.frequency;
                     if (data.gain) document.getElementById('gain').value = data.gain;
                     if (data.device_serial) document.getElementById('device_serial').value = data.device_serial;
-                    if (data.multimon_verbosity) document.getElementById('multimon_verbosity').value = data.multimon_verbosity;
                     if (data.multimon_charset) document.getElementById('multimon_charset').value = data.multimon_charset;
                     if (data.multimon_format) document.getElementById('multimon_format').value = data.multimon_format;
+                    if (data.message_font) document.getElementById('message_font').value = data.message_font;
+                    if (data.message_font_size) {
+                        document.getElementById('message_font_size').value = data.message_font_size;
+                        document.getElementById('message_font_size_slider').value = data.message_font_size;
+                        document.getElementById('font_size_val').innerText = data.message_font_size;
+                    }
+                    updatePreview();
                 })
                 .catch(err => {
                     console.error("Fel vid hämtning av inställningar", err);
@@ -165,7 +212,9 @@
                     device_serial: document.getElementById('device_serial').value,
                     multimon_verbosity: document.getElementById('multimon_verbosity').value,
                     multimon_charset: document.getElementById('multimon_charset').value,
-                    multimon_format: document.getElementById('multimon_format').value
+                    multimon_format: document.getElementById('multimon_format').value,
+                    message_font: document.getElementById('message_font').value,
+                    message_font_size: document.getElementById('message_font_size').value
                 };
 
                 // Spara tema i localStorage
@@ -205,6 +254,25 @@
                     statusMsg.classList.remove('show');
                 }, 5000);
             }
+
+            // Sync slider and preview
+            const fontSelect = document.getElementById('message_font');
+            const fontSlider = document.getElementById('message_font_size_slider');
+            const fontSizeHidden = document.getElementById('message_font_size');
+            const fontSizeValLabel = document.getElementById('font_size_val');
+            const previewText = document.getElementById('previewText');
+
+            function updatePreview() {
+                const font = fontSelect.value;
+                const size = fontSlider.value;
+                fontSizeHidden.value = size;
+                fontSizeValLabel.innerText = size;
+                previewText.style.fontFamily = `'${font}', monospace`;
+                previewText.style.fontSize = `${size}rem`;
+            }
+
+            fontSelect.addEventListener('change', updatePreview);
+            fontSlider.addEventListener('input', updatePreview);
         });
     </script>
 </body>

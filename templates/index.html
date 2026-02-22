@@ -8,10 +8,13 @@
     <link rel="stylesheet" href="/static/style.css?v=2">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <script>
-        // Apply theme immediately to prevent flickering
+        // Apply theme and font settings immediately to prevent flickering
         (function () {
             const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
+
+            // Fetch settings to get font/size (or use defaults from local storage if we want it instant)
+            // For now, we'll let the CSS defaults handle it until the API fetch completes below.
         })();
     </script>
 </head>
@@ -174,6 +177,18 @@
                 }
             };
 
+            // Fetch and apply settings (for fonts)
+            const fetchSettings = async () => {
+                const res = await fetch('/api/settings');
+                const settings = await res.json();
+                if (settings.message_font) {
+                    document.documentElement.style.setProperty('--msg-font', `'${settings.message_font}', monospace`);
+                }
+                if (settings.message_font_size) {
+                    document.documentElement.style.setProperty('--msg-size', `${settings.message_font_size}rem`);
+                }
+            };
+
             const renderAlarms = (maintainScroll = false) => {
                 const query = searchInput.value.toLowerCase();
 
@@ -261,6 +276,7 @@
 
             // Fetch historical logic
             // Initial data fetch
+            fetchSettings();
             fetchAlertWords().then(fetchAlarms);
 
             // Setup Server-Sent Events (SSE) for Real-Time UI updates without polling
