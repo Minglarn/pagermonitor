@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PagerMonitor - Alert Words</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="background-effects">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+    </div>
+
+    <div class="container">
+        <nav class="top-nav">
+            <a href="/" class="nav-link">Dashboard</a>
+            <a href="/aliases" class="nav-link">Alias</a>
+            <a href="/alerts" class="nav-link active">Alerts</a>
+            <a href="/settings" class="nav-link">Inställningar</a>
+        </nav>
+
+        <header>
+            <h1><span class="highlight">Alert</span> Watchlist</h1>
+            <p>Hantera ord som ska lysa upp extra mycket i listan.</p>
+        </header>
+
+        <main>
+            <div class="glass-panel form-container">
+                <form id="alertForm">
+                    <div class="form-group">
+                        <label for="word">Nytt bevakningsord</label>
+                        <input type="text" id="word" name="word" placeholder="T.ex. BRAND eller OLYCKA" required>
+                        <small>Versaler eller gemener spelar ingen roll.</small>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" id="saveBtn" class="primary-btn">Lägg till i bevakning</button>
+                    </div>
+                </form>
+                <div id="status" class="status-message"></div>
+
+                <hr class="separator">
+
+                <h3>Aktiva bevakningsord</h3>
+                <div class="table-container" style="min-height: auto;">
+                    <table id="alertsTable">
+                        <thead>
+                            <tr>
+                                <th>Ord</th>
+                                <th>Status</th>
+                                <th>Åtgärd</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alertsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const alertsBody = document.getElementById('alertsBody');
+            const alertForm = document.getElementById('alertForm');
+            const status = document.getElementById('status');
+            const saveBtn = document.getElementById('saveBtn');
+
+            const fetchAlerts = async () => {
+                const res = await fetch('/api/alerts');
+                const data = await res.json();
+                renderAlerts(data);
+            };
+
+            const renderAlerts = (alerts) => {
+                alertsBody.innerHTML = '';
+                alerts.forEach(a => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><span class="alert-word" style="background: ${a.color || '#ef4444'}">${a.word}</span></td>
+                        <td><span class="badge ${a.is_active ? 'success' : ''}">${a.is_active ? 'Aktiv' : 'Inaktiv'}</span></td>
+                        <td>
+                            <button class="action-btn delete-btn" onclick="deleteAlert(${a.id})">Ta bort</button>
+                        </td>
+                    `;
+                    alertsBody.appendChild(tr);
+                });
+            };
+
+            alertForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                saveBtn.innerText = 'Sparar...';
+                saveBtn.disabled = true;
+
+                const payload = {
+                    word: document.getElementById('word').value.toUpperCase(),
+                    color: '#ef4444', // Default to red pulse
+                    is_active: true
+                };
+
+                try {
+                    const res = await fetch('/api/alerts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    if (res.ok) {
+                        status.innerText = 'Ord tillagt!';
+                        status.className = 'status-message success show';
+                        document.getElementById('word').value = '';
+                        fetchAlerts();
+                    }
+                } catch (e) {
+                    status.innerText = 'Något gick fel.';
+                    status.className = 'status-message error show';
+                } finally {
+                    saveBtn.innerText = 'Lägg till i bevakning';
+                    saveBtn.disabled = false;
+                    setTimeout(() => status.classList.remove('show'), 3000);
+                }
+            });
+
+            window.deleteAlert = async (id) => {
+                if (!confirm('Ta bort detta ord från bevakningen?')) return;
+                await fetch('/api/alerts', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                fetchAlerts();
+            };
+
+            fetchAlerts();
+        });
+    </script>
+</body>
+
+</html>
