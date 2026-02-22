@@ -18,15 +18,18 @@ def init_db():
             timestamp TEXT NOT NULL,
             address TEXT NOT NULL,
             message TEXT NOT NULL,
-            alias TEXT DEFAULT ''
+            alias TEXT DEFAULT '',
+            function_code INTEGER DEFAULT 0,
+            bitrate TEXT DEFAULT ''
         )
     ''')
     
-    # Try adding alias column to existing table to support migrations
-    try:
-        c.execute('ALTER TABLE messages ADD COLUMN alias TEXT DEFAULT ""')
-    except sqlite3.OperationalError:
-        pass # Column might already exist
+    # Try adding columns to existing messages table
+    for col, type_info in [('alias', 'TEXT DEFAULT ""'), ('function_code', 'INTEGER DEFAULT 0'), ('bitrate', 'TEXT DEFAULT ""')]:
+        try:
+            c.execute(f'ALTER TABLE messages ADD COLUMN {col} {type_info}')
+        except sqlite3.OperationalError:
+            pass # Column might already exist
     
     # Create settings table
     c.execute('''
@@ -42,6 +45,16 @@ def init_db():
             address TEXT PRIMARY KEY,
             alias TEXT NOT NULL,
             is_hidden INTEGER DEFAULT 0
+        )
+    ''')
+
+    # Create alert_words table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS alert_words (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            word TEXT UNIQUE NOT NULL,
+            color TEXT NOT NULL,
+            is_active INTEGER DEFAULT 1
         )
     ''')
     
@@ -64,12 +77,12 @@ def init_db():
     conn.commit()
     conn.close()
 
-def save_message(address, message, alias=''):
+def save_message(address, message, alias='', function_code=0, bitrate=''):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     timestamp = datetime.now().isoformat()
-    c.execute('INSERT INTO messages (timestamp, address, message, alias) VALUES (?, ?, ?, ?)',
-              (timestamp, address, message, alias))
+    c.execute('INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate) VALUES (?, ?, ?, ?, ?, ?)',
+              (timestamp, address, message, alias, function_code, bitrate))
     conn.commit()
     conn.close()
     return timestamp
@@ -109,14 +122,56 @@ def get_recent_messages(limit=100):
     
     messages = []
     for row in rows:
-        messages.append({
+        msg = {
             'id': row[id_idx],
             'timestamp': row[ts_idx],
             'address': row[addr_idx],
             'message': row[msg_idx],
             'alias': row[alias_idx] if alias_idx != -1 else ''
-        })
+        }
+        # Add metadata if exists
+        if 'function_code' in col_names:
+            msg['function_code'] = row[col_names.index('function_code')]
+        if 'bitrate' in col_names:
+            msg['bitrate'] = row[col_names.index('bitrate')]
+            
+        messages.append(msg)
     return messages
+
+def get_alert_words():
+    """Retrieve all alert words."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT id, word, color, is_active FROM alert_words')
+    rows = c.fetchall()
+    conn.close()
+    
+    alerts = []
+    for id_val, word, color, is_active in rows:
+        alerts.append({
+            'id': id_val,
+            'word': word,
+            'color': color,
+            'is_active': bool(is_active)
+        })
+    return alerts
+
+def save_alert_word(word, color, is_active=True):
+    """Create or update an alert word."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('INSERT OR REPLACE INTO alert_words (word, color, is_active) VALUES (?, ?, ?)',
+              (word, color, 1 if is_active else 0))
+    conn.commit()
+    conn.close()
+
+def delete_alert_word(word_id):
+    """Delete an alert word by ID."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('DELETE FROM alert_words WHERE id = ?', (word_id,))
+    conn.commit()
+    conn.close()
 
 def get_settings():
     """Retrieve all settings as a dictionary."""

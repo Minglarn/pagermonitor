@@ -4,7 +4,7 @@ import json
 import time
 from queue import Queue
 
-from database import init_db, get_recent_messages, get_settings, update_setting, get_aliases, save_alias, delete_alias
+from database import init_db, get_recent_messages, get_settings, update_setting, get_aliases, save_alias, delete_alias, get_alert_words, save_alert_word, delete_alert_word
 from mqtt_client import init_mqtt
 from sdr_processor import start_sdr_thread, restart_sdr, on_new_message
 
@@ -27,6 +27,9 @@ def settings_page():
 @app.route('/aliases')
 def aliases_page():
     return render_template('aliases.html')
+@app.route('/alerts')
+def alerts_page():
+    return render_template('alerts.html')
 
 @app.route('/api/messages')
 def get_messages():
@@ -81,6 +84,32 @@ def handle_aliases():
     # GET request
     aliases = get_aliases()
     return jsonify(aliases)
+
+@app.route('/api/alerts', methods=['GET', 'POST', 'DELETE'])
+def handle_alerts():
+    if request.method == 'POST':
+        data = request.json
+        word = data.get('word')
+        color = data.get('color', '#f85149')
+        is_active = data.get('is_active', True)
+        
+        if not word:
+            return jsonify({"status": "error", "message": "Missing word"}), 400
+            
+        save_alert_word(word, color, is_active)
+        return jsonify({"status": "success"})
+        
+    elif request.method == 'DELETE':
+        data = request.json
+        word_id = data.get('id')
+        if not word_id:
+             return jsonify({"status": "error", "message": "Missing alert ID"}), 400
+        delete_alert_word(word_id)
+        return jsonify({"status": "success"})
+        
+    # GET request
+    alerts = get_alert_words()
+    return jsonify(alerts)
 
 # SSE Setup
 client_queues = []

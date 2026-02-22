@@ -33,16 +33,25 @@ def on_new_message(callback):
     new_message_callbacks.append(callback)
 
 def parse_multimon_line(line):
-    # Example format: POCSAG512: Address: 1234567  Function: 3  Alpha:   THIS IS A TEST MESSAGE<NUL>
-    # or Alphanumeric message parsing
+    # Example format: POCSAG1200: Address: 1234567  Function: 3  Alpha:   THIS IS A TEST MESSAGE<NUL>
     if "POCSAG" in line and "Alpha:" in line:
         try:
+            # Extract bitrate/protocol
+            bitrate = ""
+            if "POCSAG512" in line: bitrate = "512"
+            elif "POCSAG1200" in line: bitrate = "1200"
+            elif "POCSAG2400" in line: bitrate = "2400"
+
             # Extract address
             address_match = re.search(r'Address:\s*(\d+)', line)
             if not address_match:
-                return None, None
+                return None
             address = address_match.group(1)
             
+            # Extract function code
+            func_match = re.search(r'Function:\s*(\d+)', line)
+            function_code = int(func_match.group(1)) if func_match else 0
+
             # Extract message
             parts = line.split("Alpha:")
             if len(parts) > 1:
@@ -54,11 +63,16 @@ def parse_multimon_line(line):
                 
                 # Apply Swedish character translation
                 message_translated = translate_swedish_chars(message)
-                return address, message_translated
+                return {
+                    'address': address,
+                    'message': message_translated,
+                    'bitrate': bitrate,
+                    'function': function_code
+                }
         except Exception as e:
             logger.error(f"Error parsing line: {line}. Error: {e}")
-            return None, None
-    return None, None
+            return None
+    return None
 
 # Global references to the subprocesses and the worker thread
 current_p1 = None
@@ -129,9 +143,14 @@ def run_sdr_process():
                 
                 if "POCSAG" in line and "Alpha:" in line:
                     logger.info(f"RAW: {line}")
-                    address, message = parse_multimon_line(line)
+                    parsed = parse_multimon_line(line)
                     
-                    if address and message:
+                    if parsed:
+                        address = parsed['address']
+                        message = parsed['message']
+                        bitrate = parsed['bitrate']
+                        function_code = parsed['function']
+
                         alias_info = get_alias_info(address)
                         alias = alias_info['alias'] if alias_info else ''
                         is_hidden = alias_info['is_hidden'] if alias_info else False
@@ -146,9 +165,9 @@ def run_sdr_process():
                                     pass
                             continue
                             
-                        logger.info(f"DECODED -> Address: {address}, Alias: {alias}, Msg: {message}")
+                        logger.info(f"DECODED -> Bitrate: {bitrate}, Function: {function_code}, Address: {address}, Alias: {alias}, Msg: {message}")
                         
-                        timestamp = save_message(address, message, alias)
+                        timestamp = save_message(address, message, alias, function_code, bitrate)
                         publish_message(address, message, timestamp, alias)
                         
                         msg_data = {
@@ -157,7 +176,9 @@ def run_sdr_process():
                             'timestamp': timestamp,
                             'address': address,
                             'message': message,
-                            'alias': alias
+                            'alias': alias,
+                            'bitrate': bitrate,
+                            'function': function_code
                         }
                         for cb in list(new_message_callbacks):
                             try:

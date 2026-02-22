@@ -19,6 +19,7 @@
         <nav class="top-nav">
             <a href="/" class="nav-link active">Dashboard</a>
             <a href="/aliases" class="nav-link">Alias</a>
+            <a href="/alerts" class="nav-link">Alerts</a>
             <a href="/settings" class="nav-link">Inställningar</a>
         </nav>
 
@@ -115,13 +116,31 @@
             const searchInput = document.getElementById('searchInput');
             const loading = document.getElementById('loading');
             let allAlarms = [];
+            let alertWords = [];
+
+            // Fetch Alert Words
+            const fetchAlertWords = async () => {
+                const res = await fetch('/api/alerts');
+                alertWords = await res.json();
+            };
+
+            // Highlight word matches
+            function highlightMessage(text) {
+                if (!alertWords.length) return text;
+                let highlighted = text;
+                alertWords.forEach(aw => {
+                    if (aw.is_active) {
+                        const regex = new RegExp(`(${aw.word})`, 'gi');
+                        highlighted = highlighted.replace(regex, `<span class="alert-word">${aw.word}</span>`);
+                    }
+                });
+                return highlighted;
+            }
 
             // Formatter helper
             function formatMessage(msgStr) {
-                // Ensure newlines are converted to HTML breaks for proper display
-                // (Though sdr_processor.py cleans <CR><LF> into \n now, we also handle raw text just in case)
                 let formatted = msgStr.replace(/<CR><LF>/g, '<br>').replace(/\n/g, '<br>');
-                return formatted;
+                return highlightMessage(formatted);
             }
 
             // Fetch and render historical alarms initially
@@ -161,17 +180,29 @@
                     tr.className = 'fade-in';
                     tr.style.animationDelay = `${index * 0.05}s`;
 
+                    // Check for general alert row highlighting
+                    const hasAlert = alertWords.some(aw => aw.is_active && alarm.message.toUpperCase().includes(aw.word.toUpperCase()));
+                    if (hasAlert) {
+                        tr.classList.add('alert-row', 'alert-pulse-bg');
+                    }
+
                     const time = new Date(alarm.timestamp).toLocaleString('sv-SE', {
                         year: 'numeric', month: '2-digit', day: '2-digit',
                         hour: '2-digit', minute: '2-digit', second: '2-digit'
                     });
 
                     const displayAddress = alarm.alias ? alarm.alias : alarm.address;
+                    const bitrateTag = alarm.bitrate ? `<span class="badge meta">${alarm.bitrate}bps</span>` : '';
+                    const funcLabel = alarm.function !== undefined ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
+                    const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
 
                     tr.innerHTML = `
                         <td class="ts-cell">${time}</td>
-                        <td class="addr-cell"><span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span></td>
-                        <td class="msg-cell">${formatMessage(alarm.message)}</td>
+                        <td class="addr-cell">
+                            <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
+                            ${bitrateTag}
+                        </td>
+                        <td class="msg-cell">${formatMessage(alarm.message)} ${funcTag}</td>
                     `;
                     alarmsBody.appendChild(tr);
                 });
@@ -180,7 +211,8 @@
             searchInput.addEventListener('input', renderAlarms);
 
             // Fetch historical logic
-            fetchAlarms();
+            // Initial data fetch
+            fetchAlertWords().then(fetchAlarms);
 
             // Setup Server-Sent Events (SSE) for Real-Time UI updates without polling
             const evtSource = new EventSource("/stream");
