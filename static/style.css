@@ -319,11 +319,14 @@ tr:hover td {
 
 /* Alert Word Styling */
 .alert-row {
-    position: relative;
     background: rgba(239, 68, 68, 0.05) !important;
 }
 
-.alert-row::before {
+.alert-row td:first-child {
+    position: relative;
+}
+
+.alert-row td:first-child::before {
     content: '';
     position: absolute;
     left: 0;
@@ -333,6 +336,8 @@ tr:hover td {
     background: var(--danger);
     box-shadow: 0 0 15px var(--danger);
     z-index: 1;
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
 }
 
 .alert-word {
