@@ -27,7 +27,7 @@ def init_mqtt():
         logger.error(f"Failed to connect to MQTT broker: {e}")
         mqtt_client = None
 
-def publish_message(address, message, timestamp, alias=''):
+def publish_message(address, message, timestamp, alias='', metadata=None):
     global mqtt_client
     if not mqtt_client:
         return
@@ -38,6 +38,9 @@ def publish_message(address, message, timestamp, alias=''):
         'message': message,
         'alias': alias
     }
+    
+    if metadata:
+        payload.update(metadata)
     
     try:
         mqtt_client.publish('pagermonitor/alarms', json.dumps(payload))

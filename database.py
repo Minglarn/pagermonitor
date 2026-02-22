@@ -168,6 +168,23 @@ def get_alert_words():
         })
     return alerts
 
+def check_alert_words(message):
+    """Scan a message for active alert words and return the first match (word, color) or None."""
+    alerts = get_alert_words()
+    # Sort by length descending to match longest word first (standard practice)
+    alerts.sort(key=lambda x: len(x['word']), reverse=True)
+    
+    msg_upper = message.upper()
+    for alert in alerts:
+        if not alert['is_active']:
+            continue
+        if alert['word'].upper() in msg_upper:
+            return {
+                'word': alert['word'],
+                'color': alert['color']
+            }
+    return None
+
 def save_alert_word(word, color, is_active=True):
     """Create or update an alert word."""
     conn = sqlite3.connect(DB_PATH)

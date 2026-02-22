@@ -6,7 +6,7 @@ import os
 import signal
 import time
 import sys
-from database import save_message, get_settings, get_alias_info
+from database import save_message, get_settings, get_alias_info, check_alert_words
 from mqtt_client import publish_message
 
 logger = logging.getLogger(__name__)
@@ -191,8 +191,20 @@ def run_sdr_process():
                             
                         logger.info(f"DECODED -> Bitrate: {bitrate}, Function: {function_code}, Address: {address}, Alias: {alias}, Msg: {message}")
                         
+                        # Check for alert words in the backend for MQTT enrichment
+                        alert_match = check_alert_words(message)
+                        
                         timestamp = save_message(address, message, alias, function_code, bitrate)
-                        publish_message(address, message, timestamp, alias)
+                        
+                        # Prepare enrichment metadata for MQTT and SSE
+                        metadata = {
+                            'bitrate': bitrate,
+                            'function': function_code,
+                            'alert_word': alert_match['word'] if alert_match else None,
+                            'alert_color': alert_match['color'] if alert_match else None
+                        }
+                        
+                        publish_message(address, message, timestamp, alias, metadata=metadata)
                         
                         msg_data = {
                             'type': 'message',
@@ -200,10 +212,9 @@ def run_sdr_process():
                             'timestamp': timestamp,
                             'address': address,
                             'message': message,
-                            'alias': alias,
-                            'bitrate': bitrate,
-                            'function': function_code
+                            'alias': alias
                         }
+                        msg_data.update(metadata)
                         for cb in list(new_message_callbacks):
                             try:
                                 cb(msg_data)
