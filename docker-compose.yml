@@ -17,6 +17,6 @@ services:
       - MQTT_BROKER=192.168.1.121
       - MQTT_PORT=1883
       - MQTT_USER=home-assistant-server
-      - MQTT_PASS=fyrkant9356
+      - MQTT_PASS=*
     ports:
       - "5000:5000"
