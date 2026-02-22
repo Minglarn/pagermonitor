@@ -171,9 +171,32 @@ header p {
 }
 
 .table-container {
+    height: 65vh;
     min-height: 400px;
+    max-height: 800px;
     position: relative;
     overflow-x: auto;
+    overflow-y: auto;
+}
+
+/* Custom Scrollbar for dark theme */
+.table-container::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
 }
 
 /* Table Styling */
@@ -207,6 +230,35 @@ tr:last-child td {
 
 tr:hover td {
     background: rgba(255, 255, 255, 0.05);
+}
+
+/* Time Grouping Dividers */
+.time-divider td {
+    padding: 0;
+    border: none;
+    background: transparent !important;
+}
+
+.divider-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem 0;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.7;
+}
+
+.divider-content::before,
+.divider-content::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--panel-border);
+    margin: 0 1rem;
 }
 
 /* Badge for Address */

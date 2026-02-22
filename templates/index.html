@@ -164,8 +164,13 @@
                 }
             };
 
-            const renderAlarms = () => {
+            const renderAlarms = (maintainScroll = false) => {
                 const query = searchInput.value.toLowerCase();
+
+                // Save scroll position
+                const container = document.querySelector('.table-container');
+                const isScrolledToTop = container.scrollTop === 0;
+
                 alarmsBody.innerHTML = '';
 
                 const filtered = allAlarms.filter(alarm =>
@@ -175,7 +180,34 @@
                     new Date(alarm.timestamp).toLocaleString('sv-SE').includes(query)
                 );
 
+                let lastGroupKey = null;
+
                 filtered.forEach((alarm, index) => {
+                    const dateObj = new Date(alarm.timestamp);
+                    const time = dateObj.toLocaleString('sv-SE', {
+                        year: 'numeric', month: '2-digit', day: '2-digit',
+                        hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    });
+
+                    // Group by Date and Hour (e.g., "2023-10-27 14:xx")
+                    const groupKey = dateObj.toLocaleString('sv-SE', {
+                        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit'
+                    });
+
+                    // Insert divider if the group changes
+                    if (groupKey !== lastGroupKey) {
+                        const dividerTr = document.createElement('tr');
+                        dividerTr.className = 'time-divider';
+                        // Format specifically for the divider (e.g. "Idag 14:00" or just the date+hour)
+                        const isToday = new Date().toDateString() === dateObj.toDateString();
+                        const headerPrefix = isToday ? "Idag" : dateObj.toLocaleDateString('sv-SE');
+                        const headerHour = dateObj.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }).split(':')[0] + ":00";
+
+                        dividerTr.innerHTML = `<td colspan="3"><div class="divider-content">${headerPrefix} klockan ${headerHour}</div></td>`;
+                        alarmsBody.appendChild(dividerTr);
+                        lastGroupKey = groupKey;
+                    }
+
                     const tr = document.createElement('tr');
                     tr.className = 'fade-in';
                     tr.style.animationDelay = `${index * 0.05}s`;
@@ -186,7 +218,7 @@
                         tr.classList.add('alert-row', 'alert-pulse-bg');
                     }
 
-                    const time = new Date(alarm.timestamp).toLocaleString('sv-SE', {
+                    const formattedTime = new Date(alarm.timestamp).toLocaleString('sv-SE', {
                         year: 'numeric', month: '2-digit', day: '2-digit',
                         hour: '2-digit', minute: '2-digit', second: '2-digit'
                     });
@@ -197,7 +229,7 @@
                     const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
 
                     tr.innerHTML = `
-                        <td class="ts-cell">${time}</td>
+                        <td class="ts-cell">${formattedTime}</td>
                         <td class="addr-cell">
                             <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
                             ${bitrateTag}
@@ -206,6 +238,13 @@
                     `;
                     alarmsBody.appendChild(tr);
                 });
+
+                // Restore scroll if needed
+                if (maintainScroll && !isScrolledToTop) {
+                    // Do nothing, let the user stay where they scrolled
+                } else if (maintainScroll && isScrolledToTop) {
+                    container.scrollTop = 0; // Force to top
+                }
             };
 
             searchInput.addEventListener('input', renderAlarms);
@@ -241,10 +280,10 @@
                 if (!allAlarms.some(a => a.id === data.id)) {
                     allAlarms.unshift(data);
                     // Keep only top 100 max in memory (matches backend get limit)
-                    if (allAlarms.length > 100) allAlarms.pop();
+                    if (allAlarms.length > 200) allAlarms.pop();
 
                     loading.style.display = 'none';
-                    renderAlarms();
+                    renderAlarms(true); // true = maintain scroll logic
                 }
             };
 
