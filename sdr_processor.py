@@ -103,7 +103,12 @@ def run_sdr_process():
         else:
             logger.info("Using default local USB RTL-SDR device")
 
-        multimon_cmd = ['multimon-ng', '-a', 'POCSAG512', '-a', 'POCSAG1200', '-a', 'POCSAG2400', '-f', 'alpha', '-']
+        multimon_all = settings.get('multimon_all_decoders', 'false') == 'true'
+        
+        if multimon_all:
+            multimon_cmd = ['multimon-ng', '-c', '-f', 'alpha', '-']
+        else:
+            multimon_cmd = ['multimon-ng', '-a', 'POCSAG512', '-a', 'POCSAG1200', '-a', 'POCSAG2400', '-f', 'alpha', '-']
 
         logger.info(f"Starting rtl_fm: {' '.join(rtl_cmd)}")
         logger.info(f"Starting multimon-ng: {' '.join(multimon_cmd)}")

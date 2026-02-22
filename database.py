@@ -68,7 +68,8 @@ def init_db():
     defaults = {
         'frequency': '169.8M',
         'gain': 'auto',
-        'device_serial': ''
+        'device_serial': '',
+        'multimon_all_decoders': 'false'
     }
     
     for key, val in defaults.items():

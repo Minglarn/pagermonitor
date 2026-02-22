@@ -57,6 +57,14 @@
                         <small>Frivilligt. Används om du har flera USB-mottagare inkopplade.</small>
                     </div>
 
+                    <div class="form-group checkbox-group">
+                        <label>
+                            <input type="checkbox" id="multimon_all_decoders" name="multimon_all_decoders">
+                            Aktivera alla dekodrar (-c)
+                        </label>
+                        <small>Använd detta om du vill avkoda flera moder samtidigt (t.ex. POCSAG och FLEX).</small>
+                    </div>
+
                     <hr class="separator">
                     <h3>UI & Utseende</h3>
 
@@ -93,6 +101,7 @@
                     if (data.frequency) document.getElementById('frequency').value = data.frequency;
                     if (data.gain) document.getElementById('gain').value = data.gain;
                     if (data.device_serial) document.getElementById('device_serial').value = data.device_serial;
+                    if (data.multimon_all_decoders === 'true') document.getElementById('multimon_all_decoders').checked = true;
                 })
                 .catch(err => {
                     console.error("Fel vid hämtning av inställningar", err);
@@ -113,7 +122,8 @@
                 const payload = {
                     frequency: document.getElementById('frequency').value,
                     gain: document.getElementById('gain').value,
-                    device_serial: document.getElementById('device_serial').value
+                    device_serial: document.getElementById('device_serial').value,
+                    multimon_all_decoders: document.getElementById('multimon_all_decoders').checked ? 'true' : 'false'
                 };
 
                 // Spara tema i localStorage
