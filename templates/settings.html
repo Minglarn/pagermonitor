@@ -57,12 +57,42 @@
                         <small>Frivilligt. Används om du har flera USB-mottagare inkopplade.</small>
                     </div>
 
-                    <div class="form-group checkbox-group">
-                        <label>
-                            <input type="checkbox" id="multimon_all_decoders" name="multimon_all_decoders">
-                            Aktivera alla dekodrar (-c)
-                        </label>
-                        <small>Använd detta om du vill avkoda flera moder samtidigt (t.ex. POCSAG och FLEX).</small>
+                    <div class="row-group">
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="multimon_verbosity">Log-nivå (-v)</label>
+                                <select id="multimon_verbosity" name="multimon_verbosity"
+                                    style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
+                                    <option value="1">Nivå 1 (Standard)</option>
+                                    <option value="2">Nivå 2 (Mer info)</option>
+                                    <option value="3">Nivå 3 (Debug)</option>
+                                </select>
+                                <small>Högre nivå ger fylligare loggar.</small>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="multimon_charset">Charset (-C)</label>
+                                <select id="multimon_charset" name="multimon_charset"
+                                    style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
+                                    <option value="SE">SE (Svenska)</option>
+                                    <option value="ISO8859-15">ISO8859-15</option>
+                                    <option value="UTF-8">UTF-8</option>
+                                </select>
+                                <small>Välj "SE" för ÅÄÖ-stöd.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="multimon_format">Utdataformat (-f)</label>
+                        <select id="multimon_format" name="multimon_format"
+                            style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
+                            <option value="any">Gissa format (any)</option>
+                            <option value="alpha">Alfanumeriskt (alpha)</option>
+                            <option value="num">Numeriskt (num)</option>
+                        </select>
+                        <small>Välj "any" för bäst felmarginal.</small>
                     </div>
 
                     <hr class="separator">
@@ -101,7 +131,9 @@
                     if (data.frequency) document.getElementById('frequency').value = data.frequency;
                     if (data.gain) document.getElementById('gain').value = data.gain;
                     if (data.device_serial) document.getElementById('device_serial').value = data.device_serial;
-                    if (data.multimon_all_decoders === 'true') document.getElementById('multimon_all_decoders').checked = true;
+                    if (data.multimon_verbosity) document.getElementById('multimon_verbosity').value = data.multimon_verbosity;
+                    if (data.multimon_charset) document.getElementById('multimon_charset').value = data.multimon_charset;
+                    if (data.multimon_format) document.getElementById('multimon_format').value = data.multimon_format;
                 })
                 .catch(err => {
                     console.error("Fel vid hämtning av inställningar", err);
@@ -123,7 +155,9 @@
                     frequency: document.getElementById('frequency').value,
                     gain: document.getElementById('gain').value,
                     device_serial: document.getElementById('device_serial').value,
-                    multimon_all_decoders: document.getElementById('multimon_all_decoders').checked ? 'true' : 'false'
+                    multimon_verbosity: document.getElementById('multimon_verbosity').value,
+                    multimon_charset: document.getElementById('multimon_charset').value,
+                    multimon_format: document.getElementById('multimon_format').value
                 };
 
                 // Spara tema i localStorage

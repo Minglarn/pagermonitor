@@ -61,11 +61,13 @@ def parse_multimon_line(line):
                 message = message.replace('<CR>', '\n').replace('<LF>', '\n')
                 message = message.replace('<NUL>', '').replace('<EOT>', '').strip()
                 
-                # Apply Swedish character translation
-                message_translated = translate_swedish_chars(message)
+                # Apply Swedish character translation IF not using native charset support
+                if settings.get('multimon_charset', 'SE') != 'SE':
+                    message = translate_swedish_chars(message)
+                
                 return {
                     'address': address,
-                    'message': message_translated,
+                    'message': message,
                     'bitrate': bitrate,
                     'function': function_code
                 }
@@ -103,12 +105,20 @@ def run_sdr_process():
         else:
             logger.info("Using default local USB RTL-SDR device")
 
-        multimon_all = settings.get('multimon_all_decoders', 'false') == 'true'
+        verbosity = settings.get('multimon_verbosity', '1')
+        charset = settings.get('multimon_charset', 'SE')
+        msg_format = settings.get('multimon_format', 'any')
         
-        if multimon_all:
-            multimon_cmd = ['multimon-ng', '-c', '-f', 'alpha', '-']
-        else:
-            multimon_cmd = ['multimon-ng', '-a', 'POCSAG512', '-a', 'POCSAG1200', '-a', 'POCSAG2400', '-f', 'alpha', '-']
+        multimon_cmd = [
+            'multimon-ng', 
+            '-v', verbosity,
+            '-C', charset,
+            '-f', msg_format,
+            '-a', 'POCSAG512', 
+            '-a', 'POCSAG1200', 
+            '-a', 'POCSAG2400', 
+            '-'
+        ]
 
         logger.info(f"Starting rtl_fm: {' '.join(rtl_cmd)}")
         logger.info(f"Starting multimon-ng: {' '.join(multimon_cmd)}")

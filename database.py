@@ -69,7 +69,9 @@ def init_db():
         'frequency': '169.8M',
         'gain': 'auto',
         'device_serial': '',
-        'multimon_all_decoders': 'false'
+        'multimon_verbosity': '1',
+        'multimon_charset': 'SE',
+        'multimon_format': 'any'
     }
     
     for key, val in defaults.items():

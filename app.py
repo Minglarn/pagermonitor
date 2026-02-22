@@ -41,7 +41,7 @@ def handle_settings():
     if request.method == 'POST':
         data = request.json
         # Handle each setting explicitly to prevent injected keys
-        allowed_keys = ['frequency', 'gain', 'device_serial', 'multimon_all_decoders']
+        allowed_keys = ['frequency', 'gain', 'device_serial', 'multimon_verbosity', 'multimon_charset', 'multimon_format']
         changed = False
         for key in allowed_keys:
             if key in data:
