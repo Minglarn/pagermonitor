@@ -195,10 +195,12 @@
 
             const renderAlarms = (maintainScroll = false) => {
                 const query = searchInput.value.toLowerCase();
-
-                // Save scroll position
                 const container = document.querySelector('.table-container');
-                const isScrolledToTop = container.scrollTop === 0;
+
+                // Save scroll position state
+                const previousScrollTop = container.scrollTop;
+                const previousScrollHeight = container.scrollHeight;
+                const wasAtTop = previousScrollTop < 20; // 20px threshold for "at the top"
 
                 alarmsBody.innerHTML = '';
 
@@ -258,22 +260,33 @@
                     const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
                     const freqTag = alarm.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${alarm.frequency}</span>` : '';
 
+                    const duplicateTag = alarm.is_duplicate ? `<span class="badge warning" style="margin-left: 5px;">Dubblett</span>` : '';
+
                     tr.innerHTML = `
                         <td class="ts-cell">${formattedTime}</td>
-                        <td class="addr-cell">${freqTag}${bitrateTag}</td>
+                        <td class="addr-cell">${freqTag}${bitrateTag}${funcTag}</td>
                         <td class="addr-cell">
                             <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
                         </td>
-                        <td class="msg-cell">${formatMessage(alarm.message)} ${funcTag}</td>
+                        <td class="msg-cell">${formatMessage(alarm.message)}${duplicateTag}</td>
                     `;
                     alarmsBody.appendChild(tr);
                 });
 
                 // Restore scroll if needed
-                if (maintainScroll && !isScrolledToTop) {
-                    // Do nothing, let the user stay where they scrolled
-                } else if (maintainScroll && isScrolledToTop) {
-                    container.scrollTop = 0; // Force to top
+                if (maintainScroll) {
+                    if (wasAtTop) {
+                        container.scrollTop = 0; // Stick to top for new messages
+                    } else {
+                        // Maintain relative position if content pushed down by new messages at the top
+                        const newScrollHeight = container.scrollHeight;
+                        const heightDifference = newScrollHeight - previousScrollHeight;
+                        if (heightDifference > 0) {
+                            container.scrollTop = previousScrollTop + heightDifference;
+                        } else {
+                            container.scrollTop = previousScrollTop;
+                        }
+                    }
                 }
             };
 

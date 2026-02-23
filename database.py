@@ -39,12 +39,13 @@ def init_db():
             alias TEXT DEFAULT '',
             function_code INTEGER DEFAULT 0,
             bitrate TEXT DEFAULT '',
-            frequency TEXT DEFAULT ''
+            frequency TEXT DEFAULT '',
+            is_duplicate INTEGER DEFAULT 0
         )
     ''')
     
     # Try adding columns to existing messages table
-    for col, type_info in [('alias', 'TEXT DEFAULT ""'), ('function_code', 'INTEGER DEFAULT 0'), ('bitrate', 'TEXT DEFAULT ""'), ('frequency', 'TEXT DEFAULT ""')]:
+    for col, type_info in [('alias', 'TEXT DEFAULT ""'), ('function_code', 'INTEGER DEFAULT 0'), ('bitrate', 'TEXT DEFAULT ""'), ('frequency', 'TEXT DEFAULT ""'), ('is_duplicate', 'INTEGER DEFAULT 0')]:
         try:
             c.execute(f'ALTER TABLE messages ADD COLUMN {col} {type_info}')
         except sqlite3.OperationalError:
@@ -147,12 +148,12 @@ def init_db():
     conn.commit()
     conn.close()
 
-def save_message(address, message, alias='', function_code=0, bitrate='', frequency=''):
+def save_message(address, message, alias='', function_code=0, bitrate='', frequency='', is_duplicate=False):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     timestamp = datetime.now().isoformat()
-    c.execute('INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency) VALUES (?, ?, ?, ?, ?, ?, ?)',
-              (timestamp, address, message, alias, function_code, bitrate, frequency))
+    c.execute('INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+              (timestamp, address, message, alias, function_code, bitrate, frequency, 1 if is_duplicate else 0))
     row_id = c.lastrowid
     conn.commit()
     conn.close()
@@ -207,6 +208,8 @@ def get_recent_messages(limit=100):
             msg['bitrate'] = row[col_names.index('bitrate')]
         if 'frequency' in col_names:
             msg['frequency'] = row[col_names.index('frequency')]
+        if 'is_duplicate' in col_names:
+            msg['is_duplicate'] = bool(row[col_names.index('is_duplicate')])
             
         messages.append(msg)
     return messages

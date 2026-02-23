@@ -265,9 +265,11 @@ main {
 /* Table Styling */
 table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0 10px;
     text-align: left;
     table-layout: fixed;
+    margin-top: -10px;
 }
 
 #alarmsTable th:nth-child(1),
@@ -313,12 +315,13 @@ table {
 }
 
 th {
-    background: var(--panel-bg);
+    background: var(--bg-color);
+    /* Match background for sticky effect */
     backdrop-filter: blur(10px);
     position: sticky;
     top: 0;
     z-index: 10;
-    padding: 1rem 1.5rem;
+    padding: 1.2rem 1.5rem;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
@@ -328,10 +331,25 @@ th {
 }
 
 td {
-    padding: 1rem 1.5rem;
+    padding: 1.2rem 1.5rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-top: 1px solid var(--panel-border);
     border-bottom: 1px solid var(--panel-border);
     color: var(--text-primary);
     font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+td:first-child {
+    border-left: 1px solid var(--panel-border);
+    border-top-left-radius: 12px;
+    border-bottom-left-radius: 12px;
+}
+
+td:last-child {
+    border-right: 1px solid var(--panel-border);
+    border-top-right-radius: 12px;
+    border-bottom-right-radius: 12px;
 }
 
 tr:last-child td {
@@ -339,7 +357,8 @@ tr:last-child td {
 }
 
 tr:hover td {
-    background: var(--table-row-hover);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
 }
 
 /* Time Grouping Dividers */
@@ -426,6 +445,12 @@ tr:hover td {
     background: rgba(239, 68, 68, 0.15);
     color: var(--danger);
     border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.badge.warning {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
 .badge.meta {

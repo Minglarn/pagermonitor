@@ -57,6 +57,8 @@ def publish_message(address, message, timestamp, alias='', metadata=None):
     
     if metadata:
         payload.update(metadata)
+        if 'is_duplicate' in metadata:
+            payload['is_duplicate'] = metadata['is_duplicate']
     
     try:
         mqtt_client.publish('pagermonitor/alarms', json.dumps(payload))

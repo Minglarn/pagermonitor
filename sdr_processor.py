@@ -82,6 +82,10 @@ active_instances = {} # instance_id -> { 'p1': proc, 'p2': proc, 'config': dict,
 sdr_thread = None
 sync_event = threading.Event()
 
+# Duplicate detection cache: (address, message) -> timestamp
+recent_messages_cache = {}
+cache_lock = threading.Lock()
+
 def monitor_instance(instance_id, p1, p2, stop_event, config):
     """Monitors the output of a single SDR instance (rtl_fm | multimon-ng)."""
     logger.info(f"Monitor thread started for instance {instance_id} ({config['name']})")
@@ -127,6 +131,24 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     function_code = parsed['function']
                     freq = config.get('frequency', 'Unknown')
 
+                    # DUPLICATE DETECTION
+                    now = time.time()
+                    msg_key = (address, message)
+                    is_duplicate = False
+                    
+                    with cache_lock:
+                        if msg_key in recent_messages_cache:
+                            last_time = recent_messages_cache[msg_key]
+                            if now - last_time < 60:
+                                is_duplicate = True
+                        recent_messages_cache[msg_key] = now
+                        
+                        # Prune cache occasionally
+                        if len(recent_messages_cache) > 500:
+                            cutoff = now - 300 # Keep last 5 mins
+                            keys_to_del = [k for k, v in recent_messages_cache.items() if v < cutoff]
+                            for k in keys_to_del: del recent_messages_cache[k]
+
                     alias_info = get_alias_info(address)
                     alias = alias_info['alias'] if alias_info else ''
                     is_hidden = alias_info['is_hidden'] if alias_info else False
@@ -138,10 +160,10 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                             except Exception: pass
                         continue
                         
-                    logger.info(f"[{config['name']}] DECODED -> Address: {address}, Alias: {alias}, Msg: {message}")
+                    logger.info(f"[{config['name']}] DECODED -> Address: {address}, Alias: {alias}, Msg: {message} {'(DUPLICATE)' if is_duplicate else ''}")
                     
                     alert_match = check_alert_words(message)
-                    msg_id, timestamp = save_message(address, message, alias, function_code, bitrate, frequency=freq)
+                    msg_id, timestamp = save_message(address, message, alias, function_code, bitrate, frequency=freq, is_duplicate=is_duplicate)
                     
                     metadata = {
                         'bitrate': bitrate,
@@ -149,14 +171,16 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         'frequency': freq,
                         'alert_word': alert_match['word'] if alert_match else None,
                         'alert_color': alert_match['color'] if alert_match else None,
-                        'sdr_name': config['name']
+                        'sdr_name': config['name'],
+                        'is_duplicate': is_duplicate
                     }
                     
                     publish_message(address, message, timestamp, alias, metadata=metadata)
                     
                     msg_data = {
                         'type': 'message', 'id': msg_id, 'timestamp': timestamp,
-                        'address': address, 'message': message, 'alias': alias
+                        'address': address, 'message': message, 'alias': alias,
+                        'is_duplicate': is_duplicate
                     }
                     msg_data.update(metadata)
                     for cb in list(new_message_callbacks):
