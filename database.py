@@ -22,7 +22,7 @@ def get_default_settings():
         'resample_rate': '22050',
         'enable_dc_removal': 'true',
         'enable_deemp': 'true',
-        'enable_high_quality_fir': 'true',
+        'enable_high_quality_fir': 'false',
         'atan_math': 'std',
         'oversampling': '4',
         'ppm_error': '0',
@@ -102,7 +102,7 @@ def init_db():
             resample_rate TEXT DEFAULT '22050',
             enable_dc_removal TEXT DEFAULT 'true',
             enable_deemp TEXT DEFAULT 'true',
-            enable_high_quality_fir TEXT DEFAULT 'true',
+            enable_high_quality_fir TEXT DEFAULT 'false',
             atan_math TEXT DEFAULT 'std',
             oversampling TEXT DEFAULT '4',
             multimon_verbosity TEXT DEFAULT '2',
@@ -452,7 +452,7 @@ def get_sdr_instances():
     
     # Run migrations for high-fidelity settings if they don't exist
     try:
-        c.execute('ALTER TABLE sdr_instances ADD COLUMN enable_high_quality_fir TEXT DEFAULT "true"')
+        c.execute('ALTER TABLE sdr_instances ADD COLUMN enable_high_quality_fir TEXT DEFAULT "false"')
         c.execute('ALTER TABLE sdr_instances ADD COLUMN atan_math TEXT DEFAULT "std"')
         c.execute('ALTER TABLE sdr_instances ADD COLUMN oversampling TEXT DEFAULT "4"')
     except sqlite3.OperationalError:

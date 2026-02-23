@@ -229,11 +229,12 @@
                                         <div class="form-group">
                                             <label for="enable_high_quality_fir">High Quality FIR Filter</label>
                                             <select id="enable_high_quality_fir" name="enable_high_quality_fir">
-                                                <option value="true">Yes (High-Fidelity)</option>
-                                                <option value="false">No (Box Filter)</option>
+                                                <option value="false">No (Box Filter - Recommended)</option>
+                                                <option value="true">Yes (High-Fidelity - NOT for POCSAG)</option>
                                             </select>
-                                            <small>Uses a better FIR downsampling filter (-F). Steeper edges, rejects
-                                                adjacent noise. Recommended: Yes.</small>
+                                            <small>Uses a sharper FIR filter (-F). <b>Warning:</b> This cuts off wide
+                                                frequency deviation (FSK) used by POCSAG, breaking the decoder. Keep
+                                                this <b>No</b> for POCSAG.</small>
                                         </div>
                                     </div>
                                     <div class="col">
