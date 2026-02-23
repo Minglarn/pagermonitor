@@ -341,7 +341,14 @@ def run_sdr_process():
                     should_start = True
                 else:
                     # Check if config changed
-                    if active_instances[instance_id]['config'] != db_inst:
+                    active_conf = active_instances[instance_id]['config']
+                    changed = False
+                    for k in db_inst.keys():
+                        if str(active_conf.get(k)) != str(db_inst.get(k)):
+                            changed = True
+                            break
+                            
+                    if changed:
                         logger.info(f"Config change detected for {db_inst['name']}. Restarting...")
                         stop_instance_procs(instance_id)
                         should_start = True
