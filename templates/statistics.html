@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistik – PagerMonitor</title>
+    <link rel="stylesheet" href="/static/style.css?v=2">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Helper to fetch JSON
+        async function fetchJSON(url) {
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Network error');
+            return await res.json();
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container">
+        <nav class="top-nav">
+            <a href="/" class="nav-link">Dashboard</a>
+            <a href="/aliases" class="nav-link">Alias</a>
+            <a href="/alerts" class="nav-link">Alerts</a>
+            <a href="/statistics" class="nav-link active">Statistik</a>
+            <a href="/settings" class="nav-link">Inställningar</a>
+        </nav>
+        <header>
+            <h1>Statistik</h1>
+            <p>Analysera historisk data och alert‑ord.</p>
+        </header>
+        <main>
+            <section class="glass-panel">
+                <h2>Välj datum</h2>
+                <input type="date" id="statsDate" />
+            </section>
+            <section class="glass-panel">
+                <h2>Meddelanden för vald dag</h2>
+                <div id="dayTableContainer" class="table-container">
+                    <table id="dayTable">
+                        <thead>
+                            <tr>
+                                <th>Tid</th>
+                                <th>CapCode (Alias)</th>
+                                <th>Meddelande</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dayTableBody"></tbody>
+                    </table>
+                </div>
+            </section>
+            <section class="glass-panel">
+                <h2>Antal meddelanden per dag (senaste 30 dagar)</h2>
+                <canvas id="countPerDayChart" height="200"></canvas>
+            </section>
+            <section class="glass-panel">
+                <h2>Meddelanden per timme (vald dag)</h2>
+                <canvas id="countPerHourChart" height="200"></canvas>
+            </section>
+            <section class="glass-panel">
+                <h2>Hits per alert‑ord</h2>
+                <canvas id="alertHitsChart" height="200"></canvas>
+            </section>
+        </main>
+    </div>
+    <script>
+        // Render charts after data is loaded
+        async function renderCharts() {
+            // Count per day
+            const perDay = await fetchJSON('/api/stats/count-per-day');
+            const dayLabels = perDay.map(d => d.day);
+            const dayCounts = perDay.map(d => d.count);
+            new Chart(document.getElementById('countPerDayChart'), {
+                type: 'bar',
+                data: {
+                    labels: dayLabels,
+                    datasets: [{ label: 'Meddelanden', data: dayCounts, backgroundColor: 'rgba(0,123,255,0.6)' }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Alert hits
+            const alertHits = await fetchJSON('/api/stats/alert-hits');
+            const alertLabels = alertHits.map(a => a.word);
+            const alertCounts = alertHits.map(a => a.hits);
+            new Chart(document.getElementById('alertHitsChart'), {
+                type: 'pie',
+                data: {
+                    labels: alertLabels,
+                    datasets: [{ data: alertCounts, backgroundColor: alertLabels.map(() => `hsl(${Math.random() * 360},70%,60%)`) }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        async function loadDayData(date) {
+            const msgs = await fetchJSON(`/api/stats/day/${date}`);
+            const tbody = document.getElementById('dayTableBody');
+            tbody.innerHTML = '';
+            msgs.forEach(m => {
+                const tr = document.createElement('tr');
+                const time = new Date(m.timestamp).toLocaleString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                const address = m.alias || m.address;
+                const tdTime = `<td>${time}</td>`;
+                const tdAddr = `<td>${address}</td>`;
+                const tdMsg = `<td>${m.message}</td>`;
+                tr.innerHTML = tdTime + tdAddr + tdMsg;
+                tbody.appendChild(tr);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await renderCharts();
+            // Populate date picker with latest available date
+            const dates = await fetchJSON('/api/stats/dates');
+            if (dates.length) {
+                const picker = document.getElementById('statsDate');
+                picker.max = dates[0]; // newest first
+                picker.min = dates[dates.length - 1];
+                picker.value = dates[0];
+                await loadDayData(picker.value);
+                picker.addEventListener('change', async (e) => {
+                    await loadDayData(e.target.value);
+                    // Update hour chart for selected day
+                    const perHour = await fetchJSON(`/api/stats/count-per-hour/${e.target.value}`);
+                    const hourLabels = perHour.map(h => h.hour);
+                    const hourCounts = perHour.map(h => h.count);
+                    new Chart(document.getElementById('countPerHourChart'), {
+                        type: 'line',
+                        data: {
+                            labels: hourLabels,
+                            datasets: [{ label: 'Meddelanden', data: hourCounts, borderColor: 'rgba(40,167,69,0.9)', fill: false }]
+                        },
+                        options: { responsive: true, maintainAspectRatio: false }
+                    });
+                });
+                // Trigger initial hour chart load
+                picker.dispatchEvent(new Event('change'));
+            }
+        });
+    </script>
+</body>
+
+</html>

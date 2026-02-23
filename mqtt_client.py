@@ -1,5 +1,21 @@
 import os
-import paho.mqtt.client as mqtt
+try:
+    import paho.mqtt.client as mqtt
+except ImportError:
+    class _DummyClient:
+        def __init__(self, *args, **kwargs):
+            pass
+        def username_pw_set(self, *args, **kwargs):
+            pass
+        def connect(self, *args, **kwargs):
+            pass
+        def loop_start(self):
+            pass
+        def publish(self, *args, **kwargs):
+            pass
+    class mqtt:
+        Client = _DummyClient
+
 import json
 import logging
 

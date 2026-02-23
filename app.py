@@ -4,8 +4,13 @@ import json
 import time
 from queue import Queue
 
-from database import init_db, get_recent_messages, get_settings, update_setting, get_aliases, save_alias, delete_alias, get_alert_words, save_alert_word, delete_alert_word
-from mqtt_client import init_mqtt
+import sqlite3
+import database
+try:
+    import database
+except ImportError:
+    def init_mqtt():
+        pass
 from sdr_processor import start_sdr_thread, restart_sdr, on_new_message
 
 # Setup basic logging
@@ -21,15 +26,69 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/statistics')
+def statistics_page():
+    return render_template('statistics.html')
 @app.route('/settings')
 def settings_page():
     return render_template('settings.html')
 @app.route('/aliases')
 def aliases_page():
     return render_template('aliases.html')
-@app.route('/alerts')
-def alerts_page():
-    return render_template('alerts.html')
+@app.route('/api/stats/dates')
+def stats_dates():
+    conn = sqlite3.connect(database.DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT DISTINCT DATE(timestamp) AS day FROM messages ORDER BY day DESC')
+    rows = c.fetchall()
+    conn.close()
+    return jsonify([row[0] for row in rows])
+
+@app.route('/api/stats/day/<date>')
+def stats_day(date):
+    conn = sqlite3.connect(database.DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT * FROM messages WHERE DATE(timestamp)=? ORDER BY timestamp', (date,))
+    rows = c.fetchall()
+    col_names = [desc[0] for desc in c.description]
+    conn.close()
+    msgs = [dict(zip(col_names, row)) for row in rows]
+    return jsonify(msgs)
+
+@app.route('/api/stats/count-per-day')
+def stats_count_per_day():
+    conn = sqlite3.connect(database.DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT DATE(timestamp) AS day, COUNT(*) AS cnt FROM messages GROUP BY day ORDER BY day')
+    rows = c.fetchall()
+    conn.close()
+    return jsonify([{"day": r[0], "count": r[1]} for r in rows])
+
+@app.route('/api/stats/count-per-hour/<date>')
+def stats_count_per_hour(date):
+    conn = sqlite3.connect(database.DB_PATH)
+    c = conn.cursor()
+    c.execute("SELECT STRFTIME('%H', timestamp) AS hour, COUNT(*) AS cnt FROM messages WHERE DATE(timestamp)=? GROUP BY hour ORDER BY hour", (date,))
+    rows = c.fetchall()
+    conn.close()
+    return jsonify([{"hour": int(r[0]), "count": r[1]} for r in rows])
+
+@app.route('/api/stats/alert-hits')
+def stats_alert_hits():
+    conn = sqlite3.connect(database.DB_PATH)
+    c = conn.cursor()
+    c.execute('''
+        SELECT aw.word, COUNT(m.id) AS hits
+        FROM alert_words aw
+        LEFT JOIN messages m ON m.message LIKE '%'||aw.word||'%'
+        WHERE aw.is_active=1
+        GROUP BY aw.word
+    ''')
+    rows = c.fetchall()
+    conn.close()
+    return jsonify([{"word": r[0], "hits": r[1]} for r in rows])
+
 
 @app.route('/api/messages')
 def get_messages():
@@ -100,7 +159,6 @@ def handle_alerts():
             save_alert_word(word, color, is_active)
         except Exception as e:
             if "no such table" in str(e).lower():
-                from database import init_db
                 init_db()
                 save_alert_word(word, color, is_active)
             else:
