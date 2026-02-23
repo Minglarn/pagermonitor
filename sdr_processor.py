@@ -30,6 +30,48 @@ def translate_swedish_chars(text):
 # Callbacks for SSE clients
 new_message_callbacks = []
 
+def is_garbage_message(message):
+    """Detect garbled/noise POCSAG messages.
+    Returns True if the message appears to be garbage/noise.
+    """
+    if not message or len(message.strip()) == 0:
+        return True
+
+    msg = message.strip()
+    length = len(msg)
+
+    # Very short messages (1-2 chars) are often noise
+    if length <= 2:
+        return True
+
+    # Count readable characters (letters, digits, common Swedish, common punctuation/spaces)
+    readable = sum(1 for c in msg if c.isalnum() or c in ' .,;:!?-()/@&+=%\n\r\täöåÄÖÅ')
+    # Count control characters (ASCII 0-31 except tab/newline/cr)
+    control = sum(1 for c in msg if ord(c) < 32 and c not in '\t\n\r')
+    # Count special/unusual characters
+    special = length - readable - control
+
+    readable_ratio = readable / length if length > 0 else 0
+    control_ratio = control / length if length > 0 else 0
+
+    # If more than 20% control characters, it's garbage
+    if control_ratio > 0.2:
+        return True
+
+    # If less than 50% readable characters, it's garbage
+    if readable_ratio < 0.5:
+        return True
+
+    # Check for excessive unique character diversity (entropy indicator)
+    # Real messages tend to have repeated common characters
+    if length > 10:
+        unique_ratio = len(set(msg)) / length
+        # Very high unique ratio + low readable = noise
+        if unique_ratio > 0.85 and readable_ratio < 0.7:
+            return True
+
+    return False
+
 def on_new_message(callback):
     new_message_callbacks.append(callback)
 
@@ -130,6 +172,11 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     bitrate = parsed['bitrate']
                     function_code = parsed['function']
                     freq = config.get('frequency', 'Unknown')
+
+                    # GARBAGE FILTER - drop noise messages
+                    if is_garbage_message(message):
+                        logger.debug(f"[{config['name']}] GARBAGE DROPPED -> Address: {address}, Msg: {message[:60]}...")
+                        continue
 
                     # DUPLICATE DETECTION
                     now = time.time()
