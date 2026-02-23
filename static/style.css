@@ -203,6 +203,12 @@ header p {
     border-radius: 16px;
     box-shadow: var(--card-shadow);
     overflow: hidden;
+    padding: 1.5rem;
+}
+
+/* Override padding for glass panels that contain tables */
+.glass-panel.table-container {
+    padding: 0;
 }
 
 main {
@@ -212,6 +218,13 @@ main {
     overflow-y: auto;
     min-height: 0;
     margin-bottom: 1rem;
+}
+
+.glass-panel h2 {
+    margin-bottom: 1.2rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 .table-container {
