@@ -74,7 +74,10 @@ def init_db():
         'multimon_charset': 'SE',
         'multimon_format': 'auto',
         'message_font': 'JetBrains Mono',
-        'message_font_size': '1.0'
+        'message_font_size': '1.0',
+        'sample_rate': '1000k',
+        'resample_rate': '22050',
+        'enable_dc_removal': 'true'
     }
     
     for key, val in defaults.items():

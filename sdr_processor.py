@@ -93,10 +93,20 @@ def run_sdr_process():
         freq = settings.get('frequency', '169.8M')
         gain = settings.get('gain', 'auto')
         device_serial = settings.get('device_serial', '')
+        sample_rate = settings.get('sample_rate', '1000k')
+        resample_rate = settings.get('resample_rate', '22050')
+        enable_dc = settings.get('enable_dc_removal', 'true').lower() == 'true'
         
-        rtl_cmd = ['rtl_fm', '-f', freq, '-M', 'fm', '-s', '22050', '-E', 'deemp']
+        rtl_cmd = ['rtl_fm', '-f', freq, '-M', 'fm', '-s', sample_rate, '-r', resample_rate]
         
-        if gain != 'auto':
+        if enable_dc:
+            rtl_cmd.append('-E')
+            rtl_cmd.append('dc')
+        else:
+            # Fallback to deemp if DC removal is not enabled, though -E deemp is common
+            rtl_cmd.extend(['-E', 'deemp'])
+            
+        if gain != 'auto' and gain.strip() != '':
             rtl_cmd.extend(['-g', gain])
             
         if device_serial:
