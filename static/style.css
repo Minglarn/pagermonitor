@@ -383,7 +383,7 @@ tr:hover td {
 }
 
 .msg-cell {
-    font-family: 'Inter', sans-serif;
+    font-family: var(--msg-font, 'Inter', sans-serif);
     font-size: var(--msg-size);
     font-weight: 400;
     line-height: 1.5;
