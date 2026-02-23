@@ -259,10 +259,16 @@ def start_instance(config):
     resample_rate = config.get('resample_rate', '22050')
     enable_dc = str(config.get('enable_dc_removal', 'true')).lower() == 'true'
     enable_deemp = str(config.get('enable_deemp', 'true')).lower() == 'true'
+    enable_hq_fir = str(config.get('enable_high_quality_fir', 'true')).lower() == 'true'
+    atan_math = config.get('atan_math', 'std')
+    oversampling = config.get('oversampling', '4')
     
     rtl_cmd = ['rtl_fm', '-f', freq, '-M', 'fm', '-s', sample_rate, '-r', resample_rate]
     if enable_dc: rtl_cmd.extend(['-E', 'dc'])
     if enable_deemp: rtl_cmd.extend(['-E', 'deemp'])
+    if enable_hq_fir: rtl_cmd.append('-F')
+    if atan_math in ['std', 'fast']: rtl_cmd.extend(['-A', atan_math])
+    if oversampling and oversampling != '1': rtl_cmd.extend(['-o', oversampling])
     if ppm and ppm != '0': rtl_cmd.extend(['-p', ppm])
     if gain != 'auto' and gain.strip() != '': rtl_cmd.extend(['-g', gain])
     if serial: rtl_cmd.extend(['-d', serial])

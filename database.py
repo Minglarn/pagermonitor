@@ -21,8 +21,11 @@ def get_default_settings():
         'sample_rate': '250000',
         'resample_rate': '22050',
         'enable_dc_removal': 'true',
-        'ppm_error': '0',
         'enable_deemp': 'true',
+        'enable_high_quality_fir': 'true',
+        'atan_math': 'std',
+        'oversampling': '4',
+        'ppm_error': '0',
         'multimon_input_type': 'raw',
         'garbage_filter': 'true',
         'garbage_filter_sensitivity': '50'
@@ -99,6 +102,9 @@ def init_db():
             resample_rate TEXT DEFAULT '22050',
             enable_dc_removal TEXT DEFAULT 'true',
             enable_deemp TEXT DEFAULT 'true',
+            enable_high_quality_fir TEXT DEFAULT 'true',
+            atan_math TEXT DEFAULT 'std',
+            oversampling TEXT DEFAULT '4',
             multimon_verbosity TEXT DEFAULT '2',
             multimon_charset TEXT DEFAULT 'SE',
             multimon_format TEXT DEFAULT 'auto',
@@ -127,9 +133,10 @@ def init_db():
             INSERT INTO sdr_instances (
                 name, frequency, gain, device_serial, ppm_error, 
                 sample_rate, resample_rate, enable_dc_removal, enable_deemp,
+                enable_high_quality_fir, atan_math, oversampling,
                 multimon_verbosity, multimon_charset, multimon_format, 
                 multimon_input_type, enabled
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             "Standard-mottagare",
             full_settings.get('frequency', '169.8M'),
@@ -442,6 +449,15 @@ def get_sdr_instances():
     """Retrieve all hardware profiles."""
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
+    
+    # Run migrations for high-fidelity settings if they don't exist
+    try:
+        c.execute('ALTER TABLE sdr_instances ADD COLUMN enable_high_quality_fir TEXT DEFAULT "true"')
+        c.execute('ALTER TABLE sdr_instances ADD COLUMN atan_math TEXT DEFAULT "std"')
+        c.execute('ALTER TABLE sdr_instances ADD COLUMN oversampling TEXT DEFAULT "4"')
+    except sqlite3.OperationalError:
+        pass # Columns already exist
+
     c.execute('SELECT * FROM sdr_instances')
     rows = c.fetchall()
     
@@ -471,7 +487,10 @@ def save_sdr_instance(data):
     resample_rate = data.get('resample_rate', '22050')
     dc = data.get('enable_dc_removal', 'true')
     deemp = data.get('enable_deemp', 'true')
-    verb = data.get('multimon_verbosity', '1')
+    hq_fir = data.get('enable_high_quality_fir', 'true')
+    atan = data.get('atan_math', 'std')
+    oversamp = data.get('oversampling', '4')
+    verb = data.get('multimon_verbosity', '2')
     charset = data.get('multimon_charset', 'SE')
     fmt = data.get('multimon_format', 'auto')
     inp = data.get('multimon_input_type', 'raw')
@@ -482,19 +501,21 @@ def save_sdr_instance(data):
             UPDATE sdr_instances SET 
                 name=?, frequency=?, gain=?, device_serial=?, ppm_error=?,
                 sample_rate=?, resample_rate=?, enable_dc_removal=?, enable_deemp=?,
+                enable_high_quality_fir=?, atan_math=?, oversampling=?,
                 multimon_verbosity=?, multimon_charset=?, multimon_format=?,
                 multimon_input_type=?, enabled=?
             WHERE id=?
-        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, verb, charset, fmt, inp, enabled, instance_id))
+        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, enabled, instance_id))
     else:
         c.execute('''
             INSERT INTO sdr_instances (
                 name, frequency, gain, device_serial, ppm_error,
                 sample_rate, resample_rate, enable_dc_removal, enable_deemp,
+                enable_high_quality_fir, atan_math, oversampling,
                 multimon_verbosity, multimon_charset, multimon_format,
                 multimon_input_type, enabled
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, verb, charset, fmt, inp, 1))
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, 1))
         
     conn.commit()
     conn.close()

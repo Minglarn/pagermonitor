@@ -224,6 +224,44 @@
                                         </div>
                                     </div>
                                 </div>
+                                <div class="row-group">
+                                    <div class="col">
+                                        <div class="form-group">
+                                            <label for="enable_high_quality_fir">High Quality FIR Filter</label>
+                                            <select id="enable_high_quality_fir" name="enable_high_quality_fir">
+                                                <option value="true">Yes (High-Fidelity)</option>
+                                                <option value="false">No (Box Filter)</option>
+                                            </select>
+                                            <small>Uses a better FIR downsampling filter (-F). Steeper edges, rejects
+                                                adjacent noise. Recommended: Yes.</small>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="form-group">
+                                            <label for="atan_math">Atan Math</label>
+                                            <select id="atan_math" name="atan_math">
+                                                <option value="std">Standard (std)</option>
+                                                <option value="fast">Fast (fast)</option>
+                                            </select>
+                                            <small>FM demodulation math (-A). Standard is most precise. Recommended:
+                                                Standard.</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row-group">
+                                    <div class="col" style="flex: 0 0 48%;">
+                                        <div class="form-group">
+                                            <label for="oversampling">Internal Oversampling</label>
+                                            <select id="oversampling" name="oversampling">
+                                                <option value="4">4x (High-Fidelity)</option>
+                                                <option value="2">2x</option>
+                                                <option value="1">Off</option>
+                                            </select>
+                                            <small>Forces stick to work at higher internal resolution (-o), reducing
+                                                quantization noise. Recommended: 4x.</small>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </details>
 
