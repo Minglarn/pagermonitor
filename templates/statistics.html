@@ -136,6 +136,7 @@
                                     <th>Frequency</th>
                                     <th>CapCode (Alias)</th>
                                     <th>Message</th>
+                                    <th style="width: 80px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="dayTableBody"></tbody>
@@ -255,7 +256,7 @@
                 loading.style.display = 'none';
 
                 if (msgs.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">No messages for this date.</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No messages for this date.</td></tr>';
                 } else {
                     msgs.forEach(m => {
                         const tr = document.createElement('tr');
@@ -269,6 +270,13 @@
                                 <td class="addr-cell"><span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">${freq}</span>${bitrateTag}</td>
                                 <td class="addr-cell"><span class="badge">${address}</span></td>
                                 <td class="msg-cell">${m.message}</td>
+                                <td class="actions-cell">
+                                    <button class="delete-btn" onclick="deleteMessage(${m.id}, this)" title="Delete message">
+                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
+                                        </svg>
+                                    </button>
+                                </td>
                             `;
                         tableBody.appendChild(tr);
                     });
@@ -314,6 +322,30 @@
                 loading.innerText = 'Fel vid hämtning av data.';
             }
         }
+
+        async function fetchJSON(url) {
+            const res = await fetch(url);
+            return res.json();
+        }
+
+        window.deleteMessage = async (msgId, btn) => {
+            if (!confirm('Are you sure you want to delete this message?')) return;
+
+            try {
+                const response = await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const row = btn.closest('tr');
+                    row.remove();
+                } else {
+                    alert('Error deleting message: ' + result.message);
+                }
+            } catch (err) {
+                console.error('Delete error:', err);
+                alert('Failed to delete message.');
+            }
+        };
 
         document.addEventListener('DOMContentLoaded', async () => {
             await renderGlobalCharts();

@@ -247,6 +247,14 @@ def handle_alerts():
             return jsonify({"status": "error", "message": str(e)}), 500
             
     return jsonify(alerts)
+    
+@app.route('/api/messages/<int:msg_id>', methods=['DELETE'])
+def delete_single_message(msg_id):
+    try:
+        delete_message(msg_id)
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 # SSE Setup
 client_queues = []

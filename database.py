@@ -145,6 +145,21 @@ def init_db():
             1
         ))
         
+    # One-time re-indexing check
+    c.execute('SELECT value FROM settings WHERE key = ?', ('db_reindexed',))
+    reindexed = c.fetchone()
+    if not reindexed:
+        # Check if there are messages to re-index
+        c.execute('SELECT COUNT(*) FROM messages')
+        if c.fetchone()[0] > 0:
+            logger.info("One-time database re-indexing starting...")
+            reindex_messages(conn)
+            c.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ('db_reindexed', 'true'))
+            logger.info("One-time database re-indexing completed.")
+        else:
+            # Empty DB, just mark as done
+            c.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ('db_reindexed', 'true'))
+
     conn.commit()
     conn.close()
 
@@ -158,6 +173,52 @@ def save_message(address, message, alias='', function_code=0, bitrate='', freque
     conn.commit()
     conn.close()
     return row_id, timestamp
+
+def delete_message(msg_id):
+    """Delete a specific message by ID."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('DELETE FROM messages WHERE id = ?', (msg_id,))
+    conn.commit()
+    conn.close()
+
+def reindex_messages(already_open_conn=None):
+    """Resets message IDs to be sequential starting from 1 (One-time operation)."""
+    conn = already_open_conn if already_open_conn else sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    # 1. Create temporary table with same schema
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS messages_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            address TEXT NOT NULL,
+            message TEXT NOT NULL,
+            alias TEXT DEFAULT '',
+            function_code INTEGER DEFAULT 0,
+            bitrate TEXT DEFAULT '',
+            frequency TEXT DEFAULT '',
+            is_duplicate INTEGER DEFAULT 0
+        )
+    ''')
+    
+    # 2. Copy data ordered by timestamp (or old id)
+    c.execute('''
+        INSERT INTO messages_new (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate)
+        SELECT timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate
+        FROM messages ORDER BY timestamp ASC
+    ''')
+    
+    # 3. Swap tables
+    c.execute('DROP TABLE messages')
+    c.execute('ALTER TABLE messages_new RENAME TO messages')
+    
+    # 4. Vacuum to reclaim space and reset sqlite_sequence if necessary
+    c.execute('VACUUM')
+    
+    if not already_open_conn:
+        conn.commit()
+        conn.close()
 
 def get_recent_messages(limit=100):
     conn = sqlite3.connect(DB_PATH)

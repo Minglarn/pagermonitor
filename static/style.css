@@ -440,6 +440,12 @@ table {
     width: auto;
 }
 
+#alarmsTable th:nth-child(6),
+#alarmsTable td:nth-child(6) {
+    width: 80px;
+    text-align: center;
+}
+
 #dayTable th:nth-child(1),
 #dayTable td:nth-child(1) {
     width: 60px;
@@ -467,6 +473,12 @@ table {
 #dayTable th:nth-child(5),
 #dayTable td:nth-child(5) {
     width: auto;
+}
+
+#dayTable th:nth-child(6),
+#dayTable td:nth-child(6) {
+    width: 80px;
+    text-align: center;
 }
 
 th {
@@ -1085,4 +1097,35 @@ tr:hover td {
     .form-container {
         padding: 1.5rem;
     }
+}
+.delete-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.delete-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.delete-btn svg {
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+
+.delete-btn:hover svg {
+    opacity: 1;
+}
+
+[data-theme="light"] .delete-btn:hover {
+    background: rgba(239, 68, 68, 0.05);
 }
