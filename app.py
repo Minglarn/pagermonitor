@@ -8,8 +8,8 @@ import sqlite3
 import database
 from database import (
     init_db, get_recent_messages, get_settings, 
-    update_setting, get_all_aliases, save_alias, 
-    delete_alias, get_alert_words, add_alert_word, 
+    update_setting, get_aliases, save_alias, 
+    delete_alias, get_alert_words, save_alert_word, 
     delete_alert_word, get_default_settings
 )
 
