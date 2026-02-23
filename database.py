@@ -77,7 +77,9 @@ def init_db():
         'message_font_size': '1.0',
         'sample_rate': '1000k',
         'resample_rate': '22050',
-        'enable_dc_removal': 'true'
+        'enable_dc_removal': 'true',
+        'ppm_error': '0',
+        'enable_deemp': 'true'
     }
     
     for key, val in defaults.items():

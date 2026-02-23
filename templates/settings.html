@@ -47,10 +47,21 @@
                         <small>Standard är 169.8M för POCSAG i Sverige. Använd M för MHz.</small>
                     </div>
 
-                    <div class="form-group">
-                        <label for="gain">RF Gain</label>
-                        <input type="text" id="gain" name="gain" placeholder="auto eller värde, t.ex. 42">
-                        <small>Lämna som "auto" om du är osäker, annars ange siffervärde.</small>
+                    <div class="row-group">
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="gain">RF Gain</label>
+                                <input type="text" id="gain" name="gain" placeholder="auto eller värde, t.ex. 42">
+                                <small>Lämna som "auto" för AGC, annars ange siffervärde (t.ex. 25).</small>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="ppm_error">PPM Error (-p)</label>
+                                <input type="number" id="ppm_error" name="ppm_error" placeholder="0" value="0">
+                                <small>Frekvenskorrigering i miljontedelar.</small>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="row-group">
@@ -70,14 +81,29 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="enable_dc_removal">DC Offset Removal (-E dc)</label>
-                        <select id="enable_dc_removal" name="enable_dc_removal"
-                            style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
-                            <option value="true">Aktiverad (Rekommenderas)</option>
-                            <option value="false">Inaktiverad (Använd deemp)</option>
-                        </select>
-                        <small>Centrerar signalen och ger renare avkodning.</small>
+                    <div class="row-group">
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="enable_dc_removal">DC Removal (-E dc)</label>
+                                <select id="enable_dc_removal" name="enable_dc_removal"
+                                    style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
+                                    <option value="true">Aktiverad</option>
+                                    <option value="false">Inaktiverad</option>
+                                </select>
+                                <small>Centrerar signalen.</small>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="enable_deemp">De-emphasis (-E deemp)</label>
+                                <select id="enable_deemp" name="enable_deemp"
+                                    style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
+                                    <option value="true">Aktiverad</option>
+                                    <option value="false">Inaktiverad</option>
+                                </select>
+                                <small>Förbättrar FM-signalens ljud-profil.</small>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="form-group" style="margin-top: 1rem;">
@@ -223,6 +249,8 @@
                     if (data.sample_rate) document.getElementById('sample_rate').value = data.sample_rate;
                     if (data.resample_rate) document.getElementById('resample_rate').value = data.resample_rate;
                     if (data.enable_dc_removal) document.getElementById('enable_dc_removal').value = data.enable_dc_removal;
+                    if (data.enable_deemp) document.getElementById('enable_deemp').value = data.enable_deemp;
+                    if (data.ppm_error !== undefined) document.getElementById('ppm_error').value = data.ppm_error;
                     updatePreview();
                 })
                 .catch(err => {
@@ -252,7 +280,9 @@
                     message_font_size: document.getElementById('message_font_size').value,
                     sample_rate: document.getElementById('sample_rate').value,
                     resample_rate: document.getElementById('resample_rate').value,
-                    enable_dc_removal: document.getElementById('enable_dc_removal').value
+                    enable_dc_removal: document.getElementById('enable_dc_removal').value,
+                    enable_deemp: document.getElementById('enable_deemp').value,
+                    ppm_error: document.getElementById('ppm_error').value
                 };
 
                 // Spara tema i localStorage
