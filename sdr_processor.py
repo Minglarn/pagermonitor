@@ -45,10 +45,6 @@ def is_garbage_message(message, sensitivity=50):
     temp_msg = re.sub(r'<[A-Z0-9]{2,4}>', '\x01', msg)
     length = len(temp_msg)
 
-    # Very short messages (1-3 chars) are almost always noise
-    if length <= 3:
-        return True
-
     # Scale thresholds based on sensitivity (0-100)
     # readable_ratio_min: 0.30 (lenient) -> 0.70 (strict)
     readable_min = 0.30 + (sensitivity / 100.0) * 0.40
