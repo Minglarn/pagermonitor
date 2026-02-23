@@ -75,19 +75,21 @@
 
         <div class="main-content">
             <header>
-                <div class="header-main">
-                    <h1>Real-time Monitor</h1>
-                    <p>Live POCSAG messages and pager traffic</p>
-                </div>
-                <div class="search-container">
-                    <input type="text" id="searchInput" placeholder="Search CapCodes, Aliases or messages...">
-                    <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                    <div id="rx-indicator" class="rx-status-dot" title="Receiving data"></div>
+                <div class="header-content">
+                    <div class="header-main">
+                        <h1>Real-time Monitor</h1>
+                        <p>Live POCSAG messages and pager traffic</p>
+                    </div>
+                    <div class="search-container">
+                        <input type="text" id="searchInput" placeholder="Search CapCodes, Aliases or messages...">
+                        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <div id="rx-indicator" class="rx-status-dot" title="Receiving data"></div>
+                    </div>
                 </div>
             </header>
 
@@ -212,7 +214,7 @@
                     if (data.length > 0) {
                         loading.style.display = 'none';
                     } else {
-                        loading.innerText = 'Inga larm hittades.';
+                        loading.innerText = 'No messages found.';
                     }
 
                     allAlarms = data;
@@ -271,12 +273,12 @@
                     if (groupKey !== lastGroupKey) {
                         const dividerTr = document.createElement('tr');
                         dividerTr.className = 'time-divider';
-                        // Format specifically for the divider (e.g. "Idag 14:00" or just the date+hour)
+                        // Format specifically for the divider (e.g. "Today 14:00" or just the date+hour)
                         const isToday = new Date().toDateString() === dateObj.toDateString();
-                        const headerPrefix = isToday ? "Idag" : dateObj.toLocaleDateString('sv-SE');
+                        const headerPrefix = isToday ? "Today" : dateObj.toLocaleDateString('sv-SE');
                         const headerHour = dateObj.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }).split(':')[0] + ":00";
 
-                        dividerTr.innerHTML = `<td colspan="4"><div class="divider-content">${headerPrefix} klockan ${headerHour}</div></td>`;
+                        dividerTr.innerHTML = `<td colspan="4"><div class="divider-content">${headerPrefix} at ${headerHour}</div></td>`;
                         alarmsBody.appendChild(dividerTr);
                         lastGroupKey = groupKey;
                     }
@@ -291,10 +293,10 @@
                         tr.classList.add('alert-row', 'alert-pulse-bg');
                     }
 
-                    const dateStr = new Date(alarm.timestamp).toLocaleDateString('en-GB', {
+                    const dateStr = new Date(alarm.timestamp).toLocaleDateString('sv-SE', {
                         year: 'numeric', month: '2-digit', day: '2-digit'
                     });
-                    const timeStr = new Date(alarm.timestamp).toLocaleTimeString('en-GB', {
+                    const timeStr = new Date(alarm.timestamp).toLocaleTimeString('sv-SE', {
                         hour: '2-digit', minute: '2-digit', second: '2-digit'
                     });
                     const formattedTime = `${dateStr}<br>${timeStr}`;

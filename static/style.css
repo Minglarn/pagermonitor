@@ -220,42 +220,57 @@ body {
 
 /* Dashboard layout refinements */
 .dashboard-page {
-    overflow-y: auto;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.main-content {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+    padding: 2rem;
 }
 
 .dashboard-page main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     min-height: 0;
+    overflow: hidden;
 }
 
 header {
-    margin-bottom: 2rem;
-    text-align: left;
+    margin-bottom: 1.5rem;
+    flex-shrink: 0;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
 }
 
 h1 {
-    font-size: 2.2rem;
+    font-size: 2rem;
     font-weight: 800;
     letter-spacing: -1px;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.2rem;
     color: var(--text-primary);
-}
-
-.highlight {
-    color: var(--accent);
-    text-shadow: 0 0 20px var(--accent-glow);
 }
 
 header p {
     color: var(--text-secondary);
-    font-size: 1rem;
+    font-size: 0.95rem;
     margin-bottom: 0;
 }
 
 /* Search Bar */
 .search-container {
     position: relative;
-    max-width: 450px;
-    margin: 1.5rem 0 0 0;
+    flex: 1;
+    max-width: 500px;
 }
 
 #searchInput {
@@ -423,11 +438,11 @@ th {
     position: sticky;
     top: 0;
     z-index: 10;
-    padding: 1.2rem 1.5rem;
+    padding: 0.7rem 1.2rem;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: uppercase;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     letter-spacing: 0.5px;
     border-bottom: 2px solid var(--panel-border);
     border-right: 1px solid var(--panel-border);
@@ -438,7 +453,7 @@ th:last-child {
 }
 
 td {
-    padding: 1rem 1.5rem;
+    padding: 0.5rem 1.2rem;
     background: rgba(255, 255, 255, 0.02);
     border-top: 1px solid var(--panel-border);
     border-bottom: 1px solid var(--panel-border);
