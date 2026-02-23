@@ -98,8 +98,9 @@
                     <table id="alarmsTable">
                         <thead>
                             <tr>
+                                <th style="width: 60px;">#</th>
                                 <th>Timestamp</th>
-                                <th>Frequency</th>
+                                <th>Frequency / Meta</th>
                                 <th>CapCode (Alias)</th>
                                 <th>Message</th>
                             </tr>
@@ -244,7 +245,7 @@
                 // Save scroll position state
                 const previousScrollTop = container.scrollTop;
                 const previousScrollHeight = container.scrollHeight;
-                const wasAtTop = previousScrollTop < 20; // 20px threshold for "at the top"
+                const wasAtTop = previousScrollTop < 50; // Threshold for "watching new messages"
 
                 alarmsBody.innerHTML = '';
 
@@ -278,7 +279,7 @@
                         const headerPrefix = isToday ? "Today" : dateObj.toLocaleDateString('sv-SE');
                         const headerHour = dateObj.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }).split(':')[0] + ":00";
 
-                        dividerTr.innerHTML = `<td colspan="4"><div class="divider-content">${headerPrefix} at ${headerHour}</div></td>`;
+                        dividerTr.innerHTML = `<td colspan="5"><div class="divider-content">${headerPrefix} at ${headerHour}</div></td>`;
                         alarmsBody.appendChild(dividerTr);
                         lastGroupKey = groupKey;
                     }
@@ -310,6 +311,7 @@
                     const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta" style="margin-left: 5px;">Duplicate</span>` : '';
 
                     tr.innerHTML = `
+                        <td class="id-cell">${alarm.id}</td>
                         <td class="ts-cell">${formattedTime}</td>
                         <td class="addr-cell">${freqTag}${bitrateTag}${funcTag}${duplicateTag}</td>
                         <td class="addr-cell">

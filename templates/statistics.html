@@ -131,6 +131,7 @@
                         <table id="dayTable">
                             <thead>
                                 <tr>
+                                    <th style="width: 60px;">#</th>
                                     <th>Time</th>
                                     <th>Frequency</th>
                                     <th>CapCode (Alias)</th>
@@ -254,7 +255,7 @@
                 loading.style.display = 'none';
 
                 if (msgs.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem;">No messages for this date.</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 2rem;">No messages for this date.</td></tr>';
                 } else {
                     msgs.forEach(m => {
                         const tr = document.createElement('tr');
@@ -263,6 +264,7 @@
                         const freq = m.frequency || '-';
                         const bitrateTag = m.bitrate ? `<span class="badge meta">${m.bitrate}bps</span>` : '';
                         tr.innerHTML = `
+                                <td class="id-cell">${m.id}</td>
                                 <td class="ts-cell">${time}</td>
                                 <td class="addr-cell"><span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">${freq}</span>${bitrateTag}</td>
                                 <td class="addr-cell"><span class="badge">${address}</span></td>
