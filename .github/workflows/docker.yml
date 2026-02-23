@@ -2,7 +2,7 @@ name: Docker Build and Publish
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "dev-multi_sdr" ]
   workflow_dispatch:
 
 env:
