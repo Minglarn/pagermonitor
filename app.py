@@ -11,7 +11,8 @@ from database import (
     update_setting, get_aliases, save_alias, 
     delete_alias, get_alert_words, save_alert_word, 
     delete_alert_word, get_default_settings,
-    get_sdr_instances, save_sdr_instance, delete_sdr_instance, toggle_sdr_instance
+    get_sdr_instances, save_sdr_instance, delete_sdr_instance, toggle_sdr_instance,
+    delete_message
 )
 
 try:
