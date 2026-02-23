@@ -120,6 +120,7 @@ def run_sdr_process():
 
         verbosity = settings.get('multimon_verbosity', '1')
         charset = settings.get('multimon_charset', 'SE')
+        msg_format = settings.get('multimon_format', 'auto')
         input_type = settings.get('multimon_input_type', 'raw')
         
         multimon_cmd = [
