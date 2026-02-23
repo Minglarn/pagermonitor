@@ -7,7 +7,7 @@ import signal
 import time
 import sys
 from queue import Empty
-from database import save_message, get_alias_info, check_alert_words, get_sdr_instances
+from database import save_message, get_alias_info, check_alert_words, get_sdr_instances, get_settings
 from mqtt_client import publish_message
 
 logger = logging.getLogger(__name__)
@@ -173,8 +173,9 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     function_code = parsed['function']
                     freq = config.get('frequency', 'Unknown')
 
-                    # GARBAGE FILTER - drop noise messages
-                    if is_garbage_message(message):
+                    # GARBAGE FILTER - drop noise messages (if enabled in settings)
+                    settings = get_settings()
+                    if settings.get('garbage_filter', 'true') == 'true' and is_garbage_message(message):
                         logger.debug(f"[{config['name']}] GARBAGE DROPPED -> Address: {address}, Msg: {message[:60]}...")
                         continue
 

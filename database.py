@@ -23,7 +23,8 @@ def get_default_settings():
         'enable_dc_removal': 'true',
         'ppm_error': '0',
         'enable_deemp': 'true',
-        'multimon_input_type': 'raw'
+        'multimon_input_type': 'raw',
+        'garbage_filter': 'true'
     }
 
 def init_db():

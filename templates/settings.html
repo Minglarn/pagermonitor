@@ -144,12 +144,11 @@
                                 </div>
                             </div>
 
-                            <div class="form-group">
-                                <label>Preview</label>
-                                <div id="fontPreview"
-                                    style="padding: 1.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--panel-border); border-radius: 8px; min-height: 80px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                                    <span id="previewText">BRANDALARM: STORGATAN 1 - 12:45</span>
-                                </div>
+                            <div class="form-group checkbox-group" style="margin-top: 0.5rem;">
+                                <label style="font-size: 0.9rem;">
+                                    <input type="checkbox" id="garbage_filter" name="garbage_filter" checked>
+                                    Enable Garbage Filter (drop garbled/noise messages)
+                                </label>
                             </div>
 
                             <div class="form-actions" style="margin-top: 1rem;">
@@ -184,6 +183,7 @@
                         document.getElementById('message_font_size_slider').value = data.message_font_size;
                         document.getElementById('font_size_val').innerText = data.message_font_size;
                     }
+                    document.getElementById('garbage_filter').checked = (data.garbage_filter !== 'false');
                     updatePreview();
                 });
         }
@@ -265,7 +265,8 @@
 
             const payload = {
                 message_font: document.getElementById('message_font').value,
-                message_font_size: document.getElementById('message_font_size').value
+                message_font_size: document.getElementById('message_font_size').value,
+                garbage_filter: document.getElementById('garbage_filter').checked ? 'true' : 'false'
             };
 
             const themeVal = document.getElementById('theme').value;
