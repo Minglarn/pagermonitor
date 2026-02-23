@@ -6,8 +6,10 @@ from queue import Queue
 
 import sqlite3
 import database
+from database import init_db, get_recent_messages, get_settings, update_setting, get_aliases, save_alias, delete_alias, get_alert_words, save_alert_word, delete_alert_word
+
 try:
-    import database
+    from mqtt_client import init_mqtt
 except ImportError:
     def init_mqtt():
         pass
