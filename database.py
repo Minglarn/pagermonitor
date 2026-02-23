@@ -71,7 +71,7 @@ def init_db():
         'device_serial': '',
         'multimon_verbosity': '1',
         'multimon_charset': 'SE',
-        'multimon_format': 'any',
+        'multimon_format': 'auto',
         'message_font': 'JetBrains Mono',
         'message_font_size': '1.0'
     }

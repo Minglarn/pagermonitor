@@ -96,11 +96,11 @@
                         <label for="multimon_format">Utdataformat (-f)</label>
                         <select id="multimon_format" name="multimon_format"
                             style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
-                            <option value="any">Gissa format (any)</option>
+                            <option value="auto">Gissa format (auto)</option>
                             <option value="alpha">Alfanumeriskt (alpha)</option>
                             <option value="num">Numeriskt (num)</option>
                         </select>
-                        <small>Välj "any" för bäst felmarginal.</small>
+                        <small>Välj "auto" för bäst felmarginal.</small>
                     </div>
 
                     <hr class="separator">
@@ -180,6 +180,7 @@
                     if (data.frequency) document.getElementById('frequency').value = data.frequency;
                     if (data.gain) document.getElementById('gain').value = data.gain;
                     if (data.device_serial) document.getElementById('device_serial').value = data.device_serial;
+                    if (data.multimon_verbosity) document.getElementById('multimon_verbosity').value = data.multimon_verbosity;
                     if (data.multimon_charset) document.getElementById('multimon_charset').value = data.multimon_charset;
                     if (data.multimon_format) document.getElementById('multimon_format').value = data.multimon_format;
                     if (data.message_font) document.getElementById('message_font').value = data.message_font;
