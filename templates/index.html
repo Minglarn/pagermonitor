@@ -147,6 +147,30 @@
         </div>
     </div>
 
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px; padding: 2rem; border-radius: 20px;">
+            <div class="modal-header">
+                <h2 id="confirmTitle" style="color: var(--accent);">Confirm Action</h2>
+                <p id="confirmMessage" style="margin-top: 0.5rem; color: var(--text-secondary);">Are you sure you want
+                    to proceed?</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" style="padding: 0.6rem 1.2rem; border-radius: 10px; cursor: pointer;"
+                    onclick="closeConfirm(false)">Cancel</button>
+                <button id="confirmActionBtn" class="btn btn-danger"
+                    style="padding: 0.6rem 1.2rem; border-radius: 10px; cursor: pointer; background: #ef4444; border: none; color: white;">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scroll to Top Button -->
+    <button id="scrollToTop" class="scroll-to-top" title="Scroll to Top">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 15l-6-6-6 6" />
+        </svg>
+    </button>
+
     <script>
         // Global Modal Functions
         function openAliasModal(address) {
@@ -177,6 +201,9 @@
             const loading = document.getElementById('loading');
             let allAlarms = [];
             let alertWords = [];
+            let isLoadingMore = false;
+            let hasReachedEnd = false;
+            let lastTopGroupKey = null; // Track topmost divider
 
             // Fetch Alert Words
             const fetchAlertWords = async () => {
@@ -207,23 +234,39 @@
             }
 
             // Fetch and render historical alarms initially
-            const fetchAlarms = async () => {
+            const fetchAlarms = async (beforeId = null) => {
+                if (isLoadingMore || (beforeId && hasReachedEnd)) return;
+
                 try {
-                    const response = await fetch('/api/messages');
+                    if (beforeId) isLoadingMore = true;
+
+                    const url = beforeId ? `/api/messages?before_id=${beforeId}` : '/api/messages';
+                    const response = await fetch(url);
                     if (!response.ok) throw new Error('Network response was not ok');
                     const data = await response.json();
 
-                    if (data.length > 0) {
-                        loading.style.display = 'none';
-                    } else {
-                        loading.innerText = 'No messages found.';
+                    if (data.length === 0) {
+                        if (beforeId) hasReachedEnd = true;
+                        if (!allAlarms.length) loading.innerText = 'No messages found.';
+                        return;
                     }
 
-                    allAlarms = data;
-                    window.currentAlarmsData = allAlarms; // expose for modal
+                    loading.style.display = 'none';
+
+                    if (beforeId) {
+                        // Append old messages to the end
+                        allAlarms = [...allAlarms, ...data];
+                    } else {
+                        // Initial load
+                        allAlarms = data;
+                    }
+
+                    window.currentAlarmsData = allAlarms;
                     renderAlarms();
                 } catch (error) {
                     console.error('Error fetching alarms:', error);
+                } finally {
+                    isLoadingMore = false;
                 }
             };
 
@@ -237,6 +280,50 @@
                 if (settings.message_font_size) {
                     document.documentElement.style.setProperty('--msg-size', `${settings.message_font_size}rem`);
                 }
+            };
+
+            const createAlarmRow = (alarm) => {
+                const tr = document.createElement('tr');
+                tr.className = 'fade-in';
+
+                const hasAlert = alertWords.some(aw => aw.is_active && alarm.message.toUpperCase().includes(aw.word.toUpperCase()));
+                if (hasAlert) {
+                    tr.classList.add('alert-row', 'alert-pulse-bg');
+                }
+
+                const dateObj = new Date(alarm.timestamp);
+                const dateStr = dateObj.toLocaleDateString('sv-SE', {
+                    year: 'numeric', month: '2-digit', day: '2-digit'
+                });
+                const timeStr = dateObj.toLocaleTimeString('sv-SE', {
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+                const formattedTime = `${dateStr}<br>${timeStr}`;
+
+                const displayAddress = alarm.alias ? alarm.alias : alarm.address;
+                const bitrateTag = alarm.bitrate ? `<span class="badge meta">${alarm.bitrate}bps</span>` : '';
+                const funcLabel = alarm.function !== undefined ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
+                const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
+                const freqTag = alarm.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${alarm.frequency}</span>` : '';
+                const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta" style="margin-left: 5px;">Duplicate</span>` : '';
+
+                tr.innerHTML = `
+                    <td class="id-cell">${alarm.id}</td>
+                    <td class="ts-cell">${formattedTime}</td>
+                    <td class="addr-cell">${freqTag}${bitrateTag}${funcTag}${duplicateTag}</td>
+                    <td class="addr-cell">
+                        <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
+                    </td>
+                    <td class="msg-cell">${formatMessage(alarm.message)}</td>
+                    <td class="actions-cell">
+                        <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete message">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
+                            </svg>
+                        </button>
+                    </td>
+                `;
+                return tr;
             };
 
             const renderAlarms = (maintainScroll = false) => {
@@ -258,6 +345,13 @@
                 );
 
                 let lastGroupKey = null;
+
+                if (filtered.length > 0) {
+                    const firstDate = new Date(filtered[0].timestamp);
+                    lastTopGroupKey = firstDate.toLocaleString('sv-SE', {
+                        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit'
+                    });
+                }
 
                 filtered.forEach((alarm, index) => {
                     const dateObj = new Date(alarm.timestamp);
@@ -349,26 +443,6 @@
 
             searchInput.addEventListener('input', renderAlarms);
 
-            window.deleteMessage = async (msgId, btn) => {
-                if (!confirm('Are you sure you want to delete this message?')) return;
-
-                try {
-                    const response = await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
-                    const result = await response.json();
-
-                    if (result.status === 'success') {
-                        // Remove from local array
-                        allAlarms = allAlarms.filter(a => a.id !== msgId);
-                        // Refresh display
-                        renderAlarms(true);
-                    } else {
-                        alert('Error deleting message: ' + result.message);
-                    }
-                } catch (err) {
-                    console.error('Delete error:', err);
-                    alert('Failed to delete message.');
-                }
-            };
 
             // Fetch historical logic
             // Initial data fetch
@@ -401,16 +475,127 @@
                 // If it's a real message, process it
                 if (!allAlarms.some(a => a.id === data.id)) {
                     allAlarms.unshift(data);
-                    // Keep only top 100 max in memory (matches backend get limit)
-                    if (allAlarms.length > 200) allAlarms.pop();
+                    if (allAlarms.length > 500) allAlarms.pop();
 
                     loading.style.display = 'none';
-                    renderAlarms(true); // true = maintain scroll logic
+
+                    // Save scroll position for stick-to-top logic
+                    const container = document.querySelector('.table-container');
+                    const wasAtTop = container.scrollTop < 50;
+
+                    if (!searchInput.value) {
+                        // OPTIMIZED: Prepend row instead of full render
+                        const dateObj = new Date(data.timestamp);
+                        const groupKey = dateObj.toLocaleString('sv-SE', {
+                            year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit'
+                        });
+
+                        if (groupKey !== lastTopGroupKey) {
+                            const isToday = new Date().toDateString() === dateObj.toDateString();
+                            const headerPrefix = isToday ? "Today" : dateObj.toLocaleDateString('sv-SE');
+                            const headerHour = dateObj.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }).split(':')[0] + ":00";
+
+                            const dividerTr = document.createElement('tr');
+                            dividerTr.className = 'time-divider';
+                            dividerTr.innerHTML = `<td colspan="6"><div class="divider-content">${headerPrefix} at ${headerHour}</div></td>`;
+                            alarmsBody.prepend(dividerTr);
+                            lastTopGroupKey = groupKey;
+                        }
+
+                        const newRow = createAlarmRow(data);
+                        // If there were no messages before, just append
+                        const firstChild = alarmsBody.firstChild;
+                        if (firstChild && firstChild.classList.contains('time-divider')) {
+                            // Insert AFTER the first divider if they share the same group
+                            // But actually dividers are prepended, so the newest row should be above the newest divider if they match?
+                            // No, first Divider represents the group of rows below it.
+                            // If we just prepended a divider, newRow goes above it? 
+                            // Standard layout: Divider -> Row 1 -> Row 2.
+                            // So prepend Row, then prepend Divider if needed.
+                        }
+
+                        // Let's simplify: Prepend row. If group changed, ALSO prepend divider.
+                        // Order will be: [New Divider] -> [New Row] -> [Old Content]
+                        alarmsBody.prepend(newRow);
+
+                        if (wasAtTop) {
+                            container.scrollTop = 0;
+                        }
+                    } else {
+                        // If searching, full render is necessary to filter
+                        renderAlarms(true);
+                    }
                 }
             };
 
-            evtSource.onerror = function (err) {
-                console.error("EventSource failed. Reconnecting...", err);
+            // Infinite Scroll Detection
+            const tableContainer = document.querySelector('.table-container');
+            const topBtn = document.getElementById('scrollToTop');
+
+            tableContainer.addEventListener('scroll', () => {
+                // Scroll to top button visibility
+                if (tableContainer.scrollTop > 300) {
+                    topBtn.classList.add('show');
+                } else {
+                    topBtn.classList.remove('show');
+                }
+
+                // Check for bottom reach
+                const threshold = 100;
+                if (tableContainer.scrollHeight - tableContainer.scrollTop - tableContainer.clientHeight < threshold) {
+                    if (allAlarms.length > 0 && !isLoadingMore && !hasReachedEnd) {
+                        const oldestId = allAlarms[allAlarms.length - 1].id;
+                        fetchAlarms(oldestId);
+                    }
+                }
+            });
+
+            window.scrollToTop = () => {
+                tableContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            // Custom Confirm Helper
+            let confirmResolve = null;
+            window.showConfirm = (title, message, actionLabel = 'Delete') => {
+                document.getElementById('confirmTitle').innerText = title;
+                document.getElementById('confirmMessage').innerText = message;
+                document.getElementById('confirmActionBtn').innerText = actionLabel;
+                document.getElementById('confirmModal').classList.add('show');
+
+                return new Promise(resolve => {
+                    confirmResolve = resolve;
+                    document.getElementById('confirmActionBtn').onclick = () => {
+                        document.getElementById('confirmModal').classList.remove('show');
+                        resolve(true);
+                    };
+                });
+            };
+
+            window.closeConfirm = (val) => {
+                document.getElementById('confirmModal').classList.remove('show');
+                if (confirmResolve) confirmResolve(val);
+            };
+
+            window.deleteMessage = async (msgId, btn) => {
+                const confirmed = await showConfirm('Delete Message', 'Are you sure you want to permanently delete this message?');
+                if (!confirmed) return;
+
+                try {
+                    const response = await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        // Remove from local array
+                        allAlarms = allAlarms.filter(a => a.id !== msgId);
+                        // Refresh display
+                        renderAlarms(true);
+                    } else {
+                        alert('Error deleting message: ' + result.message);
+                    }
+                } catch (err) {
+                    console.error('Delete error:', err);
+                    alert('Failed to delete message.');
+                }
             };
             // Modal Form Submission Handling
             const aliasModalForm = document.getElementById('aliasModalForm');

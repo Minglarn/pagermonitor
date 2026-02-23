@@ -218,7 +218,7 @@ def reindex_messages(already_open_conn=None):
         conn.commit()
         conn.close()
 
-def get_recent_messages(limit=100):
+def get_recent_messages(limit=100, before_id=None):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
@@ -232,13 +232,24 @@ def get_recent_messages(limit=100):
         query = '''
             SELECT m.* FROM messages m
             LEFT JOIN aliases a ON m.address = a.address
-            WHERE a.is_hidden IS NULL OR a.is_hidden = 0
-            ORDER BY m.id DESC LIMIT ?
+            WHERE (a.is_hidden IS NULL OR a.is_hidden = 0)
         '''
+        params = []
+        if before_id:
+            query += ' AND m.id < ?'
+            params.append(before_id)
+        query += ' ORDER BY m.id DESC LIMIT ?'
+        params.append(limit)
     else:
-        query = 'SELECT * FROM messages ORDER BY id DESC LIMIT ?'
+        query = 'SELECT * FROM messages'
+        params = []
+        if before_id:
+            query += ' WHERE id < ?'
+            params.append(before_id)
+        query += ' ORDER BY id DESC LIMIT ?'
+        params.append(limit)
         
-    c.execute(query, (limit,))
+    c.execute(query, tuple(params))
     rows = c.fetchall()
     
     # Detect position by reading description
