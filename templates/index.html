@@ -36,7 +36,8 @@
     <div class="app-layout">
         <nav class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <i class="fas fa-satellite-dish" style="font-size: 1.5rem; color: var(--accent);"></i>
+                <i id="satellite-icon" class="fas fa-satellite-dish"
+                    style="font-size: 1.5rem; color: var(--accent); transition: all 0.2s ease;"></i>
                 <div class="sidebar-logo">
                     <h1>Pager<span>Monitor</span></h1>
                     <p>POCSAG Monitor</p>
@@ -453,12 +454,22 @@
             const evtSource = new EventSource("/stream");
 
             // RX Indicator flash function
+            // RX Indicator flash function
             const rxIndicator = document.getElementById('rx-indicator');
+            const satIcon = document.getElementById('satellite-icon');
             function flashRx() {
-                rxIndicator.classList.add('active');
+                if (rxIndicator) rxIndicator.classList.add('active');
+                if (satIcon) {
+                    satIcon.style.color = '#fff';
+                    satIcon.style.transform = 'scale(1.2) rotate(10deg)';
+                }
                 setTimeout(() => {
-                    rxIndicator.classList.remove('active');
-                }, 500); // flash duration
+                    if (rxIndicator) rxIndicator.classList.remove('active');
+                    if (satIcon) {
+                        satIcon.style.color = 'var(--accent)';
+                        satIcon.style.transform = 'scale(1) rotate(0deg)';
+                    }
+                }, 150); // fast flash duration
             }
 
             evtSource.onmessage = function (event) {
