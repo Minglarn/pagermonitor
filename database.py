@@ -83,11 +83,66 @@ def init_db():
     except sqlite3.OperationalError:
         pass # Column might already exist
     
+    # Create sdr_instances table
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS sdr_instances (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            frequency TEXT NOT NULL,
+            gain TEXT DEFAULT 'auto',
+            device_serial TEXT DEFAULT '',
+            ppm_error TEXT DEFAULT '0',
+            sample_rate TEXT DEFAULT '22050',
+            resample_rate TEXT DEFAULT '22050',
+            enable_dc_removal TEXT DEFAULT 'true',
+            enable_deemp TEXT DEFAULT 'true',
+            multimon_verbosity TEXT DEFAULT '1',
+            multimon_charset TEXT DEFAULT 'SE',
+            multimon_format TEXT DEFAULT 'auto',
+            multimon_input_type TEXT DEFAULT 'raw',
+            enabled INTEGER DEFAULT 1
+        )
+    ''')
+    
     # Initialize default settings if they don't exist
     defaults = get_default_settings()
-    
     for key, val in defaults.items():
         c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (key, val))
+
+    # Migration: If sdr_instances is empty, create the first instance from current settings
+    c.execute('SELECT COUNT(*) FROM sdr_instances')
+    if c.fetchone()[0] == 0:
+        logger.info("Migrating existing SDR settings to sdr_instances table...")
+        # Fetch current settings from the settings table
+        c.execute('SELECT key, value FROM settings')
+        current_settings = dict(c.fetchall())
+        
+        # Merge with defaults to ensure all keys exist
+        full_settings = {**defaults, **current_settings}
+        
+        c.execute('''
+            INSERT INTO sdr_instances (
+                name, frequency, gain, device_serial, ppm_error, 
+                sample_rate, resample_rate, enable_dc_removal, enable_deemp,
+                multimon_verbosity, multimon_charset, multimon_format, 
+                multimon_input_type, enabled
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            "Standard-mottagare",
+            full_settings.get('frequency', '169.8M'),
+            full_settings.get('gain', 'auto'),
+            full_settings.get('device_serial', ''),
+            full_settings.get('ppm_error', '0'),
+            full_settings.get('sample_rate', '22050'),
+            full_settings.get('resample_rate', '22050'),
+            full_settings.get('enable_dc_removal', 'true'),
+            full_settings.get('enable_deemp', 'true'),
+            full_settings.get('multimon_verbosity', '1'),
+            full_settings.get('multimon_charset', 'SE'),
+            full_settings.get('multimon_format', 'auto'),
+            full_settings.get('multimon_input_type', 'raw'),
+            1
+        ))
         
     conn.commit()
     conn.close()
@@ -305,5 +360,82 @@ def delete_alias(address):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     c.execute('DELETE FROM aliases WHERE address = ?', (address,))
+    conn.commit()
+    conn.close()
+
+def get_sdr_instances():
+    """Retrieve all hardware profiles."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT * FROM sdr_instances')
+    rows = c.fetchall()
+    
+    col_names = [description[0] for description in c.description]
+    conn.close()
+    
+    instances = []
+    for row in rows:
+        instance = {}
+        for i, col in enumerate(col_names):
+            instance[col] = row[i]
+        instances.append(instance)
+    return instances
+
+def save_sdr_instance(data):
+    """Create or update an SDR hardware profile."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    
+    instance_id = data.get('id')
+    name = data.get('name', 'Ny mottagare')
+    freq = data.get('frequency', '169.8M')
+    gain = data.get('gain', 'auto')
+    serial = data.get('device_serial', '')
+    ppm = data.get('ppm_error', '0')
+    sample_rate = data.get('sample_rate', '22050')
+    resample_rate = data.get('resample_rate', '22050')
+    dc = data.get('enable_dc_removal', 'true')
+    deemp = data.get('enable_deemp', 'true')
+    verb = data.get('multimon_verbosity', '1')
+    charset = data.get('multimon_charset', 'SE')
+    fmt = data.get('multimon_format', 'auto')
+    inp = data.get('multimon_input_type', 'raw')
+    enabled = data.get('enabled', 1)
+
+    if instance_id:
+        c.execute('''
+            UPDATE sdr_instances SET 
+                name=?, frequency=?, gain=?, device_serial=?, ppm_error=?,
+                sample_rate=?, resample_rate=?, enable_dc_removal=?, enable_deemp=?,
+                multimon_verbosity=?, multimon_charset=?, multimon_format=?,
+                multimon_input_type=?, enabled=?
+            WHERE id=?
+        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, verb, charset, fmt, inp, enabled, instance_id))
+    else:
+        c.execute('''
+            INSERT INTO sdr_instances (
+                name, frequency, gain, device_serial, ppm_error,
+                sample_rate, resample_rate, enable_dc_removal, enable_deemp,
+                multimon_verbosity, multimon_charset, multimon_format,
+                multimon_input_type, enabled
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, verb, charset, fmt, inp, 1))
+        
+    conn.commit()
+    conn.close()
+
+def delete_sdr_instance(instance_id):
+    """Remove a hardware profile."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('DELETE FROM sdr_instances WHERE id = ?', (instance_id,))
+    conn.commit()
+    conn.close()
+
+def toggle_sdr_instance(instance_id, enabled):
+    """Enable or disable an SDR instance."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('UPDATE sdr_instances SET enabled = ? WHERE id = ?', (1 if enabled else 0, instance_id))
     conn.commit()
     conn.close()

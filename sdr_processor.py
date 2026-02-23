@@ -6,7 +6,8 @@ import os
 import signal
 import time
 import sys
-from database import save_message, get_settings, get_alias_info, check_alert_words
+from queue import Empty
+from database import save_message, get_alias_info, check_alert_words, get_sdr_instances
 from mqtt_client import publish_message
 
 logger = logging.getLogger(__name__)
@@ -32,7 +33,7 @@ new_message_callbacks = []
 def on_new_message(callback):
     new_message_callbacks.append(callback)
 
-def parse_multimon_line(line, settings):
+def parse_multimon_line(line, charset):
     # Example format: POCSAG1200: Address: 1234567  Function: 3  Alpha:   THIS IS A TEST MESSAGE<NUL>
     if "POCSAG" in line and "Alpha:" in line:
         try:
@@ -62,7 +63,7 @@ def parse_multimon_line(line, settings):
                 message = message.replace('<NUL>', '').replace('<EOT>', '').strip()
                 
                 # Apply Swedish character translation IF not using native charset support
-                if settings.get('multimon_charset', 'SE') != 'SE':
+                if charset != 'SE':
                     message = translate_swedish_chars(message)
                 
                 return {
@@ -76,212 +77,224 @@ def parse_multimon_line(line, settings):
             return None
     return None
 
-# Global references to the subprocesses and the worker thread
-current_p1 = None
-current_p2 = None
+# Supervisor state
+active_instances = {} # instance_id -> { 'p1': proc, 'p2': proc, 'config': dict, 'stop_event': Event }
 sdr_thread = None
-restart_event = threading.Event()
+sync_event = threading.Event()
+
+def monitor_instance(instance_id, p1, p2, stop_event, config):
+    """Monitors the output of a single SDR instance (rtl_fm | multimon-ng)."""
+    logger.info(f"Monitor thread started for instance {instance_id} ({config['name']})")
+    
+    # Stderr logging for rtl_fm
+    def log_p1_stderr(p_err):
+        try:
+            for err_line in iter(p_err.readline, b''):
+                if stop_event.is_set(): break
+                if err_line:
+                    decoded_line = err_line.decode('utf-8', errors='replace').strip()
+                    if "Frequency correction" in decoded_line or "Using device" in decoded_line:
+                        logger.info(f"[{config['name']}] {decoded_line}")
+                    else:
+                        logger.debug(f"[{config['name']}] rtl_fm: {decoded_line}")
+        except Exception:
+            pass
+
+    stderr_thread = threading.Thread(target=log_p1_stderr, args=(p1.stderr,), daemon=True)
+    stderr_thread.start()
+
+    try:
+        while not stop_event.is_set():
+            line = p2.stdout.readline()
+            if not line:
+                if p2.poll() is not None or p1.poll() is not None:
+                    logger.warning(f"Processes for instance {instance_id} ({config['name']}) died.")
+                    break
+                time.sleep(0.1)
+                continue
+            
+            line = line.strip()
+            if not line: continue
+            
+            if "POCSAG" in line and "Alpha:" in line:
+                logger.info(f"[{config['name']}] RAW: {line}")
+                parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
+                
+                if parsed:
+                    address = parsed['address']
+                    message = parsed['message']
+                    bitrate = parsed['bitrate']
+                    function_code = parsed['function']
+                    freq = config.get('frequency', 'Unknown')
+
+                    alias_info = get_alias_info(address)
+                    alias = alias_info['alias'] if alias_info else ''
+                    is_hidden = alias_info['is_hidden'] if alias_info else False
+                    
+                    if is_hidden:
+                        logger.info(f"[{config['name']}] DROPPED (Hidden Alias) -> Address: {address}")
+                        for cb in list(new_message_callbacks):
+                            try: cb({'type': 'ping'})
+                            except Exception: pass
+                        continue
+                        
+                    logger.info(f"[{config['name']}] DECODED -> Address: {address}, Alias: {alias}, Msg: {message}")
+                    
+                    alert_match = check_alert_words(message)
+                    msg_id, timestamp = save_message(address, message, alias, function_code, bitrate, frequency=freq)
+                    
+                    metadata = {
+                        'bitrate': bitrate,
+                        'function': function_code,
+                        'frequency': freq,
+                        'alert_word': alert_match['word'] if alert_match else None,
+                        'alert_color': alert_match['color'] if alert_match else None,
+                        'sdr_name': config['name']
+                    }
+                    
+                    publish_message(address, message, timestamp, alias, metadata=metadata)
+                    
+                    msg_data = {
+                        'type': 'message', 'id': msg_id, 'timestamp': timestamp,
+                        'address': address, 'message': message, 'alias': alias
+                    }
+                    msg_data.update(metadata)
+                    for cb in list(new_message_callbacks):
+                        try: cb(msg_data)
+                        except Exception as e:
+                            logger.error(f"Error in SSE callback: {e}")
+                            if cb in new_message_callbacks: new_message_callbacks.remove(cb)
+    except Exception as e:
+        logger.error(f"Error in monitor thread for {config['name']}: {e}")
+    finally:
+        logger.info(f"Monitor thread for {config['name']} exiting.")
+        # Trigger a sync to restart this instance if it wasn't deliberately stopped
+        if not stop_event.is_set():
+            sync_event.set()
+
+def start_instance(config):
+    """Starts the subprocesses for a single SDR instance."""
+    freq = config.get('frequency', '169.8M')
+    gain = config.get('gain', 'auto')
+    serial = config.get('device_serial', '')
+    ppm = config.get('ppm_error', '0')
+    sample_rate = config.get('sample_rate', '22050')
+    resample_rate = config.get('resample_rate', '22050')
+    enable_dc = str(config.get('enable_dc_removal', 'true')).lower() == 'true'
+    enable_deemp = str(config.get('enable_deemp', 'true')).lower() == 'true'
+    
+    rtl_cmd = ['rtl_fm', '-f', freq, '-M', 'fm', '-s', sample_rate, '-r', resample_rate]
+    if enable_dc: rtl_cmd.extend(['-E', 'dc'])
+    if enable_deemp: rtl_cmd.extend(['-E', 'deemp'])
+    if ppm and ppm != '0': rtl_cmd.extend(['-p', ppm])
+    if gain != 'auto' and gain.strip() != '': rtl_cmd.extend(['-g', gain])
+    if serial: rtl_cmd.extend(['-d', serial])
+
+    verbosity = config.get('multimon_verbosity', '1')
+    charset = config.get('multimon_charset', 'SE')
+    fmt = config.get('multimon_format', 'auto')
+    inp = config.get('multimon_input_type', 'raw')
+    
+    multimon_cmd = [
+        'multimon-ng', '-v', verbosity, '-C', charset, '-f', fmt, '-t', inp,
+        '-a', 'POCSAG512', '-a', 'POCSAG1200', '-a', 'POCSAG2400', '-'
+    ]
+
+    logger.info(f"Starting {config['name']}: {' '.join(rtl_cmd)} | {' '.join(multimon_cmd)}")
+    
+    try:
+        p1 = subprocess.Popen(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)
+        p2 = subprocess.Popen(multimon_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+        p1.stdout.close() # Allow p1 to receive SIGPIPE if p2 exits
+        return p1, p2
+    except Exception as e:
+        logger.error(f"Failed to start instance {config['name']}: {e}")
+        return None, None
+
+def stop_instance_procs(instance_id):
+    """Stops the processes and threads for a specific instance."""
+    if instance_id in active_instances:
+        inst = active_instances[instance_id]
+        logger.info(f"Stopping SDR instance: {inst['config']['name']}")
+        inst['stop_event'].set()
+        
+        # Kill processes
+        for p in [inst['p2'], inst['p1']]:
+            if p:
+                try:
+                    if p.poll() is None:
+                        p.kill()
+                        p.wait(timeout=2)
+                except Exception: pass
+        
+        del active_instances[instance_id]
 
 def run_sdr_process():
-    global current_p1, current_p2
+    """Supervisor loop that synchronizes active processes with DB config."""
+    logger.info("SDR Supervisor started.")
     
     while True:
-        restart_event.clear()
-        
-        # Reload settings from DB
-        settings = get_settings()
-        freq = settings.get('frequency', '169.8M')
-        gain = settings.get('gain', 'auto')
-        device_serial = settings.get('device_serial', '')
-        sample_rate = settings.get('sample_rate', '1000k')
-        resample_rate = settings.get('resample_rate', '22050')
-        enable_dc = settings.get('enable_dc_removal', 'true').lower() == 'true'
-        enable_deemp = settings.get('enable_deemp', 'true').lower() == 'true'
-        ppm_error = settings.get('ppm_error', '0')
-        
-        rtl_cmd = ['rtl_fm', '-f', freq, '-M', 'fm', '-s', sample_rate, '-r', resample_rate]
-        
-        if enable_dc:
-            rtl_cmd.extend(['-E', 'dc'])
-        if enable_deemp:
-            rtl_cmd.extend(['-E', 'deemp'])
-            
-        if ppm_error and ppm_error != '0':
-            rtl_cmd.extend(['-p', ppm_error])
-            
-        if gain != 'auto' and gain.strip() != '':
-            rtl_cmd.extend(['-g', gain])
-            
-        if device_serial:
-            rtl_cmd.extend(['-d', device_serial])
-            logger.info(f"Using RTL-SDR serial: {device_serial}")
-        else:
-            logger.info("Using default local USB RTL-SDR device")
-
-        verbosity = settings.get('multimon_verbosity', '1')
-        charset = settings.get('multimon_charset', 'SE')
-        msg_format = settings.get('multimon_format', 'auto')
-        input_type = settings.get('multimon_input_type', 'raw')
-        
-        multimon_cmd = [
-            'multimon-ng', 
-            '-v', verbosity,
-            '-C', charset,
-            '-f', msg_format,
-            '-t', input_type,
-            '-a', 'POCSAG512', 
-            '-a', 'POCSAG1200', 
-            '-a', 'POCSAG2400', 
-            '-'
-        ]
-
-        logger.info(f"Starting rtl_fm: {' '.join(rtl_cmd)}")
-        logger.info(f"Starting multimon-ng: {' '.join(multimon_cmd)}")
-
         try:
-            current_p1 = subprocess.Popen(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)
-            current_p2 = subprocess.Popen(multimon_cmd, stdin=current_p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+            sync_event.clear()
+            instances_from_db = get_sdr_instances()
+            db_ids = [inst['id'] for inst in instances_from_db]
             
-            # Read stderr in a separate thread so it doesn't block p1
-            def log_p1_stderr(p_err):
-                try:
-                    for err_line in iter(p_err.readline, b''):
-                        if err_line:
-                            decoded_line = err_line.decode('utf-8', errors='replace').strip()
-                            logger.error(f"rtl_fm stderr: {decoded_line}")
-                except (ValueError, Exception) as e:
-                    # Occurs when the file is closed on terminated process
-                    pass
+            # 1. Stop instances that are deleted or disabled
+            for active_id in list(active_instances.keys()):
+                db_entry = next((i for i in instances_from_db if i['id'] == active_id), None)
+                if not db_entry or not db_entry.get('enabled'):
+                    stop_instance_procs(active_id)
             
-            stderr_thread = threading.Thread(target=log_p1_stderr, args=(current_p1.stderr,), daemon=True)
-            stderr_thread.start()
-
-            current_p1.stdout.close() # Allow p1 to receive a SIGPIPE if p2 exits
-
-            # Poll for output or restart requests
-            while not restart_event.is_set():
-                line = ""
-                try:
-                    line = current_p2.stdout.readline()
-                except Exception:
-                    # Likely process killed
-                    break
-
-                if not line:
-                    p2_status = current_p2.poll()
-                    p1_status = current_p1.poll()
-                    if p2_status is not None or p1_status is not None:
-                        logger.warning(f"SDR processes exited. p2 logic: {p2_status}, p1 status: {p1_status}")
-                        break
-                    time.sleep(0.1)
-                    continue
-
-                line = line.strip()
-                if not line:
+            # 2. Start or update instances
+            for db_inst in instances_from_db:
+                if not db_inst.get('enabled', 1):
                     continue
                 
-                if "POCSAG" in line and "Alpha:" in line:
-                    logger.info(f"RAW: {line}")
-                    parsed = parse_multimon_line(line, settings)
-                    
-                    if parsed:
-                        address = parsed['address']
-                        message = parsed['message']
-                        bitrate = parsed['bitrate']
-                        function_code = parsed['function']
-
-                        alias_info = get_alias_info(address)
-                        alias = alias_info['alias'] if alias_info else ''
-                        is_hidden = alias_info['is_hidden'] if alias_info else False
-                        
-                        if is_hidden:
-                            logger.info(f"DROPPED (Hidden Alias) -> Address: {address}, Msg: {message}")
-                            # Send a ping so the UI knows activity happened
-                            for cb in list(new_message_callbacks):
-                                try:
-                                    cb({'type': 'ping'})
-                                except Exception:
-                                    pass
-                            continue
-                            
-                        logger.info(f"DECODED -> Bitrate: {bitrate}, Function: {function_code}, Address: {address}, Alias: {alias}, Msg: {message}")
-                        
-                        # Check for alert words in the backend for MQTT enrichment
-                        alert_match = check_alert_words(message)
-                        
-                        msg_id, timestamp = save_message(address, message, alias, function_code, bitrate, frequency=freq)
-                        
-                        # Prepare enrichment metadata for MQTT and SSE
-                        metadata = {
-                            'bitrate': bitrate,
-                            'function': function_code,
-                            'frequency': freq,
-                            'alert_word': alert_match['word'] if alert_match else None,
-                            'alert_color': alert_match['color'] if alert_match else None
+                instance_id = db_inst['id']
+                
+                # Check if we need to start or restart
+                should_start = False
+                if instance_id not in active_instances:
+                    should_start = True
+                else:
+                    # Check if config changed
+                    if active_instances[instance_id]['config'] != db_inst:
+                        logger.info(f"Config change detected for {db_inst['name']}. Restarting...")
+                        stop_instance_procs(instance_id)
+                        should_start = True
+                
+                if should_start:
+                    p1, p2 = start_instance(db_inst)
+                    if p1 and p2:
+                        stop_event = threading.Event()
+                        monitor_thread = threading.Thread(
+                            target=monitor_instance, 
+                            args=(instance_id, p1, p2, stop_event, db_inst),
+                            daemon=True
+                        )
+                        active_instances[instance_id] = {
+                            'p1': p1, 'p2': p2, 
+                            'config': db_inst, 
+                            'stop_event': stop_event,
+                            'thread': monitor_thread
                         }
-                        
-                        publish_message(address, message, timestamp, alias, metadata=metadata)
-                        
-                        msg_data = {
-                            'type': 'message',
-                            'id': msg_id,
-                            'timestamp': timestamp,
-                            'address': address,
-                            'message': message,
-                            'alias': alias
-                        }
-                        msg_data.update(metadata)
-                        for cb in list(new_message_callbacks):
-                            try:
-                                cb(msg_data)
-                            except Exception as e:
-                                logger.error(f"Error in SSE callback: {e}")
-                                new_message_callbacks.remove(cb)
-
-            # Cleanup before loop repeats or exits
-            cleanup_subprocesses()
-
-            if not restart_event.is_set():
-                logger.warning("SDR processes exited unexpectedly. Restarting in 5 seconds...")
-                time.sleep(5)
+                        monitor_thread.start()
+                    else:
+                        logger.error(f"Failed to start {db_inst['name']}. Retrying next sync.")
 
         except Exception as e:
-            logger.error(f"SDR process failed: {e}")
-            cleanup_subprocesses()
-            time.sleep(5) # Delay before attempting restart on crash
-
-def cleanup_subprocesses():
-    global current_p1, current_p2
-    try:
-        if current_p2:
-            if current_p2.poll() is None:
-                current_p2.kill()
-                current_p2.wait(timeout=2)
-            if current_p2.stdout:
-                current_p2.stdout.close()
-    except Exception:
-        pass
-    try:
-        if current_p1:
-            if current_p1.poll() is None:
-                current_p1.kill()
-                current_p1.wait(timeout=2)
-            if current_p1.stderr:
-                current_p1.stderr.close()
-    except Exception:
-        pass
+            logger.error(f"Error in supervisor loop: {e}")
         
-    current_p1 = None
-    current_p2 = None
+        # Wait for either a sync event (settings saved) or periodic check
+        sync_event.wait(timeout=10)
 
 def start_sdr_thread():
     global sdr_thread
-    sdr_thread = threading.Thread(target=run_sdr_process, daemon=True)
-    sdr_thread.start()
+    if not sdr_thread or not sdr_thread.is_alive():
+        sdr_thread = threading.Thread(target=run_sdr_process, daemon=True)
+        sdr_thread.start()
 
 def restart_sdr():
-    """Trigger a restart of the SDR processing thread to apply new settings."""
-    logger.info("Restarting SDR processes to apply new settings...")
-    restart_event.set()
-    # Immediately kill processes to force the thread to loop and reload settings
-    cleanup_subprocesses()
+    """Trigger the supervisor to re-sync with the database."""
+    logger.info("Sync requested for Multi-SDR supervisor.")
+    sync_event.set()

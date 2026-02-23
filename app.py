@@ -10,7 +10,8 @@ from database import (
     init_db, get_recent_messages, get_settings, 
     update_setting, get_aliases, save_alias, 
     delete_alias, get_alert_words, save_alert_word, 
-    delete_alert_word, get_default_settings
+    delete_alert_word, get_default_settings,
+    get_sdr_instances, save_sdr_instance, delete_sdr_instance, toggle_sdr_instance
 )
 
 try:
@@ -139,6 +140,32 @@ def handle_settings():
     # Filter out rtl_tcp if it still exists in older db
     settings.pop('rtl_tcp_address', None)
     return jsonify(settings)
+
+@app.route('/api/sdr', methods=['GET', 'POST'])
+def handle_sdr_instances():
+    if request.method == 'POST':
+        data = request.json
+        save_sdr_instance(data)
+        restart_sdr()
+        return jsonify({"status": "success"})
+    
+    # GET request
+    instances = get_sdr_instances()
+    return jsonify(instances)
+
+@app.route('/api/sdr/<int:instance_id>', methods=['DELETE'])
+def delete_sdr(instance_id):
+    delete_sdr_instance(instance_id)
+    restart_sdr()
+    return jsonify({"status": "success"})
+
+@app.route('/api/sdr/<int:instance_id>/toggle', methods=['POST'])
+def toggle_sdr(instance_id):
+    data = request.json
+    enabled = data.get('enabled', True)
+    toggle_sdr_instance(instance_id, enabled)
+    restart_sdr()
+    return jsonify({"status": "success"})
 
 @app.route('/api/aliases', methods=['GET', 'POST', 'DELETE'])
 def handle_aliases():
