@@ -150,7 +150,7 @@
 
                         for (const [address, info] of Object.entries(data)) {
                             const isHidden = info.is_hidden;
-                            const statusBadge = isHidden ? '<span class="badge danger">Muted</span>' : '<span class="badge success">Aktiv</span>';
+                            const statusBadge = isHidden ? '<span class="badge danger">Muted</span>' : '<span class="badge success">Active</span>';
 
                             tbody.innerHTML += `
                                 <tr>
@@ -158,18 +158,18 @@
                                     <td>${info.alias}</td>
                                     <td>${statusBadge}</td>
                                     <td>
-                                        <button class="action-btn delete-btn" onclick="deleteAlias('${address}')">Ta bort</button>
-                                        <button class="action-btn edit-btn" onclick="editAlias('${address}', '${info.alias}', ${isHidden})">Redigera</button>
+                                        <button class="action-btn delete-btn" onclick="deleteAlias('${address}')">Remove</button>
+                                        <button class="action-btn edit-btn" onclick="editAlias('${address}', '${info.alias}', ${isHidden})">Edit</button>
                                     </td>
                                 </tr>
                             `;
                         }
                     })
-                    .catch(err => console.error("Fel vid hämtning:", err));
+                    .catch(err => console.error("Error fetching:", err));
             }
 
             window.deleteAlias = function (address) {
-                if (!confirm(`Är du säker på att du vill ta bort alias för ${address}?`)) return;
+                if (!confirm(`Are you sure you want to delete the alias for ${address}?`)) return;
 
                 fetch('/api/aliases', {
                     method: 'DELETE',
@@ -179,7 +179,7 @@
                     .then(data => {
                         if (data.status === 'success') {
                             loadAliases();
-                            showStatus('Alias borttaget!', 'success');
+                            showStatus('Alias deleted!', 'success');
                         }
                     });
             };
@@ -194,7 +194,7 @@
 
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
-                saveBtn.innerText = 'Sparar...';
+                saveBtn.innerText = 'Saving...';
                 saveBtn.disabled = true;
 
                 const payload = {
@@ -211,17 +211,17 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data.status === 'success') {
-                            showStatus('Alias sparades!', 'success');
+                            showStatus('Alias saved!', 'success');
                             loadAliases();
                             document.getElementById('address').value = '';
                             document.getElementById('alias').value = '';
                             document.getElementById('is_hidden').checked = false;
                         } else {
-                            showStatus('Något gick fel: ' + data.message, 'error');
+                            showStatus('Something went wrong: ' + data.message, 'error');
                         }
                     })
                     .finally(() => {
-                        saveBtn.innerText = 'Spara Alias';
+                        saveBtn.innerText = 'Save Alias';
                         saveBtn.disabled = false;
                     });
             });

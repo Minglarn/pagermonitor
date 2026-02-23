@@ -200,7 +200,7 @@
         function renderSDRList() {
             const list = document.getElementById('sdrList');
             if (currentSDRs.length === 0) {
-                list.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 2rem;">Inga mottagare tillagda än.</p>';
+                list.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 2rem;">No receivers added yet.</p>';
                 return;
             }
 
@@ -214,18 +214,18 @@
                         </label>
                     </div>
                     <div class="sdr-card-body">
-                        <div class="sdr-info"><span>Frekvens:</span> <strong>${sdr.frequency}</strong></div>
-                        <div class="sdr-info"><span>Serial:</span> <strong>${sdr.device_serial || 'Standard'}</strong></div>
+                        <div class="sdr-info"><span>Frequency:</span> <strong>${sdr.frequency}</strong></div>
+                        <div class="sdr-info"><span>Serial:</span> <strong>${sdr.device_serial || 'Default'}</strong></div>
                     </div>
                     <div class="sdr-card-actions">
-                        <a href="/settings/sdr/${sdr.id}" class="secondary-btn" style="text-decoration: none; display: inline-block; text-align: center;">Hantera inställningar</a>
+                        <a href="/settings/sdr/${sdr.id}" class="secondary-btn" style="text-decoration: none; display: inline-block; text-align: center;">Manage Settings</a>
                     </div>
                 </div>
             `).join('');
         }
 
         function addNewSDR() {
-            const name = prompt('Ange namn för den nya mottagaren:');
+            const name = prompt('Enter name for the new receiver:');
             if (!name) return;
 
             fetch('/api/sdr', {
@@ -245,7 +245,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ enabled })
             }).then(() => {
-                showStatus('Mottagare ' + (enabled ? 'aktiverad' : 'inaktiverad'), 'success');
+                showStatus('Receiver ' + (enabled ? 'activated' : 'deactivated'), 'success');
                 loadSDRs();
             });
         }
@@ -279,7 +279,7 @@
             })
                 .then(res => res.json())
                 .then(data => {
-                    showStatus('Inställningar sparades!', 'success');
+                    showStatus('Settings saved!', 'success');
                 })
                 .finally(() => btn.disabled = false);
         });

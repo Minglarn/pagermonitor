@@ -214,14 +214,12 @@ body {
     flex-direction: column;
 }
 
-.dashboard-page,
-.dashboard-page .container {
-    height: 100vh;
-    overflow: hidden;
+/* Dashboard layout refinements */
+.dashboard-page {
+    overflow-y: auto;
 }
 
 .dashboard-page main {
-    overflow-y: auto;
     min-height: 0;
 }
 

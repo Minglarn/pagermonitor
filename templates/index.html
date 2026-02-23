@@ -305,7 +305,7 @@
                     const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
                     const freqTag = alarm.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${alarm.frequency}</span>` : '';
 
-                    const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta" style="margin-left: 5px;">Dubblett</span>` : '';
+                    const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta" style="margin-left: 5px;">Duplicate</span>` : '';
 
                     tr.innerHTML = `
                         <td class="ts-cell">${formattedTime}</td>
@@ -386,7 +386,7 @@
 
             aliasModalForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                modalSaveBtn.innerText = 'Sparar...';
+                modalSaveBtn.innerText = 'Saving...';
                 modalSaveBtn.disabled = true;
 
                 const payload = {
@@ -416,17 +416,17 @@
 
                             closeAliasModal();
                         } else {
-                            modalStatus.innerText = 'Något gick fel: ' + data.message;
+                            modalStatus.innerText = 'Something went wrong: ' + data.message;
                             modalStatus.className = 'status-message error show';
                         }
                     })
                     .catch(err => {
                         console.error(err);
-                        modalStatus.innerText = 'Nätverksfel vid sparning.';
+                        modalStatus.innerText = 'Network error while saving.';
                         modalStatus.className = 'status-message error show';
                     })
                     .finally(() => {
-                        modalSaveBtn.innerText = 'Spara Alias';
+                        modalSaveBtn.innerText = 'Save Alias';
                         modalSaveBtn.disabled = false;
                         setTimeout(() => modalStatus.classList.remove('show'), 5000);
                     });

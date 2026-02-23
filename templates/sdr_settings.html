@@ -281,14 +281,14 @@
             })
                 .then(res => res.json())
                 .then(data => {
-                    showStatus('Inställningar sparade!', 'success');
+                    showStatus('Settings saved!', 'success');
                     setTimeout(() => { window.location.href = '/settings'; }, 1000);
                 })
-                .catch(err => showStatus('Kunde inte spara.', 'error'));
+                .catch(err => showStatus('Could not save.', 'error'));
         });
 
         document.getElementById('deleteBtn').onclick = () => {
-            if (!confirm('Är du säker på att du vill ta bort denna mottagare?')) return;
+            if (!confirm('Are you sure you want to delete this receiver?')) return;
             fetch(`/api/sdr/${sdrId}`, { method: 'DELETE' })
                 .then(() => {
                     window.location.href = '/settings';
