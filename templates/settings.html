@@ -146,9 +146,34 @@
 
                             <div class="form-group checkbox-group" style="margin-top: 0.5rem;">
                                 <label style="font-size: 0.9rem;">
-                                    <input type="checkbox" id="garbage_filter" name="garbage_filter" checked>
-                                    Enable Garbage Filter (drop garbled/noise messages)
+                                    <input type="checkbox" id="garbage_filter" name="garbage_filter" checked
+                                        onchange="document.getElementById('filterSensitivityGroup').style.display = this.checked ? 'block' : 'none'">
+                                    Enable Garbage Filter
                                 </label>
+                            </div>
+
+                            <div id="filterSensitivityGroup" class="form-group" style="margin-top: 0.5rem;">
+                                <label for="garbage_sensitivity_slider" style="font-size: 0.85rem;">
+                                    Filter Sensitivity: <span id="sensitivity_val">50</span>%
+                                </label>
+                                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                    <span
+                                        style="font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap;">Lenient</span>
+                                    <input type="range" id="garbage_sensitivity_slider" min="10" max="90" step="5"
+                                        value="50" style="flex: 1;"
+                                        oninput="document.getElementById('sensitivity_val').innerText = this.value">
+                                    <span
+                                        style="font-size: 0.7rem; color: var(--text-secondary); white-space: nowrap;">Strict</span>
+                                </div>
+                                <small
+                                    style="color: var(--text-secondary); font-size: 0.72rem; margin-top: 0.3rem; display: block;">
+                                    The filter scores each message by counting readable characters (letters, digits,
+                                    punctuation)
+                                    vs. control characters and random symbols. <b>Lenient</b> allows more through (good
+                                    if you receive
+                                    short or symbol-heavy pager messages). <b>Strict</b> filters aggressively (best for
+                                    clean feeds).
+                                </small>
                             </div>
 
                             <div class="form-actions" style="margin-top: 1rem;">
@@ -184,6 +209,11 @@
                         document.getElementById('font_size_val').innerText = data.message_font_size;
                     }
                     document.getElementById('garbage_filter').checked = (data.garbage_filter !== 'false');
+                    const sens = data.garbage_filter_sensitivity || '50';
+                    document.getElementById('garbage_sensitivity_slider').value = sens;
+                    document.getElementById('sensitivity_val').innerText = sens;
+                    document.getElementById('filterSensitivityGroup').style.display =
+                        (data.garbage_filter !== 'false') ? 'block' : 'none';
                     updatePreview();
                 });
         }
@@ -266,7 +296,8 @@
             const payload = {
                 message_font: document.getElementById('message_font').value,
                 message_font_size: document.getElementById('message_font_size').value,
-                garbage_filter: document.getElementById('garbage_filter').checked ? 'true' : 'false'
+                garbage_filter: document.getElementById('garbage_filter').checked ? 'true' : 'false',
+                garbage_filter_sensitivity: document.getElementById('garbage_sensitivity_slider').value
             };
 
             const themeVal = document.getElementById('theme').value;

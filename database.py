@@ -24,7 +24,8 @@ def get_default_settings():
         'ppm_error': '0',
         'enable_deemp': 'true',
         'multimon_input_type': 'raw',
-        'garbage_filter': 'true'
+        'garbage_filter': 'true',
+        'garbage_filter_sensitivity': '50'
     }
 
 def init_db():
