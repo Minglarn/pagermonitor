@@ -93,6 +93,14 @@ def stats_alert_hits():
     rows = c.fetchall()
     conn.close()
     return jsonify([{"word": r[0], "hits": r[1]} for r in rows])
+@app.route('/api/stats/freq-hits')
+def stats_freq_hits():
+    conn = sqlite3.connect(database.DB_PATH)
+    c = conn.cursor()
+    c.execute('SELECT frequency, COUNT(*) AS hits FROM messages GROUP BY frequency ORDER BY hits DESC')
+    rows = c.fetchall()
+    conn.close()
+    return jsonify([{"frequency": r[0], "hits": r[1]} for r in rows])
 
 
 @app.route('/api/messages')

@@ -65,6 +65,13 @@
                         <canvas id="alertHitsChart"></canvas>
                     </div>
                 </section>
+
+                <section class="glass-panel">
+                    <h2>Aktivitet per Frekvens</h2>
+                    <div style="height: 300px;">
+                        <canvas id="freqHitsChart"></canvas>
+                    </div>
+                </section>
             </div>
 
             <section class="glass-panel" style="margin-top: 1.5rem;">
@@ -81,6 +88,7 @@
                         <thead>
                             <tr>
                                 <th>Tid</th>
+                                <th>Frekvens</th>
                                 <th>CapCode (Alias)</th>
                                 <th>Meddelande</th>
                             </tr>
@@ -155,6 +163,36 @@
                         }
                     });
                 }
+
+                // Frequency hits
+                const freqHits = await fetchJSON('/api/stats/freq-hits');
+                if (freqHits.length > 0) {
+                    const freqLabels = freqHits.map(f => f.frequency);
+                    const freqCounts = freqHits.map(f => f.hits);
+                    new Chart(document.getElementById('freqHitsChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: freqLabels,
+                            datasets: [{
+                                label: 'Meddelanden',
+                                data: freqCounts,
+                                backgroundColor: 'rgba(168, 85, 247, 0.6)',
+                                borderColor: 'rgba(168, 85, 247, 1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            indexAxis: 'y',
+                            plugins: { legend: { display: false } },
+                            scales: {
+                                x: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                                y: { grid: { display: false } }
+                            }
+                        }
+                    });
+                }
             } catch (err) {
                 console.error('Error rendering global charts:', err);
             }
@@ -178,8 +216,10 @@
                         const tr = document.createElement('tr');
                         const time = new Date(m.timestamp).toLocaleTimeString('sv-SE');
                         const address = m.alias || m.address;
+                        const freq = m.frequency || '-';
                         tr.innerHTML = `
                             <td class="ts-cell">${time}</td>
+                            <td class="addr-cell"><span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">${freq}</span></td>
                             <td class="addr-cell"><span class="badge">${address}</span></td>
                             <td class="msg-cell">${m.message}</td>
                         `;

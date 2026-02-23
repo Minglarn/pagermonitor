@@ -194,12 +194,13 @@ def run_sdr_process():
                         # Check for alert words in the backend for MQTT enrichment
                         alert_match = check_alert_words(message)
                         
-                        timestamp = save_message(address, message, alias, function_code, bitrate)
+                        timestamp = save_message(address, message, alias, function_code, bitrate, frequency=freq)
                         
                         # Prepare enrichment metadata for MQTT and SSE
                         metadata = {
                             'bitrate': bitrate,
                             'function': function_code,
+                            'frequency': freq,
                             'alert_word': alert_match['word'] if alert_match else None,
                             'alert_color': alert_match['color'] if alert_match else None
                         }

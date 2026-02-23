@@ -20,12 +20,13 @@ def init_db():
             message TEXT NOT NULL,
             alias TEXT DEFAULT '',
             function_code INTEGER DEFAULT 0,
-            bitrate TEXT DEFAULT ''
+            bitrate TEXT DEFAULT '',
+            frequency TEXT DEFAULT ''
         )
     ''')
     
     # Try adding columns to existing messages table
-    for col, type_info in [('alias', 'TEXT DEFAULT ""'), ('function_code', 'INTEGER DEFAULT 0'), ('bitrate', 'TEXT DEFAULT ""')]:
+    for col, type_info in [('alias', 'TEXT DEFAULT ""'), ('function_code', 'INTEGER DEFAULT 0'), ('bitrate', 'TEXT DEFAULT ""'), ('frequency', 'TEXT DEFAULT ""')]:
         try:
             c.execute(f'ALTER TABLE messages ADD COLUMN {col} {type_info}')
         except sqlite3.OperationalError:
@@ -82,12 +83,12 @@ def init_db():
     conn.commit()
     conn.close()
 
-def save_message(address, message, alias='', function_code=0, bitrate=''):
+def save_message(address, message, alias='', function_code=0, bitrate='', frequency=''):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     timestamp = datetime.now().isoformat()
-    c.execute('INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate) VALUES (?, ?, ?, ?, ?, ?)',
-              (timestamp, address, message, alias, function_code, bitrate))
+    c.execute('INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              (timestamp, address, message, alias, function_code, bitrate, frequency))
     conn.commit()
     conn.close()
     return timestamp
@@ -139,6 +140,8 @@ def get_recent_messages(limit=100):
             msg['function_code'] = row[col_names.index('function_code')]
         if 'bitrate' in col_names:
             msg['bitrate'] = row[col_names.index('bitrate')]
+        if 'frequency' in col_names:
+            msg['frequency'] = row[col_names.index('frequency')]
             
         messages.append(msg)
     return messages

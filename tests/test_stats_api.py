@@ -79,3 +79,14 @@ def test_stats_alert_hits(client):
     assert isinstance(data, list)
     # Should have entry for TESTWORD
     assert any(entry['word'] == 'TESTWORD' for entry in data)
+
+def test_stats_freq_hits(client):
+    from database import save_message
+    save_message('11111', 'Msg 1', frequency='169.8M')
+    save_message('22222', 'Msg 2', frequency='170.0M')
+    resp = client.get('/api/stats/freq-hits')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert isinstance(data, list)
+    assert any(entry['frequency'] == '169.8M' for entry in data)
+    assert any(entry['frequency'] == '170.0M' for entry in data)

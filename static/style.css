@@ -108,7 +108,7 @@ body {
 }
 
 .container {
-    max-width: 1200px;
+    max-width: 75%;
     margin: 0 auto;
     padding: 2rem;
 }
@@ -202,9 +202,8 @@ header p {
 }
 
 .table-container {
-    height: 65vh;
+    height: 85vh;
     min-height: 400px;
-    max-height: 800px;
     position: relative;
     overflow-x: auto;
     overflow-y: auto;
