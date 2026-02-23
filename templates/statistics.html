@@ -6,8 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Statistik – PagerMonitor</title>
     <link rel="stylesheet" href="/static/style.css?v=2">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
+        // Apply theme immediately to prevent flickering
+        (function () {
+            const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+
         // Helper to fetch JSON
         async function fetchJSON(url) {
             const res = await fetch(url);
@@ -18,6 +25,11 @@
 </head>
 
 <body>
+    <div class="background-effects">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+    </div>
+
     <div class="container">
         <nav class="top-nav">
             <a href="/" class="nav-link">Dashboard</a>
@@ -27,17 +39,44 @@
             <a href="/settings" class="nav-link">Inställningar</a>
         </nav>
         <header>
-            <h1>Statistik</h1>
-            <p>Analysera historisk data och alert‑ord.</p>
+            <h1><span class="highlight">Statistik</span> & Analys</h1>
+            <p>Analysera historisk data och alert‑ord hits.</p>
         </header>
         <main>
             <section class="glass-panel">
                 <h2>Välj datum</h2>
-                <input type="date" id="statsDate" />
+                <div class="form-group" style="max-width: 300px;">
+                    <input type="date" id="statsDate" />
+                </div>
             </section>
-            <section class="glass-panel">
+
+            <div class="stats-grid"
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+                <section class="glass-panel">
+                    <h2>Meddelanden per dag (30d)</h2>
+                    <div style="height: 300px;">
+                        <canvas id="countPerDayChart"></canvas>
+                    </div>
+                </section>
+
+                <section class="glass-panel">
+                    <h2>Alert-ord hits (Total)</h2>
+                    <div style="height: 300px;">
+                        <canvas id="alertHitsChart"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <section class="glass-panel" style="margin-top: 1.5rem;">
+                <h2>Meddelanden per timme (vald dag)</h2>
+                <div style="height: 300px;">
+                    <canvas id="countPerHourChart"></canvas>
+                </div>
+            </section>
+
+            <section class="glass-panel" style="margin-top: 1.5rem;">
                 <h2>Meddelanden för vald dag</h2>
-                <div id="dayTableContainer" class="table-container">
+                <div id="dayTableContainer" class="table-container" style="max-height: 500px;">
                     <table id="dayTable">
                         <thead>
                             <tr>
@@ -49,94 +88,167 @@
                         <tbody id="dayTableBody"></tbody>
                     </table>
                 </div>
-            </section>
-            <section class="glass-panel">
-                <h2>Antal meddelanden per dag (senaste 30 dagar)</h2>
-                <canvas id="countPerDayChart" height="200"></canvas>
-            </section>
-            <section class="glass-panel">
-                <h2>Meddelanden per timme (vald dag)</h2>
-                <canvas id="countPerHourChart" height="200"></canvas>
-            </section>
-            <section class="glass-panel">
-                <h2>Hits per alert‑ord</h2>
-                <canvas id="alertHitsChart" height="200"></canvas>
+                <div id="dayLoading" class="loading-state" style="display: none;">Hämtar data...</div>
             </section>
         </main>
     </div>
-    <script>
-        // Render charts after data is loaded
-        async function renderCharts() {
-            // Count per day
-            const perDay = await fetchJSON('/api/stats/count-per-day');
-            const dayLabels = perDay.map(d => d.day);
-            const dayCounts = perDay.map(d => d.count);
-            new Chart(document.getElementById('countPerDayChart'), {
-                type: 'bar',
-                data: {
-                    labels: dayLabels,
-                    datasets: [{ label: 'Meddelanden', data: dayCounts, backgroundColor: 'rgba(0,123,255,0.6)' }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
 
-            // Alert hits
-            const alertHits = await fetchJSON('/api/stats/alert-hits');
-            const alertLabels = alertHits.map(a => a.word);
-            const alertCounts = alertHits.map(a => a.hits);
-            new Chart(document.getElementById('alertHitsChart'), {
-                type: 'pie',
-                data: {
-                    labels: alertLabels,
-                    datasets: [{ data: alertCounts, backgroundColor: alertLabels.map(() => `hsl(${Math.random() * 360},70%,60%)`) }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
+    <script>
+        let dayChart = null;
+
+        // Render global charts
+        async function renderGlobalCharts() {
+            try {
+                // Count per day
+                const perDay = await fetchJSON('/api/stats/count-per-day');
+                if (perDay.length > 0) {
+                    const dayLabels = perDay.map(d => d.day);
+                    const dayCounts = perDay.map(d => d.count);
+                    new Chart(document.getElementById('countPerDayChart'), {
+                        type: 'bar',
+                        data: {
+                            labels: dayLabels,
+                            datasets: [{
+                                label: 'Antal meddelanden',
+                                data: dayCounts,
+                                backgroundColor: 'rgba(56, 189, 248, 0.6)',
+                                borderColor: 'rgba(56, 189, 248, 1)',
+                                borderWidth: 1,
+                                borderRadius: 4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { display: false }
+                            },
+                            scales: {
+                                y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                                x: { grid: { display: false } }
+                            }
+                        }
+                    });
+                }
+
+                // Alert hits
+                const alertHits = await fetchJSON('/api/stats/alert-hits');
+                if (alertHits.length > 0) {
+                    const alertLabels = alertHits.map(a => a.word);
+                    const alertCounts = alertHits.map(a => a.hits);
+                    new Chart(document.getElementById('alertHitsChart'), {
+                        type: 'doughnut',
+                        data: {
+                            labels: alertLabels,
+                            datasets: [{
+                                data: alertCounts,
+                                backgroundColor: alertLabels.map((_, i) => `hsl(${i * 60}, 70%, 60%)`),
+                                borderWidth: 0
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { position: 'right', labels: { color: '#e2e8f0' } }
+                            }
+                        }
+                    });
+                }
+            } catch (err) {
+                console.error('Error rendering global charts:', err);
+            }
         }
 
         async function loadDayData(date) {
-            const msgs = await fetchJSON(`/api/stats/day/${date}`);
-            const tbody = document.getElementById('dayTableBody');
-            tbody.innerHTML = '';
-            msgs.forEach(m => {
-                const tr = document.createElement('tr');
-                const time = new Date(m.timestamp).toLocaleString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                const address = m.alias || m.address;
-                const tdTime = `<td>${time}</td>`;
-                const tdAddr = `<td>${address}</td>`;
-                const tdMsg = `<td>${m.message}</td>`;
-                tr.innerHTML = tdTime + tdAddr + tdMsg;
-                tbody.appendChild(tr);
-            });
+            const tableBody = document.getElementById('dayTableBody');
+            const loading = document.getElementById('dayLoading');
+
+            tableBody.innerHTML = '';
+            loading.style.display = 'block';
+
+            try {
+                const msgs = await fetchJSON(`/api/stats/day/${date}`);
+                loading.style.display = 'none';
+
+                if (msgs.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 2rem;">Inga meddelanden för detta datum.</td></tr>';
+                } else {
+                    msgs.forEach(m => {
+                        const tr = document.createElement('tr');
+                        const time = new Date(m.timestamp).toLocaleTimeString('sv-SE');
+                        const address = m.alias || m.address;
+                        tr.innerHTML = `
+                            <td class="ts-cell">${time}</td>
+                            <td class="addr-cell"><span class="badge">${address}</span></td>
+                            <td class="msg-cell">${m.message}</td>
+                        `;
+                        tableBody.appendChild(tr);
+                    });
+                }
+
+                // Update hour chart
+                const perHour = await fetchJSON(`/api/stats/count-per-hour/${date}`);
+                const hourLabels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+                const hourCounts = Array(24).fill(0);
+
+                perHour.forEach(h => {
+                    hourCounts[parseInt(h.hour)] = h.count;
+                });
+
+                if (dayChart) dayChart.destroy();
+
+                dayChart = new Chart(document.getElementById('countPerHourChart'), {
+                    type: 'line',
+                    data: {
+                        labels: hourLabels,
+                        datasets: [{
+                            label: 'Meddelanden',
+                            data: hourCounts,
+                            borderColor: '#38bdf8',
+                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#38bdf8'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                            x: { grid: { display: false } }
+                        }
+                    }
+                });
+            } catch (err) {
+                console.error('Error loading day data:', err);
+                loading.innerText = 'Fel vid hämtning av data.';
+            }
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
-            await renderCharts();
-            // Populate date picker with latest available date
-            const dates = await fetchJSON('/api/stats/dates');
-            if (dates.length) {
+            await renderGlobalCharts();
+
+            try {
+                const dates = await fetchJSON('/api/stats/dates');
                 const picker = document.getElementById('statsDate');
-                picker.max = dates[0]; // newest first
-                picker.min = dates[dates.length - 1];
-                picker.value = dates[0];
-                await loadDayData(picker.value);
-                picker.addEventListener('change', async (e) => {
-                    await loadDayData(e.target.value);
-                    // Update hour chart for selected day
-                    const perHour = await fetchJSON(`/api/stats/count-per-hour/${e.target.value}`);
-                    const hourLabels = perHour.map(h => h.hour);
-                    const hourCounts = perHour.map(h => h.count);
-                    new Chart(document.getElementById('countPerHourChart'), {
-                        type: 'line',
-                        data: {
-                            labels: hourLabels,
-                            datasets: [{ label: 'Meddelanden', data: hourCounts, borderColor: 'rgba(40,167,69,0.9)', fill: false }]
-                        },
-                        options: { responsive: true, maintainAspectRatio: false }
-                    });
-                });
-                // Trigger initial hour chart load
-                picker.dispatchEvent(new Event('change'));
+
+                if (dates.length > 0) {
+                    picker.max = dates[0];
+                    picker.min = dates[dates.length - 1];
+                    picker.value = dates[0];
+
+                    await loadDayData(picker.value);
+
+                    picker.addEventListener('change', (e) => loadDayData(e.target.value));
+                } else {
+                    picker.disabled = true;
+                    document.getElementById('dayTableBody').innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 2rem;">Ingen historik tillgänglig.</td></tr>';
+                }
+            } catch (err) {
+                console.error('Error fetching dates:', err);
             }
         });
     </script>

@@ -38,6 +38,9 @@ def settings_page():
 @app.route('/aliases')
 def aliases_page():
     return render_template('aliases.html')
+@app.route('/alerts')
+def alerts_page():
+    return render_template('alerts.html')
 @app.route('/api/stats/dates')
 def stats_dates():
     conn = sqlite3.connect(database.DB_PATH)
