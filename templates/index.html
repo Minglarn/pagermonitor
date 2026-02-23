@@ -437,22 +437,21 @@
             const evtSource = new EventSource("/stream");
 
             // RX Indicator flash function
-            // RX Indicator flash function
             const rxIndicator = document.getElementById('rx-indicator');
             const satIcon = document.getElementById('satellite-icon');
             function flashRx() {
-                if (rxIndicator) rxIndicator.classList.add('active');
-                if (satIcon) {
-                    satIcon.style.color = '#fff';
-                    satIcon.style.transform = 'scale(1.2) rotate(10deg)';
+                if (rxIndicator) {
+                    rxIndicator.classList.remove('active');
+                    void rxIndicator.offsetWidth; // trigger reflow
+                    rxIndicator.classList.add('active');
+                    setTimeout(() => rxIndicator.classList.remove('active'), 150);
                 }
-                setTimeout(() => {
-                    if (rxIndicator) rxIndicator.classList.remove('active');
-                    if (satIcon) {
-                        satIcon.style.color = 'var(--accent)';
-                        satIcon.style.transform = 'scale(1) rotate(0deg)';
-                    }
-                }, 150); // fast flash duration
+
+                if (satIcon) {
+                    satIcon.classList.remove('flash-icon');
+                    void satIcon.offsetWidth; // trigger reflow
+                    satIcon.classList.add('flash-icon');
+                }
             }
 
             evtSource.onmessage = function (event) {
@@ -590,27 +589,30 @@
                                 if (alarm.address === payload.address) alarm.alias = payload.alias;
                             });
 
-                            // If hidden, remove from array
-                            if (payload.is_hidden) {
-                                allAlarms = allAlarms.filter(a => a.address !== payload.address);
-                            }
-                            renderAlarms(); // Re-render table
+                            // Ensure fresh data is loaded so unmuted capcodes reappear
+                            allAlarms = [];
+                            document.getElementById('alarmsBody').innerHTML = '';
+                            hasReachedEnd = false; // Reset pagination
+                            isLoadingMore = false;
+
+                            // Show loading text again
+                            document.getElementById('loading').style.display = 'block';
+                            document.getElementById('loading').innerText = 'Loading messages...';
+
+                            fetchAlarms(); // Re-fetch from DB
 
                             closeAliasModal();
                         } else {
-                            modalStatus.innerText = 'Something went wrong: ' + data.message;
-                            modalStatus.className = 'status-message error show';
+                            alert('Error: ' + data.message);
                         }
                     })
                     .catch(err => {
-                        console.error(err);
-                        modalStatus.innerText = 'Network error while saving.';
-                        modalStatus.className = 'status-message error show';
+                        console.error('Alias save error:', err);
+                        alert('Failed to save alias.');
                     })
                     .finally(() => {
                         modalSaveBtn.innerText = 'Save Alias';
                         modalSaveBtn.disabled = false;
-                        setTimeout(() => modalStatus.classList.remove('show'), 5000);
                     });
             });
 

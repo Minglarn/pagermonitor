@@ -1245,3 +1245,29 @@ tr:hover td {
     background: #dc2626;
     transform: translateY(-1px);
 }
+
+@keyframes flash-sat {
+    0% {
+        color: var(--accent);
+        transform: scale(1) rotate(0deg);
+    }
+
+    15% {
+        color: #ffffff;
+        transform: scale(1.2) rotate(15deg);
+    }
+
+    85% {
+        color: #ffffff;
+        transform: scale(1.2) rotate(15deg);
+    }
+
+    100% {
+        color: var(--accent);
+        transform: scale(1) rotate(0deg);
+    }
+}
+
+.flash-icon {
+    animation: flash-sat 0.6s ease-out;
+}

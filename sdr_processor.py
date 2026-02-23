@@ -39,7 +39,11 @@ def is_garbage_message(message, sensitivity=50):
         return True
 
     msg = message.strip()
-    length = len(msg)
+    
+    # multimon-ng outputs control chars as <TAG> (e.g. <SOH>, <DC1>, <EOT>)
+    # We replace them with a single unprintable control char (\x01) for accurate analysis.
+    temp_msg = re.sub(r'<[A-Z0-9]{2,4}>', '\x01', msg)
+    length = len(temp_msg)
 
     # Very short messages (1-3 chars) are almost always noise
     if length <= 3:
@@ -52,9 +56,10 @@ def is_garbage_message(message, sensitivity=50):
     control_max = 0.35 - (sensitivity / 100.0) * 0.25
 
     # Count readable characters (letters, digits, common Swedish, common punctuation/spaces)
-    readable = sum(1 for c in msg if c.isalnum() or c in ' .,;:!?-()/@&+=%\n\r\täöåÄÖÅ')
+    # Note: < and > are removed from allowed punctuation so real html-like tags aren't counted as readable
+    readable = sum(1 for c in temp_msg if c.isalnum() or c in ' .,;:!?-()/@&+=%\n\r\täöåÄÖÅ')
     # Count control characters (ASCII 0-31 except tab/newline/cr)
-    control = sum(1 for c in msg if ord(c) < 32 and c not in '\t\n\r')
+    control = sum(1 for c in temp_msg if ord(c) < 32 and c not in '\t\n\r')
 
     readable_ratio = readable / length
     control_ratio = control / length
