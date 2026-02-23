@@ -269,11 +269,6 @@
             const data = Object.fromEntries(formData.entries());
             data.id = parseInt(sdrId);
 
-            // Convert types
-            data.enable_dc_removal = data.enable_dc_removal === 'true';
-            data.enable_deemp = data.enable_deemp === 'true';
-            data.ppm_error = parseInt(data.ppm_error);
-
             fetch('/api/sdr', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
