@@ -247,6 +247,49 @@ table {
     width: 100%;
     border-collapse: collapse;
     text-align: left;
+    table-layout: fixed;
+}
+
+#alarmsTable th:nth-child(1),
+#alarmsTable td:nth-child(1) {
+    width: 170px;
+}
+
+#alarmsTable th:nth-child(2),
+#alarmsTable td:nth-child(2) {
+    width: 160px;
+}
+
+/* Increased for freq+bps */
+#alarmsTable th:nth-child(3),
+#alarmsTable td:nth-child(3) {
+    width: 220px;
+}
+
+#alarmsTable th:nth-child(4),
+#alarmsTable td:nth-child(4) {
+    width: auto;
+}
+
+#dayTable th:nth-child(1),
+#dayTable td:nth-child(1) {
+    width: 100px;
+}
+
+/* Statistics table has shorter time format */
+#dayTable th:nth-child(2),
+#dayTable td:nth-child(2) {
+    width: 160px;
+}
+
+#dayTable th:nth-child(3),
+#dayTable td:nth-child(3) {
+    width: 220px;
+}
+
+#dayTable th:nth-child(4),
+#dayTable td:nth-child(4) {
+    width: auto;
 }
 
 th {
@@ -327,11 +370,12 @@ tr:hover td {
 }
 
 .msg-cell {
-    font-family: var(--msg-font);
+    font-family: 'Inter', sans-serif;
     font-size: var(--msg-size);
     font-weight: 400;
     line-height: 1.5;
     white-space: pre-wrap;
+    word-break: break-word;
 }
 
 .ts-cell {
@@ -361,10 +405,11 @@ tr:hover td {
 .badge.meta {
     background: rgba(148, 163, 184, 0.1);
     color: var(--text-secondary);
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     padding: 0.15rem 0.4rem;
     border: 1px solid rgba(148, 163, 184, 0.2);
-    margin-left: 0.5rem;
+    margin-left: 0.2rem;
+    vertical-align: middle;
 }
 
 /* Alert Word Styling */

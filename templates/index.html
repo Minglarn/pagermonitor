@@ -254,15 +254,13 @@
                     const bitrateTag = alarm.bitrate ? `<span class="badge meta">${alarm.bitrate}bps</span>` : '';
                     const funcLabel = alarm.function !== undefined ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
                     const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
-
                     const freqTag = alarm.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${alarm.frequency}</span>` : '';
 
                     tr.innerHTML = `
                         <td class="ts-cell">${formattedTime}</td>
-                        <td class="addr-cell">${freqTag}</td>
+                        <td class="addr-cell">${freqTag}${bitrateTag}</td>
                         <td class="addr-cell">
                             <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
-                            ${bitrateTag}
                         </td>
                         <td class="msg-cell">${formatMessage(alarm.message)} ${funcTag}</td>
                     `;
