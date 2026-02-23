@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -58,16 +58,16 @@
                 </a>
                 <a href="/statistics" class="nav-item">
                     <i class="fas fa-chart-bar"></i>
-                    <span>Statistik</span>
+                    <span>Statistics</span>
                 </a>
                 <a href="/settings" class="nav-item">
                     <i class="fas fa-cog"></i>
-                    <span>Inställningar</span>
+                    <span>Settings</span>
                 </a>
             </div>
 
             <div class="sidebar-footer">
-                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle meny">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Menu">
                     <i class="fas fa-bars"></i>
                 </button>
             </div>
@@ -76,7 +76,7 @@
         <div class="main-content">
             <header>
                 <h1><span class="highlight">CapCode Alias</span></h1>
-                <p>Koppla adresser till namn och ignorera spam</p>
+                <p>Link addresses to names and ignore spam</p>
             </header>
 
             <main>
@@ -84,25 +84,24 @@
                     <form id="aliasForm">
                         <div class="form-group row-group">
                             <div class="col">
-                                <label for="address">CapCode / Adress</label>
-                                <input type="text" id="address" name="address" placeholder="T.ex. 1234567" required>
+                                <label for="address">CapCode / Address</label>
+                                <input type="text" id="address" name="address" placeholder="e.g. 1234567" required>
                             </div>
                             <div class="col">
-                                <label for="alias">Alias Namn</label>
-                                <input type="text" id="alias" name="alias" placeholder="T.ex. Räddningstjänsten"
-                                    required>
+                                <label for="alias">Alias Name</label>
+                                <input type="text" id="alias" name="alias" placeholder="e.g. Fire Department" required>
                             </div>
                         </div>
 
                         <div class="form-group checkbox-group">
                             <label>
                                 <input type="checkbox" id="is_hidden" name="is_hidden">
-                                Mute / Dölj larm från denna adress (sparas ej i DB)
+                                Mute / Hide alerts from this address
                             </label>
                         </div>
 
                         <div class="form-actions">
-                            <button type="submit" id="saveAliasBtn" class="primary-btn">Spara Alias</button>
+                            <button type="submit" id="saveAliasBtn" class="primary-btn">Save Alias</button>
                         </div>
                     </form>
 
@@ -110,7 +109,7 @@
 
                     <hr class="separator">
 
-                    <h3>Befintliga Alias</h3>
+                    <h3>Existing Aliases</h3>
                     <div class="table-container">
                         <table class="glass-table">
                             <thead>
@@ -118,12 +117,12 @@
                                     <th>CapCode</th>
                                     <th>Alias</th>
                                     <th>Status</th>
-                                    <th>Åtgärd</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="aliasTableBody">
                                 <tr>
-                                    <td colspan="4" style="text-align:center;">Laddar...</td>
+                                    <td colspan="4" style="text-align:center;">Loading...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -145,7 +144,7 @@
                     .then(data => {
                         tbody.innerHTML = '';
                         if (Object.keys(data).length === 0) {
-                            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Inga alias inlagda ännu.</td></tr>';
+                            tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No aliases added yet.</td></tr>';
                             return;
                         }
 

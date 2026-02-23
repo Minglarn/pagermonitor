@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -83,12 +83,12 @@
 
         <div class="main-content">
             <header>
-                <h1><span class="highlight">Statistik</span> & Analys</h1>
-                <p>Analysera historisk data och alert‑ord hits.</p>
+                <h1><span class="highlight">Statistics</span> & Analysis</h1>
+                <p>Analyze historical data and alert-word hits.</p>
             </header>
             <main>
                 <section class="glass-panel">
-                    <h2>Välj datum</h2>
+                    <h2>Select Date</h2>
                     <div class="form-group" style="max-width: 300px;">
                         <input type="date" id="statsDate" />
                     </div>
@@ -97,7 +97,7 @@
                 <div class="stats-grid"
                     style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
                     <section class="glass-panel">
-                        <h2>Meddelanden per dag (30d)</h2>
+                        <h2>Messages per Day (30d)</h2>
                         <div style="height: 300px;">
                             <canvas id="countPerDayChart"></canvas>
                         </div>
@@ -111,7 +111,7 @@
                     </section>
 
                     <section class="glass-panel">
-                        <h2>Aktivitet per Frekvens</h2>
+                        <h2>Activity per Frequency</h2>
                         <div style="height: 300px;">
                             <canvas id="freqHitsChart"></canvas>
                         </div>
@@ -119,28 +119,28 @@
                 </div>
 
                 <section class="glass-panel" style="margin-top: 1.5rem;">
-                    <h2>Meddelanden per timme (vald dag)</h2>
+                    <h2>Messages per Hour (Selected Day)</h2>
                     <div style="height: 300px;">
                         <canvas id="countPerHourChart"></canvas>
                     </div>
                 </section>
 
                 <section class="glass-panel" style="margin-top: 1.5rem;">
-                    <h2>Meddelanden för vald dag</h2>
+                    <h2>Messages for Selected Day</h2>
                     <div id="dayTableContainer" class="table-container" style="max-height: 500px;">
                         <table id="dayTable">
                             <thead>
                                 <tr>
-                                    <th>Tid</th>
-                                    <th>Frekvens</th>
+                                    <th>Time</th>
+                                    <th>Frequency</th>
                                     <th>CapCode (Alias)</th>
-                                    <th>Meddelande</th>
+                                    <th>Message</th>
                                 </tr>
                             </thead>
                             <tbody id="dayTableBody"></tbody>
                         </table>
                     </div>
-                    <div id="dayLoading" class="loading-state" style="display: none;">Hämtar data...</div>
+                    <div id="dayLoading" class="loading-state" style="display: none;">Fetching data...</div>
                 </section>
         </div>
     </div>
@@ -161,7 +161,7 @@
                         data: {
                             labels: dayLabels,
                             datasets: [{
-                                label: 'Antal meddelanden',
+                                label: 'Messages count',
                                 data: dayCounts,
                                 backgroundColor: 'rgba(56, 189, 248, 0.6)',
                                 borderColor: 'rgba(56, 189, 248, 1)',
@@ -254,7 +254,7 @@
                 loading.style.display = 'none';
 
                 if (msgs.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 2rem;">Inga meddelanden för detta datum.</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem;">No messages for this date.</td></tr>';
                 } else {
                     msgs.forEach(m => {
                         const tr = document.createElement('tr');
@@ -288,7 +288,7 @@
                     data: {
                         labels: hourLabels,
                         datasets: [{
-                            label: 'Meddelanden',
+                            label: 'Messages',
                             data: hourCounts,
                             borderColor: '#38bdf8',
                             backgroundColor: 'rgba(56, 189, 248, 0.1)',
@@ -330,7 +330,7 @@
                     picker.addEventListener('change', (e) => loadDayData(e.target.value));
                 } else {
                     picker.disabled = true;
-                    document.getElementById('dayTableBody').innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 2rem;">Ingen historik tillgänglig.</td></tr>';
+                    document.getElementById('dayTableBody').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem;">No history available.</td></tr>';
                 }
             } catch (err) {
                 console.error('Error fetching dates:', err);

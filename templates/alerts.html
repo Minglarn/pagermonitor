@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -58,16 +58,16 @@
                 </a>
                 <a href="/statistics" class="nav-item">
                     <i class="fas fa-chart-bar"></i>
-                    <span>Statistik</span>
+                    <span>Statistics</span>
                 </a>
                 <a href="/settings" class="nav-item">
                     <i class="fas fa-cog"></i>
-                    <span>Inställningar</span>
+                    <span>Settings</span>
                 </a>
             </div>
 
             <div class="sidebar-footer">
-                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle meny">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Menu">
                     <i class="fas fa-bars"></i>
                 </button>
             </div>
@@ -76,34 +76,34 @@
         <div class="main-content">
             <header>
                 <h1><span class="highlight">Alert</span> Watchlist</h1>
-                <p>Hantera ord som ska lysa upp extra mycket i listan.</p>
+                <p>Manage words that will be highlighted in the feed.</p>
             </header>
 
             <main>
                 <div class="glass-panel form-container">
                     <form id="alertForm">
                         <div class="form-group">
-                            <label for="word">Nytt bevakningsord</label>
-                            <input type="text" id="word" name="word" placeholder="T.ex. BRAND eller OLYCKA" required>
-                            <small>Versaler eller gemener spelar ingen roll.</small>
+                            <label for="word">New Watchword</label>
+                            <input type="text" id="word" name="word" placeholder="e.g. FIRE or ACCIDENT" required>
+                            <small>Case insensitive.</small>
                         </div>
 
                         <div class="form-actions">
-                            <button type="submit" id="saveBtn" class="primary-btn">Lägg till i bevakning</button>
+                            <button type="submit" id="saveBtn" class="primary-btn">Add to Watchlist</button>
                         </div>
                     </form>
                     <div id="status" class="status-message"></div>
 
                     <hr class="separator">
 
-                    <h3>Aktiva bevakningsord</h3>
+                    <h3>Active Watchwords</h3>
                     <div class="table-container" style="min-height: auto;">
                         <table id="alertsTable">
                             <thead>
                                 <tr>
-                                    <th>Ord</th>
+                                    <th>Word</th>
                                     <th>Status</th>
-                                    <th>Åtgärd</th>
+                                    <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody id="alertsBody"></tbody>
@@ -132,9 +132,9 @@
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td><span class="alert-word" style="color: ${a.color || '#ef4444'}; border-bottom-color: ${a.color || '#ef4444'}">${a.word}</span></td>
-                        <td><span class="badge ${a.is_active ? 'success' : ''}">${a.is_active ? 'Aktiv' : 'Inaktiv'}</span></td>
+                        <td><span class="badge ${a.is_active ? 'success' : ''}">${a.is_active ? 'Active' : 'Inactive'}</span></td>
                         <td>
-                            <button class="action-btn delete-btn" onclick="deleteAlert(${a.id})">Ta bort</button>
+                            <button class="action-btn delete-btn" onclick="deleteAlert(${a.id})">Remove</button>
                         </td>
                     `;
                     alertsBody.appendChild(tr);
@@ -198,7 +198,7 @@
             });
 
             window.deleteAlert = async (id) => {
-                if (!confirm('Ta bort detta ord från bevakningen?')) return;
+                if (!confirm('Remove this word from the watchlist?')) return;
                 await fetch('/api/alerts', {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json' },

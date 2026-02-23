@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -58,16 +58,16 @@
                 </a>
                 <a href="/statistics" class="nav-item">
                     <i class="fas fa-chart-bar"></i>
-                    <span>Statistik</span>
+                    <span>Statistics</span>
                 </a>
                 <a href="/settings" class="nav-item active">
                     <i class="fas fa-cog"></i>
-                    <span>Inställningar</span>
+                    <span>Settings</span>
                 </a>
             </div>
 
             <div class="sidebar-footer">
-                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle meny">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Menu">
                     <i class="fas fa-bars"></i>
                 </button>
             </div>
@@ -75,15 +75,15 @@
 
         <div class="main-content">
             <header>
-                <h1><span class="highlight">Inställningar</span></h1>
-                <p>Konfigurera systemet och SDR-mottagaren</p>
+                <h1><span class="highlight">Settings</span></h1>
+                <p>Configure the system and SDR receivers</p>
             </header>
 
             <main>
                 <div class="glass-panel form-container">
                     <div class="settings-tabs">
-                        <button class="tab-trigger active" onclick="switchTab('radio')">SDR-Mottagare</button>
-                        <button class="tab-trigger" onclick="switchTab('display')">Utseende & UI</button>
+                        <button class="tab-trigger active" onclick="switchTab('radio')">SDR Receivers</button>
+                        <button class="tab-trigger" onclick="switchTab('display')">Appearance & UI</button>
                     </div>
 
                     <!-- Tab: Radio (Multi-SDR Manager) -->
@@ -94,8 +94,8 @@
 
                         <div class="form-actions"
                             style="margin-top: 2rem; border-top: 1px solid var(--panel-border); padding-top: 1.5rem;">
-                            <button type="button" class="primary-btn" onclick="addNewSDR()">+ Lägg till ny
-                                mottagare</button>
+                            <button type="button" class="primary-btn" onclick="addNewSDR()">+ Add new
+                                receiver</button>
                         </div>
                     </div>
 
@@ -103,18 +103,18 @@
                     <div id="tab-display" class="tab-content">
                         <form id="globalSettingsForm">
                             <div class="form-group">
-                                <label for="theme">Färgtema</label>
+                                <label for="theme">Theme</label>
                                 <select id="theme" class="form-input"
                                     style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary); cursor: pointer;">
-                                    <option value="dark">Mörkt tema (Standard)</option>
-                                    <option value="light">Ljust tema</option>
+                                    <option value="dark">Dark Theme (Standard)</option>
+                                    <option value="light">Light Theme</option>
                                 </select>
                             </div>
 
                             <div class="row-group">
                                 <div class="col">
                                     <div class="form-group">
-                                        <label for="message_font">Typsnitt</label>
+                                        <label for="message_font">Font</label>
                                         <select id="message_font" name="message_font" class="form-input"
                                             style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
                                             <option value="JetBrains Mono">JetBrains Mono</option>
@@ -134,8 +134,7 @@
                                 </div>
                                 <div class="col">
                                     <div class="form-group">
-                                        <label for="message_font_size_slider">Storlek (<span
-                                                id="font_size_val">1.0</span>
+                                        <label for="message_font_size_slider">Size (<span id="font_size_val">1.0</span>
                                             rem)</label>
                                         <input type="range" id="message_font_size_slider" min="0.5" max="2.0" step="0.1"
                                             value="1.0" style="width: 100%;">
@@ -146,7 +145,7 @@
                             </div>
 
                             <div class="form-group">
-                                <label>Förhandsgranskning</label>
+                                <label>Preview</label>
                                 <div id="fontPreview"
                                     style="padding: 1.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--panel-border); border-radius: 8px; min-height: 80px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
                                     <span id="previewText">BRANDALARM: STORGATAN 1 - 12:45</span>
@@ -154,7 +153,7 @@
                             </div>
 
                             <div class="form-actions" style="margin-top: 1rem;">
-                                <button type="submit" id="saveGlobalBtn" class="primary-btn">Spara Utseende</button>
+                                <button type="submit" id="saveGlobalBtn" class="primary-btn">Save Appearance</button>
                             </div>
                         </form>
                     </div>

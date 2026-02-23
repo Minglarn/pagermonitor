@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -57,16 +57,16 @@
                 </a>
                 <a href="/statistics" class="nav-item">
                     <i class="fas fa-chart-bar"></i>
-                    <span>Statistik</span>
+                    <span>Statistics</span>
                 </a>
                 <a href="/settings" class="nav-item active">
                     <i class="fas fa-cog"></i>
-                    <span>Inställningar</span>
+                    <span>Settings</span>
                 </a>
             </div>
 
             <div class="sidebar-footer">
-                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle meny">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Menu">
                     <i class="fas fa-bars"></i>
                 </button>
             </div>
@@ -77,11 +77,11 @@
                 <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
                     <a href="/settings" class="action-btn"
                         style="text-decoration: none; display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem;">
-                        <i class="fas fa-arrow-left"></i> Tillbaka
+                        <i class="fas fa-arrow-left"></i> Back
                     </a>
-                    <h1 style="margin: 0;"><span class="highlight" id="pageTitle">Laddar...</span></h1>
+                    <h1 style="margin: 0;"><span class="highlight" id="pageTitle">Loading...</span></h1>
                 </div>
-                <p>Konfigurera hårdvaruinställningar för denna mottagare</p>
+                <p>Configure hardware settings for this receiver</p>
             </header>
 
             <main style="padding-bottom: 5rem;">
@@ -90,24 +90,24 @@
                         <input type="hidden" id="sdr_id" value="{{ sdr_id }}">
 
                         <div class="form-group">
-                            <label for="name">Namn / Beskrivning</label>
-                            <input type="text" id="name" name="name" placeholder="T.ex. RIKS 1" required>
-                            <small>Ett identifierbart namn för denna mottagare.</small>
+                            <label for="name">Name / Description</label>
+                            <input type="text" id="name" name="name" placeholder="e.g. CORE 1" required>
+                            <small>An identifiable name for this receiver.</small>
                         </div>
 
                         <div class="row-group">
                             <div class="col">
                                 <div class="form-group">
-                                    <label for="frequency">Frekvens (MHz)</label>
+                                    <label for="frequency">Frequency (MHz)</label>
                                     <input type="text" id="frequency" name="frequency" placeholder="169.800M" required>
-                                    <small>Standard är 169.8M för POCSAG i Sverige. Använd M för MHz.</small>
+                                    <small>Standard is 169.8M for POCSAG in Sweden. Use M for MHz.</small>
                                 </div>
                             </div>
                             <div class="col">
                                 <div class="form-group">
                                     <label for="device_serial">Device Serial</label>
                                     <input type="text" id="device_serial" name="device_serial" placeholder="00000101">
-                                    <small>USB-serienummer (viktigt om du har flera stickor).</small>
+                                    <small>USB serial number (important if using multiple sticks).</small>
                                 </div>
                             </div>
                         </div>
@@ -117,30 +117,30 @@
                                 <div class="form-group">
                                     <label for="gain">Gain</label>
                                     <input type="text" id="gain" name="gain" placeholder="auto" value="auto">
-                                    <small>Förstärkning i dB eller "auto".</small>
+                                    <small>Gain in dB or "auto".</small>
                                 </div>
                             </div>
                             <div class="col">
                                 <div class="form-group">
                                     <label for="ppm_error">PPM Error</label>
                                     <input type="number" id="ppm_error" name="ppm_error" value="0">
-                                    <small>Frekvenskorrigering i parts per million.</small>
+                                    <small>Frequency correction in parts per million.</small>
                                 </div>
                             </div>
                         </div>
 
                         <hr class="separator">
-                        <h3>Signal & Avkodning</h3>
+                        <h3>Signal & Decoding</h3>
 
                         <div class="row-group">
                             <div class="col">
                                 <div class="form-group">
-                                    <label for="multimon_verbosity">Log-nivå (-v)</label>
+                                    <label for="multimon_verbosity">Log Level (-v)</label>
                                     <select id="multimon_verbosity" name="multimon_verbosity">
-                                        <option value="0">Nivå 0 (Ingen info)</option>
-                                        <option value="1">Nivå 1 (Statistik - Standard)</option>
-                                        <option value="2">Nivå 2</option>
-                                        <option value="10">Nivå 10 (Max debug)</option>
+                                        <option value="0">Level 0 (No info)</option>
+                                        <option value="1">Level 1 (Stats - Default)</option>
+                                        <option value="2">Level 2</option>
+                                        <option value="10">Level 10 (Max debug)</option>
                                     </select>
                                 </div>
                             </div>
@@ -159,7 +159,7 @@
                         <div class="row-group">
                             <div class="col">
                                 <div class="form-group">
-                                    <label for="multimon_format">Utdataformat (-f)</label>
+                                    <label for="multimon_format">Output Format (-f)</label>
                                     <select id="multimon_format" name="multimon_format">
                                         <option value="auto">Auto-detect (auto)</option>
                                         <option value="alpha">Alphanumeric (alpha)</option>
@@ -177,7 +177,7 @@
                         </div>
 
                         <details>
-                            <summary>Fler avancerade inställningar</summary>
+                            <summary>More Advanced Settings</summary>
                             <div class="accordion-content">
                                 <div class="row-group">
                                     <div class="col">
@@ -198,8 +198,8 @@
                                         <div class="form-group">
                                             <label for="enable_dc_removal">DC Removal</label>
                                             <select id="enable_dc_removal" name="enable_dc_removal">
-                                                <option value="true">Ja</option>
-                                                <option value="false">Nej</option>
+                                                <option value="true">Yes</option>
+                                                <option value="false">No</option>
                                             </select>
                                         </div>
                                     </div>
@@ -207,8 +207,8 @@
                                         <div class="form-group">
                                             <label for="enable_deemp">De-emphasis</label>
                                             <select id="enable_deemp" name="enable_deemp">
-                                                <option value="true">Ja</option>
-                                                <option value="false">Nej</option>
+                                                <option value="true">Yes</option>
+                                                <option value="false">No</option>
                                             </select>
                                         </div>
                                     </div>
@@ -217,9 +217,9 @@
                         </details>
 
                         <div class="form-actions" style="margin-top: 2rem;">
-                            <button type="submit" class="primary-btn">Spara Inställningar</button>
-                            <button type="button" class="secondary-btn" id="deleteBtn" style="color: #ff4444;">Ta bort
-                                mottagare</button>
+                            <button type="submit" class="primary-btn">Save Settings</button>
+                            <button type="button" class="secondary-btn" id="deleteBtn" style="color: #ff4444;">Delete
+                                Receiver</button>
                         </div>
                     </form>
                     <div id="statusMessage" class="status-message"></div>
@@ -244,7 +244,7 @@
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'error') {
-                        showStatus('Kunde inte ladda mottagare: ' + data.message, 'error');
+                        showStatus('Could not load receiver: ' + data.message, 'error');
                         return;
                     }
                     document.getElementById('pageTitle').innerText = data.name;

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -58,16 +58,16 @@
                 </a>
                 <a href="/statistics" class="nav-item">
                     <i class="fas fa-chart-bar"></i>
-                    <span>Statistik</span>
+                    <span>Statistics</span>
                 </a>
                 <a href="/settings" class="nav-item">
                     <i class="fas fa-cog"></i>
-                    <span>Inställningar</span>
+                    <span>Settings</span>
                 </a>
             </div>
 
             <div class="sidebar-footer">
-                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle meny">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Menu">
                     <i class="fas fa-bars"></i>
                 </button>
             </div>
@@ -76,18 +76,18 @@
         <div class="main-content">
             <header>
                 <div class="header-main">
-                    <h1>Realtidsövervakning</h1>
-                    <p>Följ inkommande POCSAG-meddelanden i realtid</p>
+                    <h1>Real-time Monitor</h1>
+                    <p>Live POCSAG messages and pager traffic</p>
                 </div>
                 <div class="search-container">
-                    <input type="text" id="searchInput" placeholder="Sök larm eller adresser...">
+                    <input type="text" id="searchInput" placeholder="Search CapCodes, Aliases or messages...">
                     <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                         viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                         stroke-linejoin="round">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
-                    <div id="rx-indicator" class="rx-status-dot" title="Tar emot data"></div>
+                    <div id="rx-indicator" class="rx-status-dot" title="Receiving data"></div>
                 </div>
             </header>
 
@@ -96,17 +96,17 @@
                     <table id="alarmsTable">
                         <thead>
                             <tr>
-                                <th>Tidstämpel</th>
-                                <th>Frekvens</th>
+                                <th>Timestamp</th>
+                                <th>Frequency</th>
                                 <th>CapCode (Alias)</th>
-                                <th>Meddelande</th>
+                                <th>Message</th>
                             </tr>
                         </thead>
                         <tbody id="alarmsBody">
                             <!-- Alarms will be injected here via JavaScript -->
                         </tbody>
                     </table>
-                    <div id="loading" class="loading-state">Laddar historik...</div>
+                    <div id="loading" class="loading-state">Loading history...</div>
                 </div>
             </main>
         </div>
@@ -117,8 +117,8 @@
         <div class="modal-content">
             <button class="close-btn" onclick="closeAliasModal()">&times;</button>
             <div class="modal-header">
-                <h2>Skapa/Ändra Alias</h2>
-                <p>Koppla ett läsbart namn till denna CapCode.</p>
+                <h2>Create/Edit Alias</h2>
+                <p>Link a readable name to this CapCode.</p>
             </div>
             <form id="aliasModalForm">
                 <div class="form-group">
@@ -126,17 +126,17 @@
                     <input type="text" id="modal_address" name="address" readonly style="opacity: 0.7;">
                 </div>
                 <div class="form-group">
-                    <label for="modal_alias">Alias (Larmnamn)</label>
-                    <input type="text" id="modal_alias" name="alias" placeholder="T.ex. Räddningstjänsten" required>
+                    <label for="modal_alias">Alias (Label)</label>
+                    <input type="text" id="modal_alias" name="alias" placeholder="e.g. Fire Department" required>
                 </div>
                 <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" id="modal_is_hidden" name="is_hidden">
-                        Dölj meddelanden från denna adress (Mute)
+                        Mute messages from this address (Hide)
                     </label>
                 </div>
                 <div class="form-actions">
-                    <button type="submit" id="modalSaveBtn" class="primary-btn">Spara Alias</button>
+                    <button type="submit" id="modalSaveBtn" class="primary-btn">Save Alias</button>
                 </div>
             </form>
             <div id="modalStatus" class="status-message"></div>
@@ -291,10 +291,10 @@
                         tr.classList.add('alert-row', 'alert-pulse-bg');
                     }
 
-                    const dateStr = new Date(alarm.timestamp).toLocaleDateString('sv-SE', {
+                    const dateStr = new Date(alarm.timestamp).toLocaleDateString('en-GB', {
                         year: 'numeric', month: '2-digit', day: '2-digit'
                     });
-                    const timeStr = new Date(alarm.timestamp).toLocaleTimeString('sv-SE', {
+                    const timeStr = new Date(alarm.timestamp).toLocaleTimeString('en-GB', {
                         hour: '2-digit', minute: '2-digit', second: '2-digit'
                     });
                     const formattedTime = `${dateStr}<br>${timeStr}`;
