@@ -142,6 +142,7 @@
                                         <option value="2">Level 2</option>
                                         <option value="10">Level 10 (Max debug)</option>
                                     </select>
+                                    <small>Controls how much detail multimon-ng logs. Higher = more verbose.</small>
                                 </div>
                             </div>
                             <div class="col">
@@ -152,6 +153,7 @@
                                         <option value="ISO8859-15">ISO8859-15</option>
                                         <option value="UTF-8">UTF-8</option>
                                     </select>
+                                    <small>Character encoding for decoded messages. SE maps []\{|} to ÄÖÅäöå.</small>
                                 </div>
                             </div>
                         </div>
@@ -166,12 +168,14 @@
                                         <option value="numeric">Numeric (numeric)</option>
                                         <option value="skyper">Skyper (skyper)</option>
                                     </select>
+                                    <small>POCSAG message format. Auto-detect works for most pager networks.</small>
                                 </div>
                             </div>
                             <div class="col">
                                 <div class="form-group">
                                     <label for="multimon_input_type">Input Type (-t)</label>
                                     <input type="text" id="multimon_input_type" name="multimon_input_type" value="raw">
+                                    <small>Audio input format. Use "raw" for piped rtl_fm output.</small>
                                 </div>
                             </div>
                         </div>
@@ -184,12 +188,15 @@
                                         <div class="form-group">
                                             <label for="sample_rate">Sample Rate (-s)</label>
                                             <input type="text" id="sample_rate" name="sample_rate" value="22050">
+                                            <small>rtl_fm sample rate in Hz. 250000 (250k) recommended for
+                                                POCSAG.</small>
                                         </div>
                                     </div>
                                     <div class="col">
                                         <div class="form-group">
                                             <label for="resample_rate">Resample (-r)</label>
                                             <input type="text" id="resample_rate" name="resample_rate" value="22050">
+                                            <small>Output sample rate to multimon-ng. 22050 Hz is standard.</small>
                                         </div>
                                     </div>
                                 </div>
@@ -201,6 +208,8 @@
                                                 <option value="true">Yes</option>
                                                 <option value="false">No</option>
                                             </select>
+                                            <small>Removes DC offset from the signal (-E dc). Improves decoding
+                                                accuracy. Recommended: Yes.</small>
                                         </div>
                                     </div>
                                     <div class="col">
@@ -210,6 +219,8 @@
                                                 <option value="true">Yes</option>
                                                 <option value="false">No</option>
                                             </select>
+                                            <small>Applies FM de-emphasis filter (-E deemp). Can reduce noise on some
+                                                signals. Recommended: Yes.</small>
                                         </div>
                                     </div>
                                 </div>
