@@ -41,8 +41,8 @@ def is_garbage_message(message, sensitivity=50):
     msg = message.strip()
     length = len(msg)
 
-    # Very short messages (1-2 chars) are almost always noise
-    if length <= 2:
+    # Very short messages (1-3 chars) are almost always noise
+    if length <= 3:
         return True
 
     # Scale thresholds based on sensitivity (0-100)
