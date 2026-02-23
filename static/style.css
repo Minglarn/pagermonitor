@@ -55,8 +55,8 @@ body {
     background-color: var(--bg-color);
     color: var(--text-primary);
     font-family: 'Inter', sans-serif;
-    min-height: 100vh;
-    overflow-x: hidden;
+    height: 100vh;
+    overflow: hidden;
     position: relative;
 }
 
@@ -110,11 +110,15 @@ body {
 .container {
     max-width: 75%;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 1.5rem 2rem;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
 header {
-    margin-bottom: 2.5rem;
+    margin-bottom: 1.5rem;
     text-align: center;
 }
 
@@ -201,9 +205,18 @@ header p {
     overflow: hidden;
 }
 
+main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    min-height: 0;
+    margin-bottom: 1rem;
+}
+
 .table-container {
-    height: 85vh;
-    min-height: 400px;
+    flex: 1;
+    min-height: 0;
     position: relative;
     overflow-x: auto;
     overflow-y: auto;
@@ -237,7 +250,11 @@ table {
 }
 
 th {
-    background: var(--table-header-bg);
+    background: var(--panel-bg);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 10;
     padding: 1rem 1.5rem;
     font-weight: 600;
     color: var(--text-secondary);
@@ -444,7 +461,9 @@ tr:hover td {
 .form-container {
     max-width: 600px;
     margin: 0 auto;
-    padding: 2.5rem;
+    padding: 2rem;
+    overflow-y: auto;
+    max-height: 100%;
 }
 
 .form-group {
