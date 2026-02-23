@@ -226,7 +226,7 @@ body {
     overflow: hidden;
 }
 
-.main-content {
+.dashboard-page .main-content {
     display: flex;
     flex-direction: column;
     height: 100vh;
@@ -1100,6 +1100,7 @@ tr:hover td {
         padding: 1.5rem;
     }
 }
+
 .delete-btn {
     background: transparent;
     border: none;

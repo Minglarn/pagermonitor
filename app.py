@@ -202,6 +202,7 @@ def handle_aliases():
         if not address:
              return jsonify({"status": "error", "message": "Missing address"}), 400
         delete_alias(address)
+        logger.info(f"Alias for address {address} deleted.")
         return jsonify({"status": "success"})
         
     # GET request
@@ -236,6 +237,7 @@ def handle_alerts():
         if not word_id:
              return jsonify({"status": "error", "message": "Missing alert ID"}), 400
         delete_alert_word(word_id)
+        logger.info(f"Alert word (id={word_id}) deleted.")
         return jsonify({"status": "success"})
         
     # GET request
@@ -255,8 +257,10 @@ def handle_alerts():
 def delete_single_message(msg_id):
     try:
         delete_message(msg_id)
+        logger.info(f"Message {msg_id} deleted.")
         return jsonify({"status": "success"})
     except Exception as e:
+        logger.error(f"Failed to delete message {msg_id}: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # SSE Setup
