@@ -87,7 +87,7 @@
                 alerts.forEach(a => {
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
-                        <td><span class="alert-word" style="background: ${a.color || '#ef4444'}">${a.word}</span></td>
+                        <td><span class="alert-word" style="color: ${a.color || '#ef4444'}; border-bottom-color: ${a.color || '#ef4444'}">${a.word}</span></td>
                         <td><span class="badge ${a.is_active ? 'success' : ''}">${a.is_active ? 'Aktiv' : 'Inaktiv'}</span></td>
                         <td>
                             <button class="action-btn delete-btn" onclick="deleteAlert(${a.id})">Ta bort</button>
