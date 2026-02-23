@@ -151,7 +151,8 @@ def init_db():
     if not reindexed:
         # Check if there are messages to re-index
         c.execute('SELECT COUNT(*) FROM messages')
-        if c.fetchone()[0] > 0:
+        count_row = c.fetchone()
+        if count_row and count_row[0] > 0:
             logger.info("One-time database re-indexing starting...")
             reindex_messages(conn)
             c.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', ('db_reindexed', 'true'))
@@ -212,9 +213,6 @@ def reindex_messages(already_open_conn=None):
     # 3. Swap tables
     c.execute('DROP TABLE messages')
     c.execute('ALTER TABLE messages_new RENAME TO messages')
-    
-    # 4. Vacuum to reclaim space and reset sqlite_sequence if necessary
-    c.execute('VACUUM')
     
     if not already_open_conn:
         conn.commit()
