@@ -361,24 +361,7 @@
                         hour: '2-digit', minute: '2-digit', second: '2-digit'
                     });
 
-                    // Group by Date and Hour (e.g., "2023-10-27 14:xx")
-                    const groupKey = dateObj.toLocaleString('sv-SE', {
-                        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit'
-                    });
-
-                    // Insert divider if the group changes
-                    if (groupKey !== lastGroupKey) {
-                        const dividerTr = document.createElement('tr');
-                        dividerTr.className = 'time-divider';
-                        // Format specifically for the divider (e.g. "Today 14:00" or just the date+hour)
-                        const isToday = new Date().toDateString() === dateObj.toDateString();
-                        const headerPrefix = isToday ? "Today" : dateObj.toLocaleDateString('sv-SE');
-                        const headerHour = dateObj.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }).split(':')[0] + ":00";
-
-                        dividerTr.innerHTML = `<td colspan="6"><div class="divider-content">${headerPrefix} at ${headerHour}</div></td>`;
-                        alarmsBody.appendChild(dividerTr);
-                        lastGroupKey = groupKey;
-                    }
+                    // Grouping logic removed
 
                     const tr = document.createElement('tr');
                     tr.className = 'fade-in';
@@ -496,37 +479,7 @@
 
                     if (!searchInput.value) {
                         // OPTIMIZED: Prepend row instead of full render
-                        const dateObj = new Date(data.timestamp);
-                        const groupKey = dateObj.toLocaleString('sv-SE', {
-                            year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit'
-                        });
-
-                        if (groupKey !== lastTopGroupKey) {
-                            const isToday = new Date().toDateString() === dateObj.toDateString();
-                            const headerPrefix = isToday ? "Today" : dateObj.toLocaleDateString('sv-SE');
-                            const headerHour = dateObj.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }).split(':')[0] + ":00";
-
-                            const dividerTr = document.createElement('tr');
-                            dividerTr.className = 'time-divider';
-                            dividerTr.innerHTML = `<td colspan="6"><div class="divider-content">${headerPrefix} at ${headerHour}</div></td>`;
-                            alarmsBody.prepend(dividerTr);
-                            lastTopGroupKey = groupKey;
-                        }
-
                         const newRow = createAlarmRow(data);
-                        // If there were no messages before, just append
-                        const firstChild = alarmsBody.firstChild;
-                        if (firstChild && firstChild.classList.contains('time-divider')) {
-                            // Insert AFTER the first divider if they share the same group
-                            // But actually dividers are prepended, so the newest row should be above the newest divider if they match?
-                            // No, first Divider represents the group of rows below it.
-                            // If we just prepended a divider, newRow goes above it? 
-                            // Standard layout: Divider -> Row 1 -> Row 2.
-                            // So prepend Row, then prepend Divider if needed.
-                        }
-
-                        // Let's simplify: Prepend row. If group changed, ALSO prepend divider.
-                        // Order will be: [New Divider] -> [New Row] -> [Old Content]
                         alarmsBody.prepend(newRow);
 
                         if (wasAtTop) {
