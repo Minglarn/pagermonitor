@@ -1,8 +1,8 @@
 import logging
-from flask import Flask, jsonify, render_template, request, Response
+from flask import Flask, jsonify, render_template, request, Response, stream_with_context
 import json
 import time
-from queue import Queue
+from queue import Queue, Empty
 
 import sqlite3
 import database
@@ -214,17 +214,34 @@ on_new_message(notify_clients)
 
 @app.route('/stream')
 def stream():
+    @stream_with_context
     def event_stream():
         q = Queue()
         client_queues.append(q)
         try:
+            # Send an initial comment to flush buffers
+            yield ": connected\n\n"
             while True:
-                msg = q.get()
-                yield f"data: {json.dumps(msg)}\n\n"
+                try:
+                    # Use a timeout to send periodic pings to keep the connection alive
+                    # and force proxies to flush their buffers.
+                    msg = q.get(timeout=20)
+                    yield f"data: {json.dumps(msg)}\n\n"
+                except Empty:
+                    # Heartbeat ping
+                    yield ": ping\n\n"
         except GeneratorExit:
             client_queues.remove(q)
+        except Exception as e:
+            logger.error(f"SSE stream error: {e}")
+            if q in client_queues:
+                client_queues.remove(q)
             
-    return Response(event_stream(), content_type='text/event-stream')
+    response = Response(event_stream(), content_type='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['X-Accel-Buffering'] = 'no'
+    response.headers['Connection'] = 'keep-alive'
+    return response
 
 if __name__ == '__main__':
     logger.info("Starting PagerMonitor...")

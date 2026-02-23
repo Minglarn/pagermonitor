@@ -89,9 +89,10 @@ def save_message(address, message, alias='', function_code=0, bitrate='', freque
     timestamp = datetime.now().isoformat()
     c.execute('INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency) VALUES (?, ?, ?, ?, ?, ?, ?)',
               (timestamp, address, message, alias, function_code, bitrate, frequency))
+    row_id = c.lastrowid
     conn.commit()
     conn.close()
-    return timestamp
+    return row_id, timestamp
 
 def get_recent_messages(limit=100):
     conn = sqlite3.connect(DB_PATH)

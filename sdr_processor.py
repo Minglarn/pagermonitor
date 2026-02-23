@@ -194,7 +194,7 @@ def run_sdr_process():
                         # Check for alert words in the backend for MQTT enrichment
                         alert_match = check_alert_words(message)
                         
-                        timestamp = save_message(address, message, alias, function_code, bitrate, frequency=freq)
+                        msg_id, timestamp = save_message(address, message, alias, function_code, bitrate, frequency=freq)
                         
                         # Prepare enrichment metadata for MQTT and SSE
                         metadata = {
@@ -209,7 +209,7 @@ def run_sdr_process():
                         
                         msg_data = {
                             'type': 'message',
-                            'id': timestamp, # use timestamp as temporary ID for SSE
+                            'id': msg_id,
                             'timestamp': timestamp,
                             'address': address,
                             'message': message,
