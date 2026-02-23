@@ -426,6 +426,7 @@ tr:hover td {
 .ts-cell {
     color: var(--text-secondary);
     white-space: nowrap;
+    font-family: var(--msg-font);
 }
 
 .capcode-sub {
@@ -451,6 +452,8 @@ tr:hover td {
     background: rgba(245, 158, 11, 0.15);
     color: var(--warning);
     border: 1px solid rgba(245, 158, 11, 0.4);
+    font-size: 0.7rem;
+    padding: 0.15rem 0.4rem;
 }
 
 .badge.meta {

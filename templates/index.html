@@ -260,15 +260,15 @@
                     const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
                     const freqTag = alarm.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${alarm.frequency}</span>` : '';
 
-                    const duplicateTag = alarm.is_duplicate ? `<span class="badge warning" style="margin-left: 5px;">Dubblett</span>` : '';
+                    const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta" style="margin-left: 5px;">Dubblett</span>` : '';
 
                     tr.innerHTML = `
                         <td class="ts-cell">${formattedTime}</td>
-                        <td class="addr-cell">${freqTag}${bitrateTag}${funcTag}</td>
+                        <td class="addr-cell">${freqTag}${bitrateTag}${funcTag}${duplicateTag}</td>
                         <td class="addr-cell">
                             <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
                         </td>
-                        <td class="msg-cell">${formatMessage(alarm.message)}${duplicateTag}</td>
+                        <td class="msg-cell">${formatMessage(alarm.message)}</td>
                     `;
                     alarmsBody.appendChild(tr);
                 });
