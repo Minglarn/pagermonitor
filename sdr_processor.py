@@ -120,13 +120,14 @@ def run_sdr_process():
 
         verbosity = settings.get('multimon_verbosity', '1')
         charset = settings.get('multimon_charset', 'SE')
-        msg_format = settings.get('multimon_format', 'auto')
+        input_type = settings.get('multimon_input_type', 'raw')
         
         multimon_cmd = [
             'multimon-ng', 
             '-v', verbosity,
             '-C', charset,
             '-f', msg_format,
+            '-t', input_type,
             '-a', 'POCSAG512', 
             '-a', 'POCSAG1200', 
             '-a', 'POCSAG2400', 

@@ -22,7 +22,8 @@ def get_default_settings():
         'resample_rate': '22050',
         'enable_dc_removal': 'true',
         'ppm_error': '0',
-        'enable_deemp': 'true'
+        'enable_deemp': 'true',
+        'multimon_input_type': 'raw'
     }
 
 def init_db():

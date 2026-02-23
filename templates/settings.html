@@ -160,14 +160,26 @@
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="multimon_format">Utdataformat (-f)</label>
-                            <select id="multimon_format" name="multimon_format"
-                                style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
-                                <option value="auto">Gissa format (auto)</option>
-                                <option value="alpha">Alfanumeriskt (alpha)</option>
-                                <option value="num">Numeriskt (num)</option>
-                            </select>
+                        <div class="row-group">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="multimon_input_type">Input Type (-t)</label>
+                                    <input type="text" id="multimon_input_type" name="multimon_input_type"
+                                        placeholder="raw" value="raw">
+                                    <small>Standard är "raw".</small>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="multimon_format">Utdataformat (-f)</label>
+                                    <select id="multimon_format" name="multimon_format"
+                                        style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
+                                        <option value="auto">Gissa format (auto)</option>
+                                        <option value="alpha">Alfanumeriskt (alpha)</option>
+                                        <option value="num">Numeriskt (num)</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -273,6 +285,7 @@
             if (data.enable_dc_removal) document.getElementById('enable_dc_removal').value = data.enable_dc_removal;
             if (data.enable_deemp) document.getElementById('enable_deemp').value = data.enable_deemp;
             if (data.ppm_error !== undefined) document.getElementById('ppm_error').value = data.ppm_error;
+            if (data.multimon_input_type) document.getElementById('multimon_input_type').value = data.multimon_input_type;
             updatePreview();
         }
 
@@ -331,7 +344,8 @@
                     resample_rate: document.getElementById('resample_rate').value,
                     enable_dc_removal: document.getElementById('enable_dc_removal').value,
                     enable_deemp: document.getElementById('enable_deemp').value,
-                    ppm_error: document.getElementById('ppm_error').value
+                    ppm_error: document.getElementById('ppm_error').value,
+                    multimon_input_type: document.getElementById('multimon_input_type').value
                 };
 
                 const themeVal = document.getElementById('theme').value;
