@@ -276,7 +276,7 @@ table {
 /* Increased for freq+bps */
 #alarmsTable th:nth-child(3),
 #alarmsTable td:nth-child(3) {
-    width: 220px;
+    width: 260px;
 }
 
 #alarmsTable th:nth-child(4),
@@ -366,6 +366,12 @@ tr:hover td {
 
 /* Badge for Address */
 .badge {
+    display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
     background: var(--badge-bg);
     color: var(--accent);
     padding: 0.3rem 0.6rem;
