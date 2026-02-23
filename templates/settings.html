@@ -34,188 +34,185 @@
 
         <header>
             <h1><span class="highlight">Inställningar</span></h1>
-            <p>Konfigurera SDR-mottagaren</p>
+            <p>Konfigurera systemet och SDR-mottagaren</p>
         </header>
 
         <main>
             <div class="glass-panel form-container">
+                <div class="settings-tabs">
+                    <button class="tab-trigger active" onclick="switchTab('radio')">Kanal & Radio</button>
+                    <button class="tab-trigger" onclick="switchTab('signal')">Signal & Bearbetning</button>
+                    <button class="tab-trigger" onclick="switchTab('display')">Utseende & UI</button>
+                </div>
+
                 <form id="settingsForm">
+                    <!-- Tab: Radio -->
+                    <div id="tab-radio" class="tab-content active">
+                        <div class="form-group">
+                            <label for="frequency">Frekvens (MHz)</label>
+                            <input type="text" id="frequency" name="frequency" placeholder="T.ex. 169.8M" required>
+                            <small>Standard är 169.8M för POCSAG i Sverige. Använd M för MHz.</small>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="frequency">Frekvens (MHz)</label>
-                        <input type="text" id="frequency" name="frequency" placeholder="T.ex. 169.8M" required>
-                        <small>Standard är 169.8M för POCSAG i Sverige. Använd M för MHz.</small>
-                    </div>
-
-                    <div class="row-group">
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="gain">RF Gain</label>
-                                <input type="text" id="gain" name="gain" placeholder="auto eller värde, t.ex. 42">
-                                <small>Lämna som "auto" för AGC, annars ange siffervärde (t.ex. 25).</small>
+                        <div class="row-group">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="gain">RF Gain</label>
+                                    <input type="text" id="gain" name="gain" placeholder="auto eller värde, t.ex. 35">
+                                    <small>Använd "auto" för AGC, annars siffervärde.</small>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="ppm_error">PPM Error (-p)</label>
+                                    <input type="number" id="ppm_error" name="ppm_error" placeholder="0" value="0">
+                                    <small>Frekvenskorrigering (miljontedelar).</small>
+                                </div>
                             </div>
                         </div>
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="ppm_error">PPM Error (-p)</label>
-                                <input type="number" id="ppm_error" name="ppm_error" placeholder="0" value="0">
-                                <small>Frekvenskorrigering i miljontedelar.</small>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div class="row-group">
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="sample_rate">Oversampling (-s)</label>
-                                <input type="text" id="sample_rate" name="sample_rate" placeholder="T.ex. 1000k">
-                                <small>RTL-SDR mår bäst av 1000k eller 2000k.</small>
-                            </div>
+                        <div class="form-group">
+                            <label for="device_serial">Device Serial (RTL-SDR)</label>
+                            <input type="text" id="device_serial" name="device_serial" placeholder="T.ex. 00000001">
+                            <small>Frivilligt. Anger vilken USB-sticka som ska användas.</small>
                         </div>
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="resample_rate">Resampling (-r)</label>
-                                <input type="text" id="resample_rate" name="resample_rate" placeholder="22050">
-                                <small>Intern resampling för multimon (22050).</small>
-                            </div>
+
+                        <div style="text-align: right;">
+                            <button type="button" class="secondary-btn" onclick="restoreDefaults()">Återställ
+                                SDR-standardvärden ↺</button>
                         </div>
                     </div>
 
-                    <div class="row-group">
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="enable_dc_removal">DC Removal (-E dc)</label>
-                                <select id="enable_dc_removal" name="enable_dc_removal"
-                                    style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
-                                    <option value="true">Aktiverad</option>
-                                    <option value="false">Inaktiverad</option>
-                                </select>
-                                <small>Centrerar signalen.</small>
+                    <!-- Tab: Signal -->
+                    <div id="tab-signal" class="tab-content">
+                        <div class="row-group">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="sample_rate">Oversampling (-s)</label>
+                                    <input type="text" id="sample_rate" name="sample_rate"
+                                        placeholder="T.ex. 22050 eller 1024k">
+                                    <small>Samplingsfrekvens in (t.ex. 1024k).</small>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="resample_rate">Resampling (-r)</label>
+                                    <input type="text" id="resample_rate" name="resample_rate" placeholder="22050">
+                                    <small>Intern resampling för multimon (22050).</small>
+                                </div>
                             </div>
                         </div>
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="enable_deemp">De-emphasis (-E deemp)</label>
-                                <select id="enable_deemp" name="enable_deemp"
-                                    style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
-                                    <option value="true">Aktiverad</option>
-                                    <option value="false">Inaktiverad</option>
-                                </select>
-                                <small>Förbättrar FM-signalens ljud-profil.</small>
+
+                        <div class="row-group">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="enable_dc_removal">DC Removal (-E dc)</label>
+                                    <select id="enable_dc_removal" name="enable_dc_removal"
+                                        style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
+                                        <option value="true">Aktiverad</option>
+                                        <option value="false">Inaktiverad</option>
+                                    </select>
+                                    <small>Centrerar signalen.</small>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="enable_deemp">De-emphasis (-E deemp)</label>
+                                    <select id="enable_deemp" name="enable_deemp"
+                                        style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
+                                        <option value="true">Aktiverad</option>
+                                        <option value="false">Inaktiverad</option>
+                                    </select>
+                                    <small>Förbättrar FM-signalens profil.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row-group">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="multimon_verbosity">Log-nivå (-v)</label>
+                                    <select id="multimon_verbosity" name="multimon_verbosity"
+                                        style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
+                                        <option value="0">Nivå 0 (Ingen info)</option>
+                                        <option value="1">Nivå 1 (Standard)</option>
+                                        <option value="2">Nivå 2</option>
+                                        <option value="10">Nivå 10 (Debug)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="multimon_charset">Charset (-C)</label>
+                                    <select id="multimon_charset" name="multimon_charset"
+                                        style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
+                                        <option value="SE">SE (Svenska)</option>
+                                        <option value="ISO8859-15">ISO8859-15</option>
+                                        <option value="UTF-8">UTF-8</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="multimon_format">Utdataformat (-f)</label>
+                            <select id="multimon_format" name="multimon_format"
+                                style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
+                                <option value="auto">Gissa format (auto)</option>
+                                <option value="alpha">Alfanumeriskt (alpha)</option>
+                                <option value="num">Numeriskt (num)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tab: Display -->
+                    <div id="tab-display" class="tab-content">
+                        <div class="form-group">
+                            <label for="theme">Färgtema</label>
+                            <select id="theme" class="form-input"
+                                style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary); cursor: pointer;">
+                                <option value="dark">Mörkt tema (Standard)</option>
+                                <option value="light">Ljust tema</option>
+                            </select>
+                        </div>
+
+                        <div class="row-group">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="message_font">Typsnitt</label>
+                                    <select id="message_font" name="message_font" class="form-input"
+                                        style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
+                                        <option value="JetBrains Mono">JetBrains Mono</option>
+                                        <option value="Share Tech Mono">Share Tech Mono (ANSI)</option>
+                                        <option value="Anonymous Pro">Anonymous Pro</option>
+                                        <option value="Roboto Mono">Roboto Mono</option>
+                                        <option value="Source Code Pro">Source Code Pro</option>
+                                        <option value="VT323">VT323 (Retro)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="message_font_size_slider">Storlek (<span id="font_size_val">1.0</span>
+                                        rem)</label>
+                                    <input type="range" id="message_font_size_slider" min="0.5" max="2.0" step="0.1"
+                                        value="1.0" style="width: 100%;">
+                                    <input type="hidden" id="message_font_size" name="message_font_size" value="1.0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Förhandsgranskning</label>
+                            <div id="fontPreview"
+                                style="padding: 1.5rem; background: rgba(0,0,0,0.2); border: 1px solid var(--panel-border); border-radius: 8px; min-height: 80px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                <span id="previewText">BRANDALARM: STORGATAN 1 - 12:45</span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="form-group" style="margin-top: 1rem;">
-                        <label for="device_serial">Device Serial (RTL-SDR)</label>
-                        <input type="text" id="device_serial" name="device_serial" placeholder="T.ex. 00000001">
-                        <small>Frivilligt. Används om du har flera USB-mottagare inkopplade.</small>
-                    </div>
-
-                    <div class="row-group">
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="multimon_verbosity">Log-nivå (-v)</label>
-                                <select id="multimon_verbosity" name="multimon_verbosity"
-                                    style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
-                                    <option value="0">Nivå 0 (Ingen info)</option>
-                                    <option value="1">Nivå 1 (Statistik - Rekommenderas)</option>
-                                    <option value="2">Nivå 2</option>
-                                    <option value="3">Nivå 3</option>
-                                    <option value="4">Nivå 4</option>
-                                    <option value="5">Nivå 5</option>
-                                    <option value="6">Nivå 6</option>
-                                    <option value="7">Nivå 7</option>
-                                    <option value="8">Nivå 8</option>
-                                    <option value="9">Nivå 9</option>
-                                    <option value="10">Nivå 10 (Max debug)</option>
-                                </select>
-                                <small>Högre nivå ger fylligare loggar.</small>
-                            </div>
-                        </div>
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="multimon_charset">Charset (-C)</label>
-                                <select id="multimon_charset" name="multimon_charset"
-                                    style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
-                                    <option value="SE">SE (Svenska)</option>
-                                    <option value="ISO8859-15">ISO8859-15</option>
-                                    <option value="UTF-8">UTF-8</option>
-                                </select>
-                                <small>Välj "SE" för ÅÄÖ-stöd.</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="multimon_format">Utdataformat (-f)</label>
-                        <select id="multimon_format" name="multimon_format"
-                            style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
-                            <option value="auto">Gissa format (auto)</option>
-                            <option value="alpha">Alfanumeriskt (alpha)</option>
-                            <option value="num">Numeriskt (num)</option>
-                        </select>
-                        <small>Välj "auto" för bäst felmarginal.</small>
-                    </div>
-
-                    <hr class="separator">
-                    <h3>UI & Utseende</h3>
-
-                    <div class="form-group">
-                        <label for="theme">Färgtema</label>
-                        <select id="theme" class="form-input"
-                            style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary); cursor: pointer;">
-                            <option value="dark">Mörkt tema (Standard)</option>
-                            <option value="light">Ljust tema</option>
-                        </select>
-                        <small>Välj det tema som känns bäst för dina ögon.</small>
-                    </div>
-
-                    <hr class="separator">
-                    <h3>Pagerskärm & Font</h3>
-
-                    <div class="row-group">
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="message_font">Typsnitt (Monospace)</label>
-                                <select id="message_font" name="message_font" class="form-input"
-                                    style="width: 100%; padding: 0.8rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
-                                    <option value="JetBrains Mono">JetBrains Mono (Modern)</option>
-                                    <option value="Share Tech Mono">Share Tech Mono (ANSI Terminal)</option>
-                                    <option value="Anonymous Pro">Anonymous Pro (Retro/Typewriter)</option>
-                                    <option value="Fira Code">Fira Code</option>
-                                    <option value="IBM Plex Mono">IBM Plex Mono</option>
-                                    <option value="Roboto Mono">Roboto Mono</option>
-                                    <option value="Source Code Pro">Source Code Pro</option>
-                                    <option value="Space Mono">Space Mono</option>
-                                    <option value="Ubuntu Mono">Ubuntu Mono</option>
-                                    <option value="Courier Prime">Courier Prime (Klassisk)</option>
-                                    <option value="Inconsolata">Inconsolata</option>
-                                    <option value="VT323">VT323 (Retro Pager)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="message_font_size_slider">Textstorlek (<span id="font_size_val">1.0</span>
-                                    rem)</label>
-                                <input type="range" id="message_font_size_slider" min="0.5" max="2.0" step="0.1"
-                                    value="1.0" style="width: 100%; margin-top: 0.8rem;">
-                                <input type="hidden" id="message_font_size" name="message_font_size" value="1.0">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Förhandsgranskning</label>
-                        <div id="fontPreview"
-                            style="padding: 1rem; background: var(--input-bg); border: 1px solid var(--accent); border-radius: 8px; min-height: 80px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
-                            <span id="previewText">BRANDALARM: STORGATAN 1 - 12:45</span>
-                        </div>
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="submit" id="saveBtn" class="primary-btn">Spara Inställningar</button>
+                    <div class="form-actions" style="margin-top: 2rem;">
+                        <button type="submit" id="saveBtn" class="primary-btn">Spara Alla Inställningar</button>
                     </div>
                 </form>
 
@@ -225,45 +222,86 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const form = document.getElementById('settingsForm');
-            const statusMsg = document.getElementById('statusMessage');
-            const saveBtn = document.getElementById('saveBtn');
+        function switchTab(tabId) {
+            // Update buttons
+            document.querySelectorAll('.tab-trigger').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.tab-trigger[onclick="switchTab('${tabId}')"]`).classList.add('active');
 
-            // Hämta nuvarande inställningar
-            fetch('/api/settings')
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+        }
+
+        function restoreDefaults() {
+            if (!confirm('Vill du återställa alla SDR-inställningar till optimala standardvärden?')) return;
+
+            fetch('/api/settings/defaults')
                 .then(res => res.json())
                 .then(data => {
-                    if (data.frequency) document.getElementById('frequency').value = data.frequency;
-                    if (data.gain) document.getElementById('gain').value = data.gain;
-                    if (data.device_serial) document.getElementById('device_serial').value = data.device_serial;
-                    if (data.multimon_verbosity) document.getElementById('multimon_verbosity').value = data.multimon_verbosity;
-                    if (data.multimon_charset) document.getElementById('multimon_charset').value = data.multimon_charset;
-                    if (data.multimon_format) document.getElementById('multimon_format').value = data.multimon_format;
-                    if (data.message_font) document.getElementById('message_font').value = data.message_font;
-                    if (data.message_font_size) {
-                        document.getElementById('message_font_size').value = data.message_font_size;
-                        document.getElementById('message_font_size_slider').value = data.message_font_size;
-                        document.getElementById('font_size_val').innerText = data.message_font_size;
-                    }
-                    if (data.sample_rate) document.getElementById('sample_rate').value = data.sample_rate;
-                    if (data.resample_rate) document.getElementById('resample_rate').value = data.resample_rate;
-                    if (data.enable_dc_removal) document.getElementById('enable_dc_removal').value = data.enable_dc_removal;
-                    if (data.enable_deemp) document.getElementById('enable_deemp').value = data.enable_deemp;
-                    if (data.ppm_error !== undefined) document.getElementById('ppm_error').value = data.ppm_error;
-                    updatePreview();
+                    populateForm(data);
+                    showStatus('Optimala värden laddade (spara för att tillämpa)', 'success');
                 })
-                .catch(err => {
-                    console.error("Fel vid hämtning av inställningar", err);
-                    showStatus("Kunde inte hämta inställningar från servern.", "error");
-                });
+                .catch(err => showStatus('Kunde inte hämta standardvärden.', 'error'));
+        }
 
-            // Ladda tema från localStorage
+        function populateForm(data) {
+            if (data.frequency) document.getElementById('frequency').value = data.frequency;
+            if (data.gain) document.getElementById('gain').value = data.gain;
+            if (data.device_serial) document.getElementById('device_serial').value = data.device_serial;
+            if (data.multimon_verbosity) document.getElementById('multimon_verbosity').value = data.multimon_verbosity;
+            if (data.multimon_charset) document.getElementById('multimon_charset').value = data.multimon_charset;
+            if (data.multimon_format) document.getElementById('multimon_format').value = data.multimon_format;
+            if (data.message_font) document.getElementById('message_font').value = data.message_font;
+            if (data.message_font_size) {
+                document.getElementById('message_font_size').value = data.message_font_size;
+                document.getElementById('message_font_size_slider').value = data.message_font_size;
+                document.getElementById('font_size_val').innerText = data.message_font_size;
+            }
+            if (data.sample_rate) document.getElementById('sample_rate').value = data.sample_rate;
+            if (data.resample_rate) document.getElementById('resample_rate').value = data.resample_rate;
+            if (data.enable_dc_removal) document.getElementById('enable_dc_removal').value = data.enable_dc_removal;
+            if (data.enable_deemp) document.getElementById('enable_deemp').value = data.enable_deemp;
+            if (data.ppm_error !== undefined) document.getElementById('ppm_error').value = data.ppm_error;
+            updatePreview();
+        }
+
+        const fontSelect = document.getElementById('message_font');
+        const fontSlider = document.getElementById('message_font_size_slider');
+        const fontSizeHidden = document.getElementById('message_font_size');
+        const fontSizeValLabel = document.getElementById('font_size_val');
+        const previewText = document.getElementById('previewText');
+
+        function updatePreview() {
+            const font = fontSelect.value;
+            const size = fontSlider.value;
+            fontSizeHidden.value = size;
+            fontSizeValLabel.innerText = size;
+            previewText.style.fontFamily = `'${font}', monospace`;
+            previewText.style.fontSize = `${size}rem`;
+        }
+
+        function showStatus(text, type) {
+            const statusMsg = document.getElementById('statusMessage');
+            statusMsg.innerText = text;
+            statusMsg.className = `status-message ${type} show`;
+            setTimeout(() => { statusMsg.classList.remove('show'); }, 5000);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('settingsForm');
+            const saveBtn = document.getElementById('saveBtn');
+
+            // Load current settings
+            fetch('/api/settings')
+                .then(res => res.json())
+                .then(data => populateForm(data))
+                .catch(err => showStatus("Kunde inte hämta inställningar.", "error"));
+
+            // Load theme
             const currentTheme = localStorage.getItem('pagermonitor-theme') || 'dark';
             document.getElementById('theme').value = currentTheme;
             document.documentElement.setAttribute('data-theme', currentTheme);
 
-            // Spara ändringar
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
                 saveBtn.innerText = 'Sparar...';
@@ -285,59 +323,26 @@
                     ppm_error: document.getElementById('ppm_error').value
                 };
 
-                // Spara tema i localStorage
                 const themeVal = document.getElementById('theme').value;
                 localStorage.setItem('pagermonitor-theme', themeVal);
                 document.documentElement.setAttribute('data-theme', themeVal);
 
                 fetch('/api/settings', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 })
                     .then(res => res.json())
                     .then(data => {
-                        if (data.status === 'success') {
-                            showStatus('Inställningar sparades!', 'success');
-                        } else {
-                            showStatus('Något gick fel vid sparning.', 'error');
-                        }
+                        if (data.status === 'success') showStatus('Inställningar sparades!', 'success');
+                        else showStatus('Något gick fel.', 'error');
                     })
-                    .catch(err => {
-                        console.error(err);
-                        showStatus('Nätverksfel vid sparning.', 'error');
-                    })
+                    .catch(err => showStatus('Nätverksfel.', 'error'))
                     .finally(() => {
-                        saveBtn.innerText = 'Spara Inställningar';
+                        saveBtn.innerText = 'Spara Alla Inställningar';
                         saveBtn.disabled = false;
                     });
             });
-
-            function showStatus(text, type) {
-                statusMsg.innerText = text;
-                statusMsg.className = `status-message ${type} show`;
-                setTimeout(() => {
-                    statusMsg.classList.remove('show');
-                }, 5000);
-            }
-
-            // Sync slider and preview
-            const fontSelect = document.getElementById('message_font');
-            const fontSlider = document.getElementById('message_font_size_slider');
-            const fontSizeHidden = document.getElementById('message_font_size');
-            const fontSizeValLabel = document.getElementById('font_size_val');
-            const previewText = document.getElementById('previewText');
-
-            function updatePreview() {
-                const font = fontSelect.value;
-                const size = fontSlider.value;
-                fontSizeHidden.value = size;
-                fontSizeValLabel.innerText = size;
-                previewText.style.fontFamily = `'${font}', monospace`;
-                previewText.style.fontSize = `${size}rem`;
-            }
 
             fontSelect.addEventListener('change', updatePreview);
             fontSlider.addEventListener('input', updatePreview);

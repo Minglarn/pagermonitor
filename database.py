@@ -8,6 +8,23 @@ from datetime import datetime
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'messages.db')
 
+def get_default_settings():
+    return {
+        'frequency': '161.43M',
+        'gain': '35',
+        'device_serial': '00000102',
+        'multimon_verbosity': '1',
+        'multimon_charset': 'SE',
+        'multimon_format': 'auto',
+        'message_font': 'JetBrains Mono',
+        'message_font_size': '1.0',
+        'sample_rate': '22050',
+        'resample_rate': '22050',
+        'enable_dc_removal': 'true',
+        'ppm_error': '0',
+        'enable_deemp': 'true'
+    }
+
 def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
@@ -66,21 +83,7 @@ def init_db():
         pass # Column might already exist
     
     # Initialize default settings if they don't exist
-    defaults = {
-        'frequency': '169.8M',
-        'gain': 'auto',
-        'device_serial': '',
-        'multimon_verbosity': '1',
-        'multimon_charset': 'SE',
-        'multimon_format': 'auto',
-        'message_font': 'JetBrains Mono',
-        'message_font_size': '1.0',
-        'sample_rate': '1000k',
-        'resample_rate': '22050',
-        'enable_dc_removal': 'true',
-        'ppm_error': '0',
-        'enable_deemp': 'true'
-    }
+    defaults = get_default_settings()
     
     for key, val in defaults.items():
         c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (key, val))

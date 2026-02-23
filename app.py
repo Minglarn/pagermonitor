@@ -6,7 +6,12 @@ from queue import Queue, Empty
 
 import sqlite3
 import database
-from database import init_db, get_recent_messages, get_settings, update_setting, get_aliases, save_alias, delete_alias, get_alert_words, save_alert_word, delete_alert_word
+from database import (
+    init_db, get_recent_messages, get_settings, 
+    update_setting, get_all_aliases, save_alias, 
+    delete_alias, get_alert_words, add_alert_word, 
+    delete_alert_word, get_default_settings
+)
 
 try:
     from mqtt_client import init_mqtt
@@ -107,6 +112,10 @@ def stats_freq_hits():
 def get_messages():
     messages = get_recent_messages(100)
     return jsonify(messages)
+
+@app.route('/api/settings/defaults')
+def settings_defaults():
+    return jsonify(get_default_settings())
 
 @app.route('/api/settings', methods=['GET', 'POST'])
 def handle_settings():
