@@ -9,13 +9,27 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;600&family=Share+Tech+Mono&family=Anonymous+Pro:wght@400;700&family=VT323&family=Roboto+Mono:wght@400;600&family=Source+Code+Pro:wght@400;600&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         // Apply theme immediately to prevent flickering
         (function () {
             const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
+
+            const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+            if (isCollapsed) {
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.getElementById('sidebar').classList.add('collapsed');
+                });
+            }
         })();
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+        }
 
         // Helper to fetch JSON
         async function fetchJSON(url) {
@@ -27,80 +41,108 @@
 </head>
 
 <body>
-    <div class="background-effects">
-        <div class="glow glow-1"></div>
-        <div class="glow glow-2"></div>
-    </div>
-
-    <div class="container">
-        <nav class="top-nav">
-            <a href="/" class="nav-link">Dashboard</a>
-            <a href="/aliases" class="nav-link">Alias</a>
-            <a href="/alerts" class="nav-link">Alerts</a>
-            <a href="/statistics" class="nav-link active">Statistik</a>
-            <a href="/settings" class="nav-link">Inställningar</a>
-        </nav>
-        <header>
-            <h1><span class="highlight">Statistik</span> & Analys</h1>
-            <p>Analysera historisk data och alert‑ord hits.</p>
-        </header>
-        <main>
-            <section class="glass-panel">
-                <h2>Välj datum</h2>
-                <div class="form-group" style="max-width: 300px;">
-                    <input type="date" id="statsDate" />
+    <div class="app-layout">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-satellite-dish" style="font-size: 1.5rem; color: var(--accent);"></i>
+                <div class="sidebar-logo">
+                    <h1>Pager<span>Monitor</span></h1>
+                    <p>POCSAG Monitor</p>
                 </div>
-            </section>
-
-            <div class="stats-grid"
-                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
-                <section class="glass-panel">
-                    <h2>Meddelanden per dag (30d)</h2>
-                    <div style="height: 300px;">
-                        <canvas id="countPerDayChart"></canvas>
-                    </div>
-                </section>
-
-                <section class="glass-panel">
-                    <h2>Alert-ord hits (Total)</h2>
-                    <div style="height: 300px;">
-                        <canvas id="alertHitsChart"></canvas>
-                    </div>
-                </section>
-
-                <section class="glass-panel">
-                    <h2>Aktivitet per Frekvens</h2>
-                    <div style="height: 300px;">
-                        <canvas id="freqHitsChart"></canvas>
-                    </div>
-                </section>
             </div>
 
-            <section class="glass-panel" style="margin-top: 1.5rem;">
-                <h2>Meddelanden per timme (vald dag)</h2>
-                <div style="height: 300px;">
-                    <canvas id="countPerHourChart"></canvas>
-                </div>
-            </section>
+            <div class="sidebar-nav">
+                <a href="/" class="nav-item">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/aliases" class="nav-item">
+                    <i class="fas fa-tag"></i>
+                    <span>Alias</span>
+                </a>
+                <a href="/alerts" class="nav-item">
+                    <i class="fas fa-bell"></i>
+                    <span>Alerts</span>
+                </a>
+                <a href="/statistics" class="nav-item active">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Statistik</span>
+                </a>
+                <a href="/settings" class="nav-item">
+                    <i class="fas fa-cog"></i>
+                    <span>Inställningar</span>
+                </a>
+            </div>
 
-            <section class="glass-panel" style="margin-top: 1.5rem;">
-                <h2>Meddelanden för vald dag</h2>
-                <div id="dayTableContainer" class="table-container" style="max-height: 500px;">
-                    <table id="dayTable">
-                        <thead>
-                            <tr>
-                                <th>Tid</th>
-                                <th>Frekvens</th>
-                                <th>CapCode (Alias)</th>
-                                <th>Meddelande</th>
-                            </tr>
-                        </thead>
-                        <tbody id="dayTableBody"></tbody>
-                    </table>
+            <div class="sidebar-footer">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle meny">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </nav>
+
+        <div class="main-content">
+            <header>
+                <h1><span class="highlight">Statistik</span> & Analys</h1>
+                <p>Analysera historisk data och alert‑ord hits.</p>
+            </header>
+            <main>
+                <section class="glass-panel">
+                    <h2>Välj datum</h2>
+                    <div class="form-group" style="max-width: 300px;">
+                        <input type="date" id="statsDate" />
+                    </div>
+                </section>
+
+                <div class="stats-grid"
+                    style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+                    <section class="glass-panel">
+                        <h2>Meddelanden per dag (30d)</h2>
+                        <div style="height: 300px;">
+                            <canvas id="countPerDayChart"></canvas>
+                        </div>
+                    </section>
+
+                    <section class="glass-panel">
+                        <h2>Alert-ord hits (Total)</h2>
+                        <div style="height: 300px;">
+                            <canvas id="alertHitsChart"></canvas>
+                        </div>
+                    </section>
+
+                    <section class="glass-panel">
+                        <h2>Aktivitet per Frekvens</h2>
+                        <div style="height: 300px;">
+                            <canvas id="freqHitsChart"></canvas>
+                        </div>
+                    </section>
                 </div>
-                <div id="dayLoading" class="loading-state" style="display: none;">Hämtar data...</div>
-            </section>
-        </main>
+
+                <section class="glass-panel" style="margin-top: 1.5rem;">
+                    <h2>Meddelanden per timme (vald dag)</h2>
+                    <div style="height: 300px;">
+                        <canvas id="countPerHourChart"></canvas>
+                    </div>
+                </section>
+
+                <section class="glass-panel" style="margin-top: 1.5rem;">
+                    <h2>Meddelanden för vald dag</h2>
+                    <div id="dayTableContainer" class="table-container" style="max-height: 500px;">
+                        <table id="dayTable">
+                            <thead>
+                                <tr>
+                                    <th>Tid</th>
+                                    <th>Frekvens</th>
+                                    <th>CapCode (Alias)</th>
+                                    <th>Meddelande</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dayTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div id="dayLoading" class="loading-state" style="display: none;">Hämtar data...</div>
+                </section>
+        </div>
     </div>
 
     <script>

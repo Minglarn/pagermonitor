@@ -9,84 +9,127 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;600&family=Share+Tech+Mono&family=Anonymous+Pro:wght@400;700&family=VT323&family=Roboto+Mono:wght@400;600&family=Source+Code+Pro:wght@400;600&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         // Apply theme immediately to prevent flickering
         (function () {
             const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
+
+            const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+            if (isCollapsed) {
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.getElementById('sidebar').classList.add('collapsed');
+                });
+            }
         })();
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+        }
     </script>
 </head>
 
 <body>
-    <div class="background-effects">
-        <div class="glow glow-1"></div>
-        <div class="glow glow-2"></div>
-    </div>
-
-    <div class="container">
-        <nav class="top-nav">
-            <a href="/" class="nav-link">Dashboard</a>
-            <a href="/aliases" class="nav-link active">Alias</a>
-            <a href="/alerts" class="nav-link">Alerts</a>
-            <a href="/settings" class="nav-link">Inställningar</a>
-        </nav>
-
-        <header>
-            <h1><span class="highlight">CapCode Alias</span></h1>
-            <p>Koppla adresser till namn och ignorera spam</p>
-        </header>
-
-        <main>
-            <div class="glass-panel form-container">
-                <form id="aliasForm">
-                    <div class="form-group row-group">
-                        <div class="col">
-                            <label for="address">CapCode / Adress</label>
-                            <input type="text" id="address" name="address" placeholder="T.ex. 1234567" required>
-                        </div>
-                        <div class="col">
-                            <label for="alias">Alias Namn</label>
-                            <input type="text" id="alias" name="alias" placeholder="T.ex. Räddningstjänsten" required>
-                        </div>
-                    </div>
-
-                    <div class="form-group checkbox-group">
-                        <label>
-                            <input type="checkbox" id="is_hidden" name="is_hidden">
-                            Mute / Dölj larm från denna adress (sparas ej i DB)
-                        </label>
-                    </div>
-
-                    <div class="form-actions">
-                        <button type="submit" id="saveAliasBtn" class="primary-btn">Spara Alias</button>
-                    </div>
-                </form>
-
-                <div id="statusMessage" class="status-message"></div>
-
-                <hr class="separator">
-
-                <h3>Befintliga Alias</h3>
-                <div class="table-container">
-                    <table class="glass-table">
-                        <thead>
-                            <tr>
-                                <th>CapCode</th>
-                                <th>Alias</th>
-                                <th>Status</th>
-                                <th>Åtgärd</th>
-                            </tr>
-                        </thead>
-                        <tbody id="aliasTableBody">
-                            <tr>
-                                <td colspan="4" style="text-align:center;">Laddar...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+    <div class="app-layout">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-satellite-dish" style="font-size: 1.5rem; color: var(--accent);"></i>
+                <div class="sidebar-logo">
+                    <h1>Pager<span>Monitor</span></h1>
+                    <p>POCSAG Monitor</p>
                 </div>
             </div>
-        </main>
+
+            <div class="sidebar-nav">
+                <a href="/" class="nav-item">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/aliases" class="nav-item active">
+                    <i class="fas fa-tag"></i>
+                    <span>Alias</span>
+                </a>
+                <a href="/alerts" class="nav-item">
+                    <i class="fas fa-bell"></i>
+                    <span>Alerts</span>
+                </a>
+                <a href="/statistics" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Statistik</span>
+                </a>
+                <a href="/settings" class="nav-item">
+                    <i class="fas fa-cog"></i>
+                    <span>Inställningar</span>
+                </a>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle meny">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </nav>
+
+        <div class="main-content">
+            <header>
+                <h1><span class="highlight">CapCode Alias</span></h1>
+                <p>Koppla adresser till namn och ignorera spam</p>
+            </header>
+
+            <main>
+                <div class="glass-panel form-container">
+                    <form id="aliasForm">
+                        <div class="form-group row-group">
+                            <div class="col">
+                                <label for="address">CapCode / Adress</label>
+                                <input type="text" id="address" name="address" placeholder="T.ex. 1234567" required>
+                            </div>
+                            <div class="col">
+                                <label for="alias">Alias Namn</label>
+                                <input type="text" id="alias" name="alias" placeholder="T.ex. Räddningstjänsten"
+                                    required>
+                            </div>
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <label>
+                                <input type="checkbox" id="is_hidden" name="is_hidden">
+                                Mute / Dölj larm från denna adress (sparas ej i DB)
+                            </label>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" id="saveAliasBtn" class="primary-btn">Spara Alias</button>
+                        </div>
+                    </form>
+
+                    <div id="statusMessage" class="status-message"></div>
+
+                    <hr class="separator">
+
+                    <h3>Befintliga Alias</h3>
+                    <div class="table-container">
+                        <table class="glass-table">
+                            <thead>
+                                <tr>
+                                    <th>CapCode</th>
+                                    <th>Alias</th>
+                                    <th>Status</th>
+                                    <th>Åtgärd</th>
+                                </tr>
+                            </thead>
+                            <tbody id="aliasTableBody">
+                                <tr>
+                                    <td colspan="4" style="text-align:center;">Laddar...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+        </div>
     </div>
 
     <script>

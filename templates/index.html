@@ -9,65 +9,107 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Fira+Code:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inconsolata:wght@400;700&family=JetBrains+Mono:wght@400;500;800&family=Roboto+Mono:wght@400;500;700&family=Source+Code+Pro:wght@400;600;800&family=Space+Mono:wght@400;700&family=Ubuntu+Mono:wght@400;700&family=Courier+Prime:wght@400;700&family=Share+Tech+Mono&family=Anonymous+Pro:wght@400;700&family=VT323&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         // Apply theme and font settings immediately to prevent flickering
         (function () {
             const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
 
-            // Fetch settings to get font/size (or use defaults from local storage if we want it instant)
-            // For now, we'll let the CSS defaults handle it until the API fetch completes below.
+            const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+            if (isCollapsed) {
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.getElementById('sidebar').classList.add('collapsed');
+                });
+            }
         })();
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+        }
     </script>
 </head>
 
 <body class="dashboard-page">
-    <div class="background-effects">
-        <div class="glow glow-1"></div>
-        <div class="glow glow-2"></div>
-    </div>
+    <div class="app-layout">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-satellite-dish" style="font-size: 1.5rem; color: var(--accent);"></i>
+                <div class="sidebar-logo">
+                    <h1>Pager<span>Monitor</span></h1>
+                    <p>POCSAG Monitor</p>
+                </div>
+            </div>
 
-    <div class="container">
-        <nav class="top-nav">
-            <a href="/" class="nav-link active">Dashboard</a>
-            <a href="/aliases" class="nav-link">Alias</a>
-            <a href="/alerts" class="nav-link">Alerts</a>
-            <a href="/statistics" class="nav-link">Statistik</a>
-            <a href="/settings" class="nav-link">Inställningar</a>
+            <div class="sidebar-nav">
+                <a href="/" class="nav-item active">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/aliases" class="nav-item">
+                    <i class="fas fa-tag"></i>
+                    <span>Alias</span>
+                </a>
+                <a href="/alerts" class="nav-item">
+                    <i class="fas fa-bell"></i>
+                    <span>Alerts</span>
+                </a>
+                <a href="/statistics" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Statistik</span>
+                </a>
+                <a href="/settings" class="nav-item">
+                    <i class="fas fa-cog"></i>
+                    <span>Inställningar</span>
+                </a>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle meny">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
         </nav>
 
-        <header>
-            <h1><span class="highlight">Pager</span>Monitor</h1>
-            <p>Realtidsövervakning av POCSAG-larm</p>
-            <div class="search-container">
-                <input type="text" id="searchInput" placeholder="Sök larm eller adresser...">
-                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <div id="rx-indicator" class="rx-status-dot" title="Tar emot data"></div>
-            </div>
-        </header>
+        <div class="main-content">
+            <header>
+                <div class="header-main">
+                    <h1>Realtidsövervakning</h1>
+                    <p>Följ inkommande POCSAG-meddelanden i realtid</p>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="searchInput" placeholder="Sök larm eller adresser...">
+                    <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <div id="rx-indicator" class="rx-status-dot" title="Tar emot data"></div>
+                </div>
+            </header>
 
-        <main>
-            <div class="glass-panel table-container">
-                <table id="alarmsTable">
-                    <thead>
-                        <tr>
-                            <th>Tidstämpel</th>
-                            <th>Frekvens</th>
-                            <th>CapCode (Alias)</th>
-                            <th>Meddelande</th>
-                        </tr>
-                    </thead>
-                    <tbody id="alarmsBody">
-                        <!-- Alarms will be injected here via JavaScript -->
-                    </tbody>
-                </table>
-                <div id="loading" class="loading-state">Laddar historik...</div>
-            </div>
-        </main>
+            <main>
+                <div class="glass-panel table-container">
+                    <table id="alarmsTable">
+                        <thead>
+                            <tr>
+                                <th>Tidstämpel</th>
+                                <th>Frekvens</th>
+                                <th>CapCode (Alias)</th>
+                                <th>Meddelande</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alarmsBody">
+                            <!-- Alarms will be injected here via JavaScript -->
+                        </tbody>
+                    </table>
+                    <div id="loading" class="loading-state">Laddar historik...</div>
+                </div>
+            </main>
+        </div>
     </div>
 
     <!-- Quick Alias Modal -->
@@ -249,10 +291,13 @@
                         tr.classList.add('alert-row', 'alert-pulse-bg');
                     }
 
-                    const formattedTime = new Date(alarm.timestamp).toLocaleString('sv-SE', {
-                        year: 'numeric', month: '2-digit', day: '2-digit',
+                    const dateStr = new Date(alarm.timestamp).toLocaleDateString('sv-SE', {
+                        year: 'numeric', month: '2-digit', day: '2-digit'
+                    });
+                    const timeStr = new Date(alarm.timestamp).toLocaleTimeString('sv-SE', {
                         hour: '2-digit', minute: '2-digit', second: '2-digit'
                     });
+                    const formattedTime = `${dateStr}<br>${timeStr}`;
 
                     const displayAddress = alarm.alias ? alarm.alias : alarm.address;
                     const bitrateTag = alarm.bitrate ? `<span class="badge meta">${alarm.bitrate}bps</span>` : '';

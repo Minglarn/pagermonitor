@@ -9,171 +9,223 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Fira+Code:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inconsolata:wght@400;700&family=JetBrains+Mono:wght@400;500;800&family=Roboto+Mono:wght@400;500;700&family=Source+Code+Pro:wght@400;600;800&family=Space+Mono:wght@400;700&family=Ubuntu+Mono:wght@400;700&family=Courier+Prime:wght@400;700&family=Share+Tech+Mono&family=Anonymous+Pro:wght@400;700&family=VT323&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         (function () {
             const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
+
+            const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+            if (isCollapsed) {
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.getElementById('sidebar').classList.add('collapsed');
+                });
+            }
         })();
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+        }
     </script>
 </head>
 
 <body>
-    <div class="background-effects">
-        <div class="glow glow-1"></div>
-        <div class="glow glow-2"></div>
-    </div>
+    <div class="app-layout">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-satellite-dish" style="font-size: 1.5rem; color: var(--accent);"></i>
+                <div class="sidebar-logo">
+                    <h1>Pager<span>Monitor</span></h1>
+                    <p>POCSAG Monitor</p>
+                </div>
+            </div>
 
-    <div class="container">
-        <nav class="top-nav">
-            <a href="/settings" class="nav-link">Tillbaka till inställningar</a>
+            <div class="sidebar-nav">
+                <a href="/" class="nav-item">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/aliases" class="nav-item">
+                    <i class="fas fa-tag"></i>
+                    <span>Alias</span>
+                </a>
+                <a href="/alerts" class="nav-item">
+                    <i class="fas fa-bell"></i>
+                    <span>Alerts</span>
+                </a>
+                <a href="/statistics" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Statistik</span>
+                </a>
+                <a href="/settings" class="nav-item active">
+                    <i class="fas fa-cog"></i>
+                    <span>Inställningar</span>
+                </a>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle meny">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
         </nav>
 
-        <header>
-            <h1><span class="highlight" id="pageTitle">Laddar...</span></h1>
-            <p>Konfigurera hårdvaruinställningar för denna mottagare</p>
-        </header>
+        <div class="main-content">
+            <header>
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                    <a href="/settings" class="action-btn"
+                        style="text-decoration: none; display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem;">
+                        <i class="fas fa-arrow-left"></i> Tillbaka
+                    </a>
+                    <h1 style="margin: 0;"><span class="highlight" id="pageTitle">Laddar...</span></h1>
+                </div>
+                <p>Konfigurera hårdvaruinställningar för denna mottagare</p>
+            </header>
 
-        <main style="padding-bottom: 5rem;">
-            <div class="glass-panel" style="max-width: 800px; margin: 0 auto; padding: 2rem;">
-                <form id="sdrForm">
-                    <input type="hidden" id="sdr_id" value="{{ sdr_id }}">
+            <main style="padding-bottom: 5rem;">
+                <div class="glass-panel" style="max-width: 800px; margin: 0 auto; padding: 2rem;">
+                    <form id="sdrForm">
+                        <input type="hidden" id="sdr_id" value="{{ sdr_id }}">
 
-                    <div class="form-group">
-                        <label for="name">Namn / Beskrivning</label>
-                        <input type="text" id="name" name="name" placeholder="T.ex. RIKS 1" required>
-                        <small>Ett identifierbart namn för denna mottagare.</small>
-                    </div>
+                        <div class="form-group">
+                            <label for="name">Namn / Beskrivning</label>
+                            <input type="text" id="name" name="name" placeholder="T.ex. RIKS 1" required>
+                            <small>Ett identifierbart namn för denna mottagare.</small>
+                        </div>
 
-                    <div class="row-group">
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="frequency">Frekvens (MHz)</label>
-                                <input type="text" id="frequency" name="frequency" placeholder="169.800M" required>
-                                <small>Standard är 169.8M för POCSAG i Sverige. Använd M för MHz.</small>
-                            </div>
-                        </div>
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="device_serial">Device Serial</label>
-                                <input type="text" id="device_serial" name="device_serial" placeholder="00000101">
-                                <small>USB-serienummer (viktigt om du har flera stickor).</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row-group">
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="gain">Gain</label>
-                                <input type="text" id="gain" name="gain" placeholder="auto" value="auto">
-                                <small>Förstärkning i dB eller "auto".</small>
-                            </div>
-                        </div>
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="ppm_error">PPM Error</label>
-                                <input type="number" id="ppm_error" name="ppm_error" value="0">
-                                <small>Frekvenskorrigering i parts per million.</small>
-                            </div>
-                        </div>
-                    </div>
-
-                    <hr class="separator">
-                    <h3>Signal & Avkodning</h3>
-
-                    <div class="row-group">
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="multimon_verbosity">Log-nivå (-v)</label>
-                                <select id="multimon_verbosity" name="multimon_verbosity">
-                                    <option value="0">Nivå 0 (Ingen info)</option>
-                                    <option value="1">Nivå 1 (Statistik - Standard)</option>
-                                    <option value="2">Nivå 2</option>
-                                    <option value="10">Nivå 10 (Max debug)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="multimon_charset">Charset (-C)</label>
-                                <select id="multimon_charset" name="multimon_charset">
-                                    <option value="SE">SE (Svenska)</option>
-                                    <option value="ISO8859-15">ISO8859-15</option>
-                                    <option value="UTF-8">UTF-8</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row-group">
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="multimon_format">Utdataformat (-f)</label>
-                                <select id="multimon_format" name="multimon_format">
-                                    <option value="auto">Auto-detect (auto)</option>
-                                    <option value="alpha">Alphanumeric (alpha)</option>
-                                    <option value="numeric">Numeric (numeric)</option>
-                                    <option value="skyper">Skyper (skyper)</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col">
-                            <div class="form-group">
-                                <label for="multimon_input_type">Input Type (-t)</label>
-                                <input type="text" id="multimon_input_type" name="multimon_input_type" value="raw">
-                            </div>
-                        </div>
-                    </div>
-
-                    <details>
-                        <summary>Fler avancerade inställningar</summary>
-                        <div class="accordion-content">
-                            <div class="row-group">
-                                <div class="col">
-                                    <div class="form-group">
-                                        <label for="sample_rate">Sample Rate (-s)</label>
-                                        <input type="text" id="sample_rate" name="sample_rate" value="22050">
-                                    </div>
-                                </div>
-                                <div class="col">
-                                    <div class="form-group">
-                                        <label for="resample_rate">Resample (-r)</label>
-                                        <input type="text" id="resample_rate" name="resample_rate" value="22050">
-                                    </div>
+                        <div class="row-group">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="frequency">Frekvens (MHz)</label>
+                                    <input type="text" id="frequency" name="frequency" placeholder="169.800M" required>
+                                    <small>Standard är 169.8M för POCSAG i Sverige. Använd M för MHz.</small>
                                 </div>
                             </div>
-                            <div class="row-group">
-                                <div class="col">
-                                    <div class="form-group">
-                                        <label for="enable_dc_removal">DC Removal</label>
-                                        <select id="enable_dc_removal" name="enable_dc_removal">
-                                            <option value="true">Ja</option>
-                                            <option value="false">Nej</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div class="col">
-                                    <div class="form-group">
-                                        <label for="enable_deemp">De-emphasis</label>
-                                        <select id="enable_deemp" name="enable_deemp">
-                                            <option value="true">Ja</option>
-                                            <option value="false">Nej</option>
-                                        </select>
-                                    </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="device_serial">Device Serial</label>
+                                    <input type="text" id="device_serial" name="device_serial" placeholder="00000101">
+                                    <small>USB-serienummer (viktigt om du har flera stickor).</small>
                                 </div>
                             </div>
                         </div>
-                    </details>
 
-                    <div class="form-actions" style="margin-top: 2rem;">
-                        <button type="submit" class="primary-btn">Spara Inställningar</button>
-                        <button type="button" class="secondary-btn" id="deleteBtn" style="color: #ff4444;">Ta bort
-                            mottagare</button>
-                    </div>
-                </form>
-                <div id="statusMessage" class="status-message"></div>
-            </div>
-        </main>
+                        <div class="row-group">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="gain">Gain</label>
+                                    <input type="text" id="gain" name="gain" placeholder="auto" value="auto">
+                                    <small>Förstärkning i dB eller "auto".</small>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="ppm_error">PPM Error</label>
+                                    <input type="number" id="ppm_error" name="ppm_error" value="0">
+                                    <small>Frekvenskorrigering i parts per million.</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="separator">
+                        <h3>Signal & Avkodning</h3>
+
+                        <div class="row-group">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="multimon_verbosity">Log-nivå (-v)</label>
+                                    <select id="multimon_verbosity" name="multimon_verbosity">
+                                        <option value="0">Nivå 0 (Ingen info)</option>
+                                        <option value="1">Nivå 1 (Statistik - Standard)</option>
+                                        <option value="2">Nivå 2</option>
+                                        <option value="10">Nivå 10 (Max debug)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="multimon_charset">Charset (-C)</label>
+                                    <select id="multimon_charset" name="multimon_charset">
+                                        <option value="SE">SE (Svenska)</option>
+                                        <option value="ISO8859-15">ISO8859-15</option>
+                                        <option value="UTF-8">UTF-8</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row-group">
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="multimon_format">Utdataformat (-f)</label>
+                                    <select id="multimon_format" name="multimon_format">
+                                        <option value="auto">Auto-detect (auto)</option>
+                                        <option value="alpha">Alphanumeric (alpha)</option>
+                                        <option value="numeric">Numeric (numeric)</option>
+                                        <option value="skyper">Skyper (skyper)</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col">
+                                <div class="form-group">
+                                    <label for="multimon_input_type">Input Type (-t)</label>
+                                    <input type="text" id="multimon_input_type" name="multimon_input_type" value="raw">
+                                </div>
+                            </div>
+                        </div>
+
+                        <details>
+                            <summary>Fler avancerade inställningar</summary>
+                            <div class="accordion-content">
+                                <div class="row-group">
+                                    <div class="col">
+                                        <div class="form-group">
+                                            <label for="sample_rate">Sample Rate (-s)</label>
+                                            <input type="text" id="sample_rate" name="sample_rate" value="22050">
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="form-group">
+                                            <label for="resample_rate">Resample (-r)</label>
+                                            <input type="text" id="resample_rate" name="resample_rate" value="22050">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="row-group">
+                                    <div class="col">
+                                        <div class="form-group">
+                                            <label for="enable_dc_removal">DC Removal</label>
+                                            <select id="enable_dc_removal" name="enable_dc_removal">
+                                                <option value="true">Ja</option>
+                                                <option value="false">Nej</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col">
+                                        <div class="form-group">
+                                            <label for="enable_deemp">De-emphasis</label>
+                                            <select id="enable_deemp" name="enable_deemp">
+                                                <option value="true">Ja</option>
+                                                <option value="false">Nej</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </details>
+
+                        <div class="form-actions" style="margin-top: 2rem;">
+                            <button type="submit" class="primary-btn">Spara Inställningar</button>
+                            <button type="button" class="secondary-btn" id="deleteBtn" style="color: #ff4444;">Ta bort
+                                mottagare</button>
+                        </div>
+                    </form>
+                    <div id="statusMessage" class="status-message"></div>
+                </div>
+            </main>
+        </div>
     </div>
 
     <script>
