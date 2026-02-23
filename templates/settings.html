@@ -51,7 +51,13 @@
                         <div class="form-group">
                             <label for="frequency">Frekvens (MHz)</label>
                             <input type="text" id="frequency" name="frequency" placeholder="T.ex. 169.8M" required>
-                            <small>Standard är 169.8M för POCSAG i Sverige. Använd M för MHz.</small>
+                            <div class="preset-container">
+                                <button type="button" class="preset-btn" onclick="setFrequency('169.8M')">RIKS 1
+                                    (169.8M)</button>
+                                <button type="button" class="preset-btn" onclick="setFrequency('161.4375M')">RIKS 2
+                                    (161.43M)</button>
+                            </div>
+                            <small>Frekvens för POCSAG. Använd M för MHz.</small>
                         </div>
 
                         <div class="row-group">
@@ -230,6 +236,11 @@
             // Update content
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             document.getElementById(`tab-${tabId}`).classList.add('active');
+        }
+
+        function setFrequency(freq) {
+            document.getElementById('frequency').value = freq;
+            showStatus(`Frekvens satt till ${freq}`, 'success');
         }
 
         function restoreDefaults() {
