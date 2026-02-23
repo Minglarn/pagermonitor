@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SDR-inställningar - PagerMonitor</title>
+    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;600&display=swap"
+        rel="stylesheet">
+    <script>
+        (function () {
+            const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+</head>
+
+<body>
+    <div class="background-effects">
+        <div class="glow glow-1"></div>
+        <div class="glow glow-2"></div>
+    </div>
+
+    <div class="container">
+        <nav class="top-nav">
+            <a href="/settings" class="nav-link">Tillbaka till inställningar</a>
+        </nav>
+
+        <header>
+            <h1><span class="highlight" id="pageTitle">Laddar...</span></h1>
+            <p>Konfigurera hårdvaruinställningar för denna mottagare</p>
+        </header>
+
+        <main>
+            <div class="glass-panel form-container">
+                <form id="sdrForm">
+                    <input type="hidden" id="sdr_id" value="{{ sdr_id }}">
+
+                    <div class="form-group">
+                        <label for="name">Namn / Beskrivning</label>
+                        <input type="text" id="name" name="name" placeholder="T.ex. RIKS 1" required>
+                        <small>Ett identifierbart namn för denna mottagare.</small>
+                    </div>
+
+                    <div class="row-group">
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="frequency">Frekvens (MHz)</label>
+                                <input type="text" id="frequency" name="frequency" placeholder="169.800M" required>
+                                <small>Standard är 169.8M för POCSAG i Sverige. Använd M för MHz.</small>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="device_serial">Device Serial</label>
+                                <input type="text" id="device_serial" name="device_serial" placeholder="00000101">
+                                <small>USB-serienummer (viktigt om du har flera stickor).</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row-group">
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="gain">Gain</label>
+                                <input type="text" id="gain" name="gain" placeholder="auto" value="auto">
+                                <small>Förstärkning i dB eller "auto".</small>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="ppm_error">PPM Error</label>
+                                <input type="number" id="ppm_error" name="ppm_error" value="0">
+                                <small>Frekvenskorrigering i parts per million.</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="separator">
+                    <h3>Signal & Avkodning</h3>
+
+                    <div class="row-group">
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="multimon_verbosity">Log-nivå (-v)</label>
+                                <select id="multimon_verbosity" name="multimon_verbosity">
+                                    <option value="0">Nivå 0 (Ingen info)</option>
+                                    <option value="1">Nivå 1 (Statistik - Standard)</option>
+                                    <option value="2">Nivå 2</option>
+                                    <option value="10">Nivå 10 (Max debug)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="multimon_charset">Charset (-C)</label>
+                                <select id="multimon_charset" name="multimon_charset">
+                                    <option value="SE">SE (Svenska)</option>
+                                    <option value="ISO8859-15">ISO8859-15</option>
+                                    <option value="UTF-8">UTF-8</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row-group">
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="multimon_format">Utdataformat (-f)</label>
+                                <select id="multimon_format" name="multimon_format">
+                                    <option value="any">Gissa format (any)</option>
+                                    <option value="alpha">Alfanumeriskt (alpha)</option>
+                                    <option value="num">Numeriskt (num)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="form-group">
+                                <label for="multimon_input_type">Input Type (-t)</label>
+                                <input type="text" id="multimon_input_type" name="multimon_input_type" value="raw">
+                            </div>
+                        </div>
+                    </div>
+
+                    <details>
+                        <summary>Fler avancerade inställningar</summary>
+                        <div class="accordion-content">
+                            <div class="row-group">
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="sample_rate">Sample Rate (-s)</label>
+                                        <input type="text" id="sample_rate" name="sample_rate" value="22050">
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="resample_rate">Resample (-r)</label>
+                                        <input type="text" id="resample_rate" name="resample_rate" value="22050">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row-group">
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="enable_dc_removal">DC Removal</label>
+                                        <select id="enable_dc_removal" name="enable_dc_removal">
+                                            <option value="true">Ja</option>
+                                            <option value="false">Nej</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="enable_deemp">De-emphasis</label>
+                                        <select id="enable_deemp" name="enable_deemp">
+                                            <option value="true">Ja</option>
+                                            <option value="false">Nej</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+
+                    <div class="form-actions" style="margin-top: 2rem;">
+                        <button type="submit" class="primary-btn">Spara Inställningar</button>
+                        <button type="button" class="secondary-btn" id="deleteBtn" style="color: #ff4444;">Ta bort
+                            mottagare</button>
+                    </div>
+                </form>
+                <div id="statusMessage" class="status-message"></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const sdrId = "{{ sdr_id }}";
+        const form = document.getElementById('sdrForm');
+        const statusMsg = document.getElementById('statusMessage');
+
+        function showStatus(text, type) {
+            statusMsg.innerText = text;
+            statusMsg.className = `status-message ${type} show`;
+            setTimeout(() => { statusMsg.classList.remove('show'); }, 5000);
+        }
+
+        function loadSDR() {
+            fetch(`/api/sdr/${sdrId}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'error') {
+                        showStatus('Kunde inte ladda mottagare: ' + data.message, 'error');
+                        return;
+                    }
+                    document.getElementById('pageTitle').innerText = data.name;
+
+                    // Fill form
+                    for (const [key, value] of Object.entries(data)) {
+                        const el = document.getElementById(key);
+                        if (el) {
+                            if (el.tagName === 'SELECT' && (value === true || value === false)) {
+                                el.value = value.toString();
+                            } else {
+                                el.value = value;
+                            }
+                        }
+                    }
+                });
+        }
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            data.id = parseInt(sdrId);
+
+            // Convert types
+            data.enable_dc_removal = data.enable_dc_removal === 'true';
+            data.enable_deemp = data.enable_deemp === 'true';
+            data.ppm_error = parseInt(data.ppm_error);
+
+            fetch('/api/sdr', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    showStatus('Inställningar sparade!', 'success');
+                    setTimeout(() => { window.location.href = '/settings'; }, 1000);
+                })
+                .catch(err => showStatus('Kunde inte spara.', 'error'));
+        });
+
+        document.getElementById('deleteBtn').onclick = () => {
+            if (!confirm('Är du säker på att du vill ta bort denna mottagare?')) return;
+            fetch(`/api/sdr/${sdrId}`, { method: 'DELETE' })
+                .then(() => {
+                    window.location.href = '/settings';
+                });
+        };
+
+        window.onload = loadSDR;
+    </script>
+</body>
+
+</html>

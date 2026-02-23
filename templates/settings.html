@@ -52,7 +52,7 @@
 
                     <div class="form-actions"
                         style="margin-top: 2rem; border-top: 1px solid var(--panel-border); padding-top: 1.5rem;">
-                        <button type="button" class="primary-btn" onclick="openSDRModal()">+ Lägg till ny
+                        <button type="button" class="primary-btn" onclick="addNewSDR()">+ Lägg till ny
                             mottagare</button>
                     </div>
                 </div>
@@ -111,110 +111,10 @@
 
                 <div id="statusMessage" class="status-message"></div>
             </div>
-
-            <!-- SDR Modal -->
-            <div id="sdrModal" class="modal-overlay">
-                <div class="glass-panel modal-content" style="max-width: 600px; width: 90%;">
-                    <h2 id="modalTitle">Redigera Mottagare</h2>
-                    <form id="sdrForm">
-                        <input type="hidden" id="sdr_id" name="id">
-
-                        <div class="form-group">
-                            <label for="sdr_name">Namn / Beskrivning</label>
-                            <input type="text" id="sdr_name" name="name" placeholder="T.ex. RIKS 1" required>
-                        </div>
-
-                        <div class="row-group">
-                            <div class="col">
-                                <div class="form-group">
-                                    <label for="sdr_frequency">Frekvens (MHz)</label>
-                                    <input type="text" id="sdr_frequency" name="frequency" placeholder="169.800M"
-                                        required>
-                                </div>
-                            </div>
-                            <div class="col">
-                                <div class="form-group">
-                                    <label for="sdr_device_serial">Device Serial</label>
-                                    <input type="text" id="sdr_device_serial" name="device_serial"
-                                        placeholder="00000101">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row-group">
-                            <div class="col">
-                                <div class="form-group">
-                                    <label for="sdr_gain">Gain</label>
-                                    <input type="text" id="sdr_gain" name="gain" placeholder="auto" value="auto">
-                                </div>
-                            </div>
-                            <div class="col">
-                                <div class="form-group">
-                                    <label for="sdr_ppm">PPM Error</label>
-                                    <input type="number" id="sdr_ppm" name="ppm_error" value="0">
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="settings-accordion">
-                            <details>
-                                <summary>Avancerade Signalinställningar</summary>
-                                <div class="accordion-content">
-                                    <div class="row-group">
-                                        <div class="col">
-                                            <div class="form-group">
-                                                <label for="sdr_sr">Sample Rate (-s)</label>
-                                                <input type="text" id="sdr_sr" name="sample_rate" value="22050">
-                                            </div>
-                                        </div>
-                                        <div class="col">
-                                            <div class="form-group">
-                                                <label for="sdr_rr">Resample (-r)</label>
-                                                <input type="text" id="sdr_rr" name="resample_rate" value="22050">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row-group">
-                                        <div class="col">
-                                            <div class="form-group">
-                                                <label for="sdr_dc">DC Removal</label>
-                                                <select id="sdr_dc" name="enable_dc_removal">
-                                                    <option value="true">Ja</option>
-                                                    <option value="false">Nej</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col">
-                                            <div class="form-group">
-                                                <label for="sdr_deemp">De-emphasis</label>
-                                                <select id="sdr_deemp" name="enable_deemp">
-                                                    <option value="true">Ja</option>
-                                                    <option value="false">Nej</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="sdr_inp">Multimon Input Type (-t)</label>
-                                        <input type="text" id="sdr_inp" name="multimon_input_type" value="raw">
-                                    </div>
-                                </div>
-                            </details>
-                        </div>
-
-                        <div class="modal-actions">
-                            <button type="button" class="secondary-btn" onclick="closeSDRModal()">Avbryt</button>
-                            <button type="submit" class="primary-btn">Spara Mottagare</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
         </main>
     </div>
 
     <script>
-        const sdrModal = document.getElementById('sdrModal');
-        const sdrForm = document.getElementById('sdrForm');
         let currentSDRs = [];
 
         function switchTab(tabId) {
@@ -268,38 +168,25 @@
                         <div class="sdr-info"><span>Serial:</span> <strong>${sdr.device_serial || 'Standard'}</strong></div>
                     </div>
                     <div class="sdr-card-actions">
-                        <button class="secondary-btn" onclick="openSDRModal(${sdr.id})">Redigera</button>
-                        <button class="secondary-btn" onclick="deleteSDR(${sdr.id})" style="color: #ff4444;">Ta bort</button>
+                        <a href="/settings/sdr/${sdr.id}" class="secondary-btn" style="text-decoration: none; display: inline-block; text-align: center;">Hantera inställningar</a>
                     </div>
                 </div>
             `).join('');
         }
 
-        function openSDRModal(id = null) {
-            sdrForm.reset();
-            document.getElementById('sdr_id').value = id || '';
-            document.getElementById('modalTitle').innerText = id ? 'Redigera Mottagare' : 'Lägg till ny mottagare';
+        function addNewSDR() {
+            const name = prompt('Ange namn för den nya mottagaren:');
+            if (!name) return;
 
-            if (id) {
-                const sdr = currentSDRs.find(s => s.id === id);
-                if (sdr) {
-                    document.getElementById('sdr_name').value = sdr.name;
-                    document.getElementById('sdr_frequency').value = sdr.frequency;
-                    document.getElementById('sdr_device_serial').value = sdr.device_serial;
-                    document.getElementById('sdr_gain').value = sdr.gain;
-                    document.getElementById('sdr_ppm').value = sdr.ppm_error;
-                    document.getElementById('sdr_sr').value = sdr.sample_rate;
-                    document.getElementById('sdr_rr').value = sdr.resample_rate;
-                    document.getElementById('sdr_dc').value = sdr.enable_dc_removal;
-                    document.getElementById('sdr_deemp').value = sdr.enable_deemp;
-                    document.getElementById('sdr_inp').value = sdr.multimon_input_type;
-                }
-            }
-            sdrModal.classList.add('show');
-        }
-
-        function closeSDRModal() {
-            sdrModal.classList.remove('show');
+            fetch('/api/sdr', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: name, frequency: '169.8M' })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    loadSDRs();
+                });
         }
 
         function toggleSDR(id, enabled) {
@@ -311,15 +198,6 @@
                 showStatus('Mottagare ' + (enabled ? 'aktiverad' : 'inaktiverad'), 'success');
                 loadSDRs();
             });
-        }
-
-        function deleteSDR(id) {
-            if (!confirm('Är du säker på att du vill ta bort denna mottagare?')) return;
-            fetch(`/api/sdr/${id}`, { method: 'DELETE' })
-                .then(() => {
-                    showStatus('Mottagare borttagen', 'success');
-                    loadSDRs();
-                });
         }
 
         function showStatus(text, type) {
@@ -354,31 +232,6 @@
                     showStatus('Inställningar sparades!', 'success');
                 })
                 .finally(() => btn.disabled = false);
-        });
-
-        // SDR Form
-        sdrForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const formData = new FormData(sdrForm);
-            const data = Object.fromEntries(formData.entries());
-
-            // Convert boolean strings to actual booleans
-            data.enable_dc_removal = data.enable_dc_removal === 'true';
-            data.enable_deemp = data.enable_deemp === 'true';
-            data.ppm_error = parseInt(data.ppm_error);
-
-            fetch('/api/sdr', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
-            })
-                .then(res => res.json())
-                .then(data => {
-                    showStatus('Mottagare sparad!', 'success');
-                    closeSDRModal();
-                    loadSDRs();
-                })
-                .catch(err => showStatus('Kunde inte spara mottagare.', 'error'));
         });
 
         const fontSelect = document.getElementById('message_font');

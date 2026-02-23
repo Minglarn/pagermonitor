@@ -141,6 +141,10 @@ def handle_settings():
     settings.pop('rtl_tcp_address', None)
     return jsonify(settings)
 
+@app.route('/settings/sdr/<int:sdr_id>')
+def sdr_settings_page(sdr_id):
+    return render_template('sdr_settings.html', sdr_id=sdr_id)
+
 @app.route('/api/sdr', methods=['GET', 'POST'])
 def handle_sdr_instances():
     if request.method == 'POST':
@@ -152,6 +156,14 @@ def handle_sdr_instances():
     # GET request
     instances = get_sdr_instances()
     return jsonify(instances)
+
+@app.route('/api/sdr/<int:instance_id>', methods=['GET'])
+def get_single_sdr(instance_id):
+    instances = get_sdr_instances()
+    instance = next((i for i in instances if i['id'] == instance_id), None)
+    if not instance:
+        return jsonify({"status": "error", "message": "Instance not found"}), 404
+    return jsonify(instance)
 
 @app.route('/api/sdr/<int:instance_id>', methods=['DELETE'])
 def delete_sdr(instance_id):
