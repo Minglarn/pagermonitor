@@ -1129,6 +1129,51 @@ tr:hover td {
     opacity: 1;
 }
 
+/* Action buttons for text-based actions (Aliases page) */
+.action-btn {
+    display: inline-block;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+}
+
+.action-btn.delete-btn {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.action-btn.delete-btn:hover {
+    background: rgba(239, 68, 68, 0.25);
+}
+
+.action-btn.edit-btn {
+    background: rgba(56, 189, 248, 0.1);
+    color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.3);
+    margin-left: 0.3rem;
+}
+
+.action-btn.edit-btn:hover {
+    background: rgba(56, 189, 248, 0.25);
+}
+
+/* Glass table (Aliases) - auto layout, wider */
+.glass-table {
+    table-layout: auto;
+    width: 100%;
+}
+
+.glass-panel.form-container {
+    max-width: 85%;
+    margin: 0 auto;
+}
+
 [data-theme="light"] .delete-btn:hover {
     background: rgba(239, 68, 68, 0.05);
 }
