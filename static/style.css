@@ -75,6 +75,8 @@ body {
     transition: margin-left 0.3s ease;
     width: 100%;
     overflow-x: hidden;
+    overflow-y: auto;
+    height: 100vh;
 }
 
 /* Sidebar Styling */

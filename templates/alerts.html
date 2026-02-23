@@ -80,135 +80,84 @@
             </header>
 
             <main>
-                <div class="glass-panel form-container">
-                    <form id="alertForm">
-                        <div class="form-group">
-                            <label for="word">New Watchword</label>
-                            <input type="text" id="word" name="word" placeholder="e.g. FIRE or ACCIDENT" required>
-                            <small>Case insensitive.</small>
-                        </div>
-
-                        <div class="form-actions">
-                            <button type="submit" id="saveBtn" class="primary-btn">Add to Watchlist</button>
-                        </div>
-                    </form>
-                    <div id="status" class="status-message"></div>
-
-                    <hr class="separator">
-
-                    <h3>Active Watchwords</h3>
-                    <div class="table-container" style="min-height: auto;">
-                        <table id="alertsTable">
-                            <thead>
-                                <tr>
-                                    <th>Word</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
-                                </tr>
-                            </thead>
-                            <tbody id="alertsBody"></tbody>
-                        </table>
+                <div class="glass-panel form-container" style="padding: 1.5rem;">
+                    <div class="form-group" style="margin-bottom: 0.5rem;">
+                        <label for="wordsArea" style="font-size: 0.85rem; margin-bottom: 0.5rem; display: block;">
+                            Edit your watchwords below. Separate words with commas. Case insensitive.
+                        </label>
+                        <textarea id="wordsArea" rows="4" placeholder="e.g. BRAND, OLYCKA, POLIS, AMBULANS"
+                            style="width: 100%; padding: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 1rem; background: var(--input-bg, rgba(0,0,0,0.2)); color: var(--text-primary); border: 1px solid var(--panel-border); border-radius: 10px; resize: vertical;"></textarea>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.75rem;">
+                        <button id="saveBtn" class="primary-btn" style="padding: 0.5rem 1.5rem;"
+                            onclick="saveWords()">Save Watchlist</button>
+                        <span id="status" class="status-message"></span>
                     </div>
                 </div>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const alertsBody = document.getElementById('alertsBody');
-            const alertForm = document.getElementById('alertForm');
-            const status = document.getElementById('status');
-            const saveBtn = document.getElementById('saveBtn');
+        let currentAlerts = [];
 
-            const fetchAlerts = async () => {
-                const res = await fetch('/api/alerts');
-                const data = await res.json();
-                renderAlerts(data);
-            };
+        async function loadWords() {
+            const res = await fetch('/api/alerts');
+            currentAlerts = await res.json();
+            const words = currentAlerts.map(a => a.word).join(', ');
+            document.getElementById('wordsArea').value = words;
+        }
 
-            const renderAlerts = (alerts) => {
-                alertsBody.innerHTML = '';
-                alerts.forEach(a => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td><span class="alert-word" style="color: ${a.color || '#ef4444'}; border-bottom-color: ${a.color || '#ef4444'}">${a.word}</span></td>
-                        <td><span class="badge ${a.is_active ? 'success' : ''}">${a.is_active ? 'Active' : 'Inactive'}</span></td>
-                        <td>
-                            <button class="action-btn delete-btn" onclick="deleteAlert(${a.id})">Remove</button>
-                        </td>
-                    `;
-                    alertsBody.appendChild(tr);
-                });
-            };
+        async function saveWords() {
+            const btn = document.getElementById('saveBtn');
+            const statusEl = document.getElementById('status');
+            btn.disabled = true;
+            btn.innerText = 'Saving...';
 
-            alertForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                saveBtn.innerText = 'Sparar...';
-                saveBtn.disabled = true;
+            const rawText = document.getElementById('wordsArea').value;
+            const newWords = rawText.split(',').map(w => w.trim().toUpperCase()).filter(w => w.length > 0);
+            // Deduplicate
+            const uniqueNewWords = [...new Set(newWords)];
 
-                const inputVal = document.getElementById('word').value.toUpperCase();
-                // Split by comma and clean up whitespace, ignoring empty strings
-                const words = inputVal.split(',').map(w => w.trim()).filter(w => w.length > 0);
+            const oldWords = currentAlerts.map(a => a.word.toUpperCase());
 
-                if (words.length === 0) {
-                    status.innerText = 'Please enter at least one word.';
-                    status.className = 'status-message error show';
-                    saveBtn.innerText = 'Add to Watchlist';
-                    saveBtn.disabled = false;
-                    setTimeout(() => status.classList.remove('show'), 3000);
-                    return;
-                }
+            // Find words to add (in new but not in old)
+            const toAdd = uniqueNewWords.filter(w => !oldWords.includes(w));
+            // Find words to remove (in old but not in new)
+            const toRemove = currentAlerts.filter(a => !uniqueNewWords.includes(a.word.toUpperCase()));
 
-                try {
-                    // Create an array of Promises for each word to save
-                    const savePromises = words.map(word => {
-                        const payload = {
-                            word: word,
-                            color: '#ef4444', // Default to red pulse
-                            is_active: true
-                        };
-                        return fetch('/api/alerts', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload)
-                        });
+            try {
+                // Add new words
+                for (const word of toAdd) {
+                    await fetch('/api/alerts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ word, color: '#ef4444', is_active: true })
                     });
-
-                    // Wait for all to complete
-                    const results = await Promise.all(savePromises);
-
-                    const allOk = results.every(res => res.ok);
-
-                    if (allOk) {
-                        status.innerText = words.length > 1 ? `${words.length} words added!` : 'Word added!';
-                        status.className = 'status-message success show';
-                        document.getElementById('word').value = '';
-                        fetchAlerts();
-                    } else {
-                        throw new Error("One or more words could not be saved.");
-                    }
-                } catch (e) {
-                    status.innerText = 'Something went wrong: ' + e.message;
-                    status.className = 'status-message error show';
-                } finally {
-                    saveBtn.innerText = 'Lägg till i bevakning';
-                    saveBtn.disabled = false;
-                    setTimeout(() => status.classList.remove('show'), 3000);
                 }
-            });
 
-            window.deleteAlert = async (id) => {
-                if (!confirm('Remove this word from the watchlist?')) return;
-                await fetch('/api/alerts', {
-                    method: 'DELETE',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id })
-                });
-                fetchAlerts();
-            };
+                // Remove deleted words
+                for (const alert of toRemove) {
+                    await fetch('/api/alerts', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: alert.id })
+                    });
+                }
 
-            fetchAlerts();
-        });
+                statusEl.innerText = 'Watchlist saved!';
+                statusEl.className = 'status-message success show';
+                await loadWords(); // Reload to sync state
+            } catch (e) {
+                statusEl.innerText = 'Error: ' + e.message;
+                statusEl.className = 'status-message error show';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Save Watchlist';
+                setTimeout(() => statusEl.classList.remove('show'), 3000);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadWords);
     </script>
 </body>
 
