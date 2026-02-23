@@ -121,6 +121,10 @@ body {
 .sidebar-logo h1 {
     font-size: 1.2rem;
     font-weight: 800;
+    color: var(--accent);
+}
+
+.sidebar-logo h1 span {
     color: var(--text-primary);
 }
 
