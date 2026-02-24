@@ -2,9 +2,7 @@
 
 PagerMonitor är en Dockeriserad allt-i-ett-applikation för Software Defined Radio (SDR) utformad för att fånga upp, avkoda och övervaka POCSAG-personsökartrafik (t.ex. Minicall/Rikssökning). Den har en modern och stilren webbpanel i realtid, dynamisk hantering av inställningar, stöd för flera samtidiga SDR-enheter och ett avancerat aliassystem för att byta ut kryptiska CapCodes mot läsbara namn eller för att muta oönskad skräptrafik.
 
-<img width="2315" height="1522" alt="image" src="https://github.com/user-attachments/assets/34aa2401-03db-4b6a-83be-3dcc3baa33a0" />
-
-
+<img width="1157" height="761" alt="image" src="https://github.com/user-attachments/assets/9f6c2dda-0b0d-4679-9b3c-7eca804c80a7" />
 
 ## Huvudfunktioner
 
