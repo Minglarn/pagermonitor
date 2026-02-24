@@ -25,7 +25,30 @@ Applikationen körs isolerat inuti en enda Docker-container och kompileras från
 
 ## Kom igång med Docker
 
-All nödvändig miljö är förberedd i projektet via `docker-compose.yml`.
+All nödvändig miljö är förberedd i projektet via `docker-compose.yml`. Du kan skapa en fil med nedan innehåll:
+
+```yaml
+services:
+  pagermonitor:
+    # Använd bilden direkt från GitHub Container Registry
+    image: ghcr.io/minglarn/pagermonitor:latest
+    container_name: pagermonitor
+    restart: unless-stopped
+    devices:
+      # Nödvändigt för Linux-värdar: Karta igenom USB för RTL-SDR
+      - /dev/bus/usb:/dev/bus/usb
+    volumes:
+      - ./data:/app/data
+    environment:
+      # Anpassa dessa för din MQTT-broker
+      - MQTT_BROKER=192.168.1.121
+      - MQTT_PORT=1883
+      - MQTT_USER=home-assistant-server
+      - MQTT_PASS=${MQTT_PASS:-}
+      - TZ=${TZ:-Europe/Stockholm}
+    ports:
+      - "5000:5000"
+```
 
 ### 1. Hårdvarukrav (Linux / Raspberry Pi)
 För att containern ska hitta din RTL-SDR-sticka måste du ge Docker rättigheter till USB-porten. Linux är rekommenderat.
@@ -54,14 +77,14 @@ Vikitgast är att USB-mappningen är aktiv:
       - /dev/bus/usb:/dev/bus/usb
 ```
 
-### 4. Bygg och Starta
-Eftersom systemet laddar ner och bygger radiodrivrutinerna direkt vid installation kan första bygget ta några minuter.
+### 4. Starta Containern
+Istället för att kräva att du bygger komplicerad C++ kod själv laddar systemet automatiskt ner en färdigbyggd och optimerad avbildning direkt från GitHub. Allt du behöver göra är:
 
 ```bash
-# Starta bygget och kör i bakgrunden
-docker-compose up -d --build
+# Starta och kör i bakgrunden
+docker-compose up -d
 
-# Monitera loggarna för att se att mjukvaran hittat dina SDR-enheter
+# Titta på loggarna för att bekräfta att RDS/SDR hittas
 docker-compose logs -f
 ```
 
