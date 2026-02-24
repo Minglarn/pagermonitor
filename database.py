@@ -227,7 +227,7 @@ def reindex_messages(already_open_conn=None):
         conn.commit()
         conn.close()
 
-def get_recent_messages(limit=100, before_id=None):
+def get_recent_messages(limit=100, before_id=None, search=None):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
@@ -236,30 +236,34 @@ def get_recent_messages(limit=100, before_id=None):
     columns = [col[1] for col in c.fetchall()]
     has_hidden = 'is_hidden' in columns
     
+    base_query = '''
+        SELECT m.*, a.alias as current_alias FROM messages m
+        LEFT JOIN aliases a ON m.address = a.address
+    '''
+    
+    where_clauses = []
+    params = []
+    
     if has_hidden:
-        # Join with aliases table to filter out hidden messages and get the latest alias
-        query = '''
-            SELECT m.*, a.alias as current_alias FROM messages m
-            LEFT JOIN aliases a ON m.address = a.address
-            WHERE (a.is_hidden IS NULL OR a.is_hidden = 0)
-        '''
-        params = []
-        if before_id:
-            query += ' AND m.id < ?'
-            params.append(before_id)
-        query += ' ORDER BY m.id DESC LIMIT ?'
-        params.append(limit)
-    else:
-        query = '''
-            SELECT m.*, a.alias as current_alias FROM messages m
-            LEFT JOIN aliases a ON m.address = a.address
-        '''
-        params = []
-        if before_id:
-            query += ' WHERE m.id < ?'
-            params.append(before_id)
-        query += ' ORDER BY m.id DESC LIMIT ?'
-        params.append(limit)
+        where_clauses.append('(a.is_hidden IS NULL OR a.is_hidden = 0)')
+        
+    if before_id:
+        where_clauses.append('m.id < ?')
+        params.append(before_id)
+        
+    if search:
+        search_term = f'%{search}%' # For LIKE
+        where_clauses.append('''
+            (m.message LIKE ? OR m.address LIKE ? OR a.alias LIKE ? OR m.timestamp LIKE ?)
+        ''')
+        params.extend([search_term, search_term, search_term, search_term])
+        
+    query = base_query
+    if where_clauses:
+        query += ' WHERE ' + ' AND '.join(where_clauses)
+        
+    query += ' ORDER BY m.id DESC LIMIT ?'
+    params.append(limit)
         
     c.execute(query, tuple(params))
     rows = c.fetchall()

@@ -239,16 +239,21 @@
                 if (isLoadingMore || (beforeId && hasReachedEnd)) return;
 
                 try {
+                    let url = beforeId ? `/api/messages?before_id=${beforeId}` : '/api/messages';
+                    const currentQuery = searchInput.value.trim();
+                    if (currentQuery) {
+                        url += (url.includes('?') ? '&' : '?') + `search=${encodeURIComponent(currentQuery)}`;
+                    }
+
                     if (beforeId) isLoadingMore = true;
 
-                    const url = beforeId ? `/api/messages?before_id=${beforeId}` : '/api/messages';
                     const response = await fetch(url);
                     if (!response.ok) throw new Error('Network response was not ok');
                     const data = await response.json();
 
                     if (data.length === 0) {
                         if (beforeId) hasReachedEnd = true;
-                        if (!allAlarms.length) loading.innerText = 'No messages found.';
+                        if (!allAlarms.length) loading.innerText = 'Inga meddelanden hittades.';
                         return;
                     }
 
@@ -338,12 +343,7 @@
 
                 alarmsBody.innerHTML = '';
 
-                const filtered = allAlarms.filter(alarm =>
-                    alarm.address.toLowerCase().includes(query) ||
-                    alarm.message.toLowerCase().includes(query) ||
-                    (alarm.alias && alarm.alias.toLowerCase().includes(query)) ||
-                    new Date(alarm.timestamp).toLocaleString('sv-SE').includes(query)
-                );
+                const filtered = allAlarms;
 
                 let lastGroupKey = null;
 
@@ -426,7 +426,21 @@
                 }
             };
 
-            searchInput.addEventListener('input', renderAlarms);
+            let searchTimeout = null;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                // Reset states for a fresh search from the database
+                allAlarms = [];
+                alarmsBody.innerHTML = '';
+                hasReachedEnd = false;
+                isLoadingMore = false;
+                loading.style.display = 'block';
+                loading.innerText = 'Söker...';
+
+                searchTimeout = setTimeout(() => {
+                    fetchAlarms();
+                }, 400); // 400ms debounce
+            });
 
 
             // Fetch historical logic
@@ -495,8 +509,16 @@
                             container.scrollTop += (container.scrollHeight - previousScrollHeight);
                         }
                     } else {
-                        // If searching, full render is necessary to filter
-                        renderAlarms(true);
+                        // If searching, see if incoming message matches the query before injecting
+                        const q = searchInput.value.toLowerCase().normalize("NFC");
+                        const addr = String(data.address).toLowerCase().normalize("NFC");
+                        const msgStr = String(data.message).toLowerCase().normalize("NFC");
+                        const al = data.alias ? String(data.alias).toLowerCase().normalize("NFC") : "";
+
+                        if (addr.includes(q) || msgStr.includes(q) || al.includes(q)) {
+                            const newRow = createAlarmRow(data);
+                            alarmsBody.prepend(newRow);
+                        }
                     }
                 }
             };

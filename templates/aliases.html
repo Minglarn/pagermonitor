@@ -192,8 +192,8 @@
                 saveBtn.disabled = true;
 
                 const payload = {
-                    address: document.getElementById('address').value,
-                    alias: document.getElementById('alias').value,
+                    address: document.getElementById('address').value.trim(),
+                    alias: document.getElementById('alias').value.trim(),
                     is_hidden: document.getElementById('is_hidden').checked
                 };
 

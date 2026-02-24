@@ -114,7 +114,9 @@ def stats_freq_hits():
 def get_messages():
     before_id = request.args.get('before_id', type=int)
     limit = request.args.get('limit', default=100, type=int)
-    messages = get_recent_messages(limit, before_id)
+    search_query = request.args.get('search', default=None, type=str)
+    
+    messages = get_recent_messages(limit, before_id, search_query)
     return jsonify(messages)
 
 @app.route('/api/settings/defaults')
