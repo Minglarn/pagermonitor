@@ -237,9 +237,9 @@ def get_recent_messages(limit=100, before_id=None):
     has_hidden = 'is_hidden' in columns
     
     if has_hidden:
-        # Join with aliases table to filter out hidden messages
+        # Join with aliases table to filter out hidden messages and get the latest alias
         query = '''
-            SELECT m.* FROM messages m
+            SELECT m.*, a.alias as current_alias FROM messages m
             LEFT JOIN aliases a ON m.address = a.address
             WHERE (a.is_hidden IS NULL OR a.is_hidden = 0)
         '''
@@ -250,12 +250,15 @@ def get_recent_messages(limit=100, before_id=None):
         query += ' ORDER BY m.id DESC LIMIT ?'
         params.append(limit)
     else:
-        query = 'SELECT * FROM messages'
+        query = '''
+            SELECT m.*, a.alias as current_alias FROM messages m
+            LEFT JOIN aliases a ON m.address = a.address
+        '''
         params = []
         if before_id:
-            query += ' WHERE id < ?'
+            query += ' WHERE m.id < ?'
             params.append(before_id)
-        query += ' ORDER BY id DESC LIMIT ?'
+        query += ' ORDER BY m.id DESC LIMIT ?'
         params.append(limit)
         
     c.execute(query, tuple(params))
@@ -268,17 +271,21 @@ def get_recent_messages(limit=100, before_id=None):
     addr_idx = col_names.index('address')
     msg_idx = col_names.index('message')
     alias_idx = col_names.index('alias') if 'alias' in col_names else -1
+    curr_alias_idx = col_names.index('current_alias') if 'current_alias' in col_names else -1
 
     conn.close()
     
     messages = []
     for row in rows:
+        saved_alias = row[alias_idx] if alias_idx != -1 else ''
+        curr_alias = row[curr_alias_idx] if curr_alias_idx != -1 else None
+
         msg = {
             'id': row[id_idx],
             'timestamp': row[ts_idx],
             'address': row[addr_idx],
             'message': row[msg_idx],
-            'alias': row[alias_idx] if alias_idx != -1 else ''
+            'alias': curr_alias if curr_alias is not None else saved_alias
         }
         # Add metadata if exists
         if 'function_code' in col_names:
