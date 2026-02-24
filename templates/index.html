@@ -365,7 +365,8 @@
 
                     const tr = document.createElement('tr');
                     tr.className = 'fade-in';
-                    tr.style.animationDelay = `${index * 0.05}s`;
+                    // Cap animation delay so items deep in the list don't stay invisible for seconds
+                    tr.style.animationDelay = `${Math.min(index, 15) * 0.03}s`;
 
                     // Check for general alert row highlighting
                     const hasAlert = alertWords.some(aw => aw.is_active && alarm.message.toUpperCase().includes(aw.word.toUpperCase()));
@@ -478,11 +479,20 @@
 
                     if (!searchInput.value) {
                         // OPTIMIZED: Prepend row instead of full render
+                        const previousScrollHeight = container.scrollHeight;
                         const newRow = createAlarmRow(data);
                         alarmsBody.prepend(newRow);
 
+                        // Prevent infinite DOM growth on client side
+                        if (alarmsBody.children.length > 500) {
+                            alarmsBody.lastElementChild.remove();
+                        }
+
                         if (wasAtTop) {
                             container.scrollTop = 0;
+                        } else {
+                            // Maintain scroll relative to view by compensating for new row height
+                            container.scrollTop += (container.scrollHeight - previousScrollHeight);
                         }
                     } else {
                         // If searching, full render is necessary to filter
