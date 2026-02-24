@@ -13,6 +13,22 @@ PagerMonitor är en Dockeriserad allt-i-ett-applikation för Software Defined Ra
 *   **CapCode Aliases & Muting**: Koppla ihop numeriska adresser (t.ex. `1234567`) med namn (`Station 1`). Om en terminal spammar trafik kan du även välja att "Muta" den så döljs all dess framtida och historiska trafik från dashboarden per automatik.
 *   **Alarmord**: Ställ in kommaseparerade alarmord (t.ex. `Larm, Brand, VMA`). Om ett meddelande innehåller dessa ord markeras hela raden med en blinkande varningseffekt i gränssnittet.
 *   **MQTT-Integration**: Skickar automatiskt avkodade (och icke-mutade) meddelanden vidare till en lokal MQTT-broker (t.ex. Home Assistant eller Node-RED). Eventuella alias-namn följer med i JSON-paketet.
+    *Exempel på MQTT Payload:*
+    ```json
+    {
+      "timestamp": "2026-02-24T13:31:54.151258",
+      "address": "1234567",
+      "message": "Från: vaktare@bevakningsbolag.se\nÄmne: Larmhändelse\nDÖRRLARM - Byggnad A\n2026-02-24 13:31:28 Dörr forcerad MAGNETKONTAKT \n\nENTRÉ KULVERT",
+      "alias": "Väktare Lokalkontor",
+      "bitrate": "1200",
+      "function": 3,
+      "frequency": "169.8M",
+      "alert_word": "FORCERAD",
+      "alert_color": "#ef4444",
+      "sdr_name": "RIKS 1",
+      "is_duplicate": false
+    }
+    ```
 *   **Dubblettering**: Systemet fångar upp och märker om samma larm skickas upprepade gånger inom 60 sekunder, för att undvika hysteri i system som lyssnar via MQTT.
 
 ## Arkitektur
