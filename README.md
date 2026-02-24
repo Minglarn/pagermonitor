@@ -33,7 +33,7 @@ PagerMonitor är en Dockeriserad allt-i-ett-applikation för Software Defined Ra
     *Exempel på Home Assistant Automation:*
     ```yaml
     alias: "PagerMonitor: Skicka Viktiga Larm"
-    description: Skickar notis till Sonat-enheter endast om alert_word inte är tomt
+    description: Skickar notis till Mobila-enheter endast om alert_word inte är tomt
     triggers:
       - topic: pagermonitor/alarms
         trigger: mqtt
