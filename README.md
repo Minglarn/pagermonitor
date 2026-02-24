@@ -29,6 +29,34 @@ PagerMonitor är en Dockeriserad allt-i-ett-applikation för Software Defined Ra
       "is_duplicate": false
     }
     ```
+
+    *Exempel på Home Assistant Automation:*
+    ```yaml
+    alias: "PagerMonitor: Skicka Viktiga Larm"
+    description: Skickar notis till Sonat-enheter endast om alert_word inte är tomt
+    triggers:
+      - topic: pagermonitor/alarms
+        trigger: mqtt
+    conditions:
+      - condition: template
+        value_template: >-
+          {{ trigger.payload_json.alert_word | length > 0 and
+          trigger.payload_json.is_duplicate == false }}
+    actions:
+      - data:
+          title: >-
+            {{ trigger.payload_json.alert_word }}: {{ trigger.payload_json.alias if
+            trigger.payload_json.alias != '' else trigger.payload_json.address }}
+          message: "{{ trigger.payload_json.message }}"
+          data:
+            color: "{{ trigger.payload_json.alert_color }}"
+            tag: pagermonitor-{{ trigger.payload_json.address }}
+            priority: high
+            ttl: 0
+        action: notify.mobile_devices_notification
+    mode: queued
+    max: 10
+    ```
 *   **Dubblettering**: Systemet fångar upp och märker om samma larm skickas upprepade gånger inom 60 sekunder, för att undvika hysteri i system som lyssnar via MQTT.
 
 ## Arkitektur
