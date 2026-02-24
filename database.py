@@ -546,3 +546,21 @@ def toggle_sdr_instance(instance_id, enabled):
     c.execute('UPDATE sdr_instances SET enabled = ? WHERE id = ?', (1 if enabled else 0, instance_id))
     conn.commit()
     conn.close()
+
+def clear_messages():
+    """Delete all messages from the database."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('DELETE FROM messages')
+    c.execute('VACUUM')
+    conn.commit()
+    conn.close()
+
+def prune_messages(days):
+    """Delete messages older than X days."""
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute("DELETE FROM messages WHERE timestamp < datetime('now', '-' || ? || ' days')", (days,))
+    c.execute('VACUUM')
+    conn.commit()
+    conn.close()

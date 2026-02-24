@@ -84,6 +84,7 @@
                     <div class="settings-tabs">
                         <button class="tab-trigger active" onclick="switchTab('radio')">SDR Receivers</button>
                         <button class="tab-trigger" onclick="switchTab('display')">Appearance & UI</button>
+                        <button class="tab-trigger" onclick="switchTab('maintenance')">Maintenance</button>
                     </div>
 
                     <!-- Tab: Radio (Multi-SDR Manager) -->
@@ -182,9 +183,71 @@
                         </form>
                     </div>
 
+                    <!-- Tab: Maintenance -->
+                    <div id="tab-maintenance" class="tab-content">
+                        <div class="maintenance-group">
+                            <h3 style="margin-bottom: 0.5rem; color: var(--text-primary);">Database Management</h3>
+                            <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1.5rem;">
+                                Clean up your message history. This will not affect your aliases, alert words, or
+                                hardware settings.
+                            </p>
+
+                            <div class="maintenance-action" style="margin-bottom: 2rem;">
+                                <div
+                                    style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                                    <div>
+                                        <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-primary);">Prune Old
+                                            Messages</h4>
+                                        <p style="margin: 0.2rem 0; font-size: 0.75rem; color: var(--text-secondary);">
+                                            Remove messages older than a specific number of days.</p>
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <input type="number" id="pruneDays" class="form-input" value="30" min="1"
+                                            style="width: 80px; text-align: center; padding: 0.5rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 4px; color: var(--text-primary);">
+                                        <span style="font-size: 0.85rem; color: var(--text-secondary);">days</span>
+                                        <button class="secondary-btn" onclick="pruneDatabase()"
+                                            style="border-color: var(--accent); color: var(--accent); padding: 0.5rem 1rem;">Prune</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="maintenance-action"
+                                style="border-top: 1px solid var(--panel-border); padding-top: 1.5rem;">
+                                <div
+                                    style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                                    <div>
+                                        <h4 style="margin: 0; font-size: 0.95rem; color: #ff4444;">Empty Database</h4>
+                                        <p style="margin: 0.2rem 0; font-size: 0.75rem; color: var(--text-secondary);">
+                                            Irreversibly delete <b>every</b> message in the system.</p>
+                                    </div>
+                                    <button class="primary-btn" onclick="emptyDatabase()"
+                                        style="background: #ff4444; border-color: #ff4444; padding: 0.6rem 1.2rem;">Delete
+                                        All</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="statusMessage" class="status-message"></div>
                 </div>
             </main>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px; padding: 2rem; border-radius: 20px;">
+            <div class="modal-header">
+                <h2 id="confirmTitle" style="color: var(--accent);">Confirm Action</h2>
+                <p id="confirmMessage" style="margin-top: 0.5rem; color: var(--text-secondary);">Are you sure you want
+                    to proceed?</p>
+            </div>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+                <button class="secondary-btn" style="padding: 0.6rem 1.2rem;"
+                    onclick="closeConfirm(false)">Cancel</button>
+                <button id="confirmActionBtn" class="primary-btn"
+                    style="padding: 0.6rem 1.2rem; background: #ef4444; border-color: #ef4444;">Proceed</button>
+            </div>
         </div>
     </div>
 
@@ -342,6 +405,84 @@
             fontSelect.addEventListener('change', updatePreview);
             fontSlider.addEventListener('input', updatePreview);
         });
+
+        // Maintenance Functions
+        let confirmResolve = null;
+        function showConfirm(title, message, actionLabel = 'Proceed', danger = false) {
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmMessage').innerText = message;
+            const actionBtn = document.getElementById('confirmActionBtn');
+            actionBtn.innerText = actionLabel;
+
+            if (danger) {
+                actionBtn.style.background = '#ef4444';
+                actionBtn.style.borderColor = '#ef4444';
+            } else {
+                actionBtn.style.background = 'var(--accent)';
+                actionBtn.style.borderColor = 'var(--accent)';
+            }
+
+            document.getElementById('confirmModal').classList.add('show');
+            return new Promise(resolve => {
+                confirmResolve = resolve;
+                actionBtn.onclick = () => {
+                    document.getElementById('confirmModal').classList.remove('show');
+                    resolve(true);
+                };
+            });
+        }
+
+        function closeConfirm(val) {
+            document.getElementById('confirmModal').classList.remove('show');
+            if (confirmResolve) confirmResolve(val);
+        }
+
+        async function emptyDatabase() {
+            const confirmed = await showConfirm(
+                'Empty Database?',
+                'This will permanently delete ALL messages. This action cannot be undone. (Aliases and Alert Words will be kept)',
+                'Empty All',
+                true
+            );
+
+            if (!confirmed) return;
+
+            fetch('/api/messages/clear', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    showStatus('Database cleared successfully!', 'success');
+                })
+                .catch(err => {
+                    console.error('Error clearing database:', err);
+                    showStatus('Failed to clear database.', 'error');
+                });
+        }
+
+        async function pruneDatabase() {
+            const days = document.getElementById('pruneDays').value;
+            const confirmed = await showConfirm(
+                'Prune Messages?',
+                `Are you sure you want to delete messages older than ${days} days?`,
+                'Prune Now',
+                false
+            );
+
+            if (!confirmed) return;
+
+            fetch('/api/messages/prune', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ days: parseInt(days) })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    showStatus(`Messages older than ${days} days pruned!`, 'success');
+                })
+                .catch(err => {
+                    console.error('Error pruning database:', err);
+                    showStatus('Failed to prune database.', 'error');
+                });
+        }
     </script>
 </body>
 

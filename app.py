@@ -119,6 +119,18 @@ def get_messages():
     messages = get_recent_messages(limit, before_id, search_query)
     return jsonify(messages)
 
+@app.route('/api/messages/clear', methods=['POST'])
+def clear_all_messages():
+    clear_messages()
+    return jsonify({"status": "success", "message": "All messages cleared"})
+
+@app.route('/api/messages/prune', methods=['POST'])
+def prune_old_messages():
+    data = request.json
+    days = data.get('days', 30)
+    prune_messages(days)
+    return jsonify({"status": "success", "message": f"Messages older than {days} days pruned"})
+
 @app.route('/api/settings/defaults')
 def settings_defaults():
     return jsonify(get_default_settings())
