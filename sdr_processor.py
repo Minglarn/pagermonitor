@@ -83,10 +83,9 @@ def parse_multimon_line(line, charset):
     """Parses a single line from multimon-ng output."""
     try:
         protocol_type = "POCSAG"
-        if "AFSK" in line:
-            protocol_type = "AFSK1200"
-        elif "APRS:" in line:
-            protocol_type = "AFSK1200" # Treat APRS as AFSK for now
+        # Look for AFSK followed by a colon (e.g. AFSK1200:) or APRS:
+        if re.search(r'AFSK\d*:', line) or "APRS:" in line:
+            protocol_type = "AFSK"
 
         if protocol_type == "POCSAG":
             if "Alpha:" not in line:
@@ -197,7 +196,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
             if int(config.get('multimon_verbosity', '1')) >= 2:
                 logger.debug(f"[{config['name']}] RAW_ALL: {line}")
 
-            if ("POCSAG" in line and "Alpha:" in line) or "AFSK" in line or "APRS:" in line:
+            if ("POCSAG" in line and "Alpha:" in line) or re.search(r'AFSK\d*:', line) or "APRS:" in line:
                 logger.info(f"[{config['name']}] RAW: {line}")
                 parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
                 
@@ -318,7 +317,7 @@ def start_instance(config):
     ]
 
     if protocol == 'AFSK1200':
-        multimon_cmd.extend(['-a', 'AFSK1200', '-a', 'AFSK2400', '-a', 'AFSK2400_2', '-a', 'AFSK2400_3', '-a', 'APRS'])
+        multimon_cmd.extend(['-a', 'AFSK1200', '-a', 'AFSK2400', '-a', 'AFSK2400_2', '-a', 'AFSK2400_3'])
     else:
         # Default to POCSAG all rates
         multimon_cmd.extend(['-a', 'POCSAG512', '-a', 'POCSAG1200', '-a', 'POCSAG2400'])
