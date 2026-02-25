@@ -83,8 +83,8 @@ def parse_multimon_line(line, charset):
     """Parses a single line from multimon-ng output."""
     try:
         protocol_type = "POCSAG"
-        # Look for AFSK, UFSK, CLIPFSK, FMSFSK followed by a colon or APRS:
-        if re.search(r'(AFSK|UFSK|CLIPFSK|FMSFSK)\d*:', line) or "APRS:" in line:
+        # Look for AFSK or UFSK followed by a colon
+        if re.search(r'(AFSK|UFSK)\d*:', line):
             protocol_type = "AFSK"
 
         if protocol_type == "POCSAG":
@@ -118,7 +118,7 @@ def parse_multimon_line(line, charset):
             
             address = "AFSK"
             # Extract bitrate or mode part
-            bitrate = re.sub(r'^(AFSK|UFSK|CLIPFSK|FMSFSK)', '', proto_part).strip() or "1200"
+            bitrate = re.sub(r'^(AFSK|UFSK)', '', proto_part).strip() or "1200"
             function_code = 0
             
             # Try to extract the source callsign as the address
@@ -197,7 +197,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
             if int(config.get('multimon_verbosity', '1')) >= 2:
                 logger.debug(f"[{config['name']}] RAW_ALL: {line}")
 
-            if ("POCSAG" in line and "Alpha:" in line) or re.search(r'(AFSK|UFSK|CLIPFSK|FMSFSK)\d*:', line) or "APRS:" in line:
+            if ("POCSAG" in line and "Alpha:" in line) or re.search(r'(AFSK|UFSK)\d*:', line):
                 logger.info(f"[{config['name']}] RAW: {line}")
                 parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
                 
@@ -320,7 +320,7 @@ def start_instance(config):
     if protocol == 'AFSK1200':
         multimon_cmd.extend([
             '-a', 'AFSK1200', '-a', 'AFSK2400', '-a', 'AFSK2400_2', '-a', 'AFSK2400_3',
-            '-a', 'UFSK1200', '-a', 'CLIPFSK', '-a', 'FMSFSK'
+            '-a', 'UFSK1200'
         ])
     else:
         # Default to POCSAG all rates
