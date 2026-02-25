@@ -83,7 +83,7 @@ def parse_multimon_line(line, charset):
     """Parses a single line from multimon-ng output."""
     try:
         protocol_type = "POCSAG"
-        if "AFSK1200:" in line:
+        if "AFSK" in line:
             protocol_type = "AFSK1200"
         elif "APRS:" in line:
             protocol_type = "AFSK1200" # Treat APRS as AFSK for now
@@ -112,10 +112,13 @@ def parse_multimon_line(line, charset):
             parts = line.split("Alpha:")
             message = parts[1].strip()
         else:
-            # AFSK1200 formatting: "AFSK1200: fm CALLSIGN-1 to DEST ..."
-            content = line.split("AFSK1200:", 1)[1].strip()
+            # AFSK formatting: "AFSK1200: fm CALLSIGN-1 to DEST ..." or "AFSK2400: ..."
+            # Split by the first colon to get protocol name and content
+            proto_part, content = line.split(":", 1)
+            content = content.strip()
+            
             address = "AFSK"
-            bitrate = "1200"
+            bitrate = proto_part.replace("AFSK", "").strip() or "1200"
             function_code = 0
             
             # Try to extract the source callsign as the address
@@ -124,6 +127,7 @@ def parse_multimon_line(line, charset):
                 address = source_match.group(1)
             
             message = content
+            protocol_type = proto_part.strip()
 
         # POST-PROCESSING (Shared)
         # Remove trailing tags and convert <CR><LF> to actual newlines
@@ -193,7 +197,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
             if int(config.get('multimon_verbosity', '1')) >= 2:
                 logger.debug(f"[{config['name']}] RAW_ALL: {line}")
 
-            if ("POCSAG" in line and "Alpha:" in line) or "AFSK1200:" in line or "APRS:" in line:
+            if ("POCSAG" in line and "Alpha:" in line) or "AFSK" in line or "APRS:" in line:
                 logger.info(f"[{config['name']}] RAW: {line}")
                 parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
                 
@@ -314,7 +318,7 @@ def start_instance(config):
     ]
 
     if protocol == 'AFSK1200':
-        multimon_cmd.extend(['-a', 'AFSK1200'])
+        multimon_cmd.extend(['-a', 'AFSK1200', '-a', 'AFSK2400', '-a', 'AFSK2400_2', '-a', 'AFSK2400_3', '-a', 'APRS'])
     else:
         # Default to POCSAG all rates
         multimon_cmd.extend(['-a', 'POCSAG512', '-a', 'POCSAG1200', '-a', 'POCSAG2400'])
