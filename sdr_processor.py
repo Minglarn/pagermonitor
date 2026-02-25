@@ -80,10 +80,17 @@ def on_new_message(callback):
     new_message_callbacks.append(callback)
 
 def parse_multimon_line(line, charset):
-    # Example format: POCSAG1200: Address: 1234567  Function: 3  Alpha:   THIS IS A TEST MESSAGE<NUL>
-    if "POCSAG" in line and "Alpha:" in line:
-        try:
-            # Extract bitrate/protocol
+    """Parses a single line from multimon-ng output."""
+    try:
+        protocol_type = "POCSAG"
+        if "AFSK1200" in line:
+            protocol_type = "AFSK1200"
+
+        if protocol_type == "POCSAG":
+            if "Alpha:" not in line:
+                return None
+            
+            # Extract bitrate
             bitrate = ""
             if "POCSAG512" in line: bitrate = "512"
             elif "POCSAG1200" in line: bitrate = "1200"
@@ -100,38 +107,42 @@ def parse_multimon_line(line, charset):
             function_code = int(func_match.group(1)) if func_match else 0
 
             # Extract message
-            parts = None
-            if "Alpha:" in line:
-                parts = line.split("Alpha:")
-            elif "AFSK1200:" in line and ":" in line:
-                # AFSK1200 sometimes has different formats, but let's try to find message part
-                # If it doesn't have Alpha:, it might just be everything after the protocol name
-                # However, many implementations still use Alpha: for text.
-                # Let's check if there's a third colon or similar.
-                pass 
+            parts = line.split("Alpha:")
+            message = parts[1].strip()
+        else:
+            # AFSK1200 formatting: "AFSK1200: fm CALLSIGN-1 to DEST ..."
+            content = line.split("AFSK1200:", 1)[1].strip()
+            address = "AFSK"
+            bitrate = "1200"
+            function_code = 0
+            
+            # Try to extract the source callsign as the address
+            source_match = re.search(r'fm\s+([\w-]+)', content)
+            if source_match:
+                address = source_match.group(1)
+            
+            message = content
 
-            if parts and len(parts) > 1:
-                message = parts[1].strip()
-                # Remove trailing tags and convert <CR><LF> to actual newlines
-                message = message.replace('<CR><LF>', '\n')
-                message = message.replace('<CR>', '\n').replace('<LF>', '\n')
-                message = message.replace('<NUL>', '').replace('<EOT>', '').strip()
-                
-                # Apply Swedish character translation IF not using native charset support
-                if charset != 'SE':
-                    message = translate_swedish_chars(message)
-                
-                return {
-                    'address': address,
-                    'message': message,
-                    'bitrate': bitrate,
-                    'protocol': "AFSK1200" if "AFSK1200" in line else "POCSAG",
-                    'function': function_code
-                }
-        except Exception as e:
-            logger.error(f"Error parsing line: {line}. Error: {e}")
-            return None
-    return None
+        # POST-PROCESSING (Shared)
+        # Remove trailing tags and convert <CR><LF> to actual newlines
+        message = message.replace('<CR><LF>', '\n')
+        message = message.replace('<CR>', '\n').replace('<LF>', '\n')
+        message = message.replace('<NUL>', '').replace('<EOT>', '').strip()
+        
+        # Apply Swedish character translation IF not using native charset support
+        if charset != 'SE':
+            message = translate_swedish_chars(message)
+        
+        return {
+            'address': address,
+            'message': message,
+            'bitrate': bitrate,
+            'protocol': protocol_type,
+            'function': function_code
+        }
+    except Exception as e:
+        logger.error(f"Error parsing line: {line}. Error: {e}")
+        return None
 
 # Supervisor state
 active_instances = {} # instance_id -> { 'p1': proc, 'p2': proc, 'config': dict, 'stop_event': Event }
@@ -176,7 +187,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
             line = line.strip()
             if not line: continue
             
-            if ("POCSAG" in line or "AFSK1200" in line) and "Alpha:" in line:
+            if ("POCSAG" in line and "Alpha:" in line) or "AFSK1200" in line:
                 logger.info(f"[{config['name']}] RAW: {line}")
                 parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
                 
