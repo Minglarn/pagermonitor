@@ -109,6 +109,7 @@ def init_db():
             multimon_charset TEXT DEFAULT 'SE',
             multimon_format TEXT DEFAULT 'auto',
             multimon_input_type TEXT DEFAULT 'raw',
+            protocol TEXT DEFAULT 'POCSAG',
             enabled INTEGER DEFAULT 1
         )
     ''')
@@ -466,6 +467,7 @@ def get_sdr_instances():
         c.execute('ALTER TABLE sdr_instances ADD COLUMN enable_high_quality_fir TEXT DEFAULT "false"')
         c.execute('ALTER TABLE sdr_instances ADD COLUMN atan_math TEXT DEFAULT "std"')
         c.execute('ALTER TABLE sdr_instances ADD COLUMN oversampling TEXT DEFAULT "4"')
+        c.execute('ALTER TABLE sdr_instances ADD COLUMN protocol TEXT DEFAULT "POCSAG"')
     except sqlite3.OperationalError:
         pass # Columns already exist
 
@@ -505,6 +507,7 @@ def save_sdr_instance(data):
     charset = data.get('multimon_charset', 'SE')
     fmt = data.get('multimon_format', 'auto')
     inp = data.get('multimon_input_type', 'raw')
+    protocol = data.get('protocol', 'POCSAG')
     enabled = data.get('enabled', 1)
 
     if instance_id:
@@ -514,9 +517,9 @@ def save_sdr_instance(data):
                 sample_rate=?, resample_rate=?, enable_dc_removal=?, enable_deemp=?,
                 enable_high_quality_fir=?, atan_math=?, oversampling=?,
                 multimon_verbosity=?, multimon_charset=?, multimon_format=?,
-                multimon_input_type=?, enabled=?
+                multimon_input_type=?, protocol=?, enabled=?
             WHERE id=?
-        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, enabled, instance_id))
+        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, protocol, enabled, instance_id))
     else:
         c.execute('''
             INSERT INTO sdr_instances (
@@ -524,9 +527,9 @@ def save_sdr_instance(data):
                 sample_rate, resample_rate, enable_dc_removal, enable_deemp,
                 enable_high_quality_fir, atan_math, oversampling,
                 multimon_verbosity, multimon_charset, multimon_format,
-                multimon_input_type, enabled
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, 1))
+                multimon_input_type, protocol, enabled
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, protocol, 1))
         
     conn.commit()
     conn.close()

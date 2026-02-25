@@ -100,8 +100,17 @@ def parse_multimon_line(line, charset):
             function_code = int(func_match.group(1)) if func_match else 0
 
             # Extract message
-            parts = line.split("Alpha:")
-            if len(parts) > 1:
+            parts = None
+            if "Alpha:" in line:
+                parts = line.split("Alpha:")
+            elif "AFSK1200:" in line and ":" in line:
+                # AFSK1200 sometimes has different formats, but let's try to find message part
+                # If it doesn't have Alpha:, it might just be everything after the protocol name
+                # However, many implementations still use Alpha: for text.
+                # Let's check if there's a third colon or similar.
+                pass 
+
+            if parts and len(parts) > 1:
                 message = parts[1].strip()
                 # Remove trailing tags and convert <CR><LF> to actual newlines
                 message = message.replace('<CR><LF>', '\n')
@@ -116,6 +125,7 @@ def parse_multimon_line(line, charset):
                     'address': address,
                     'message': message,
                     'bitrate': bitrate,
+                    'protocol': "AFSK1200" if "AFSK1200" in line else "POCSAG",
                     'function': function_code
                 }
         except Exception as e:
@@ -166,7 +176,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
             line = line.strip()
             if not line: continue
             
-            if "POCSAG" in line and "Alpha:" in line:
+            if ("POCSAG" in line or "AFSK1200" in line) and "Alpha:" in line:
                 logger.info(f"[{config['name']}] RAW: {line}")
                 parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
                 
@@ -174,6 +184,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     address = parsed['address']
                     message = parsed['message']
                     bitrate = parsed['bitrate']
+                    protocol_type = parsed['protocol']
                     function_code = parsed['function']
                     freq = config.get('frequency', 'Unknown')
 
@@ -217,7 +228,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     logger.info(f"[{config['name']}] DECODED -> Address: {address}, Alias: {alias}, Msg: {message} {'(DUPLICATE)' if is_duplicate else ''}")
                     
                     alert_match = check_alert_words(message)
-                    msg_id, timestamp = save_message(address, message, alias, function_code, bitrate, frequency=freq, is_duplicate=is_duplicate)
+                    msg_id, timestamp = save_message(address, message, alias, function_code, f"{protocol_type} {bitrate}".strip(), frequency=freq, is_duplicate=is_duplicate)
                     
                     metadata = {
                         'bitrate': bitrate,
@@ -279,10 +290,19 @@ def start_instance(config):
     fmt = config.get('multimon_format', 'auto')
     inp = config.get('multimon_input_type', 'raw')
     
+    protocol = config.get('protocol', 'POCSAG')
+    
     multimon_cmd = [
-        'multimon-ng', '-v', verbosity, '-C', charset, '-f', fmt, '-t', inp,
-        '-a', 'POCSAG512', '-a', 'POCSAG1200', '-a', 'POCSAG2400', '-'
+        'multimon-ng', '-v', verbosity, '-C', charset, '-f', fmt, '-t', inp
     ]
+
+    if protocol == 'AFSK1200':
+        multimon_cmd.extend(['-a', 'AFSK1200'])
+    else:
+        # Default to POCSAG all rates
+        multimon_cmd.extend(['-a', 'POCSAG512', '-a', 'POCSAG1200', '-a', 'POCSAG2400'])
+    
+    multimon_cmd.append('-')
 
     logger.info(f"Starting {config['name']}: {' '.join(rtl_cmd)} | {' '.join(multimon_cmd)}")
     

@@ -132,6 +132,15 @@
                         <hr class="separator">
                         <h3>Signal & Decoding</h3>
 
+                        <div class="form-group">
+                            <label for="protocol">Decode Protocol</label>
+                            <select id="protocol" name="protocol">
+                                <option value="POCSAG">POCSAG (512 / 1200 / 2400)</option>
+                                <option value="AFSK1200">AFSK1200 (Pager / Packet)</option>
+                            </select>
+                            <small>Choose which protocol to listen for. POCSAG is standard for pagers.</small>
+                        </div>
+
                         <div class="row-group">
                             <div class="col">
                                 <div class="form-group">
