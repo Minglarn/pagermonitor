@@ -83,7 +83,7 @@ def parse_multimon_line(line, charset):
     """Parses a single line from multimon-ng output."""
     try:
         protocol_type = "POCSAG"
-        if "AFSK1200" in line:
+        if "AFSK1200:" in line:
             protocol_type = "AFSK1200"
 
         if protocol_type == "POCSAG":
@@ -187,7 +187,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
             line = line.strip()
             if not line: continue
             
-            if ("POCSAG" in line and "Alpha:" in line) or "AFSK1200" in line:
+            if ("POCSAG" in line and "Alpha:" in line) or "AFSK1200:" in line:
                 logger.info(f"[{config['name']}] RAW: {line}")
                 parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
                 
