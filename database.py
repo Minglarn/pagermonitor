@@ -463,13 +463,16 @@ def get_sdr_instances():
     c = conn.cursor()
     
     # Run migrations for high-fidelity settings if they don't exist
-    try:
-        c.execute('ALTER TABLE sdr_instances ADD COLUMN enable_high_quality_fir TEXT DEFAULT "false"')
-        c.execute('ALTER TABLE sdr_instances ADD COLUMN atan_math TEXT DEFAULT "std"')
-        c.execute('ALTER TABLE sdr_instances ADD COLUMN oversampling TEXT DEFAULT "4"')
-        c.execute('ALTER TABLE sdr_instances ADD COLUMN protocol TEXT DEFAULT "POCSAG"')
-    except sqlite3.OperationalError:
-        pass # Columns already exist
+    for col, type_info in [
+        ('enable_high_quality_fir', 'TEXT DEFAULT "false"'),
+        ('atan_math', 'TEXT DEFAULT "std"'),
+        ('oversampling', 'TEXT DEFAULT "4"'),
+        ('protocol', 'TEXT DEFAULT "POCSAG"')
+    ]:
+        try:
+            c.execute(f'ALTER TABLE sdr_instances ADD COLUMN {col} {type_info}')
+        except sqlite3.OperationalError:
+            pass # Column already exists
 
     c.execute('SELECT * FROM sdr_instances')
     rows = c.fetchall()
