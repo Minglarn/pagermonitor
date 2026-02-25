@@ -85,6 +85,8 @@ def parse_multimon_line(line, charset):
         protocol_type = "POCSAG"
         if "AFSK1200:" in line:
             protocol_type = "AFSK1200"
+        elif "APRS:" in line:
+            protocol_type = "AFSK1200" # Treat APRS as AFSK for now
 
         if protocol_type == "POCSAG":
             if "Alpha:" not in line:
@@ -187,7 +189,11 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
             line = line.strip()
             if not line: continue
             
-            if ("POCSAG" in line and "Alpha:" in line) or "AFSK1200:" in line:
+            # BROAD LOGGING FOR DEBUGGING - log all output if verbosity is high
+            if int(config.get('multimon_verbosity', '1')) >= 2:
+                logger.debug(f"[{config['name']}] RAW_ALL: {line}")
+
+            if ("POCSAG" in line and "Alpha:" in line) or "AFSK1200:" in line or "APRS:" in line:
                 logger.info(f"[{config['name']}] RAW: {line}")
                 parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
                 
