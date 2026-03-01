@@ -16,8 +16,10 @@ except ImportError:
         def __init__(self, *args, **kwargs): pass
         def username_pw_set(self, *args, **kwargs): pass
         def connect(self, *args, **kwargs): pass
+        def connect_async(self, *args, **kwargs): pass
         def loop_start(self): pass
         def publish(self, *args, **kwargs): pass
+        def reconnect_delay_set(self, *args, **kwargs): pass
     class mqtt:
         Client = _DummyClient
     HAS_V2_API = False
@@ -27,15 +29,30 @@ logger = logging.getLogger(__name__)
 mqtt_client = None
 MQTT_TOPIC = os.environ.get('MQTT_TOPIC', 'pagermonitor/alarms')
 
-def on_connect(client, userdata, flags, rc, properties=None):
+# Generic callbacks that handle both v1 and v2 signatures
+def on_connect(*args, **kwargs):
+    # v1: (client, userdata, flags, rc)
+    # v2: (client, userdata, flags, rc, properties=None)
+    rc = args[3] if len(args) >= 4 else None
     if rc == 0:
         logger.info("Successfully connected to MQTT broker")
     else:
         logger.error(f"MQTT connection failed with result code {rc}")
 
-def on_disconnect(client, userdata, rc, properties=None):
+def on_disconnect(*args, **kwargs):
+    # v1: (client, userdata, rc)
+    # v2: (client, userdata, rc, properties=None)
+    rc = args[2] if len(args) >= 3 else None
     if rc != 0:
         logger.warning(f"Unexpected MQTT disconnection (rc={rc}). Will attempt to reconnect.")
+
+def on_publish(client, userdata, mid):
+    logger.debug(f"MQTT message {mid} published successfully")
+
+def on_log(client, userdata, level, buf):
+    # Only log MQTT internal stuff if DEBUG is enabled
+    if logger.isEnabledFor(logging.DEBUG):
+        logger.debug(f"MQTT Log: {buf}")
 
 def init_mqtt():
     global mqtt_client
@@ -55,18 +72,18 @@ def init_mqtt():
         
         mqtt_client.on_connect = on_connect
         mqtt_client.on_disconnect = on_disconnect
+        mqtt_client.on_publish = on_publish
+        mqtt_client.on_log = on_log
         
         # Configure automatic reconnection
         mqtt_client.reconnect_delay_set(min_delay=1, max_delay=120)
         
         logger.info(f"Attempting to connect to MQTT broker at {broker}:{port}...")
-        # Use non-blocking connect if possible, paho-mqtt handles loop
+        # Use async connect, loop_start handles the thread
         mqtt_client.connect_async(broker, port, 60)
         mqtt_client.loop_start()
     except Exception as e:
         logger.error(f"Failed to initialize MQTT client: {e}")
-        # Don't set to None, so publish_message can still try to log errors or wait for reconnection
-        # but if it crashed hard, we should know
         if not mqtt_client:
             mqtt_client = None
 
@@ -86,10 +103,12 @@ def publish_message(address, message, timestamp, alias='', metadata=None):
         payload.update(metadata)
     
     try:
-        # Check if connected before publishing (optional, publish usually queues if disconnected)
-        info = mqtt_client.publish(MQTT_TOPIC, json.dumps(payload), qos=1)
-        # We don't wait for publish here to keep it async/fast
-        # if info.rc != mqtt.MQTT_ERR_SUCCESS:
-        #     logger.warning(f"MQTT publish returned code {info.rc}")
+        # Get QoS from env or default to 0 (more reliable than 1 if broker is flaky)
+        qos = int(os.environ.get('MQTT_QOS', '0'))
+        sdr_name = metadata.get('sdr_name', 'Unknown') if metadata else 'Unknown'
+        
+        logger.info(f"MQTT publishing message from {sdr_name} to {MQTT_TOPIC} (Duplicate: {metadata.get('is_duplicate', False) if metadata else False})")
+        
+        mqtt_client.publish(MQTT_TOPIC, json.dumps(payload), qos=qos)
     except Exception as e:
         logger.error(f"MQTT publish failed: {e}")
