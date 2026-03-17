@@ -602,21 +602,6 @@ tr:hover td {
     line-height: 1.2;
 }
 
-.id-cell, 
-th:first-child, 
-#alarmsTable th:nth-child(1),
-#alarmsTable td:nth-child(1),
-#dayTable th:nth-child(1),
-#dayTable td:nth-child(1),
-.glass-table th:nth-child(1),
-.glass-table td:nth-child(1) {
-    text-align: center !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    width: 80px !important;
-    min-width: 80px !important;
-}
-
 /* Ensure actions cell is also centered and has enough space */
 #alarmsTable th:nth-child(6),
 #alarmsTable td:nth-child(6),
@@ -626,10 +611,26 @@ th:first-child,
 .glass-table td:nth-child(4),
 .actions-cell {
     text-align: center !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-    width: 120px !important;
-    min-width: 120px !important;
+    vertical-align: middle !important;
+    padding: 0 !important; /* Complete zero padding */
+    width: 130px !important; /* Slightly wider to be safe */
+    min-width: 130px !important;
+}
+
+/* Ensure ID cell is perfectly centered */
+.id-cell, 
+th:first-child, 
+#alarmsTable th:nth-child(1),
+#alarmsTable td:nth-child(1),
+#dayTable th:nth-child(1),
+#dayTable td:nth-child(1),
+.glass-table th:nth-child(1),
+.glass-table td:nth-child(1) {
+    text-align: center !important;
+    vertical-align: middle !important;
+    padding: 0 !important;
+    width: 80px !important;
+    min-width: 80px !important;
 }
 
 .capcode-sub {
@@ -966,12 +967,13 @@ th:first-child,
 }
 
 .actions-wrapper {
-    display: flex;
+    display: inline-flex; /* Better for text-align: center parent */
     align-items: center;
     justify-content: center;
     gap: 8px;
-    width: 100%;
     margin: 0;
+    padding: 0;
+    vertical-align: middle;
 }
 
 .btn-divider {
@@ -980,7 +982,7 @@ th:first-child,
     background: rgba(148, 163, 184, 0.4);
 }
 
-.delete-btn, .lock-btn {
+.delete-btn, .lock-btn, .edit-btn {
     width: 32px;
     height: 32px;
     display: flex;
