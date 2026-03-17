@@ -299,14 +299,15 @@
                                 <td class="addr-cell"><span class="badge">${address}</span></td>
                                 <td class="msg-cell">${m.message}</td>
                                 <td class="actions-cell">
-                                    <button class="lock-btn ${m.is_protected ? 'locked' : ''}" onclick="toggleLock(${m.id}, this)" title="${m.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
-                                        <i class="fas ${m.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
-                                    </button>
-                                    <button class="delete-btn" onclick="deleteMessage(${m.id}, this)" title="Delete message">
-                                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
-                                        </svg>
-                                    </button>
+                                    <div class="actions-wrapper">
+                                        <button class="lock-btn ${m.is_protected ? 'locked' : ''}" onclick="toggleLock(${m.id}, this)" title="${m.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
+                                            <i class="fas ${m.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
+                                        </button>
+                                        <div class="btn-divider"></div>
+                                        <button class="delete-btn" onclick="deleteMessage(${m.id}, this)" title="Delete message">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             `;
                         tableBody.appendChild(tr);

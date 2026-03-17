@@ -444,7 +444,7 @@ table {
 
 #alarmsTable th:nth-child(6),
 #alarmsTable td:nth-child(6) {
-    width: 80px;
+    width: 100px;
     text-align: center;
 }
 
@@ -479,7 +479,7 @@ table {
 
 #dayTable th:nth-child(6),
 #dayTable td:nth-child(6) {
-    width: 80px;
+    width: 100px;
     text-align: center;
 }
 
@@ -609,6 +609,21 @@ th:first-child,
 #dayTable th:nth-child(1),
 #dayTable td:nth-child(1) {
     text-align: center !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    width: 80px !important;
+    min-width: 80px !important;
+}
+
+/* Ensure actions cell is also centered and has enough space */
+#alarmsTable th:nth-child(6),
+#alarmsTable td:nth-child(6),
+#dayTable th:nth-child(6),
+#dayTable td:nth-child(6) {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    width: 110px !important;
+    min-width: 110px !important;
 }
 
 .capcode-sub {
@@ -944,6 +959,32 @@ th:first-child,
     box-shadow: 0 6px 20px rgba(88, 166, 255, 0.4);
 }
 
+.actions-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-divider {
+    width: 1px;
+    height: 16px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.delete-btn, .lock-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
 .delete-btn {
     background: rgba(239, 68, 68, 0.1);
     color: #ef4444;
@@ -952,21 +993,16 @@ th:first-child,
 .delete-btn:hover {
     background: #ef4444;
     color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
 
 .lock-btn {
     background: rgba(56, 189, 248, 0.1);
     color: #38bdf8;
-    margin-right: 5px;
 }
 
 .lock-btn:hover {
     background: #38bdf8;
     color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
 }
 
 .lock-btn.locked {
