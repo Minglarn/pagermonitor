@@ -602,6 +602,10 @@ tr:hover td {
     line-height: 1.2;
 }
 
+.id-cell {
+    text-align: center;
+}
+
 .capcode-sub {
     font-size: 0.8rem;
     color: var(--text-secondary);
