@@ -1170,8 +1170,13 @@ tr:hover td {
 }
 
 .glass-panel.form-container {
-    max-width: 85%;
+    max-width: 800px;
     margin: 0 auto;
+}
+
+/* Allow aliases table to be wider if needed */
+.glass-panel.form-container.wide {
+    max-width: 95%;
 }
 
 [data-theme="light"] .delete-btn:hover {

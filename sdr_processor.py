@@ -30,7 +30,7 @@ def translate_swedish_chars(text):
 # Callbacks for SSE clients
 new_message_callbacks = []
 
-def is_garbage_message(message, sensitivity=50):
+def is_garbage_message(message, sensitivity=45):
     """Detect garbled/noise POCSAG messages using enhanced heuristics.
     Returns True if the message appears to be garbage/noise.
     sensitivity: 0 (lenient) to 100 (strict).
