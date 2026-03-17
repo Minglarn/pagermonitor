@@ -179,9 +179,16 @@
                                     <td><span class="badge">${address}</span></td>
                                     <td>${info.alias}</td>
                                     <td>${statusBadge}</td>
-                                    <td style="white-space: nowrap;">
-                                        <button class="action-btn delete-btn" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="deleteAlias('${address}')">Remove</button>
-                                        <button class="action-btn edit-btn" style="padding: 0.25rem 0.6rem; font-size: 0.75rem;" onclick="editAlias('${address}', '${info.alias}', ${isHidden})">Edit</button>
+                                    <td class="actions-cell">
+                                        <div class="actions-wrapper">
+                                            <button class="edit-btn" onclick="editAlias('${address}', '${info.alias}', ${isHidden})" title="Edit Alias">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <div class="btn-divider"></div>
+                                            <button class="delete-btn" onclick="deleteAlias('${address}')" title="Remove Alias">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             `;

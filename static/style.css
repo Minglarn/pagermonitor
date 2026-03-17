@@ -607,7 +607,9 @@ th:first-child,
 #alarmsTable th:nth-child(1),
 #alarmsTable td:nth-child(1),
 #dayTable th:nth-child(1),
-#dayTable td:nth-child(1) {
+#dayTable td:nth-child(1),
+.glass-table th:nth-child(1),
+.glass-table td:nth-child(1) {
     text-align: center !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
@@ -619,11 +621,15 @@ th:first-child,
 #alarmsTable th:nth-child(6),
 #alarmsTable td:nth-child(6),
 #dayTable th:nth-child(6),
-#dayTable td:nth-child(6) {
+#dayTable td:nth-child(6),
+.glass-table th:nth-child(4),
+.glass-table td:nth-child(4),
+.actions-cell {
+    text-align: center !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
-    width: 110px !important;
-    min-width: 110px !important;
+    width: 120px !important;
+    min-width: 120px !important;
 }
 
 .capcode-sub {
@@ -964,12 +970,14 @@ th:first-child,
     align-items: center;
     justify-content: center;
     gap: 8px;
+    width: 100%;
+    margin: 0;
 }
 
 .btn-divider {
     width: 1px;
     height: 16px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(148, 163, 184, 0.4);
 }
 
 .delete-btn, .lock-btn {
@@ -1007,6 +1015,16 @@ th:first-child,
 
 .lock-btn.locked {
     background: #38bdf8;
+    color: white;
+}
+
+.edit-btn {
+    background: rgba(168, 85, 247, 0.1);
+    color: #a855f7;
+}
+
+.edit-btn:hover {
+    background: #a855f7;
     color: white;
 }
 
