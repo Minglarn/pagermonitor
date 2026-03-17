@@ -1,0 +1,210 @@
+diff --git a/.env.example b/.env.example
+index 00ab2c3..d27a3c7 100644
+--- a/.env.example
++++ b/.env.example
+@@ -1 +1,2 @@
+ MQTT_PASS=your_real_password_here
++MQTT_TOPIC=pagermonitor/alarms
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 2aec97f..2e10810 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -15,6 +15,7 @@ services:
+       - MQTT_PORT=1883
+       - MQTT_USER=home-assistant-server
+       - MQTT_PASS=${MQTT_PASS:-}
++      - MQTT_TOPIC=${MQTT_TOPIC:-pagermonitor/alarms}
+       - TZ=${TZ:-Europe/Stockholm}
+     ports:
+       - "5000:5000"
+diff --git a/mqtt_client.py b/mqtt_client.py
+index db5be02..8bfd06f 100644
+--- a/mqtt_client.py
++++ b/mqtt_client.py
+@@ -1,27 +1,58 @@
+ import os
++import json
++import logging
++import time
++
+ try:
+     import paho.mqtt.client as mqtt
++    # Support for paho-mqtt 2.0+
++    try:
++        from paho.mqtt.enums import CallbackAPIVersion
++        HAS_V2_API = True
++    except ImportError:
++        HAS_V2_API = False
+ except ImportError:
+     class _DummyClient:
+-        def __init__(self, *args, **kwargs):
+-            pass
+-        def username_pw_set(self, *args, **kwargs):
+-            pass
+-        def connect(self, *args, **kwargs):
+-            pass
+-        def loop_start(self):
+-            pass
+-        def publish(self, *args, **kwargs):
+-            pass
++        def __init__(self, *args, **kwargs): pass
++        def username_pw_set(self, *args, **kwargs): pass
++        def connect(self, *args, **kwargs): pass
++        def connect_async(self, *args, **kwargs): pass
++        def loop_start(self): pass
++        def publish(self, *args, **kwargs): pass
++        def reconnect_delay_set(self, *args, **kwargs): pass
+     class mqtt:
+         Client = _DummyClient
+-
+-import json
+-import logging
++    HAS_V2_API = False
+ 
+ logger = logging.getLogger(__name__)
+ 
+ mqtt_client = None
++MQTT_TOPIC = os.environ.get('MQTT_TOPIC', 'pagermonitor/alarms')
++
++# Generic callbacks that handle both v1 and v2 signatures
++def on_connect(*args, **kwargs):
++    # v1: (client, userdata, flags, rc)
++    # v2: (client, userdata, flags, rc, properties=None)
++    rc = args[3] if len(args) >= 4 else None
++    if rc == 0:
++        logger.info("Successfully connected to MQTT broker")
++    else:
++        logger.error(f"MQTT connection failed with result code {rc}")
++
++def on_disconnect(*args, **kwargs):
++    # v1: (client, userdata, rc)
++    # v2: (client, userdata, rc, properties=None)
++    rc = args[2] if len(args) >= 3 else None
++    if rc != 0:
++        logger.warning(f"Unexpected MQTT disconnection (rc={rc}). Will attempt to reconnect.")
++
++def on_publish(client, userdata, mid):
++    logger.debug(f"MQTT message {mid} published successfully")
++
++def on_log(client, userdata, level, buf):
++    # Only log MQTT internal stuff if DEBUG is enabled
++    if logger.isEnabledFor(logging.DEBUG):
++        logger.debug(f"MQTT Log: {buf}")
+ 
+ def init_mqtt():
+     global mqtt_client
+@@ -30,18 +61,31 @@ def init_mqtt():
+     user = os.environ.get('MQTT_USER')
+     password = os.environ.get('MQTT_PASS')
+ 
+-    mqtt_client = mqtt.Client()
+-
+-    if user and password:
+-        mqtt_client.username_pw_set(user, password)
+-    
+     try:
+-        mqtt_client.connect(broker, port, 60)
++        if HAS_V2_API:
++            mqtt_client = mqtt.Client(CallbackAPIVersion.VERSION1)
++        else:
++            mqtt_client = mqtt.Client()
++
++        if user and password:
++            mqtt_client.username_pw_set(user, password)
++        
++        mqtt_client.on_connect = on_connect
++        mqtt_client.on_disconnect = on_disconnect
++        mqtt_client.on_publish = on_publish
++        mqtt_client.on_log = on_log
++        
++        # Configure automatic reconnection
++        mqtt_client.reconnect_delay_set(min_delay=1, max_delay=120)
++        
++        logger.info(f"Attempting to connect to MQTT broker at {broker}:{port}...")
++        # Use async connect, loop_start handles the thread
++        mqtt_client.connect_async(broker, port, 60)
+         mqtt_client.loop_start()
+-        logger.info(f"Connected to MQTT broker at {broker}:{port}")
+     except Exception as e:
+-        logger.error(f"Failed to connect to MQTT broker: {e}")
+-        mqtt_client = None
++        logger.error(f"Failed to initialize MQTT client: {e}")
++        if not mqtt_client:
++            mqtt_client = None
+ 
+ def publish_message(address, message, timestamp, alias='', metadata=None):
+     global mqtt_client
+@@ -57,10 +101,14 @@ def publish_message(address, message, timestamp, alias='', metadata=None):
+     
+     if metadata:
+         payload.update(metadata)
+-        if 'is_duplicate' in metadata:
+-            payload['is_duplicate'] = metadata['is_duplicate']
+     
+     try:
+-        mqtt_client.publish('pagermonitor/alarms', json.dumps(payload))
++        # Get QoS from env or default to 0 (more reliable than 1 if broker is flaky)
++        qos = int(os.environ.get('MQTT_QOS', '0'))
++        sdr_name = metadata.get('sdr_name', 'Unknown') if metadata else 'Unknown'
++        
++        logger.info(f"MQTT publishing message from {sdr_name} to {MQTT_TOPIC} (Duplicate: {metadata.get('is_duplicate', False) if metadata else False})")
++        
++        mqtt_client.publish(MQTT_TOPIC, json.dumps(payload), qos=qos)
+     except Exception as e:
+         logger.error(f"MQTT publish failed: {e}")
+diff --git a/sdr_processor.py b/sdr_processor.py
+index 7fac77e..e1d88f2 100644
+--- a/sdr_processor.py
++++ b/sdr_processor.py
+@@ -83,10 +83,9 @@ def parse_multimon_line(line, charset):
+     """Parses a single line from multimon-ng output."""
+     try:
+         protocol_type = "POCSAG"
+-        if "AFSK" in line:
+-            protocol_type = "AFSK1200"
+-        elif "APRS:" in line:
+-            protocol_type = "AFSK1200" # Treat APRS as AFSK for now
++        # Look for AFSK or UFSK followed by a colon
++        if re.search(r'(AFSK|UFSK)\d*:', line):
++            protocol_type = "AFSK"
+ 
+         if protocol_type == "POCSAG":
+             if "Alpha:" not in line:
+@@ -112,13 +111,14 @@ def parse_multimon_line(line, charset):
+             parts = line.split("Alpha:")
+             message = parts[1].strip()
+         else:
+-            # AFSK formatting: "AFSK1200: fm CALLSIGN-1 to DEST ..." or "AFSK2400: ..."
++            # AFSK/UFSK/etc formatting: "AFSK1200: fm CALLSIGN-1 to DEST ..."
+             # Split by the first colon to get protocol name and content
+             proto_part, content = line.split(":", 1)
+             content = content.strip()
+             
+             address = "AFSK"
+-            bitrate = proto_part.replace("AFSK", "").strip() or "1200"
++            # Extract bitrate or mode part
++            bitrate = re.sub(r'^(AFSK|UFSK)', '', proto_part).strip() or "1200"
+             function_code = 0
+             
+             # Try to extract the source callsign as the address
+@@ -197,7 +197,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
+             if int(config.get('multimon_verbosity', '1')) >= 2:
+                 logger.debug(f"[{config['name']}] RAW_ALL: {line}")
+ 
+-            if ("POCSAG" in line and "Alpha:" in line) or "AFSK" in line or "APRS:" in line:
++            if ("POCSAG" in line and "Alpha:" in line) or re.search(r'(AFSK|UFSK)\d*:', line):
+                 logger.info(f"[{config['name']}] RAW: {line}")
+                 parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
+                 
+@@ -318,7 +318,10 @@ def start_instance(config):
+     ]
+ 
+     if protocol == 'AFSK1200':
+-        multimon_cmd.extend(['-a', 'AFSK1200', '-a', 'AFSK2400', '-a', 'AFSK2400_2', '-a', 'AFSK2400_3', '-a', 'APRS'])
++        multimon_cmd.extend([
++            '-a', 'AFSK1200', '-a', 'AFSK2400', '-a', 'AFSK2400_2', '-a', 'AFSK2400_3',
++            '-a', 'UFSK1200'
++        ])
+     else:
+         # Default to POCSAG all rates
+         multimon_cmd.extend(['-a', 'POCSAG512', '-a', 'POCSAG1200', '-a', 'POCSAG2400'])

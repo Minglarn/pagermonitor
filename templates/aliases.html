@@ -36,10 +36,11 @@
     <div class="app-layout">
         <nav class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <i class="fas fa-satellite-dish" style="font-size: 1.5rem; color: var(--accent);"></i>
+                <i id="satellite-icon" class="fas fa-satellite-dish" style="font-size: 1.5rem; color: var(--accent); transition: all 0.2s ease;"></i>
                 <div class="sidebar-logo">
                     <h1>Pager<span>Monitor</span></h1>
                     <p>POCSAG Monitor</p>
+                    <span id="conn-status-msg" class="conn-status-text" style="display: none;"></span>
                 </div>
             </div>
 
@@ -131,6 +132,33 @@
             const statusMsg = document.getElementById('statusMessage');
             const saveBtn = document.getElementById('saveAliasBtn');
             const tbody = document.getElementById('aliasTableBody');
+            const satIcon = document.getElementById('satellite-icon');
+            const statusMsgConn = document.getElementById('conn-status-msg');
+
+            // SSE for Connection Status Only
+            const evtSource = new EventSource("/stream");
+            
+            evtSource.onopen = function() {
+                satIcon.classList.remove('conn-error');
+                satIcon.classList.add('conn-ok');
+                if (statusMsgConn) statusMsgConn.style.display = 'none';
+            };
+
+            evtSource.onerror = function() {
+                satIcon.classList.remove('conn-ok');
+                satIcon.classList.add('conn-error');
+                if (statusMsgConn) {
+                    statusMsgConn.innerText = "Connection Lost";
+                    statusMsgConn.style.display = 'block';
+                }
+            };
+
+            evtSource.onmessage = function() {
+                // Flash for any activity
+                satIcon.classList.remove('extreme-pulse');
+                void satIcon.offsetWidth;
+                satIcon.classList.add('extreme-pulse');
+            };
 
             function loadAliases() {
                 fetch('/api/aliases')
