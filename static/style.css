@@ -602,8 +602,13 @@ tr:hover td {
     line-height: 1.2;
 }
 
-.id-cell, th:first-child {
-    text-align: center;
+.id-cell, 
+th:first-child, 
+#alarmsTable th:nth-child(1),
+#alarmsTable td:nth-child(1),
+#dayTable th:nth-child(1),
+#dayTable td:nth-child(1) {
+    text-align: center !important;
 }
 
 .capcode-sub {
@@ -937,6 +942,36 @@ tr:hover td {
     background: #6cb0ff;
     transform: translateY(-2px);
     box-shadow: 0 6px 20px rgba(88, 166, 255, 0.4);
+}
+
+.delete-btn {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+}
+
+.delete-btn:hover {
+    background: #ef4444;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.lock-btn {
+    background: rgba(56, 189, 248, 0.1);
+    color: #38bdf8;
+    margin-right: 5px;
+}
+
+.lock-btn:hover {
+    background: #38bdf8;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+}
+
+.lock-btn.locked {
+    background: #38bdf8;
+    color: white;
 }
 
 .primary-btn:disabled {

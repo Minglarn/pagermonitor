@@ -323,6 +323,9 @@
                     </td>
                     <td class="msg-cell">${formatMessage(alarm.message)}</td>
                     <td class="actions-cell">
+                        <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
+                            <i class="fas ${alarm.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
+                        </button>
                         <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete message">
                             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
@@ -400,6 +403,9 @@
                         </td>
                         <td class="msg-cell">${formatMessage(alarm.message)}</td>
                         <td class="actions-cell">
+                            <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
+                                <i class="fas ${alarm.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
+                            </button>
                             <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete message">
                                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
                                     <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2M10 11v6M14 11v6" />
@@ -611,6 +617,34 @@
                 } catch (err) {
                     console.error('Delete error:', err);
                     alert('Failed to delete message.');
+                }
+            };
+
+            window.toggleLock = async (msgId, btn) => {
+                const isLocked = btn.classList.contains('locked');
+                const newState = !isLocked;
+
+                try {
+                    const response = await fetch(`/api/messages/${msgId}/lock`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ protected: newState })
+                    });
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        // Update UI button
+                        btn.classList.toggle('locked', newState);
+                        const icon = btn.querySelector('i');
+                        icon.className = newState ? 'fas fa-lock' : 'fas fa-lock-open';
+                        btn.title = newState ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)';
+                        
+                        // Update local data
+                        const alarm = allAlarms.find(a => a.id === msgId);
+                        if (alarm) alarm.is_protected = newState;
+                    }
+                } catch (err) {
+                    console.error('Lock error:', err);
                 }
             };
             // Modal Form Submission Handling

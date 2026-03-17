@@ -12,7 +12,7 @@ from database import (
     delete_alias, get_alert_words, save_alert_word, 
     delete_alert_word, get_default_settings,
     get_sdr_instances, save_sdr_instance, delete_sdr_instance, toggle_sdr_instance,
-    delete_message
+    delete_message, toggle_message_lock
 )
 
 try:
@@ -275,6 +275,18 @@ def delete_single_message(msg_id):
         return jsonify({"status": "success"})
     except Exception as e:
         logger.error(f"Failed to delete message {msg_id}: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/messages/<int:msg_id>/lock', methods=['POST'])
+def lock_single_message(msg_id):
+    try:
+        data = request.json
+        protected = data.get('protected', True)
+        toggle_message_lock(msg_id, protected)
+        logger.info(f"Message {msg_id} protection set to {protected}.")
+        return jsonify({"status": "success"})
+    except Exception as e:
+        logger.error(f"Failed to toggle lock for message {msg_id}: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 # SSE Setup
