@@ -41,6 +41,7 @@
                 <div class="sidebar-logo">
                     <h1>Pager<span>Monitor</span></h1>
                     <p>POCSAG Monitor</p>
+                    <span id="conn-status-msg" class="conn-status-text" style="display: none;"></span>
                 </div>
             </div>
 
@@ -463,11 +464,31 @@
                 }
 
                 if (satIcon) {
-                    satIcon.classList.remove('flash-icon');
+                    satIcon.classList.remove('extreme-pulse');
                     void satIcon.offsetWidth; // trigger reflow
-                    satIcon.classList.add('flash-icon');
+                    satIcon.classList.add('extreme-pulse');
                 }
             }
+
+            // SSE Connection Management
+            const statusMsg = document.getElementById('conn-status-msg');
+
+            evtSource.onopen = function() {
+                satIcon.classList.remove('conn-error');
+                satIcon.classList.add('conn-ok');
+                if (statusMsg) statusMsg.style.display = 'none';
+                console.log("SSE connected");
+            };
+
+            evtSource.onerror = function(err) {
+                satIcon.classList.remove('conn-ok');
+                satIcon.classList.add('conn-error');
+                if (statusMsg) {
+                    statusMsg.innerText = "Connection Lost";
+                    statusMsg.style.display = 'block';
+                }
+                console.error("SSE Error:", err);
+            };
 
             evtSource.onmessage = function (event) {
                 const data = JSON.parse(event.data);
