@@ -1,149 +1,152 @@
 # PagerMonitor
 
-PagerMonitor is a Dockerized all-in-one application for Software Defined Radio (SDR) designed to capture, decode, and monitor POCSAG pager traffic (e.g., Minicall/Rikssökning). It features a modern and stylish real-time web dashboard, dynamic settings management, support for multiple simultaneous SDR devices, and an advanced alias system to replace cryptic CapCodes with readable names or to mute unwanted junk traffic.
-
-<img width="1157" height="761" alt="image" src="https://github.com/user-attachments/assets/9f6c2dda-0b0d-4679-9b3c-7eca804c80a7" />
-
-## Main Features
-
-*   **Multi-SDR Support**: Run and monitor multiple RTL-SDR devices simultaneously. You can assign a specific radio for "Broadcasting 1" and another for "Fire Dept", completely independent of each other from the same interface.
-*   **Decoding & Junk Filter**: Uses `multimon-ng` to decode POCSAG512, 1200, and 2400 messages. Includes an intelligent Entropy-based junk filter that discards noise interference but allows legitimate, short messages (e.g., "AB").
-*   **Swedish Character Support**: Automatically handles translation of special characters from the pager standard to Å, Ä, and Ö, and cleans up line breaks.
-*   **Real-time Dashboard**: A modern "OLED/Glassmorphism" inspired interface with `Server-Sent Events (SSE)` that immediately displays incoming alarms without needing to reload the page. Also includes full support for Infinite Scroll against the database.
-*   **CapCode Aliases & Muting**: Link numerical addresses (e.g., `1234567`) with names (`Station 1`). If a terminal spams traffic, you can also choose to "Mute" it, which automatically hides all its future and historical traffic from the dashboard.
-*   **Alert Words**: Set comma-separated alert words (e.g., `Alarm, Fire, SOS`). If a message contains these words, the entire row is marked with a flashing warning effect in the interface.
-*   **MQTT Integration**: Automatically forwards decoded (and non-muted) messages to a local MQTT broker (e.g., Home Assistant or Node-RED). Any alias names are included in the JSON payload.
-    *Example MQTT Payload:*
-    ```json
-    {
-      "timestamp": "2026-02-24T13:31:54.151258",
-      "address": "1234567",
-      "message": "From: guard@securitycompany.com\nSubject: Alarm Event\nDOOR ALARM - Building A\n2026-02-24 13:31:28 Door forced MAGNETIC CONTACT \n\nENTRANCE CULVERT",
-      "alias": "Guard Local Office",
-      "bitrate": "1200",
-      "function": 3,
-      "frequency": "169.8M",
-      "alert_word": "FORCED",
-      "alert_color": "#ef4444",
-      "sdr_name": "RIKS 1",
-      "is_duplicate": false
-    }
-    ```
-
-    *Example Home Assistant Automation:*
-    ```yaml
-    alias: "PagerMonitor: Send Important Alarms"
-    description: Sends notification to mobile devices only if alert_word is not empty
-    triggers:
-      - topic: pagermonitor/alarms
-        trigger: mqtt
-    conditions:
-      - condition: template
-        value_template: >-
-          {{ trigger.payload_json.alert_word | length > 0 and
-          trigger.payload_json.is_duplicate == false }}
-    actions:
-      - data:
-          title: >-
-            {{ trigger.payload_json.alert_word }}: {{ trigger.payload_json.alias if
-            trigger.payload_json.alias != '' else trigger.payload_json.address }}
-          message: "{{ trigger.payload_json.message }}"
-          data:
-            color: "{{ trigger.payload_json.alert_color }}"
-            tag: pagermonitor-{{ trigger.payload_json.address }}
-            priority: high
-            ttl: 0
-        action: notify.mobile_devices_notification
-    mode: queued
-    max: 10
-    ```
-*   **De-duplication**: The system catches and marks repeated alarms sent within 60 seconds to avoid hysteria in systems listening via MQTT.
-
-## Architecture
-
-The application runs isolated inside a single Docker container and is compiled from source (`librtlsdr` and `multimon-ng`) for maximum performance and compatibility.
-
-1.  **Flask Backend**: Handles Web-UI, REST APIs, settings, Aliases, and the SSE stream (real-time data).
-2.  **SDR Supervisor**: A background process in Python that monitors and controls one or more instances of `rtl_fm` bound to `multimon-ng`. If settings are changed in the GUI, the respective SDR is restarted seamlessly without disturbing the others.
-3.  **SQLite Database**: Data, threads, aliases, and configurations are stored in a static database (`messages.db`) under `/app/data/` to survive restarts.
+PagerMonitor är en komplett, containeriserad plattform för Software Defined Radio (SDR) utformad för att fånga upp, avkoda och övervaka POCSAG-personsökartrafik (t.ex. Minicall och Rikssökning). Systemet har ett modernt mörkt webbgränssnitt i realtid, dynamisk mottagarkonfiguration, stöd för flera parallella SDR-enheter, ett kraftfullt alias-system för CapCodes samt en dedikerad larmvy för bevakade händelser.
 
 ---
 
-## Getting Started with Docker
+## Huvudfunktioner
 
-All necessary environment is prepared in the project via `docker-compose.yml`. You can create a file with the content below:
+* **Multi-SDR-stöd**: Kör och övervaka flera RTL-SDR-enheter samtidigt. Du kan tilldela en specifik mottagare för en frekvens och en annan för en annan, helt oberoende av varandra från samma gränssnitt.
+* **Dedikerad LARM-vy**: En separat sida i menyn som i realtid samlar alla meddelanden som har fått en träff (HIT) på dina bevakade ord, komplett med färgkodade larmbrickor.
+* **Avkodning och skräpfilter**: Använder `multimon-ng` för att avkoda POCSAG512, 1200 och 2400. Innehåller ett intelligent entropibaserat skräpfilter som sorterar bort brus och felaktiga avkodningar, men släpper igenom legitima korta meddelanden.
+* **Fullt stöd för svenska tecken**: Automatisk konvertering av personsökarstandardens specialtecken till Å, Ä och Ö samt snygg formatering av radbrytningar.
+* **Realtidsdashboard**: Modernt gränssnitt med `Server-Sent Events (SSE)` som omedelbart visar inkommande larm utan att webbläsaren behöver ladda om sidan. Fullt stöd för historisk bläddring via infinite scroll mot databasen.
+* **CapCode-alias och döljfunktion**: Koppla sifferadresser (t.ex. `1234567`) till begripliga namn (t.ex. `Station Centrum`). Om en adress skickar oönskat brus kan du dölja den, vilket tar bort dess meddelanden från flödet.
+* **Bevakade ord**: Lägg till kommaseparerade bevakningsord (t.ex. `BRAND, OLYCKA, HLR, AMBULANS`). Om ett meddelande innehåller något av orden markeras raden tydligt och visas i larmvyn.
+* **HTTP-säkerhet och åtkomstkontroll**: Inbyggt stöd för HTTP Basic Auth via miljövariabler, härdade säkerhetsheaders (skydd mot Clickjacking, MIME-sniffing och XSS) samt begränsning av förfrågningsstorlek för DoS-skydd.
+* **MQTT-integration**: Vidarebefordrar automatiskt avkodade meddelanden till en lokal MQTT-broker (t.ex. Home Assistant eller Node-RED). Eventuella alias inkluderas i JSON-strukturen.
+* **Deduplicering**: Systemet upptäcker och flaggar upprepade meddelanden som skickas inom 60 sekunder för att undvika dubbla notiser i anslutna system.
+
+---
+
+## MQTT-struktur och hemautomation
+
+### Exempel på JSON-nyttolast
+```json
+{
+  "timestamp": "2026-10-11T14:30:00.000000",
+  "address": "1234567",
+  "message": "LARM: STOR BRAND I BYGGNAD\nSTATIONSGATAN 1\nSTYRKA 1 OCH 2 LARMADE",
+  "alias": "Raddningstjanst",
+  "bitrate": "1200",
+  "function": 3,
+  "frequency": "169.8M",
+  "alert_word": "BRAND",
+  "alert_color": "#ef4444",
+  "sdr_name": "Mottagare 1",
+  "is_duplicate": false
+}
+```
+
+### Exempel på Home Assistant-automation
+```yaml
+alias: "PagerMonitor: Skicka prioriterade larm"
+description: "Skickar avisering till mobila enheter nar ett bevakat ord traffas"
+triggers:
+  - trigger: mqtt
+    topic: pagermonitor/alarms
+conditions:
+  - condition: template
+    value_template: >-
+      {{ trigger.payload_json.alert_word | length > 0 and
+      trigger.payload_json.is_duplicate == false }}
+actions:
+  - action: notify.mobile_devices_notification
+    data:
+      title: >-
+        {{ trigger.payload_json.alert_word }}: {{ trigger.payload_json.alias if
+        trigger.payload_json.alias != '' else trigger.payload_json.address }}
+      message: "{{ trigger.payload_json.message }}"
+      data:
+        color: "{{ trigger.payload_json.alert_color }}"
+        tag: "pagermonitor-{{ trigger.payload_json.address }}"
+        priority: high
+        ttl: 0
+mode: queued
+max: 10
+```
+
+---
+
+## Arkitektur
+
+Applikationen körs isolerat i en container och byggs från källkod (`librtlsdr` och `multimon-ng`) för högsta prestanda och drivrutinskompatibilitet.
+
+1. **Flask Backend**: Hanterar webbgränssnittet, REST API, inställningar, alias, säkerhetskontroll och SSE-strömmen för realtidsdata.
+2. **SDR Supervisor**: En bakgrundsprocess i Python som övervakar och styr instanser av `rtl_fm` kopplade mot `multimon-ng`. Om inställningar ändras i gränssnittet startas berörd SDR om sömlöst i bakgrunden.
+3. **SQLite-databas**: Meddelanden, alias och inställningar lagras i en SQLite-databas under `/app/data/` för att bevaras mellan omstarter.
+
+---
+
+## Snabbstart med Docker Compose
+
+All nödvändig miljö är förberedd i [docker-compose.yml](docker-compose.yml):
 
 ```yaml
 services:
   pagermonitor:
-    # Use the image directly from GitHub Container Registry
     image: ghcr.io/minglarn/pagermonitor:latest
     container_name: pagermonitor
     restart: unless-stopped
     devices:
-      # Necessary for Linux hosts: Map USB for RTL-SDR
+      # Nodvandigt pa Linux for att ge containern atkomst till USB-mottagaren
       - /dev/bus/usb:/dev/bus/usb
     volumes:
       - ./data:/app/data
     environment:
-      # Customize these for your MQTT broker
-      - MQTT_BROKER=192.168.1.121
-      - MQTT_PORT=1883
-      - MQTT_USER=home-assistant-server
+      - MQTT_BROKER=${MQTT_BROKER:-127.0.0.1}
+      - MQTT_PORT=${MQTT_PORT:-1883}
+      - MQTT_USER=${MQTT_USER:-}
       - MQTT_PASS=${MQTT_PASS:-}
+      - MQTT_TOPIC=${MQTT_TOPIC:-pagermonitor/alarms}
       - TZ=${TZ:-Europe/Stockholm}
+      # HTTP-autentisering (lamna AUTH_PASS tomt for att inaktivera)
+      - AUTH_USER=${AUTH_USER:-admin}
+      - AUTH_PASS=${AUTH_PASS:-}
     ports:
-      - "5000:5000"
+      - "7090:5000"
 ```
 
-### 1. Hardware Requirements (Linux / Raspberry Pi)
-For the container to find your RTL-SDR dongle, you must give Docker permissions to the USB port. Linux is recommended.
+### 1. Hårdvarukrav (Linux / Raspberry Pi)
+För att containern ska hitta din RTL-SDR-dongel krävs att Docker har åtkomst till USB-porten.
 
-Check that your SDR devices are connected with:
+Kontrollera att dina SDR-enheter är anslutna:
 ```bash
 lsusb
 ```
-*(Optional: Blacklist default DVB-T drivers on the host machine so they don't block RTL-SDR: `sudo rmmod dvb_usb_rtl28xxu`)*
 
-### 2. Configure Environment Variables
-Copy the example file and fill in your MQTT details (if using Home Assistant etc.). If you are not using MQTT, you can leave them empty.
+*(Tips: Svartlista standard-DVB-T-drivrutiner på värddatorn om de blockerar RTL-SDR: `sudo rmmod dvb_usb_rtl28xxu`)*
+
+### 2. Konfigurera miljövariabler
+Kopiera exempelfilen och fyll i dina uppgifter:
 
 ```bash
 cp .env.example .env
 nano .env
 ```
-Variables in `.env` override or supplement `docker-compose.yml`.
 
-### 3. Customize `docker-compose.yml`
-Open the file and verify that the settings are correct for your network.
-The most important part is that USB mapping is active:
+Om du vill skydda webbgränssnittet med lösenord sätter du `AUTH_PASS` i `.env`. Kör du bakom en reverse proxy som Nginx Proxy Manager kan du lämna `AUTH_PASS` tomt och låta proxyn hantera behörigheten.
 
-```yaml
-    devices:
-      - /dev/bus/usb:/dev/bus/usb
-```
-
-### 4. Start the Container
-Instead of requiring you to build complicated C++ code yourself, the system automatically downloads a pre-built and optimized image directly from GitHub. All you need to do is:
-
+### 3. Starta containern
 ```bash
-# Start and run in the background
-docker-compose up -d
+# Starta i bakgrunden
+docker compose up -d
 
-# Look at the logs to confirm that RDS/SDR is found
-docker-compose logs -f
+# Folj loggarna for att se att mottagaren startar korrekt
+docker compose logs -f
 ```
-
-## Usage & UI
-Once the container is running (and no errors are seen in the logs regarding `libusb`), navigate to the application via your browser:
-**`http://<SERVER_IP>:5000`**
-
-### First Steps:
-1. Go to the **Advanced SDR Settings** tab in the menu.
-2. Create your first SDR instance by clicking `Add SDR Device`.
-3. Enter the frequency you want to listen to (e.g., `169.8M`).
-4. Select **Device Serial** if you have multiple dongles connected, otherwise leave empty.
-5. Save. The system applies the change immediately in the background. When a message is received, the satellite dish at the top left flashes 📡!
 
 ---
-*Developed with ❤️ for radio amateurs and tech enthusiasts.*
+
+## Gränssnitt och användning
+
+Öppna webbläsaren och navigera till:
+**`http://<SERVER_IP>:7090`**
+
+### Sidonavigering
+* **Dashboard**: Realtidsöversikt över all inkommande trafik.
+* **LARM**: Dedikerad vy för händelser som har fått en träff på bevakade ord.
+* **Alias**: Hantera kopplingar mellan CapCode-adresser och läsbara namn samt döljfunktion.
+* **Bevakade ord**: Lägg till och redigera ord som ska trigga larm och färgmarkeras.
+* **Statistik**: Diagram och historisk statistik över meddelandevolymer, tider och frekvenser.
+* **Inställningar**: Konfigurera radiofrekvens, gain, teckenuppsättning och SDR-enheter.

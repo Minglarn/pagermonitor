@@ -58,9 +58,19 @@
   - `app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024` (2 MB) för att förhindra överbelastningsattacker (DoS via minnesutmattning).
 
 ### 4. Automatiserade tester
-- Skapat `tests/test_security_and_larm.py`:
+- Skapat `tests/test_security_and_larm.py` och flyttat `tests/test_imports.py`:
   - Verifierar att `/larm` svarar med 200 OK och rätt element.
   - Verifierar att säkerhetsheaders returneras.
   - Verifierar att `alerts_only=1` endast returnerar larmade händelser.
   - Verifierar att HTTP Basic Auth blockerar obehöriga och tillåter behöriga anrop.
-- Samtliga 11 tester i testsviten körs och passerar.
+- Samtliga tester i testsviten körs och passerar.
+
+### 5. Reposanering och källkodsskydd
+- **Borttagning av temporära filer och scratch-skript**:
+  - Samtliga diff-filer (`*.diff`, `*.txt`), temporära testscheman och äldre testskript som tidigare råkat spåras i Git har tagits bort (`git rm`).
+- **Anonymisering av konfiguration**:
+  - Hårdkodade interna IP-adresser och användarnamn har ersatts med generiska miljövariabler med fallback-värden i `docker-compose.yml`.
+- **Härdad `.gitignore`**:
+  - Utökad för att permanent blockera lokala databaser (`*.db`, `*.sqlite3`), loggfiler, diffar, cache-kataloger och `.env`-filer från att nå GitHub.
+- **Uppdaterad README.md**:
+  - Helt omskriven på svenska, anpassad för CalVer `2026.10.11` och fri från emojis.

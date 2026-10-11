@@ -19,6 +19,10 @@ and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
 ### Fixed
 - Åtgärdat felaktigt antal bindningsparametrar vid automatisk initiering av SDR-instanser i databasen.
+- Sanerat publika filer: Raderat temporära diff-filer, loggar och scratch-skript från versionshanteringen.
+- Härdat `.gitignore` för att utesluta databaser, loggar och lokala konfigurationsfiler.
+- Anonymiserat nätverkskonfiguration i `docker-compose.yml` för att förhindra exponering av interna adresser.
+- Omskrivit `README.md` på svenska utan emojis och uppdaterat dokumentation och walkthrough.
 
 ## [2026.02.22] - Initial Release & Upgrades
 

@@ -11,9 +11,9 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      - MQTT_BROKER=192.168.1.121
-      - MQTT_PORT=1883
-      - MQTT_USER=home-assistant-server
+      - MQTT_BROKER=${MQTT_BROKER:-127.0.0.1}
+      - MQTT_PORT=${MQTT_PORT:-1883}
+      - MQTT_USER=${MQTT_USER:-}
       - MQTT_PASS=${MQTT_PASS:-}
       - MQTT_TOPIC=${MQTT_TOPIC:-pagermonitor/alarms}
       - TZ=${TZ:-Europe/Stockholm}
