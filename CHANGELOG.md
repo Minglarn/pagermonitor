@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.11.2] - Filter SSE Heartbeat & Activity Pings in Live Tables
+
+### Fixed
+- **SSE Ping Filter in Live Table**: Fixed an issue where background activity pings (`{type: 'ping'}`) emitted when garbage/duplicate messages are filtered triggered row additions with `undefined` values and `Invalid Date` in the live monitor. Now validates that received event payloads have a valid message `id` before adding to the table.
+
 ## [2026.10.11.1] - Multi-SDR Watchdog Self-Healing & Statistics DataTables 2
 
 ### Added
