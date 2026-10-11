@@ -143,5 +143,18 @@
 - **Svensk Lokalisering av Inställningar**:
   - Samtliga flikar, formulärfält, hjälpetiketter och dialoger i inställningsfliken är översatta till ren svenska.
 - **Optimerad SDR-Processomstart**:
-  - Ändrade `/api/settings` i `app.py` så att processomstart av `rtl_fm` och `multimon-ng` endast sker när faktiska radio-/hårdvarunycklar ändras. Ändringar av typsnitt, textstorlek, tema eller gallring avbryter inte längre radiomottagningen.
+### 14. Korrigering av Skräpfilter för Långa Meddelanden & SDR Supervisor Heartbeat (v2026.10.11.5)
+- **Problem & Orsak till Uteblivna Meddelanden**:
+  - Meddelandet `High Volume Warning UserId 905442 655 messages in 5 minutes:...` togs emot av `sdr_processor` (RAW), men visades inte i webbgränssnittet eller databasen.
+  - Orsaken var att `is_garbage_message()` innehöll en regel: `if unique_ratio < 0.15 and length > 15: return True`. För långa meddelanden (>250 tecken) innehåller det mänskliga språket naturligt endast ett 40-tal unika tecken, vilket gav en kvot på ~12.6% (< 15%). Långa informativa larmmeddelanden klassades därför felaktigt som repetitivt brus och slängdes.
+  - Dessutom loggades bortkastade skräpmeddelanden på `DEBUG`-nivå, vilket dolde anledningen i Docker-loggarna.
+- **Åtgärd för Skräpfilter**:
+  - Ändrade repetitionskontrollen till att kontrollera om ett långt meddelande består av endast 1–3 unika tecken (t.ex. `==========` eller `ABABABAB`). Långa informativa texter släpps nu alltid igenom korrekt.
+  - Ändrade loggningen av droppade meddelanden från `DEBUG` till `INFO` (`[SDR] SKRÄPFILTER DROPPADE -> Adress: ...`), så att eventuellt filtrerade meddelanden är direkt synliga i loggen.
+- **Utökad Kontroll & Övervakning av SDR-Processer (RIKS 2)**:
+  - **Periodisk Supervisor Heartbeat (var 60:e sekund)**: `run_sdr_process` loggar nu regelbundet driftsstatus, PID, körstatus (`KÖRS`/`DÖD`) och tid sedan senaste avkodade larm för samtliga konfigurerade mottagare.
+  - **Ofiltrerad Stderr-loggning för rtl_fm**: Tog bort den begränsande nyckelordsfiltreringen av `rtl_fm` stderr. Alla enhetsdetekteringar, frekvensinställningar och hårdvarufel visas nu omedelbart i loggen.
+  - **Detektering av USB-Enhetskonflikt**: Om flera mottagare (t.ex. RIKS 1 och RIKS 2) saknar angivet serienummer (`device_serial`), varnar systemet i loggen om att de försöker använda samma USB-enhet (`device 0`).
+  - **Detaljerad Avslutningsdiagnostik**: Vid processkrasch loggas exakta returkoder (`exit_code`) för både `rtl_fm` och `multimon-ng` tillsammans med sista felmeddelandet från drivrutinen.
+
 

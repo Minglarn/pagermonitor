@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.11.5] - Long Message Garbage Filter Fix, SDR Supervisor Heartbeat & Device Conflict Diagnostics
+
+### Fixed
+- **Garbage Filter Repetition Calculation for Long Messages**: Fixed a critical flaw in `is_garbage_message` where legitimate multi-line messages over ~250 characters (e.g. system volume warnings, incident reports) were erroneously classified as repetitive noise and silently discarded due to low `unique_ratio`. Repetitive noise is now accurately detected by checking for messages with 3 or fewer distinct characters across >15 length.
+- **Transparent Filter Logging**: Promoted dropped garbage message logging from `DEBUG` to `INFO` so filtered messages and their addresses are directly visible in Docker/system logs with the exact snippet dropped.
+
+### Added
+- **Periodic Supervisor Heartbeat**: Integrated a 60-second periodic heartbeat into `sdr_processor.py` logging the real-time operational status, PID, running state, and time since last decoded message for every configured SDR receiver.
+- **Unrestricted rtl_fm Stderr Logging**: Removed aggressive keyword filtering on `rtl_fm` stderr output, allowing all device initialization, tuner frequency tuning, device enumeration, and USB errors (`usb_open`, `usb_claim_interface`, `no matching device`) to be immediately visible in container logs.
+- **Multi-SDR USB Device Conflict Detection**: Added explicit warnings when multiple SDR instances lack assigned `-d` serial/device index numbers, warning of potential device 0 contention between dongles.
+- **Detailed Exit Diagnostics**: Enhanced process termination logging to report exact exit codes for both `rtl_fm` and `multimon-ng` along with the last captured stderr output from the failing process.
+
 ## [2026.10.11.4] - Full-Width Settings Overhaul, Live Typography Preview & Seamless Auto-Save
 
 ### Added

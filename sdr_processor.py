@@ -82,8 +82,8 @@ def is_garbage_message(message, sensitivity=50):
         # High entropy but low readable ratio often indicates random noise
         if unique_ratio > 0.70 and readable_ratio < 0.90:
             return True
-        # Very low unique ratio in long message (repetition)
-        if unique_ratio < 0.15 and length > 15:
+        # Repetitive noise check: messages repeating only 1-3 distinct characters (e.g. "=====", "AAAAAA", "121212")
+        if length > 15 and len(set(temp_msg)) <= 3:
             return True
 
     # Linguistic Heuristics:
@@ -199,28 +199,32 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
     """Monitors the output of a single SDR instance (rtl_fm | multimon-ng)."""
     logger.info(f"Monitor thread started for instance {instance_id} ({config['name']})")
     
-    # Stderr logging for rtl_fm
+    # Stderr logging for rtl_fm - log all messages from rtl_fm so startup and errors are visible
     def log_p1_stderr(p_err):
         try:
             for err_line in iter(p_err.readline, b''):
                 if stop_event.is_set(): break
                 if err_line:
                     decoded_line = err_line.decode('utf-8', errors='replace').strip()
+                    if not decoded_line: continue
                     lower_line = decoded_line.lower()
                     
-                    if any(w in lower_line for w in ['error', 'failed', 'cannot', 'usb_claim', 'resetting', 'lost', 'fault', 'critical']):
+                    is_err = any(w in lower_line for w in [
+                        'error', 'failed', 'cannot', 'usb_claim', 'usb_open', 
+                        'resetting', 'lost', 'fault', 'critical', 'no matching', 
+                        'not found', 'denied', 'busy'
+                    ])
+                    if is_err:
                         logger.warning(f"[{config['name']}] rtl_fm: {decoded_line}")
                         if instance_id not in instance_errors:
                             instance_errors[instance_id] = []
                         instance_errors[instance_id].append(decoded_line)
-                        if len(instance_errors[instance_id]) > 5:
+                        if len(instance_errors[instance_id]) > 10:
                             instance_errors[instance_id].pop(0)
-                    elif any(w in lower_line for w in ['using device', 'frequency correction', 'exact sample rate', 'tuned to']):
-                        logger.info(f"[{config['name']}] rtl_fm: {decoded_line}")
                     else:
-                        logger.debug(f"[{config['name']}] rtl_fm: {decoded_line}")
-        except Exception:
-            pass
+                        logger.info(f"[{config['name']}] rtl_fm: {decoded_line}")
+        except Exception as e:
+            logger.debug(f"[{config['name']}] rtl_fm stderr reader exception: {e}")
 
     stderr_thread = threading.Thread(target=log_p1_stderr, args=(p1.stderr,), daemon=True)
     stderr_thread.start()
@@ -230,7 +234,15 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
             line = p2.stdout.readline()
             if not line:
                 if p2.poll() is not None or p1.poll() is not None:
-                    logger.warning(f"Processes for instance {instance_id} ({config['name']}) died.")
+                    p1_exit = p1.poll() if p1 else 'N/A'
+                    p2_exit = p2.poll() if p2 else 'N/A'
+                    last_errs = instance_errors.get(instance_id, [])
+                    err_txt = f" (Sista fel fran rtl_fm: '{last_errs[-1]}')" if last_errs else ""
+                    logger.warning(
+                        f"[{config['name']}] Processer avslutades ovantat! "
+                        f"rtl_fm PID={p1.pid if p1 else 'N/A'} exit={p1_exit}, "
+                        f"multimon-ng PID={p2.pid if p2 else 'N/A'} exit={p2_exit}.{err_txt}"
+                    )
                     break
                 time.sleep(0.1)
                 continue
@@ -244,6 +256,11 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
 
             if ("POCSAG" in line and "Alpha:" in line) or re.search(r'(AFSK|UFSK)\d*:', line):
                 logger.info(f"[{config['name']}] RAW: {line}")
+                
+                # Record activity time for watchdog telemetry
+                if instance_id in active_instances:
+                    active_instances[instance_id]['last_message_time'] = time.time()
+
                 parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
                 
                 if parsed:
@@ -260,7 +277,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     is_hidden = alias_info['is_hidden'] if alias_info else False
                     
                     if is_hidden:
-                        logger.info(f"[{config['name']}] DROPPED (Hidden Alias) -> Address: {address}")
+                        logger.info(f"[{config['name']}] DOLT ALIAS DROPPADE -> Adress: {address}")
                         for cb in list(new_message_callbacks):
                             try: cb({'type': 'ping'})
                             except Exception: pass
@@ -273,7 +290,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         if settings.get('garbage_filter', 'true') == 'true':
                             sensitivity = int(settings.get('garbage_filter_sensitivity', '50'))
                             if is_garbage_message(message, sensitivity):
-                                logger.debug(f"[{config['name']}] GARBAGE DROPPED -> Address: {address}, Msg: {message[:60]}...")
+                                logger.info(f"[{config['name']}] SKRAPFILTER DROPPADE -> Adress: {address}, Msg: {message[:80]}...")
                                 for cb in list(new_message_callbacks):
                                     try: cb({'type': 'ping'})
                                     except Exception: pass
@@ -353,9 +370,16 @@ def start_instance(config):
     if enable_hq_fir: rtl_cmd.append('-F')
     if atan_math in ['std', 'fast']: rtl_cmd.extend(['-A', atan_math])
     if oversampling and oversampling != '1': rtl_cmd.extend(['-o', oversampling])
-    if ppm and ppm != '0': rtl_cmd.extend(['-p', ppm])
-    if gain != 'auto' and gain.strip() != '': rtl_cmd.extend(['-g', gain])
-    if serial: rtl_cmd.extend(['-d', serial])
+    serial = str(config.get('device_serial', '')).strip()
+    if serial:
+        rtl_cmd.extend(['-d', serial])
+        logger.info(f"[{config['name']}] Använder specifik SDR-enhet / serienummer: '{serial}'")
+    else:
+        logger.warning(
+            f"[{config['name']}] Inget enhets-ID/serienummer (-d) angivet. "
+            f"Om du kör flera mottagare (t.ex. RIKS 1 och RIKS 2) måste du ange unika enhetsindex ('0', '1') "
+            f"eller USB-serienummer i inställningarna, annars krockar de om första USB-porten."
+        )
 
     verbosity = config.get('multimon_verbosity', '1')
     charset = config.get('multimon_charset', 'SE')
@@ -412,6 +436,7 @@ def run_sdr_process():
     """Supervisor loop that synchronizes active processes with DB config."""
     logger.info("SDR Supervisor started.")
     last_restart_attempt = {}
+    last_heartbeat = 0
     
     while True:
         try:
@@ -550,6 +575,37 @@ def run_sdr_process():
                     else:
                         logger.error(f"Failed to start {db_inst['name']}. Retrying next sync.")
 
+            # 3. Periodic supervisor heartbeat every 60 seconds
+            now = time.time()
+            if now - last_heartbeat >= 60:
+                last_heartbeat = now
+                status_parts = []
+                for db_inst in instances_from_db:
+                    inst_id = db_inst['id']
+                    name = db_inst['name']
+                    enabled = db_inst.get('enabled', 1)
+                    if not enabled:
+                        status_parts.append(f"{name}: INAKTIVERAD")
+                        continue
+                    
+                    inst = active_instances.get(inst_id)
+                    if not inst:
+                        status_parts.append(f"{name}: EJ STARTAD / VANTAR")
+                        continue
+                        
+                    p1 = inst.get('p1')
+                    p2 = inst.get('p2')
+                    p1_running = p1 is not None and p1.poll() is None
+                    p2_running = p2 is not None and p2.poll() is None
+                    p1_st = f"KORS (PID {p1.pid})" if p1_running else f"DOD (kod {p1.poll() if p1 else 'N/A'})"
+                    p2_st = f"KORS (PID {p2.pid})" if p2_running else f"DOD (kod {p2.poll() if p2 else 'N/A'})"
+                    last_rec = inst.get('last_message_time')
+                    rec_info = f"senaste larm {int(now - last_rec)}s sedan" if last_rec else "inga larm an"
+                    serial_info = f"serial='{db_inst.get('device_serial')}'" if db_inst.get('device_serial') else "default-device"
+                    status_parts.append(f"[{name}] ({serial_info}, rtl_fm: {p1_st}, multimon: {p2_st}, freq: {db_inst.get('frequency', '?')}, {rec_info})")
+                
+                logger.info(f"SDR Heartbeat: {len(status_parts)} konfigurerade mottagare -> {' | '.join(status_parts)}")
+
         except Exception as e:
             logger.error(f"Error in supervisor loop: {e}")
         
@@ -559,17 +615,22 @@ def run_sdr_process():
 def get_sdr_runtime_status():
     """Returns a dict of runtime status for all active instances."""
     status = {}
+    now = time.time()
     for inst_id, inst in list(active_instances.items()):
         p1 = inst.get('p1')
         p2 = inst.get('p2')
         p1_running = p1 is not None and p1.poll() is None
         p2_running = p2 is not None and p2.poll() is None
         errs = instance_errors.get(inst_id, [])
+        last_rec = inst.get('last_message_time')
         status[inst_id] = {
             'is_running': p1_running and p2_running,
             'rtl_fm_pid': p1.pid if p1_running else None,
             'multimon_pid': p2.pid if p2_running else None,
             'started_at': inst.get('started_at'),
+            'uptime_seconds': int(now - inst.get('started_at', now)),
+            'last_message_time': last_rec,
+            'last_message_age_seconds': int(now - last_rec) if last_rec else None,
             'last_error': errs[-1] if errs else None
         }
     return status

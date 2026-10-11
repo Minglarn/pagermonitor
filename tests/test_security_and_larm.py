@@ -120,6 +120,16 @@ def test_garbage_filter_allows_short_alphanumeric_codes():
     assert is_garbage_message("OK", 50) is False
     assert is_garbage_message("", 50) is True
 
+def test_garbage_filter_allows_long_system_messages():
+    """Testa att långa legitima systemmeddelanden/varningar inte felaktigt klassas som repetitivt brus."""
+    from sdr_processor import is_garbage_message, parse_multimon_line
+    raw = 'POCSAG1200: Address: 1355350  Function: 3  Alpha:   High Volume Warning  UserId 905442   655 messages in 5 minutes:High message volume detected.<CR><LF><CR><LF>UserId      : 905442<CR><LF>Messages    : 655<CR><LF>Time window : 2026-10-11 20:15   20:20 <CR><LF>UTC hour    : 20:00   20:59<CR><LF>Threshold   : 200 messages per 5-minute window (configured for hour 20)<CR><LF><CR><LF>Please review the traffic manually and block the account if it appears suspicious.<NUL>'
+    parsed = parse_multimon_line(raw, 'SE')
+    assert parsed is not None
+    assert is_garbage_message(parsed['message'], 50) is False
+    assert is_garbage_message(parsed['message'], 80) is False
+
+
 def test_settings_page_renders_with_autosave_and_wide_layout(client):
     """Verifiera att inställningssidan renderas i fullbredd med auto-save och förhandsgranskning."""
     res = client.get('/settings')
@@ -129,7 +139,7 @@ def test_settings_page_renders_with_autosave_and_wide_layout(client):
     assert 'autoSaveBadge' in html
     assert 'previewTextContent' in html
     assert 'addSdrModal' in html
-    assert 'v2026.10.11.4' in html
+    assert 'v2026.10.11.5' in html
 
 def test_settings_autosave_api(client):
     """Verifiera att uppdatering av visningsinställningar via POST /api/settings lyckas."""
