@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.11.3] - Unified Rules & Triggers, Watchdog USB Health Verification & CalVer Sidebar
+
+### Added
+- **Unified Rules & Triggers Management**: Combined CapCode Aliases and Alert Words into a streamlined tabbed view under `/rules` with automatic routing and backward compatibility for `/aliases` and `/alerts`.
+- **Dynamic CalVer Sidebar Display**: Injected `app_version` via Flask context processor and displayed the version badge under "POCSAG Monitor" in the sidebar when expanded.
+- **Live SDR Process Status & PIDs**: Added `get_sdr_runtime_status()` exposing live `rtl_fm` and `multimon-ng` PID numbers, process health, and error messages on the SDR Receivers cards in Settings.
+- **Floating Goto Top Button & Pagination Auto-Scroll**: Restored the floating `#scrollToTop` button and implemented automatic scroll-to-top on DataTables pagination.
+
+### Changed
+- **Vertical Metadata Badges**: Aligned frequency, bitrate, function code, and duplicate badges vertically within the `FREQUENCY / META` column across all tables.
+- **Watchdog USB Cooldown & Stability Verification**: Eliminated duplicate restart log entries by giving USB hardware a 2.5-second cooldown and actively verifying process liveness and PID stability before logging recovery.
+- **Elevated Stderr Diagnostics**: Promoted `rtl_fm` error strings (`usb_claim_interface`, `resetting`, `failed`) from DEBUG to WARNING/ERROR so USB driver issues are directly visible in logs.
+
 ## [2026.10.11.2] - Filter SSE Heartbeat & Activity Pings in Live Tables
 
 ### Fixed

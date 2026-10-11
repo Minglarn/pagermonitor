@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PagerMonitor - Rules & Triggers</title>
+    <link rel="stylesheet" href="/static/style.css?v=3">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;600&family=Share+Tech+Mono&family=Anonymous+Pro:wght@400;700&family=VT323&family=Roboto+Mono:wght@400;600&family=Source+Code+Pro:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        // Apply theme immediately to prevent flickering
+        (function () {
+            const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+
+            const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+            if (isCollapsed) {
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.getElementById('sidebar').classList.add('collapsed');
+                });
+            }
+        })();
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+        }
+    </script>
+</head>
+
+<body>
+    <div class="app-layout">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <i id="satellite-icon" class="fas fa-satellite-dish" style="font-size: 1.5rem; color: var(--accent); transition: all 0.2s ease;"></i>
+                <div class="sidebar-logo">
+                    <h1>Pager<span>Monitor</span></h1>
+                    <p>POCSAG Monitor</p>
+                    <div class="sidebar-version">v{{ app_version }}</div>
+                    <span id="conn-status-msg" class="conn-status-text" style="display: none;"></span>
+                </div>
+            </div>
+
+            <div class="sidebar-nav">
+                <a href="/" class="nav-item">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/alarms" class="nav-item">
+                    <i class="fas fa-bell"></i>
+                    <span>Alarms</span>
+                </a>
+                <a href="/rules" class="nav-item active">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>Rules & Triggers</span>
+                </a>
+                <a href="/statistics" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Statistics</span>
+                </a>
+                <a href="/settings" class="nav-item">
+                    <i class="fas fa-cog"></i>
+                    <span>Settings</span>
+                </a>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </nav>
+
+        <div class="main-content">
+            <header>
+                <h1><span class="highlight">Rules</span> & Triggers</h1>
+                <p>Configure CapCode aliases, ignore rules, and keyword alert triggers</p>
+            </header>
+
+            <main>
+                <div class="glass-panel form-container wide" style="padding: 1.5rem;">
+                    <div class="settings-tabs">
+                        <button id="trigger-aliases" class="tab-trigger active" onclick="switchTab('aliases')">
+                            <i class="fas fa-tag" style="margin-right: 0.5rem;"></i>CapCode Aliases
+                        </button>
+                        <button id="trigger-alerts" class="tab-trigger" onclick="switchTab('alerts')">
+                            <i class="fas fa-filter" style="margin-right: 0.5rem;"></i>Alert Words
+                        </button>
+                    </div>
+
+                    <!-- Tab 1: CapCode Aliases -->
+                    <div id="tab-aliases" class="tab-content active">
+                        <form id="aliasForm" style="display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap;">
+                            <div class="form-group" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+                                <label for="address" style="font-size: 0.75rem; margin-bottom: 0.25rem;">CapCode</label>
+                                <input type="text" id="address" name="address" placeholder="e.g. 1234567" required
+                                    style="padding: 0.5rem;">
+                            </div>
+                            <div class="form-group" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+                                <label for="alias" style="font-size: 0.75rem; margin-bottom: 0.25rem;">Alias</label>
+                                <input type="text" id="alias" name="alias" placeholder="e.g. Fire Dept" required
+                                    style="padding: 0.5rem;">
+                            </div>
+                            <div class="form-group checkbox-group" style="margin-bottom: 0; white-space: nowrap;">
+                                <label style="font-size: 0.8rem;">
+                                    <input type="checkbox" id="is_hidden" name="is_hidden">
+                                    Mute
+                                </label>
+                            </div>
+                            <button type="submit" id="saveAliasBtn" class="primary-btn"
+                                style="padding: 0.5rem 1.2rem; white-space: nowrap;">Save Alias</button>
+                        </form>
+                        <div id="statusMessage" class="status-message"></div>
+
+                        <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Existing Aliases</h3>
+                        <div class="table-container" style="min-height: auto;">
+                            <table class="glass-table" style="border-spacing: 0 4px;">
+                                <thead>
+                                    <tr>
+                                        <th>CapCode</th>
+                                        <th>Alias</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="aliasTableBody">
+                                    <tr>
+                                        <td colspan="4" style="text-align:center;">Loading...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Tab 2: Alert Words -->
+                    <div id="tab-alerts" class="tab-content">
+                        <div class="form-group" style="margin-bottom: 0.5rem;">
+                            <label for="wordsArea" style="font-size: 0.85rem; margin-bottom: 0.5rem; display: block;">
+                                Edit watchwords below. Separate words with commas. Case-insensitive.
+                            </label>
+                            <textarea id="wordsArea" rows="5" placeholder="e.g. FIRE, ACCIDENT, POLICE, AMBULANCE, CPR"
+                                style="width: 100%; padding: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 1rem; background: var(--input-bg, rgba(0,0,0,0.2)); color: var(--text-primary); border: 1px solid var(--panel-border); border-radius: 10px; resize: vertical;"></textarea>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 1rem; margin-top: 1rem;">
+                            <button id="saveBtn" class="primary-btn" style="padding: 0.5rem 1.5rem;"
+                                onclick="saveWords()">Save Watchlist</button>
+                            <span id="status" class="status-message"></span>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-trigger').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+
+            const trigger = document.getElementById('trigger-' + tabId);
+            const target = document.getElementById('tab-' + tabId);
+            if (trigger) trigger.classList.add('active');
+            if (target) target.classList.add('active');
+
+            if (history.replaceState) {
+                history.replaceState(null, '', '#' + tabId);
+            }
+        }
+
+        // --- Connection Status via SSE ---
+        const satIcon = document.getElementById('satellite-icon');
+        const statusMsgConn = document.getElementById('conn-status-msg');
+        const evtSource = new EventSource("/stream");
+
+        evtSource.onopen = function () {
+            satIcon.classList.remove('conn-error');
+            satIcon.classList.add('conn-ok');
+            if (statusMsgConn) statusMsgConn.style.display = 'none';
+        };
+
+        evtSource.onerror = function () {
+            satIcon.classList.remove('conn-ok');
+            satIcon.classList.add('conn-error');
+            if (statusMsgConn) {
+                statusMsgConn.innerText = "Connection Lost";
+                statusMsgConn.style.display = 'block';
+            }
+        };
+
+        evtSource.onmessage = function () {
+            satIcon.classList.remove('extreme-pulse');
+            void satIcon.offsetWidth;
+            satIcon.classList.add('extreme-pulse');
+        };
+
+        // --- Aliases Logic ---
+        const aliasForm = document.getElementById('aliasForm');
+        const aliasStatusMsg = document.getElementById('statusMessage');
+        const saveAliasBtn = document.getElementById('saveAliasBtn');
+        const aliasTbody = document.getElementById('aliasTableBody');
+
+        function loadAliases() {
+            fetch('/api/aliases')
+                .then(res => res.json())
+                .then(data => {
+                    aliasTbody.innerHTML = '';
+                    if (Object.keys(data).length === 0) {
+                        aliasTbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No aliases added yet.</td></tr>';
+                        return;
+                    }
+
+                    for (const [address, info] of Object.entries(data)) {
+                        const isHidden = info.is_hidden;
+                        const statusBadge = isHidden ? '<span class="badge danger">Muted</span>' : '<span class="badge success">Active</span>';
+
+                        aliasTbody.innerHTML += `
+                            <tr>
+                                <td><span class="badge">${address}</span></td>
+                                <td>${info.alias}</td>
+                                <td>${statusBadge}</td>
+                                <td class="actions-cell">
+                                    <div class="actions-wrapper">
+                                        <button class="edit-btn" onclick="editAlias('${address}', '${info.alias}', ${isHidden})" title="Edit Alias">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <div class="btn-divider"></div>
+                                        <button class="delete-btn" onclick="deleteAlias('${address}')" title="Remove Alias">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    }
+                })
+                .catch(err => console.error("Error fetching aliases:", err));
+        }
+
+        window.deleteAlias = function (address) {
+            if (!confirm(`Are you sure you want to delete the alias for ${address}?`)) return;
+
+            fetch('/api/aliases', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ address })
+            }).then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        loadAliases();
+                        showAliasStatus('Alias deleted!', 'success');
+                    }
+                });
+        };
+
+        window.editAlias = function (address, alias, isHidden) {
+            document.getElementById('address').value = address;
+            document.getElementById('alias').value = alias;
+            document.getElementById('is_hidden').checked = isHidden;
+            document.getElementById('address').focus();
+        };
+
+        aliasForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveAliasBtn.innerText = 'Saving...';
+            saveAliasBtn.disabled = true;
+
+            const payload = {
+                address: document.getElementById('address').value.trim(),
+                alias: document.getElementById('alias').value.trim(),
+                is_hidden: document.getElementById('is_hidden').checked
+            };
+
+            fetch('/api/aliases', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showAliasStatus('Alias saved!', 'success');
+                        loadAliases();
+                        document.getElementById('address').value = '';
+                        document.getElementById('alias').value = '';
+                        document.getElementById('is_hidden').checked = false;
+                    } else {
+                        showAliasStatus('Something went wrong: ' + data.message, 'error');
+                    }
+                })
+                .finally(() => {
+                    saveAliasBtn.innerText = 'Save Alias';
+                    saveAliasBtn.disabled = false;
+                });
+        });
+
+        function showAliasStatus(text, type) {
+            aliasStatusMsg.innerText = text;
+            aliasStatusMsg.className = `status-message ${type} show`;
+            setTimeout(() => {
+                aliasStatusMsg.classList.remove('show');
+            }, 5000);
+        }
+
+        // --- Alert Words Logic ---
+        let currentAlerts = [];
+
+        async function loadWords() {
+            try {
+                const res = await fetch('/api/alerts');
+                currentAlerts = await res.json();
+                const words = currentAlerts.map(a => a.word).join(', ');
+                document.getElementById('wordsArea').value = words;
+            } catch (err) {
+                console.error("Error loading alert words:", err);
+            }
+        }
+
+        async function saveWords() {
+            const btn = document.getElementById('saveBtn');
+            const statusEl = document.getElementById('status');
+            btn.disabled = true;
+            btn.innerText = 'Saving...';
+
+            const rawText = document.getElementById('wordsArea').value;
+            const newWords = rawText.split(',').map(w => w.trim().toUpperCase()).filter(w => w.length > 0);
+            const uniqueNewWords = [...new Set(newWords)];
+            const oldWords = currentAlerts.map(a => a.word.toUpperCase());
+
+            const toAdd = uniqueNewWords.filter(w => !oldWords.includes(w));
+            const toRemove = currentAlerts.filter(a => !uniqueNewWords.includes(a.word.toUpperCase()));
+
+            try {
+                for (const word of toAdd) {
+                    await fetch('/api/alerts', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ word, color: '#ef4444', is_active: true })
+                    });
+                }
+
+                for (const alert of toRemove) {
+                    await fetch('/api/alerts', {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: alert.id })
+                    });
+                }
+
+                statusEl.innerText = 'Watchlist saved!';
+                statusEl.className = 'status-message success show';
+                await loadWords();
+            } catch (e) {
+                statusEl.innerText = 'Error: ' + e.message;
+                statusEl.className = 'status-message error show';
+            } finally {
+                btn.disabled = false;
+                btn.innerText = 'Save Watchlist';
+                setTimeout(() => statusEl.classList.remove('show'), 3000);
+            }
+        }
+
+        // --- Init ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAliases();
+            loadWords();
+
+            if (window.location.hash === '#alerts' || window.location.pathname === '/alerts') {
+                switchTab('alerts');
+            } else {
+                switchTab('aliases');
+            }
+        });
+    </script>
+</body>
+
+</html>

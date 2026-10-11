@@ -180,7 +180,8 @@ def parse_multimon_line(line, charset):
         return None
 
 # Supervisor state
-active_instances = {} # instance_id -> { 'p1': proc, 'p2': proc, 'config': dict, 'stop_event': Event }
+active_instances = {} # instance_id -> { 'p1': proc, 'p2': proc, 'config': dict, 'stop_event': Event, 'started_at': float }
+instance_errors = {}  # instance_id -> list of recent error messages
 sdr_thread = None
 sync_event = threading.Event()
 
@@ -199,8 +200,17 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                 if stop_event.is_set(): break
                 if err_line:
                     decoded_line = err_line.decode('utf-8', errors='replace').strip()
-                    if "Frequency correction" in decoded_line or "Using device" in decoded_line:
-                        logger.info(f"[{config['name']}] {decoded_line}")
+                    lower_line = decoded_line.lower()
+                    
+                    if any(w in lower_line for w in ['error', 'failed', 'cannot', 'usb_claim', 'resetting', 'lost', 'fault', 'critical']):
+                        logger.warning(f"[{config['name']}] rtl_fm: {decoded_line}")
+                        if instance_id not in instance_errors:
+                            instance_errors[instance_id] = []
+                        instance_errors[instance_id].append(decoded_line)
+                        if len(instance_errors[instance_id]) > 5:
+                            instance_errors[instance_id].pop(0)
+                    elif any(w in lower_line for w in ['using device', 'frequency correction', 'exact sample rate', 'tuned to']):
+                        logger.info(f"[{config['name']}] rtl_fm: {decoded_line}")
                     else:
                         logger.debug(f"[{config['name']}] rtl_fm: {decoded_line}")
         except Exception:
@@ -429,17 +439,23 @@ def run_sdr_process():
                     thread_dead = thread is not None and not thread.is_alive()
                     
                     if p1_dead or p2_dead or thread_dead:
+                        p1_code = p1.poll() if p1 else 'N/A'
+                        p2_code = p2.poll() if p2 else 'N/A'
+                        last_errs = instance_errors.get(instance_id, [])
+                        err_detail = f" | Last error: {last_errs[-1]}" if last_errs else ""
                         logger.warning(
                             f"Watchdog: Instance {instance_id} ({db_inst['name']}) died unexpectedly "
-                            f"(p1_dead={p1_dead}, p2_dead={p2_dead}, thread_dead={thread_dead}). Restarting..."
+                            f"(rtl_fm exit: {p1_code}, multimon exit: {p2_code}, thread_dead={thread_dead}){err_detail}. Cooldown and restarting..."
                         )
                         stop_instance_procs(instance_id)
                         
-                        # Throttle restart to prevent rapid tight-loops if USB device disconnected
+                        # Throttle restart and give USB subsystem cooldown to release hardware handles
                         last_time = last_restart_attempt.get(instance_id, 0)
                         now = time.time()
-                        if now - last_time < 3:
-                            time.sleep(2)
+                        if now - last_time < 5:
+                            time.sleep(2.5)
+                        else:
+                            time.sleep(1.5)
                         last_restart_attempt[instance_id] = time.time()
                         
                         should_start = True
@@ -471,38 +487,57 @@ def run_sdr_process():
                             'p1': p1, 'p2': p2, 
                             'config': db_inst, 
                             'stop_event': stop_event,
-                            'thread': monitor_thread
+                            'thread': monitor_thread,
+                            'started_at': time.time()
                         }
                         monitor_thread.start()
 
                         if is_watchdog_restart:
-                            try:
-                                restart_text = f"Receiver processes died unexpectedly. Instance '{db_inst['name']}' recovered automatically by Watchdog."
-                                row_id, timestamp = save_message(
-                                    address='SYSTEM',
-                                    message=restart_text,
-                                    alias=db_inst['name'],
-                                    frequency='RESTART',
-                                    bitrate='WATCHDOG',
-                                    is_protected=False
-                                )
-                                event_payload = {
-                                    'id': row_id,
-                                    'timestamp': timestamp,
-                                    'address': 'SYSTEM',
-                                    'alias': db_inst['name'],
-                                    'message': restart_text,
-                                    'frequency': 'RESTART',
-                                    'bitrate': 'WATCHDOG',
-                                    'is_duplicate': False,
-                                    'is_protected': False,
-                                    'is_system': True
-                                }
-                                for cb in list(new_message_callbacks):
-                                    try: cb(event_payload)
-                                    except Exception: pass
-                            except Exception as e:
-                                logger.error(f"Failed to record watchdog restart event: {e}")
+                            def verify_recovery(inst_id, inst_name, proc1, proc2):
+                                # Wait for USB device initialization and startup grace period
+                                time.sleep(2.5)
+                                if proc1.poll() is None and proc2.poll() is None:
+                                    logger.info(f"Watchdog: Instance {inst_id} ({inst_name}) recovered and verified stable (PIDs: rtl_fm={proc1.pid}, multimon-ng={proc2.pid}).")
+                                    try:
+                                        restart_text = f"Receiver processes died unexpectedly. Instance '{inst_name}' recovered and verified running stably (PID: {proc1.pid})."
+                                        row_id, timestamp = save_message(
+                                            address='SYSTEM',
+                                            message=restart_text,
+                                            alias=inst_name,
+                                            frequency='RESTART',
+                                            bitrate='WATCHDOG',
+                                            is_protected=False
+                                        )
+                                        event_payload = {
+                                            'id': row_id,
+                                            'timestamp': timestamp,
+                                            'address': 'SYSTEM',
+                                            'alias': inst_name,
+                                            'message': restart_text,
+                                            'frequency': 'RESTART',
+                                            'bitrate': 'WATCHDOG',
+                                            'is_duplicate': False,
+                                            'is_protected': False,
+                                            'is_system': True
+                                        }
+                                        for cb in list(new_message_callbacks):
+                                            try: cb(event_payload)
+                                            except Exception: pass
+                                    except Exception as e:
+                                        logger.error(f"Failed to record watchdog restart event: {e}")
+                                else:
+                                    p1_ret = proc1.poll()
+                                    p2_ret = proc2.poll()
+                                    last_err = instance_errors.get(inst_id, [])
+                                    err_msg = f": {last_err[-1]}" if last_err else ""
+                                    logger.error(
+                                        f"Watchdog: Instance {inst_id} ({inst_name}) failed startup health check "
+                                        f"(rtl_fm exit: {p1_ret}, multimon exit: {p2_ret}){err_msg}. Will retry on next sync."
+                                    )
+                                    time.sleep(2.0)
+                                    sync_event.set()
+
+                            threading.Thread(target=verify_recovery, args=(instance_id, db_inst['name'], p1, p2), daemon=True).start()
                     else:
                         logger.error(f"Failed to start {db_inst['name']}. Retrying next sync.")
 
@@ -511,6 +546,24 @@ def run_sdr_process():
         
         # Wait for either a sync event (settings saved) or periodic check
         sync_event.wait(timeout=10)
+
+def get_sdr_runtime_status():
+    """Returns a dict of runtime status for all active instances."""
+    status = {}
+    for inst_id, inst in list(active_instances.items()):
+        p1 = inst.get('p1')
+        p2 = inst.get('p2')
+        p1_running = p1 is not None and p1.poll() is None
+        p2_running = p2 is not None and p2.poll() is None
+        errs = instance_errors.get(inst_id, [])
+        status[inst_id] = {
+            'is_running': p1_running and p2_running,
+            'rtl_fm_pid': p1.pid if p1_running else None,
+            'multimon_pid': p2.pid if p2_running else None,
+            'started_at': inst.get('started_at'),
+            'last_error': errs[-1] if errs else None
+        }
+    return status
 
 def start_sdr_thread():
     global sdr_thread

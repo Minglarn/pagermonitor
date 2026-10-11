@@ -1,6 +1,6 @@
 # PagerMonitor
 
-[![Version](https://img.shields.io/badge/version-2026.10.11.2-007ec6.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2026.10.11.3-007ec6.svg)](CHANGELOG.md)
 [![Last Commit](https://img.shields.io/github/last-commit/Minglarn/pagermonitor.svg)](https://github.com/Minglarn/pagermonitor/commits/main)
 [![Issues](https://img.shields.io/github/issues/Minglarn/pagermonitor.svg)](https://github.com/Minglarn/pagermonitor/issues)
 [![Stars](https://img.shields.io/github/stars/Minglarn/pagermonitor?style=social)](https://github.com/Minglarn/pagermonitor/stargazers)

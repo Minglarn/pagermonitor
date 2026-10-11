@@ -199,7 +199,20 @@
         table.dataTable.stats-dt td.meta-cell {
             width: 1% !important;
             white-space: nowrap !important;
-            padding: 0.6rem 0.8rem !important;
+            padding: 0.5rem 0.8rem !important;
+            vertical-align: middle !important;
+        }
+
+        table.dataTable.stats-dt td.meta-cell .meta-wrapper {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 3px !important;
+        }
+
+        table.dataTable.stats-dt td.meta-cell .badge {
+            margin: 0 !important;
+            white-space: nowrap !important;
         }
 
         /* CapCode (Alias) column with line breaking support */
@@ -302,6 +315,7 @@
                 <div class="sidebar-logo">
                     <h1>Pager<span>Monitor</span></h1>
                     <p>POCSAG Monitor</p>
+                    <div class="sidebar-version">v{{ app_version }}</div>
                     <span id="conn-status-msg" class="conn-status-text" style="display: none;"></span>
                 </div>
             </div>
@@ -315,13 +329,9 @@
                     <i class="fas fa-bell"></i>
                     <span>Alarms</span>
                 </a>
-                <a href="/aliases" class="nav-item">
-                    <i class="fas fa-tag"></i>
-                    <span>Aliases</span>
-                </a>
-                <a href="/alerts" class="nav-item">
-                    <i class="fas fa-filter"></i>
-                    <span>Alert Words</span>
+                <a href="/rules" class="nav-item">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>Rules & Triggers</span>
                 </a>
                 <a href="/statistics" class="nav-item active">
                     <i class="fas fa-chart-bar"></i>
@@ -440,6 +450,13 @@
                 </section>
         </div>
     </div>
+
+    <!-- Scroll to Top Button -->
+    <button id="scrollToTop" class="scroll-to-top" title="Scroll to Top" onclick="scrollToTop()">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 15l-6-6-6 6" />
+        </svg>
+    </button>
 
     <script>
         let dayChart = null;
@@ -621,6 +638,14 @@
             await loadRangeData(startStr, endStr);
         }
 
+        window.scrollToTop = () => {
+            const tableContainer = document.getElementById('dayTableContainer');
+            if (tableContainer) {
+                tableContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
         let statDataTable = null;
 
         function createStatRowNode(m) {
@@ -655,15 +680,15 @@
 
             const displayAddress = m.alias || m.address;
             const freq = m.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${m.frequency}</span>` : '<span class="badge meta">-</span>';
-            const bitrateTag = m.bitrate ? `<span class="badge meta" style="margin-left: 4px;">${m.bitrate}bps</span>` : '';
+            const bitrateTag = m.bitrate ? `<span class="badge meta">${m.bitrate}bps</span>` : '';
             const funcLabel = (m.function !== undefined && m.function !== null) ? ((m.function === 0 || m.function === 3) ? "Alpha" : "Num") : "";
-            const funcTag = funcLabel ? `<span class="badge meta" style="margin-left: 4px;">${funcLabel}</span>` : '';
-            const duplicateTag = m.is_duplicate ? `<span class="badge warning meta" style="margin-left: 4px;">Duplicate</span>` : '';
+            const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
+            const duplicateTag = m.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
 
             tr.innerHTML = `
                 <td class="id-cell">${m.id}</td>
                 <td class="ts-cell" data-order="${m.timestamp}">${time}</td>
-                <td class="meta-cell">${freq}${bitrateTag}${funcTag}${duplicateTag}</td>
+                <td class="meta-cell"><div class="meta-wrapper">${freq}${bitrateTag}${funcTag}${duplicateTag}</div></td>
                 <td class="addr-cell"><span class="badge" title="${m.address}">${displayAddress}</span></td>
                 <td class="msg-cell">${safeMsg}</td>
                 <td class="actions-cell">
@@ -846,6 +871,31 @@
                     { targets: 5, className: 'col-actions actions-cell', orderable: false, searchable: false }
                 ]
             });
+
+            // Auto scroll to top on pagination page change
+            statDataTable.on('page.dt', function () {
+                window.scrollToTop();
+            });
+
+            // Scroll to top button visibility check
+            const tableContainer = document.getElementById('dayTableContainer');
+            const topBtn = document.getElementById('scrollToTop');
+
+            function checkScrollTop() {
+                if (!topBtn) return;
+                const containerScroll = tableContainer ? tableContainer.scrollTop : 0;
+                const windowScroll = window.scrollY || document.documentElement.scrollTop;
+                if (containerScroll > 150 || windowScroll > 150) {
+                    topBtn.classList.add('show');
+                } else {
+                    topBtn.classList.remove('show');
+                }
+            }
+
+            if (tableContainer) {
+                tableContainer.addEventListener('scroll', checkScrollTop);
+            }
+            window.addEventListener('scroll', checkScrollTop);
 
             await renderGlobalCharts();
 

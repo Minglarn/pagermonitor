@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.11.2`
+- **CalVer**: `2026.10.11.3`
 - **Date**: 2026-10-11
 - **Language**: English
 
@@ -86,3 +86,35 @@
 - Converted historical messages table in `statistics.html` to DataTables 2.
 - Resolved column layout overlap where frequency and timestamp badges collided.
 - Added persistent table settings (`stateSave`), customizable pagination (25, 50, 100, All), fast filtering, column sorting, and smooth message deletion/locking.
+
+### 9. Vertical Meta Badges & Smooth Goto Top Navigation
+- **Vertical Badge Stacking in FREQUENCY / META**:
+  - Replaced horizontal inline-block layout with a flex column container (`.meta-wrapper`).
+  - Metadata badges (`[Frequency]`, `[Bitrate]`, `[Function]`, `[Duplicate]`) now cleanly stack underneath each other across the Dashboard, Alarms, and Statistics tables.
+- **Floating "Goto Top" Button**:
+  - Re-introduced `#scrollToTop` button appearing when scrolled down > 150px.
+  - Smoothly animates both the inner table container and page window back to top on click.
+- **Automatic Scroll on DataTables Pagination**:
+  - Bound DataTables `page.dt` event to automatically scroll back to the top of the table upon page change.
+
+### 10. Unified "Rules & Triggers" View & CalVer in Sidebar
+- **Unified Navigation & Page**:
+  - Combined separate "Capcode Alias" and "Alert Words" pages into a single **Rules & Triggers** (`/rules`) view with sub-tabs.
+  - Maintained full backwards compatibility with `/aliases` and `/alerts` routes seamlessly mapping to the new interface.
+- **CalVer Display in Sidebar**:
+  - Injected `app_version` globally via Flask context processor `inject_globals`.
+  - Displayed version tag (`vYYYY.0M.0D`) under "POCSAG Monitor" in the sidebar logo when the sidebar is expanded.
+  - Automatically hidden when the sidebar is collapsed to keep icons clean.
+
+### 11. Watchdog USB Cooldown, Health Verification & SDR Telemetry
+- **Elimination of Duplicate Recovery Events**:
+  - When an SDR process died, previously the system attempted an instant restart. If the USB driver was still releasing handles (`usb_claim_interface error -6`), the new process crashed immediately, causing a second restart 3 seconds later.
+  - Added a 2-second USB cooldown pause upon crash detection to allow the kernel / libusb stack to cleanly release devices.
+- **Startup Stability Verification Before Recovery Announcement**:
+  - The watchdog now runs an asynchronous 2.5-second stability grace period after starting `rtl_fm` and `multimon-ng`.
+  - Only when both processes are verified actively running (`p1.poll() is None and p2.poll() is None`) is a single, verified recovery event logged to the database and broadcast via SSE.
+  - If a process fails during the startup period, a descriptive error with exit codes is logged, no false recovery is broadcast, and an orderly backoff retry is scheduled.
+- **Live Process Telemetry & Diagnostics**:
+  - Elevated `rtl_fm` stderr error and warning messages to `logger.warning`/`logger.error` so USB driver resets and errors are fully visible in container logs.
+  - Added `get_sdr_runtime_status()` returning active PID numbers, uptime, and last recorded error.
+  - Updated Settings -> SDR Receivers cards to show real-time status badges (`Running (PID: 1234)` or `Not Running`).

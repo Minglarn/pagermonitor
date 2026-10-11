@@ -71,3 +71,29 @@ class TestSdrWatchdog(unittest.TestCase):
         thread_dead = inst['thread'] is not None and not inst['thread'].is_alive()
 
         self.assertTrue(p1_dead or p2_dead or thread_dead)
+
+    def test_get_sdr_runtime_status(self):
+        """Testa att get_sdr_runtime_status returnerar korrekt process- och hälsostatus."""
+        mock_p1 = MagicMock()
+        mock_p1.poll.return_value = None
+        mock_p1.pid = 4321
+        mock_p2 = MagicMock()
+        mock_p2.poll.return_value = None
+        mock_p2.pid = 4322
+
+        sdr_processor.active_instances[42] = {
+            'p1': mock_p1,
+            'p2': mock_p2,
+            'config': {'id': 42, 'name': 'RIKS 2'},
+            'stop_event': MagicMock(),
+            'thread': MagicMock(),
+            'started_at': 1234567890.0
+        }
+        sdr_processor.instance_errors[42] = ["usb_claim_interface error -6"]
+
+        status = sdr_processor.get_sdr_runtime_status()
+        self.assertIn(42, status)
+        self.assertTrue(status[42]['is_running'])
+        self.assertEqual(status[42]['rtl_fm_pid'], 4321)
+        self.assertEqual(status[42]['multimon_pid'], 4322)
+        self.assertEqual(status[42]['last_error'], "usb_claim_interface error -6")

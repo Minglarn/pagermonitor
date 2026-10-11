@@ -89,3 +89,15 @@ def test_basic_auth_enabled_and_disabled(monkeypatch):
     with app.test_client() as c:
         res_open = c.get('/')
         assert res_open.status_code == 200
+
+def test_rules_page_and_sidebar_calver(client):
+    """Testa att /rules, /aliases och /alerts returnerar 200 OK och innehåller CalVer i sidomenyn."""
+    for path in ['/rules', '/aliases', '/alerts']:
+        res = client.get(path)
+        assert res.status_code == 200
+        html = res.data.decode('utf-8')
+        assert 'Rules &amp; Triggers' in html or 'Rules & Triggers' in html
+        assert 'CapCode Aliases' in html
+        assert 'Alert Words' in html
+        assert 'sidebar-version' in html
+        assert 'v2026.10.11' in html

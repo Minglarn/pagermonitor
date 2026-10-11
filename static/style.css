@@ -135,6 +135,16 @@ body {
     color: var(--text-secondary);
 }
 
+.sidebar-version {
+    font-size: 0.72rem;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    color: var(--accent);
+    opacity: 0.85;
+    margin-top: 2px;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
 .sidebar-nav {
     flex: 1;
     padding: 0.75rem;

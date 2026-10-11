@@ -24,7 +24,7 @@ try:
 except ImportError:
     def init_mqtt():
         pass
-from sdr_processor import start_sdr_thread, restart_sdr, on_new_message
+from sdr_processor import start_sdr_thread, restart_sdr, on_new_message, get_sdr_runtime_status
 
 # Setup basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -109,6 +109,12 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
+APP_VERSION = "2026.10.11.3"
+
+@app.context_processor
+def inject_globals():
+    return dict(app_version=APP_VERSION)
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -126,13 +132,11 @@ def statistics_page():
 def settings_page():
     return render_template('settings.html')
 
+@app.route('/rules')
 @app.route('/aliases')
-def aliases_page():
-    return render_template('aliases.html')
-
 @app.route('/alerts')
-def alerts_page():
-    return render_template('alerts.html')
+def rules_page():
+    return render_template('rules.html')
 
 @app.route('/api/database/stats')
 def database_stats():
@@ -342,6 +346,13 @@ def handle_sdr_instances():
     
     # GET request
     instances = get_sdr_instances()
+    runtime_status = get_sdr_runtime_status()
+    for inst in instances:
+        rt = runtime_status.get(inst['id'], {})
+        inst['is_running'] = rt.get('is_running', False)
+        inst['rtl_fm_pid'] = rt.get('rtl_fm_pid')
+        inst['multimon_pid'] = rt.get('multimon_pid')
+        inst['last_error'] = rt.get('last_error')
     return jsonify(instances)
 
 @app.route('/api/sdr/<int:instance_id>', methods=['GET'])
@@ -350,6 +361,11 @@ def get_single_sdr(instance_id):
     instance = next((i for i in instances if i['id'] == instance_id), None)
     if not instance:
         return jsonify({"status": "error", "message": "Instance not found"}), 404
+    rt = get_sdr_runtime_status().get(instance_id, {})
+    instance['is_running'] = rt.get('is_running', False)
+    instance['rtl_fm_pid'] = rt.get('rtl_fm_pid')
+    instance['multimon_pid'] = rt.get('multimon_pid')
+    instance['last_error'] = rt.get('last_error')
     return jsonify(instance)
 
 @app.route('/api/sdr/<int:instance_id>', methods=['DELETE'])
