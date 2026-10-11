@@ -10,7 +10,7 @@ and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 ### Added
 - **Database Stat Dashboard**: Overhauled Settings -> Maintenance into a modern "Database Stat" view featuring 8 KPI cards: Total Messages, Watchlist Hits, Database Disk Size, Oldest Entry, Newest Entry, Protected Messages, Unique CapCodes, and Duplicate Count.
 - **Automated Retention & Auto-Pruning Scheduler**: Integrated background daemon thread executing every 6 hours to automatically prune records older than the configured threshold (default: 30 days) and reclaim space with SQLite `VACUUM`.
-- **Dedicated Alarms View**: Standalone `/alarms` page (with `/larm` retained as alias) displaying only messages triggering alert keywords in real time.
+- **Dedicated Alarms View with DataTables 2**: Standalone `/alarms` page (with `/larm` retained as alias) featuring DataTables 2 with client-side column sorting, automatic column content auto-sizing, pagination, and real-time SSE stream integration.
 - **Full English Localization**: Converted all UI templates, labels, forms, dialogs, API status strings, and documentation into English.
 - **HTTP Basic Authentication**: Optional username/password authentication configured via `AUTH_USER` and `AUTH_PASS` in `docker-compose.yml` and `.env`.
 - **Timing Attack Resistance**: Uses `hmac.compare_digest` with UTF-8 encoding for credential validation.

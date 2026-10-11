@@ -442,10 +442,65 @@ table {
     width: auto;
 }
 
-#alarmsTable th:nth-child(6),
-#alarmsTable td:nth-child(6) {
+#alarmsTable:not(.larm-table) th:nth-child(6),
+#alarmsTable:not(.larm-table) td:nth-child(6) {
     width: 100px;
     text-align: center;
+}
+
+/* Larm Table Specific Column Sizing (7 Columns) */
+table.larm-table th.col-id,
+table.larm-table td.id-cell {
+    width: 65px !important;
+    min-width: 65px !important;
+    max-width: 65px !important;
+    text-align: center !important;
+    padding: 0 !important;
+}
+
+table.larm-table th.col-time,
+table.larm-table td.ts-cell {
+    width: 150px !important;
+    min-width: 150px !important;
+    max-width: 150px !important;
+}
+
+table.larm-table th.col-meta,
+table.larm-table td:nth-child(3) {
+    width: 140px !important;
+    min-width: 140px !important;
+    max-width: 140px !important;
+}
+
+table.larm-table th.col-addr,
+table.larm-table td:nth-child(4) {
+    width: 140px !important;
+    min-width: 140px !important;
+    max-width: 140px !important;
+}
+
+table.larm-table th.col-msg,
+table.larm-table td.msg-cell {
+    width: auto !important; /* Message gets all remaining space */
+}
+
+table.larm-table th.col-hit,
+table.larm-table td.hit-cell {
+    width: 110px !important;
+    min-width: 110px !important;
+    max-width: 110px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
+
+table.larm-table th.col-actions,
+table.larm-table td.actions-cell {
+    width: 90px !important;
+    min-width: 90px !important;
+    max-width: 90px !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+    padding: 0 4px !important;
 }
 
 #dayTable th:nth-child(1),
@@ -603,18 +658,18 @@ tr:hover td {
 }
 
 /* Ensure actions cell is also centered and has enough space */
-#alarmsTable th:nth-child(6),
-#alarmsTable td:nth-child(6),
+table:not(.larm-table) th:nth-child(6),
+table:not(.larm-table) td:nth-child(6),
 #dayTable th:nth-child(6),
 #dayTable td:nth-child(6),
 .glass-table th:nth-child(4),
 .glass-table td:nth-child(4),
-.actions-cell {
+table:not(.larm-table) .actions-cell {
     text-align: center !important;
     vertical-align: middle !important;
     padding: 0 !important; /* Complete zero padding */
-    width: 130px !important; /* Slightly wider to be safe */
-    min-width: 130px !important;
+    width: 100px !important;
+    min-width: 100px !important;
 }
 
 /* Ensure ID cell is perfectly centered */

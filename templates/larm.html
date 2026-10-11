@@ -5,12 +5,198 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PagerMonitor - Alarms</title>
-    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link rel="stylesheet" href="/static/style.css?v=3">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;600&family=Share+Tech+Mono&family=Anonymous+Pro:wght@400;700&family=VT323&family=Roboto+Mono:wght@400;600&family=Source+Code+Pro:wght@400;600&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- DataTables 2 CSS & Dependencies -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
+
+    <style>
+        /* Custom OLED / Glassmorphism styling for DataTables */
+        .dt-container {
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        .dt-container .dt-layout-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .dt-container .dt-length select {
+            background: var(--input-bg, #0d1117);
+            border: 1px solid var(--panel-border, #1f2937);
+            border-radius: 8px;
+            padding: 0.35rem 0.6rem;
+            color: var(--text-primary);
+            outline: none;
+            cursor: pointer;
+            margin: 0 0.4rem;
+        }
+
+        .dt-container .dt-search input {
+            background: var(--input-bg, #0d1117);
+            border: 1px solid var(--panel-border, #1f2937);
+            border-radius: 8px;
+            padding: 0.4rem 0.8rem;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .dt-container .dt-search input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .dt-container .dt-info {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            padding: 0.5rem 0;
+        }
+
+        .dt-container .dt-paging {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0.5rem 0;
+        }
+
+        .dt-container .dt-paging .dt-paging-button {
+            background: transparent !important;
+            border: 1px solid transparent !important;
+            color: var(--text-secondary) !important;
+            border-radius: 6px !important;
+            padding: 0.35rem 0.75rem !important;
+            margin: 0 1px !important;
+            cursor: pointer !important;
+            transition: all 0.2s !important;
+            user-select: none;
+        }
+
+        .dt-container .dt-paging .dt-paging-button:hover:not(.disabled) {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: var(--text-primary) !important;
+        }
+
+        .dt-container .dt-paging .dt-paging-button.current,
+        .dt-container .dt-paging .dt-paging-button.current:hover {
+            background: var(--accent, #38bdf8) !important;
+            color: #ffffff !important;
+            border-color: var(--accent, #38bdf8) !important;
+            font-weight: 600 !important;
+        }
+
+        .dt-container .dt-paging .dt-paging-button.disabled,
+        .dt-container .dt-paging .dt-paging-button.disabled:hover {
+            opacity: 0.35 !important;
+            cursor: not-allowed !important;
+        }
+
+        /* Table Auto-sizing: All metadata columns shrink to content, message takes rest */
+        table.dataTable.larm-dt {
+            width: 100% !important;
+            table-layout: auto !important;
+            border-collapse: separate !important;
+            border-spacing: 0 8px !important;
+            margin-top: 0.25rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+
+        table.dataTable.larm-dt thead th {
+            background: transparent !important;
+            color: var(--text-secondary) !important;
+            border-bottom: 1px solid var(--panel-border) !important;
+            font-size: 0.75rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            padding: 0.6rem 0.8rem !important;
+            cursor: pointer;
+            white-space: nowrap !important;
+            position: relative;
+        }
+
+        table.dataTable.larm-dt thead th:hover {
+            color: var(--accent) !important;
+        }
+
+        /* Individual column sizing */
+        table.dataTable.larm-dt th.col-id,
+        table.dataTable.larm-dt td.id-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            padding: 0.6rem 0.5rem !important;
+        }
+
+        table.dataTable.larm-dt th.col-time,
+        table.dataTable.larm-dt td.ts-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            padding: 0.6rem 0.8rem !important;
+        }
+
+        table.dataTable.larm-dt th.col-meta,
+        table.dataTable.larm-dt td.meta-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            padding: 0.6rem 0.8rem !important;
+        }
+
+        table.dataTable.larm-dt th.col-addr,
+        table.dataTable.larm-dt td.addr-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            padding: 0.6rem 0.8rem !important;
+        }
+
+        table.dataTable.larm-dt th.col-hit,
+        table.dataTable.larm-dt td.hit-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            padding: 0.6rem 0.8rem !important;
+        }
+
+        table.dataTable.larm-dt th.col-actions,
+        table.dataTable.larm-dt td.actions-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            padding: 0.6rem 0.5rem !important;
+        }
+
+        table.dataTable.larm-dt th.col-msg,
+        table.dataTable.larm-dt td.msg-cell {
+            width: auto !important;
+            word-break: break-word !important;
+            padding: 0.6rem 1rem !important;
+        }
+
+        /* Pulsing animation on new incoming alarms */
+        @keyframes alarmFlash {
+            0% { background: rgba(239, 68, 68, 0.4); }
+            100% { background: var(--panel-bg); }
+        }
+
+        tr.new-alarm-pulse {
+            animation: alarmFlash 2.5s ease-out;
+        }
+    </style>
+
     <script>
+        // Apply theme immediately to prevent flickering
         (function () {
             const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
@@ -72,7 +258,7 @@
             </div>
 
             <div class="sidebar-footer">
-                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Menu">
                     <i class="fas fa-bars"></i>
                 </button>
             </div>
@@ -99,21 +285,21 @@
             </header>
 
             <main>
-                <div class="glass-panel table-container">
-                    <table id="alarmsTable">
+                <div class="glass-panel table-container" style="padding: 1.25rem;">
+                    <table id="alarmsTable" class="dataTable larm-dt">
                         <thead>
                             <tr>
-                                <th>#</th>
-                                <th>Timestamp</th>
-                                <th>Frequency / Meta</th>
-                                <th>CapCode (Alias)</th>
-                                <th>Message</th>
-                                <th>Hit</th>
-                                <th>Actions</th>
+                                <th class="col-id">#</th>
+                                <th class="col-time">Timestamp</th>
+                                <th class="col-meta">Frequency / Meta</th>
+                                <th class="col-addr">CapCode (Alias)</th>
+                                <th class="col-msg">Message</th>
+                                <th class="col-hit">Hit</th>
+                                <th class="col-actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="alarmsBody">
-                            <!-- Alarm events will be injected here -->
+                            <!-- Rows injected via DataTables -->
                         </tbody>
                     </table>
                     <div id="loading" class="loading-state">Loading alarms...</div>
@@ -121,11 +307,6 @@
             </main>
         </div>
     </div>
-
-    <!-- Scroll to top -->
-    <button id="scrollToTop" class="scroll-top-btn" onclick="scrollToTop()" title="Scroll to top">
-        <i class="fas fa-arrow-up"></i>
-    </button>
 
     <!-- Quick Alias Modal -->
     <div id="aliasModal" class="modal-overlay">
@@ -165,21 +346,25 @@
                 <h2 id="confirmTitle" style="color: var(--accent);">Confirm Action</h2>
                 <p id="confirmMessage" style="margin-top: 0.5rem; color: var(--text-secondary);">Are you sure you want to proceed?</p>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
                 <button type="button" class="secondary-btn" onclick="closeConfirm(false)">Cancel</button>
-                <button type="button" id="confirmActionBtn" class="primary-btn danger-btn">Delete</button>
+                <button type="button" id="confirmActionBtn" class="primary-btn danger-btn" style="background: #ef4444; border-color: #ef4444;">Delete</button>
             </div>
         </div>
     </div>
 
     <script>
+        let dataTable = null;
+        let alertWords = [];
+        let allAlarms = [];
+
         function openAliasModal(address) {
             document.getElementById('modal_address').value = address;
             document.getElementById('modal_alias').value = '';
             document.getElementById('modal_is_hidden').checked = false;
 
-            if (window.currentAlarmsData) {
-                const existing = window.currentAlarmsData.find(a => a.address === address);
+            if (allAlarms) {
+                const existing = allAlarms.find(a => a.address === address);
                 if (existing && existing.alias) {
                     document.getElementById('modal_alias').value = existing.alias;
                 }
@@ -193,237 +378,248 @@
             document.getElementById('aliasModal').classList.remove('show');
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const alarmsBody = document.getElementById('alarmsBody');
-            const searchInput = document.getElementById('searchInput');
-            const loading = document.getElementById('loading');
-            let allAlarms = [];
-            let alertWords = [];
-            let isLoadingMore = false;
-            let hasReachedEnd = false;
-
-            // Fetch active alert words
-            const fetchAlertWords = async () => {
-                try {
-                    const res = await fetch('/api/alerts');
-                    alertWords = await res.json();
-                } catch (e) {
-                    console.error('Failed to load alert words:', e);
-                }
-            };
-
-            // Find matching alert word in message
-            function findMatchingAlert(msgText) {
-                if (!alertWords || !alertWords.length) return null;
-                const upper = msgText.toUpperCase();
-                for (const aw of alertWords) {
-                    if (aw.is_active && upper.includes(aw.word.toUpperCase())) {
-                        return aw;
-                    }
-                }
-                return null;
+        // Fetch active alert words
+        async function fetchAlertWords() {
+            try {
+                const res = await fetch('/api/alerts');
+                alertWords = await res.json();
+            } catch (e) {
+                console.error('Failed to load alert words:', e);
             }
+        }
 
-            // Highlight alert words
-            function highlightMessage(text) {
-                if (!alertWords.length) return text;
-                let highlighted = text;
-                alertWords.forEach(aw => {
-                    if (aw.is_active) {
-                        const regex = new RegExp(`(${aw.word})(?![^<]*>)`, 'gi');
-                        highlighted = highlighted.replace(regex, `<span class="alert-word" style="color: ${aw.color || '#ef4444'}; border-bottom-color: ${aw.color || '#ef4444'}">$1</span>`);
-                    }
-                });
-                return highlighted;
-            }
-
-            function formatMessage(msgStr) {
-                let formatted = (msgStr || '').replace(/<CR><LF>/g, '<br>').replace(/\n/g, '<br>');
-                return highlightMessage(formatted);
-            }
-
-            // Fetch only alarms from API
-            const fetchAlarms = async (beforeId = null) => {
-                if (isLoadingMore || (beforeId && hasReachedEnd)) return;
-
-                try {
-                    let url = beforeId ? `/api/messages?alerts_only=1&before_id=${beforeId}` : '/api/messages?alerts_only=1';
-                    const currentQuery = searchInput.value.trim();
-                    if (currentQuery) {
-                        url += `&search=${encodeURIComponent(currentQuery)}`;
-                    }
-
-                    if (beforeId) isLoadingMore = true;
-
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error('Network error');
-                    const data = await response.json();
-
-                    if (data.length === 0) {
-                        if (beforeId) hasReachedEnd = true;
-                        if (!allAlarms.length) {
-                            loading.innerText = 'No alarms found.';
-                            loading.style.display = 'block';
-                        }
-                        return;
-                    }
-
-                    loading.style.display = 'none';
-
-                    if (beforeId) {
-                        allAlarms = [...allAlarms, ...data];
-                    } else {
-                        allAlarms = data;
-                    }
-
-                    window.currentAlarmsData = allAlarms;
-                    renderAlarms();
-                } catch (error) {
-                    console.error('Error fetching alarms:', error);
-                    loading.innerText = 'Failed to load alarms.';
-                } finally {
-                    isLoadingMore = false;
+        // Find matching alert word in message
+        function findMatchingAlert(msgText) {
+            if (!alertWords || !alertWords.length) return null;
+            const upper = msgText.toUpperCase();
+            for (const aw of alertWords) {
+                if (aw.is_active && upper.includes(aw.word.toUpperCase())) {
+                    return aw;
                 }
-            };
+            }
+            return null;
+        }
 
-            // Fetch font settings
-            const fetchSettings = async () => {
-                try {
-                    const res = await fetch('/api/settings');
-                    const settings = await res.json();
-                    if (settings.message_font) {
-                        document.documentElement.style.setProperty('--msg-font', `'${settings.message_font}', monospace`);
-                    }
-                    if (settings.message_font_size) {
-                        document.documentElement.style.setProperty('--msg-size', `${settings.message_font_size}rem`);
-                    }
-                } catch (e) {
-                    console.error('Failed to load settings:', e);
+        // Highlight alert words in message text
+        function highlightMessage(text) {
+            if (!alertWords.length) return text;
+            let highlighted = text;
+            alertWords.forEach(aw => {
+                if (aw.is_active) {
+                    const regex = new RegExp(`(${aw.word})(?![^<]*>)`, 'gi');
+                    highlighted = highlighted.replace(regex, `<span class="alert-word" style="color: ${aw.color || '#ef4444'}; border-bottom-color: ${aw.color || '#ef4444'}">$1</span>`);
                 }
-            };
+            });
+            return highlighted;
+        }
 
-            const createAlarmRow = (alarm) => {
-                const tr = document.createElement('tr');
-                tr.className = 'fade-in alert-row alert-pulse-bg';
+        function formatMessage(msgStr) {
+            let formatted = (msgStr || '').replace(/<CR><LF>/g, '<br>').replace(/\n/g, '<br>');
+            return highlightMessage(formatted);
+        }
 
-                const match = findMatchingAlert(alarm.message);
-                const hitWord = alarm.alert_word || (match ? match.word : 'ALARM');
-                const hitColor = alarm.alert_color || (match ? match.color : '#ef4444');
+        // Helper to construct a table row element
+        function createAlarmRowNode(alarm) {
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-id', alarm.id);
+            tr.className = 'alert-row';
 
-                const dateObj = new Date(alarm.timestamp);
-                const dateStr = dateObj.toLocaleDateString(undefined, {
-                    year: 'numeric', month: '2-digit', day: '2-digit'
-                });
-                const timeStr = dateObj.toLocaleTimeString(undefined, {
-                    hour: '2-digit', minute: '2-digit', second: '2-digit'
-                });
-                const formattedTime = `${dateStr}<br>${timeStr}`;
+            const match = findMatchingAlert(alarm.message);
+            const hitWord = alarm.alert_word || (match ? match.word : 'ALARM');
+            const hitColor = alarm.alert_color || (match ? match.color : '#ef4444');
 
-                const displayAddress = alarm.alias ? alarm.alias : alarm.address;
-                const bitrateTag = alarm.bitrate ? `<span class="badge meta">${alarm.bitrate}bps</span>` : '';
-                const funcLabel = alarm.function !== undefined ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
-                const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
-                const freqTag = alarm.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${alarm.frequency}</span>` : '';
-                const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta" style="margin-left: 5px;">Duplicate</span>` : '';
+            const dateObj = new Date(alarm.timestamp);
+            const dateStr = dateObj.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
+            const timeStr = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const formattedTime = `${dateStr}<br>${timeStr}`;
 
-                const hitBadge = `<span class="badge" style="background: ${hitColor}22; color: ${hitColor}; border: 1px solid ${hitColor}66; font-weight: 700; text-transform: uppercase;"><i class="fas fa-tag" style="margin-right: 4px; font-size: 0.75rem;"></i>${hitWord}</span>`;
+            const displayAddress = alarm.alias ? alarm.alias : alarm.address;
+            const bitrateTag = alarm.bitrate ? `<span class="badge meta">${alarm.bitrate}bps</span>` : '';
+            const funcLabel = alarm.function !== undefined ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
+            const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
+            const freqTag = alarm.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${alarm.frequency}</span>` : '';
+            const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta" style="margin-left: 5px;">Duplicate</span>` : '';
 
-                tr.innerHTML = `
-                    <td class="id-cell">${alarm.id}</td>
-                    <td class="ts-cell">${formattedTime}</td>
-                    <td class="addr-cell">${freqTag}${bitrateTag}${funcTag}${duplicateTag}</td>
-                    <td class="addr-cell">
-                        <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
-                    </td>
-                    <td class="msg-cell">${formatMessage(alarm.message)}</td>
-                    <td class="hit-cell">${hitBadge}</td>
-                    <td class="actions-cell">
-                        <div class="actions-wrapper">
-                            <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
-                                <i class="fas ${alarm.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
-                            </button>
-                            <div class="btn-divider"></div>
-                            <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete message">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </div>
-                    </td>
-                `;
-                return tr;
-            };
+            const hitBadge = `<span class="badge" style="background: ${hitColor}22; color: ${hitColor}; border: 1px solid ${hitColor}66; font-weight: 700; text-transform: uppercase;"><i class="fas fa-tag" style="margin-right: 4px; font-size: 0.75rem;"></i>${hitWord}</span>`;
 
-            const renderAlarms = (maintainScroll = false) => {
-                const container = document.querySelector('.table-container');
-                const previousScrollTop = container.scrollTop;
-                const previousScrollHeight = container.scrollHeight;
-                const wasAtTop = previousScrollTop < 50;
+            tr.innerHTML = `
+                <td class="id-cell">${alarm.id}</td>
+                <td class="ts-cell" data-order="${alarm.timestamp}">${formattedTime}</td>
+                <td class="meta-cell">${freqTag}${bitrateTag}${funcTag}${duplicateTag}</td>
+                <td class="addr-cell">
+                    <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
+                </td>
+                <td class="msg-cell">${formatMessage(alarm.message)}</td>
+                <td class="hit-cell">${hitBadge}</td>
+                <td class="actions-cell">
+                    <div class="actions-wrapper">
+                        <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
+                            <i class="fas ${alarm.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
+                        </button>
+                        <div class="btn-divider"></div>
+                        <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete message">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            return tr;
+        }
 
-                alarmsBody.innerHTML = '';
+        // Fetch font settings
+        async function fetchSettings() {
+            try {
+                const res = await fetch('/api/settings');
+                const settings = await res.json();
+                if (settings.message_font) {
+                    document.documentElement.style.setProperty('--msg-font', `'${settings.message_font}', monospace`);
+                }
+                if (settings.message_font_size) {
+                    document.documentElement.style.setProperty('--msg-size', `${settings.message_font_size}rem`);
+                }
+            } catch (e) {
+                console.error('Failed to load settings:', e);
+            }
+        }
 
-                if (allAlarms.length === 0) {
-                    loading.innerText = 'No alarms found.';
-                    loading.style.display = 'block';
-                    return;
+        // Confirmation modal helper
+        let confirmResolve = null;
+        window.showConfirm = (title, message, actionLabel = 'Delete') => {
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmMessage').innerText = message;
+            document.getElementById('confirmActionBtn').innerText = actionLabel;
+            document.getElementById('confirmModal').classList.add('show');
+
+            return new Promise(resolve => {
+                confirmResolve = resolve;
+                document.getElementById('confirmActionBtn').onclick = () => {
+                    document.getElementById('confirmModal').classList.remove('show');
+                    resolve(true);
+                };
+            });
+        };
+
+        window.closeConfirm = (val) => {
+            document.getElementById('confirmModal').classList.remove('show');
+            if (confirmResolve) confirmResolve(val);
+        };
+
+        window.deleteMessage = async (msgId, btn) => {
+            const confirmed = await showConfirm('Delete Message', 'Are you sure you want to permanently delete this alarm message?');
+            if (!confirmed) return;
+
+            try {
+                const response = await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    allAlarms = allAlarms.filter(a => a.id !== msgId);
+                    if (dataTable) {
+                        const tr = $(btn).closest('tr');
+                        dataTable.row(tr).remove().draw(false);
+                    }
                 } else {
-                    loading.style.display = 'none';
+                    alert('Error deleting message: ' + result.message);
                 }
+            } catch (err) {
+                console.error('Delete error:', err);
+                alert('Failed to delete message.');
+            }
+        };
 
-                allAlarms.forEach((alarm, index) => {
-                    const tr = createAlarmRow(alarm);
-                    tr.style.animationDelay = `${Math.min(index, 15) * 0.03}s`;
-                    alarmsBody.appendChild(tr);
+        window.toggleLock = async (msgId, btn) => {
+            const isLocked = btn.classList.contains('locked');
+            const newState = !isLocked;
+
+            try {
+                const response = await fetch(`/api/messages/${msgId}/lock`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ protected: newState })
                 });
+                const result = await response.json();
 
-                if (maintainScroll) {
-                    if (wasAtTop) {
-                        container.scrollTop = 0;
-                    } else {
-                        const newScrollHeight = container.scrollHeight;
-                        const heightDifference = newScrollHeight - previousScrollHeight;
-                        container.scrollTop = previousScrollTop + (heightDifference > 0 ? heightDifference : 0);
-                    }
+                if (result.status === 'success') {
+                    btn.classList.toggle('locked', newState);
+                    const icon = btn.querySelector('i');
+                    icon.className = newState ? 'fas fa-lock' : 'fas fa-lock-open';
+                    btn.title = newState ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)';
+
+                    const alarm = allAlarms.find(a => a.id === msgId);
+                    if (alarm) alarm.is_protected = newState;
                 }
-            };
+            } catch (err) {
+                console.error('Lock error:', err);
+            }
+        };
 
-            let searchTimeout = null;
-            searchInput.addEventListener('input', () => {
-                clearTimeout(searchTimeout);
-                allAlarms = [];
-                alarmsBody.innerHTML = '';
-                hasReachedEnd = false;
-                isLoadingMore = false;
-                loading.style.display = 'block';
-                loading.innerText = 'Searching alarms...';
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loading = document.getElementById('loading');
+            const searchInput = document.getElementById('searchInput');
 
-                searchTimeout = setTimeout(() => {
-                    fetchAlarms();
-                }, 400);
+            await fetchSettings();
+            await fetchAlertWords();
+
+            // Initialize DataTables
+            dataTable = $('#alarmsTable').DataTable({
+                order: [[1, 'desc']], // Sort by timestamp descending
+                pageLength: 50,
+                lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
+                autoWidth: false,
+                language: {
+                    search: "",
+                    searchPlaceholder: "Quick filter...",
+                    lengthMenu: "Show _MENU_ alarms",
+                    info: "Showing _START_ to _END_ of _TOTAL_ alarms",
+                    infoEmpty: "No alarms found",
+                    infoFiltered: "(filtered from _MAX_ total)",
+                    zeroRecords: "No matching alarms found",
+                    paginate: {
+                        first: "First",
+                        last: "Last",
+                        next: "Next",
+                        previous: "Prev"
+                    }
+                },
+                columnDefs: [
+                    { targets: 0, className: 'col-id id-cell' },
+                    { targets: 1, className: 'col-time ts-cell' },
+                    { targets: 2, className: 'col-meta meta-cell' },
+                    { targets: 3, className: 'col-addr addr-cell' },
+                    { targets: 4, className: 'col-msg msg-cell' },
+                    { targets: 5, className: 'col-hit hit-cell' },
+                    { targets: 6, className: 'col-actions actions-cell', orderable: false, searchable: false }
+                ]
             });
 
-            // Initial fetch
-            fetchSettings();
-            fetchAlertWords().then(() => fetchAlarms());
+            // Bind top search input to DataTables search
+            searchInput.addEventListener('input', function () {
+                dataTable.search(this.value).draw();
+            });
 
-            // SSE stream for real-time alarms
-            const evtSource = new EventSource("/stream");
-            const rxIndicator = document.getElementById('rx-indicator');
-            const satIcon = document.getElementById('satellite-icon');
+            // Fetch initial alarms
+            try {
+                const response = await fetch('/api/messages?alerts_only=1');
+                if (!response.ok) throw new Error('Network error');
+                allAlarms = await response.json();
 
-            function flashRx() {
-                if (rxIndicator) {
-                    rxIndicator.classList.remove('active');
-                    void rxIndicator.offsetWidth;
-                    rxIndicator.classList.add('active');
-                    setTimeout(() => rxIndicator.classList.remove('active'), 150);
+                if (allAlarms.length > 0) {
+                    const rowNodes = allAlarms.map(a => createAlarmRowNode(a));
+                    dataTable.rows.add(rowNodes).draw();
                 }
-                if (satIcon) {
-                    satIcon.classList.remove('extreme-pulse');
-                    void satIcon.offsetWidth;
-                    satIcon.classList.add('extreme-pulse');
-                }
+
+                loading.style.display = 'none';
+            } catch (error) {
+                console.error('Error fetching alarms:', error);
+                loading.innerText = 'Failed to load alarms.';
             }
 
+            // Real-time updates via Server-Sent Events (SSE)
+            const satIcon = document.getElementById('satellite-icon');
+            const rxIndicator = document.getElementById('rx-indicator');
             const statusMsg = document.getElementById('conn-status-msg');
+
+            const evtSource = new EventSource("/stream");
 
             evtSource.onopen = function () {
                 satIcon.classList.remove('conn-error');
@@ -431,7 +627,7 @@
                 if (statusMsg) statusMsg.style.display = 'none';
             };
 
-            evtSource.onerror = function (err) {
+            evtSource.onerror = function () {
                 satIcon.classList.remove('conn-ok');
                 satIcon.classList.add('conn-error');
                 if (statusMsg) {
@@ -441,12 +637,17 @@
             };
 
             evtSource.onmessage = function (event) {
+                // Flash activity indicator
+                satIcon.classList.remove('extreme-pulse');
+                void satIcon.offsetWidth;
+                satIcon.classList.add('extreme-pulse');
+
+                if (rxIndicator) {
+                    rxIndicator.classList.add('rx-active');
+                    setTimeout(() => rxIndicator.classList.remove('rx-active'), 800);
+                }
+
                 const data = JSON.parse(event.data);
-                flashRx();
-
-                if (data.type === 'ping') return;
-
-                // Check if message is a watchlist match
                 const match = findMatchingAlert(data.message || '');
                 const isAlertHit = Boolean(data.alert_word || match);
 
@@ -455,134 +656,18 @@
 
                 if (!allAlarms.some(a => a.id === data.id)) {
                     allAlarms.unshift(data);
-                    if (allAlarms.length > 500) allAlarms.pop();
+                    if (allAlarms.length > 1000) allAlarms.pop();
 
-                    loading.style.display = 'none';
+                    const newRow = createAlarmRowNode(data);
+                    newRow.classList.add('new-alarm-pulse');
 
-                    const container = document.querySelector('.table-container');
-                    const wasAtTop = container.scrollTop < 50;
-
-                    if (!searchInput.value) {
-                        const previousScrollHeight = container.scrollHeight;
-                        const newRow = createAlarmRow(data);
-                        alarmsBody.prepend(newRow);
-
-                        if (alarmsBody.children.length > 500) {
-                            alarmsBody.lastElementChild.remove();
-                        }
-
-                        if (wasAtTop) {
-                            container.scrollTop = 0;
-                        } else {
-                            container.scrollTop += (container.scrollHeight - previousScrollHeight);
-                        }
-                    } else {
-                        const q = searchInput.value.toLowerCase().normalize("NFC");
-                        const addr = String(data.address).toLowerCase().normalize("NFC");
-                        const msgStr = String(data.message).toLowerCase().normalize("NFC");
-                        const al = data.alias ? String(data.alias).toLowerCase().normalize("NFC") : "";
-
-                        if (addr.includes(q) || msgStr.includes(q) || al.includes(q)) {
-                            const newRow = createAlarmRow(data);
-                            alarmsBody.prepend(newRow);
-                        }
+                    if (dataTable) {
+                        dataTable.row.add(newRow).draw(false);
                     }
                 }
             };
 
-            // Infinite scroll
-            const tableContainer = document.querySelector('.table-container');
-            const topBtn = document.getElementById('scrollToTop');
-
-            tableContainer.addEventListener('scroll', () => {
-                if (tableContainer.scrollTop > 300) {
-                    topBtn.classList.add('show');
-                } else {
-                    topBtn.classList.remove('show');
-                }
-
-                const threshold = 100;
-                if (tableContainer.scrollHeight - tableContainer.scrollTop - tableContainer.clientHeight < threshold) {
-                    if (allAlarms.length > 0 && !isLoadingMore && !hasReachedEnd) {
-                        const oldestId = allAlarms[allAlarms.length - 1].id;
-                        fetchAlarms(oldestId);
-                    }
-                }
-            });
-
-            window.scrollToTop = () => {
-                tableContainer.scrollTo({ top: 0, behavior: 'smooth' });
-            };
-
-            // Confirmation modal helper
-            let confirmResolve = null;
-            window.showConfirm = (title, message, actionLabel = 'Delete') => {
-                document.getElementById('confirmTitle').innerText = title;
-                document.getElementById('confirmMessage').innerText = message;
-                document.getElementById('confirmActionBtn').innerText = actionLabel;
-                document.getElementById('confirmModal').classList.add('show');
-
-                return new Promise(resolve => {
-                    confirmResolve = resolve;
-                    document.getElementById('confirmActionBtn').onclick = () => {
-                        document.getElementById('confirmModal').classList.remove('show');
-                        resolve(true);
-                    };
-                });
-            };
-
-            window.closeConfirm = (val) => {
-                document.getElementById('confirmModal').classList.remove('show');
-                if (confirmResolve) confirmResolve(val);
-            };
-
-            window.deleteMessage = async (msgId, btn) => {
-                const confirmed = await showConfirm('Delete Message', 'Are you sure you want to permanently delete this alarm message?');
-                if (!confirmed) return;
-
-                try {
-                    const response = await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
-                    const result = await response.json();
-
-                    if (result.status === 'success') {
-                        allAlarms = allAlarms.filter(a => a.id !== msgId);
-                        renderAlarms(true);
-                    } else {
-                        alert('Error deleting message: ' + result.message);
-                    }
-                } catch (err) {
-                    console.error('Delete error:', err);
-                    alert('Failed to delete message.');
-                }
-            };
-
-            window.toggleLock = async (msgId, btn) => {
-                const isLocked = btn.classList.contains('locked');
-                const newState = !isLocked;
-
-                try {
-                    const response = await fetch(`/api/messages/${msgId}/lock`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ protected: newState })
-                    });
-                    const result = await response.json();
-
-                    if (result.status === 'success') {
-                        btn.classList.toggle('locked', newState);
-                        const icon = btn.querySelector('i');
-                        icon.className = newState ? 'fas fa-lock' : 'fas fa-lock-open';
-                        btn.title = newState ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)';
-
-                        const alarm = allAlarms.find(a => a.id === msgId);
-                        if (alarm) alarm.is_protected = newState;
-                    }
-                } catch (err) {
-                    console.error('Lock error:', err);
-                }
-            };
-
-            // Handle alias modal
+            // Handle alias modal submission
             const aliasModalForm = document.getElementById('aliasModalForm');
             const modalSaveBtn = document.getElementById('modalSaveBtn');
 
@@ -609,14 +694,12 @@
                                 if (alarm.address === payload.address) alarm.alias = payload.alias;
                             });
 
-                            allAlarms = [];
-                            document.getElementById('alarmsBody').innerHTML = '';
-                            hasReachedEnd = false;
-                            isLoadingMore = false;
-                            document.getElementById('loading').style.display = 'block';
-                            document.getElementById('loading').innerText = 'Loading alarms...';
-
-                            fetchAlarms();
+                            // Re-render table with updated alias labels
+                            if (dataTable) {
+                                dataTable.clear();
+                                const rowNodes = allAlarms.map(a => createAlarmRowNode(a));
+                                dataTable.rows.add(rowNodes).draw();
+                            }
                             closeAliasModal();
                         } else {
                             alert('Error: ' + data.message);

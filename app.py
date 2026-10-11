@@ -80,8 +80,8 @@ def set_security_headers(response):
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+        "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://cdn.datatables.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.datatables.net https://cdn.jsdelivr.net; "
         "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; "
         "img-src 'self' data:; "
         "connect-src 'self';"

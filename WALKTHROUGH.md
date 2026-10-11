@@ -9,15 +9,15 @@
 
 ## Overview of Implemented Features
 
-### 1. Dedicated Alarms Page
+### 1. Dedicated Alarms Page with DataTables
 - **Navigation**: Sidebar link `Alarms` (`/alarms`, with `/larm` retained as backwards-compatible alias).
 - **Template**: `templates/larm.html`.
-- **Functionality**:
-  - Automatically filters incoming traffic to display only messages matching active watchwords.
-  - Color-coded badges indicating the triggered keyword.
-  - Real-time updates via Server-Sent Events (`/stream`): Matching messages pulse into the top of the table. Non-matching traffic is suppressed in this view.
-  - Infinite scroll and search capabilities against `/api/messages?alerts_only=1`.
-  - Inline actions for protecting (locking) messages from retention purging, manual deletion, and CapCode alias creation modal.
+- **DataTables Integration**:
+  - Rebuilt table using **DataTables 2** for client-side sorting on all columns (ID, timestamp, frequency, CapCode, message, hit word).
+  - **Dynamic Auto-Sizing**: All metadata columns (`#`, `Timestamp`, `Frequency / Meta`, `CapCode`, `Hit`, `Actions`) shrink tightly to their exact content (`width: 1%; white-space: nowrap`), while the `Message` column automatically expands to consume all available display width.
+  - **Real-Time SSE Sync**: Incoming alarms from Server-Sent Events (`/stream`) are instantly added via `dataTable.row.add(rowNode).draw(false)` and animated with subtle alert pulsing (`new-alarm-pulse`).
+  - **Controls**: Configurable pagination (25, 50, 100, All), quick filtering search input synchronized with header search, and dark glassmorphic styling matching OLED themes.
+  - **Inline Actions**: Protect/lock messages from retention purging, delete with confirmation modal, and interactive CapCode alias editing.
 
 ### 2. Database Stat & Automated Retention (Settings -> Database Stat)
 - **Tab Overhaul**: Renamed the Maintenance tab to **Database Stat**.
