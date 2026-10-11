@@ -59,6 +59,11 @@ def init_db():
         except sqlite3.OperationalError:
             pass # Column might already exist
     
+    # Create indexes for high-speed queries on large datasets
+    c.execute('CREATE INDEX IF NOT EXISTS idx_messages_id_desc ON messages(id DESC)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_messages_address ON messages(address)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)')
+
     # Create settings table
     c.execute('''
         CREATE TABLE IF NOT EXISTS settings (

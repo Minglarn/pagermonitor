@@ -109,7 +109,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.11.6"
+APP_VERSION = "2026.10.11.7"
 
 @app.context_processor
 def inject_globals():
@@ -271,7 +271,14 @@ def stats_freq_hits():
 @app.route('/api/messages')
 def get_messages():
     before_id = request.args.get('before_id', type=int)
-    limit = request.args.get('limit', default=None, type=int)
+    limit_raw = request.args.get('limit', default='500')
+    if str(limit_raw).lower() in ('all', 'none', '0'):
+        limit = None
+    else:
+        try:
+            limit = int(limit_raw)
+        except (ValueError, TypeError):
+            limit = 500
     search_query = request.args.get('search', default=None, type=str)
     alerts_only = request.args.get('alerts_only', default='0').lower() in ('1', 'true')
     

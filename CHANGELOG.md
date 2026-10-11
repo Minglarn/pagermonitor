@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.11.7] - DB Load Latency Fix, Streamlined Drop Logging & Local Repository Badges
+
+### Fixed
+- **Database Load Latency (10-15s Freeze)**:
+  - Fixed severe UI loading lag caused by unbounded message queries fetching the entire historical database without limit.
+  - Added a responsive default limit (`limit=500`) to `/api/messages` and client initialization in Dashboard (`/`) and Alarms (`/larm`), while preserving full unconstrained exports via `limit=all` or `limit=0`.
+  - Added SQLite composite indexes on `messages(id DESC)`, `messages(address)`, and `messages(timestamp)` in `init_db()`, reducing query execution from seconds to <2 milliseconds.
+- **SDR Processor Log Redundancy**:
+  - Consolidated multi-line drop outputs into a concise single-line format:
+    `[RIKS X] RAW: POCSAG1200: ... [DROPPED] Cause: MUTED` (and `[DROPPED] Cause: GARBAGE`).
+  - Eliminated the redundant secondary log line (`DOLT ALIAS DROPPADE -> Adress: ...`).
+- **README Badges & Shields.io Formatting**:
+  - Fixed broken badges in `README.md` by adopting the proven formatting pattern from `fail2banExplorer`.
+  - Removed accidental `.svg` extensions from repository-level GitHub endpoints (`/last-commit/...` and `/issues/...`) that caused shields.io to search for a non-existent `pagermonitor.svg` repository.
+  - Added `-blue.svg` color suffix to version badge and linked Docker GHCR package badge.
+
 ## [2026.10.11.6] - Fix CapCode Alias Word Breaking & Expand Column Width
 
 ### Fixed

@@ -1,9 +1,11 @@
 # PagerMonitor
 
-[![Version](https://img.shields.io/badge/version-2026.10.11.6-007ec6.svg)](CHANGELOG.md)
-[![Last Commit](https://img.shields.io/github/last-commit/Minglarn/pagermonitor.svg)](https://github.com/Minglarn/pagermonitor/commits/main)
-[![Issues](https://img.shields.io/github/issues/Minglarn/pagermonitor.svg)](https://github.com/Minglarn/pagermonitor/issues)
-[![Stars](https://img.shields.io/github/stars/Minglarn/pagermonitor?style=social)](https://github.com/Minglarn/pagermonitor/stargazers)
+[![Version](https://img.shields.io/badge/version-2026.10.11.7-blue.svg)](CHANGELOG.md)
+[![GitHub last commit](https://img.shields.io/github/last-commit/Minglarn/pagermonitor)](https://github.com/Minglarn/pagermonitor/commits/main)
+[![GitHub issues](https://img.shields.io/github/issues/Minglarn/pagermonitor)](https://github.com/Minglarn/pagermonitor/issues)
+[![GitHub stars](https://img.shields.io/github/stars/Minglarn/pagermonitor?style=social)](https://github.com/Minglarn/pagermonitor/stargazers)
+[![Docker](https://img.shields.io/badge/docker-GHCR-blue.svg?logo=docker&logoColor=white)](https://github.com/Minglarn/pagermonitor/pkgs/container/pagermonitor)
+
 
 PagerMonitor is a complete, containerized Software Defined Radio (SDR) platform designed to capture, decode, and monitor POCSAG pager transmissions. The system features a modern real-time dark web interface, dynamic receiver configuration, multi-SDR receiver support, a CapCode alias management engine, automated database maintenance, and a dedicated alarms view for monitored keywords.
 

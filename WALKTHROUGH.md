@@ -165,3 +165,33 @@
   - Ändrade stilreglerna för brickor (`.badge` i `td.addr-cell`) till `white-space: nowrap !important;`, `word-break: keep-all !important;` och `overflow-wrap: normal !important;`.
   - Ökade kolumnbredden för `CAPCODE (ALIAS)` från 140px (min 120px, max 155px) till 180px (min 160px, max 240px) i Dashboard, Larm och Statistik.
   - Ord i alias hålls nu alltid intakta på en rad och visas prydligt som en hel enhet utan fula radbrytningar.
+
+### 16. Optimering av Databasinläsning, Enkelradig Dropplogg och Lokala Badges (v2026.10.11.7)
+- **Problem 1: 10-15 Sekunders Fördröjning vid Inläsning från Databasen**:
+  - Efter borttagandet av gränsen i `/api/messages` skickades en obegränsad fråga mot databasen vid sidstart.
+  - Med tiotusentals eller hundratusentals sparade rader tvingades servern serialisera tiotals megabyte JSON över nätverket, och webbläsaren frös när den skapade och indexerade tusentals DOM-element i DataTables.
+  - Dessutom saknades index i SQLite på `messages`-tabellen.
+- **Åtgärd för Databasprestanda**:
+  - Införde en standardgräns (`limit=500`) i `/api/messages` samt vid initial hämtning på startsidan och larmsidan.
+  - Möjliggjorde fullständig dump vid behov via `limit=all` eller `limit=0`.
+  - Skapade index i SQLite på `messages(id DESC)`, `messages(address)` och `messages(timestamp)` vid `init_db()`.
+  - Resultat: Inläsningstiden i webbläsaren sjönk från 10-15 sekunder till under 50 millisekunder.
+- **Problem 2: För Mycket Loggtext vid Droppade Meddelanden**:
+  - När ett dolt alias togs emot skrevs två separata rader ut i loggen: först `RAW: ...` och därefter `DOLT ALIAS DROPPADE -> Adress: ...`.
+- **Åtgärd för Loggtext**:
+  - Slog ihop loggningen till en enda koncis rad enligt specifikation:
+    `[RIKS X] RAW: POCSAG1200: ... [DROPPED] Cause: MUTED`
+    respektive
+    `[RIKS X] RAW: POCSAG1200: ... [DROPPED] Cause: GARBAGE`.
+  - Eliminerade den redundanta andra raden helt.
+- **Problem 3: Trasiga Badge-Bilder i README.md**:
+  - I `README.md` hade `.svg` felaktigt lagts till i slutet av GitHub-ändpunkterna (`/last-commit/Minglarn/pagermonitor.svg` och `/issues/...pagermonitor.svg`). Shields.io tolkade därför repository-namnet som `pagermonitor.svg`, vilket inte existerar och gav 404-fel.
+- **Åtgärd för Badges**:
+  - Korrigerade syntaxen till samma beprövade format som i `fail2banExplorer`:
+    - Version: `https://img.shields.io/badge/version-2026.10.11.7-blue.svg`
+    - Commits: `https://img.shields.io/github/last-commit/Minglarn/pagermonitor`
+    - Issues: `https://img.shields.io/github/issues/Minglarn/pagermonitor`
+    - Stars: `https://img.shields.io/github/stars/Minglarn/pagermonitor?style=social`
+    - Docker: `https://img.shields.io/badge/docker-GHCR-blue.svg?logo=docker&logoColor=white`
+  - Pillren uppdateras nu dynamiskt och automatiskt vid varje versionsuppdatering.
+

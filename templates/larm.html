@@ -691,9 +691,9 @@
                 dataTable.search(this.value).draw();
             });
 
-            // Fetch initial alarms
+            // Fetch initial alarms (latest 500 from database)
             try {
-                const response = await fetch('/api/messages?alerts_only=1');
+                const response = await fetch('/api/messages?alerts_only=1&limit=500');
                 if (!response.ok) throw new Error('Network error');
                 allAlarms = await response.json();
 

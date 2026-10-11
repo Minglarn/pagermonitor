@@ -255,8 +255,6 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                 logger.debug(f"[{config['name']}] RAW_ALL: {line}")
 
             if ("POCSAG" in line and "Alpha:" in line) or re.search(r'(AFSK|UFSK)\d*:', line):
-                logger.info(f"[{config['name']}] RAW: {line}")
-                
                 # Record activity time for watchdog telemetry
                 if instance_id in active_instances:
                     active_instances[instance_id]['last_message_time'] = time.time()
@@ -277,7 +275,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     is_hidden = alias_info['is_hidden'] if alias_info else False
                     
                     if is_hidden:
-                        logger.info(f"[{config['name']}] DOLT ALIAS DROPPADE -> Adress: {address}")
+                        logger.info(f"[{config['name']}] RAW: {line} [DROPPED] Cause: MUTED")
                         for cb in list(new_message_callbacks):
                             try: cb({'type': 'ping'})
                             except Exception: pass
@@ -290,11 +288,15 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         if settings.get('garbage_filter', 'true') == 'true':
                             sensitivity = int(settings.get('garbage_filter_sensitivity', '50'))
                             if is_garbage_message(message, sensitivity):
-                                logger.info(f"[{config['name']}] SKRAPFILTER DROPPADE -> Adress: {address}, Msg: {message[:80]}...")
+                                logger.info(f"[{config['name']}] RAW: {line} [DROPPED] Cause: GARBAGE")
                                 for cb in list(new_message_callbacks):
                                     try: cb({'type': 'ping'})
                                     except Exception: pass
                                 continue
+
+                    logger.info(f"[{config['name']}] RAW: {line}")
+                else:
+                    logger.info(f"[{config['name']}] RAW: {line}")
 
                     # DUPLICATE DETECTION
                     now = time.time()

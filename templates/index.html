@@ -800,9 +800,9 @@
                 dataTable.search(this.value).draw();
             });
 
-            // Fetch initial messages (all from database)
+            // Fetch initial messages (latest 500 from database)
             try {
-                const response = await fetch('/api/messages');
+                const response = await fetch('/api/messages?limit=500');
                 if (!response.ok) throw new Error('Network error');
                 allAlarms = await response.json();
 
