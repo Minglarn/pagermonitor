@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.11.6] - Fix CapCode Alias Word Breaking & Expand Column Width
+
+### Fixed
+- **CapCode (Alias) Word Breaking**: Eliminated word splitting (e.g. "Nätverkssyn" / "k") across all live and historical tables by replacing `word-break: break-word` with `white-space: nowrap`, `word-break: keep-all`, and `overflow-wrap: normal`.
+- **Expanded Alias Column Width**: Widened the `CAPCODE (ALIAS)` column from 140px (min 120px, max 155px) to 180px (min 160px, max 240px) across Dashboard, Alarms, and Statistics views, ensuring descriptive single-word and compound aliases fit comfortably on a single line.
+
 ## [2026.10.11.5] - Long Message Garbage Filter Fix, SDR Supervisor Heartbeat & Device Conflict Diagnostics
 
 ### Fixed

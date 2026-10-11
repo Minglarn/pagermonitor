@@ -157,4 +157,11 @@
   - **Detektering av USB-Enhetskonflikt**: Om flera mottagare (t.ex. RIKS 1 och RIKS 2) saknar angivet serienummer (`device_serial`), varnar systemet i loggen om att de försöker använda samma USB-enhet (`device 0`).
   - **Detaljerad Avslutningsdiagnostik**: Vid processkrasch loggas exakta returkoder (`exit_code`) för både `rtl_fm` och `multimon-ng` tillsammans med sista felmeddelandet från drivrutinen.
 
-
+### 15. Korrigering av Radbrytning i CapCode (Alias) & Breddning av Kolumn (v2026.10.11.6)
+- **Problem**:
+  - Alias-brickor i tabellen (t.ex. "Nätverkssynk") bröts av mitt i ordet så att sista bokstaven hamnade på en ny rad: "Nätverkssyn" följt av "k".
+  - Orsaken var att kolumnen var fastlåst till en alltför smal bredd (`max-width: 155px`) i kombination med CSS-regeln `word-break: break-word !important;`, vilket gav webbläsaren tillåtelse att bryta av enskilda ord godtyckligt mellan bokstäver.
+- **Åtgärd**:
+  - Ändrade stilreglerna för brickor (`.badge` i `td.addr-cell`) till `white-space: nowrap !important;`, `word-break: keep-all !important;` och `overflow-wrap: normal !important;`.
+  - Ökade kolumnbredden för `CAPCODE (ALIAS)` från 140px (min 120px, max 155px) till 180px (min 160px, max 240px) i Dashboard, Larm och Statistik.
+  - Ord i alias hålls nu alltid intakta på en rad och visas prydligt som en hel enhet utan fula radbrytningar.
