@@ -156,12 +156,71 @@ def stats_dates():
 def stats_day(date):
     conn = sqlite3.connect(database.DB_PATH)
     c = conn.cursor()
-    c.execute('SELECT * FROM messages WHERE DATE(timestamp)=? ORDER BY timestamp', (date,))
+    c.execute('SELECT * FROM messages WHERE DATE(timestamp)=? ORDER BY timestamp DESC', (date,))
     rows = c.fetchall()
     col_names = [desc[0] for desc in c.description]
     conn.close()
     msgs = [dict(zip(col_names, row)) for row in rows]
     return jsonify(msgs)
+
+@app.route('/api/stats/range')
+def stats_range():
+    start_date = request.args.get('start')
+    end_date = request.args.get('end', start_date)
+    if not start_date:
+        return jsonify([])
+    
+    conn = sqlite3.connect(database.DB_PATH)
+    c = conn.cursor()
+    c.execute('''
+        SELECT * FROM messages 
+        WHERE DATE(timestamp) >= DATE(?) AND DATE(timestamp) <= DATE(?)
+        ORDER BY timestamp DESC
+    ''', (start_date, end_date))
+    rows = c.fetchall()
+    col_names = [desc[0] for desc in c.description]
+    conn.close()
+    msgs = [dict(zip(col_names, row)) for row in rows]
+    return jsonify(msgs)
+
+@app.route('/api/stats/range-activity')
+def stats_range_activity():
+    start_date = request.args.get('start')
+    end_date = request.args.get('end', start_date)
+    if not start_date:
+        return jsonify({"mode": "hours", "data": []})
+    
+    conn = sqlite3.connect(database.DB_PATH)
+    c = conn.cursor()
+    if start_date == end_date:
+        # 24-hour distribution for single day
+        c.execute('''
+            SELECT STRFTIME('%H', timestamp) AS label, COUNT(*) AS cnt 
+            FROM messages 
+            WHERE DATE(timestamp) = DATE(?)
+            GROUP BY label ORDER BY label
+        ''', (start_date,))
+        rows = c.fetchall()
+        conn.close()
+        return jsonify({
+            "mode": "hours",
+            "data": [{"label": int(r[0]), "count": r[1]} for r in rows]
+        })
+    else:
+        # Day-by-day distribution for date range
+        c.execute('''
+            SELECT DATE(timestamp) AS label, COUNT(*) AS cnt 
+            FROM messages 
+            WHERE DATE(timestamp) >= DATE(?) AND DATE(timestamp) <= DATE(?)
+            GROUP BY label ORDER BY label
+        ''', (start_date, end_date))
+        rows = c.fetchall()
+        conn.close()
+        return jsonify({
+            "mode": "days",
+            "data": [{"label": r[0], "count": r[1]} for r in rows]
+        })
+
 
 @app.route('/api/stats/count-per-day')
 def stats_count_per_day():

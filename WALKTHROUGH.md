@@ -9,17 +9,21 @@
 
 ## Overview of Implemented Features
 
-### 1. Dedicated Alarms Page with DataTables
-- **Navigation**: Sidebar link `Alarms` (`/alarms`, with `/larm` retained as backwards-compatible alias).
-- **Template**: `templates/larm.html`.
-- **DataTables Integration**:
-  - Rebuilt table using **DataTables 2** for client-side sorting on all columns (ID, timestamp, frequency, CapCode, message, hit word).
-  - **Dynamic Auto-Sizing**: All metadata columns (`#`, `Timestamp`, `Frequency / Meta`, `CapCode`, `Hit`, `Actions`) shrink tightly to their exact content (`width: 1%; white-space: nowrap`), while the `Message` column automatically expands to consume all available display width.
-  - **Real-Time SSE Sync**: Incoming alarms from Server-Sent Events (`/stream`) are instantly added via `dataTable.row.add(rowNode).draw(false)` and animated with subtle alert pulsing (`new-alarm-pulse`).
-  - **Controls**: Configurable pagination (25, 50, 100, All), quick filtering search input synchronized with header search, and dark glassmorphic styling matching OLED themes.
-  - **Inline Actions**: Protect/lock messages from retention purging, delete with confirmation modal, and interactive CapCode alias editing.
+### 1. Dedicated Alarms Page & Dashboard with DataTables 2
+- **DataTables 2 in Alarms and Dashboard**: Both the live Dashboard (`/`) and Alarms view (`/alarms`) are powered by DataTables 2 for instant client-side sorting, pagination, search, and real-time SSE row additions.
+- **Sticky Table Headers**: Column header rows (`<thead>`) remain fixed at the top of the viewport during scrolling using `position: sticky; top: 0;` and solid blurred backdrop styling, keeping column contexts visible through large datasets.
+- **Compact Controls Toolbar**: The top controls row (`.dt-layout-row` housing page length and search input) has been vertically compressed by over 50% with reduced padding and streamlined inputs for maximum vertical screen efficiency.
+- **Persistent Table Settings (stateSave)**: Enabled persistent state saving in `localStorage` for 1 year (`stateSave: true; stateDuration: 31536000`). User selections such as rows per page (25, 50, 100, All), column sorting directions, and search filters are preserved across page reloads and sessions.
+- **CapCode (Alias) Word Wrapping**: Solved the issue where long alias names (e.g. "Naturhistoriska Riksmuseet") stretched the table. Applied `white-space: normal; word-break: break-word;` with bounded width (~140px) so long names wrap cleanly without eating message space.
+- **Dynamic Auto-Sizing**: Metadata columns (`#`, `Timestamp`, `Frequency / Meta`, `CapCode`, `Hit`, `Actions`) shrink tightly to their content, allowing the `Message` column to consume all available display width.
 
-### 2. Database Stat & Automated Retention (Settings -> Database Stat)
+### 2. Interactive Date Range Picker in Statistics
+- **From & To Date Pickers**: Replaced manual text entry with native interactive date pickers with `color-scheme: dark` that open calendar popups on click (`showPicker()`).
+- **Quick Presets**: Instant selection buttons for "Today", "Yesterday", "Last 7 Days", and "Last 30 Days".
+- **Dynamic Range Activity**: If From and To are identical, displays a 24-hour distribution. If a range is selected, displays daily activity distribution and lists all messages in the selected interval.
+- **Backend Endpoints**: Added `GET /api/stats/range?start=...&end=...` and `GET /api/stats/range-activity?start=...&end=...`.
+
+### 3. Database Stat & Automated Retention (Settings -> Database Stat)
 - **Tab Overhaul**: Renamed the Maintenance tab to **Database Stat**.
 - **Metric Cards (KPIs)**:
   - **Total Messages**: Complete row count.
@@ -40,7 +44,7 @@
     - Automatic `VACUUM` executed after purging to reclaim disk space.
   - **Manual Actions**: Buttons for immediate message pruning by retention days and full database purge.
 
-### 3. Application Security & HTTP Hardening
+### 4. Application Security & HTTP Hardening
 - **HTTP Basic Authentication**:
   - Configurable via `AUTH_USER` and `AUTH_PASS` in `docker-compose.yml` and `.env`.
   - Disabled when `AUTH_PASS` is empty (suitable for reverse proxy deployments like Nginx Proxy Manager).
@@ -54,13 +58,13 @@
 - **Payload Protection**:
   - Maximum upload / request body capped at 2MB (`MAX_CONTENT_LENGTH`) to protect against memory exhaustion attacks.
 
-### 4. Internationalization & English Translation
+### 5. Internationalization & English Translation
 - Converted all user interface templates (`index.html`, `larm.html`, `aliases.html`, `alerts.html`, `statistics.html`, `settings.html`, `sdr_settings.html`) to English.
 - Converted API response messages and internal logs to English.
 - Updated documentation (`README.md`, `WALKTHROUGH.md`, `CHANGELOG.md`) to English.
 - Strictly verified that no emojis are present across any templates or pages.
 
-### 5. Automated Test Suite
+### 6. Automated Test Suite
 - Automated pytest test suite covering:
   - Security headers and authentication enforcement.
   - Alarms endpoint (`/alarms`) and query filtering (`alerts_only=1`).

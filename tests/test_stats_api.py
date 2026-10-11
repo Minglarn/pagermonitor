@@ -110,3 +110,24 @@ def test_prune_messages_and_retention(client):
     deleted = prune_messages(0)
     assert deleted >= 1
 
+def test_stats_range(client):
+    from database import save_message
+    from datetime import datetime
+    today = datetime.now().strftime('%Y-%m-%d')
+    save_message('77777', 'Range test message')
+    resp = client.get(f'/api/stats/range?start={today}&end={today}')
+    assert resp.status_code == 200
+    msgs = resp.get_json()
+    assert isinstance(msgs, list)
+    assert any(m['address'] == '77777' for m in msgs)
+
+def test_stats_range_activity(client):
+    from datetime import datetime
+    today = datetime.now().strftime('%Y-%m-%d')
+    resp = client.get(f'/api/stats/range-activity?start={today}&end={today}')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['mode'] == 'hours'
+    assert 'data' in data
+
+

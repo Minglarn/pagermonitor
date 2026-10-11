@@ -38,6 +38,51 @@
             return await res.json();
         }
     </script>
+    <style>
+        .date-picker-input {
+            color-scheme: dark;
+            background: var(--input-bg, #0d1117);
+            color: var(--text-primary, #e2e8f0);
+            border: 1px solid var(--panel-border, #1f2937);
+            border-radius: 10px;
+            padding: 0.65rem 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.95rem;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .date-picker-input:hover {
+            border-color: var(--accent);
+        }
+        .date-picker-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+        .preset-btn {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 0.45rem 0.85rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .preset-btn:hover {
+            background: rgba(56, 189, 248, 0.15);
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+        .preset-btn.active {
+            background: var(--accent);
+            color: #ffffff;
+            border-color: var(--accent);
+        }
+    </style>
 </head>
 
 <body>
@@ -92,10 +137,42 @@
                 <p>Analyze historical data and alert-word hits.</p>
             </header>
             <main>
-                <section class="glass-panel">
-                    <h2>Select Date</h2>
-                    <div class="form-group" style="max-width: 300px;">
-                        <input type="date" id="statsDate" />
+                <section class="glass-panel" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+                        <div>
+                            <h2 style="margin: 0; font-size: 1.2rem; font-weight: 700;">Date Range Filter</h2>
+                            <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
+                                Pick a specific date or inspect traffic across a custom period. Click fields to open interactive calendar.
+                            </p>
+                        </div>
+                        <div class="preset-buttons" style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button type="button" class="preset-btn active" id="btnPresetToday" onclick="applyPreset('today')">Today</button>
+                            <button type="button" class="preset-btn" id="btnPresetYesterday" onclick="applyPreset('yesterday')">Yesterday</button>
+                            <button type="button" class="preset-btn" id="btnPreset7d" onclick="applyPreset('7d')">Last 7 Days</button>
+                            <button type="button" class="preset-btn" id="btnPreset30d" onclick="applyPreset('30d')">Last 30 Days</button>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; align-items: flex-end; gap: 1.5rem; flex-wrap: wrap;">
+                        <div class="form-group" style="flex: 1; min-width: 220px; margin-bottom: 0;">
+                            <label for="startDate" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+                                <i class="fas fa-calendar-alt" style="color: var(--accent);"></i> From Date
+                            </label>
+                            <input type="date" id="startDate" class="date-picker-input" onclick="this.showPicker && this.showPicker()" style="color-scheme: dark; background: var(--input-bg, #0d1117); color: var(--text-primary); border: 1px solid var(--panel-border, #1f2937); border-radius: 10px; padding: 0.65rem 1rem; width: 100%; cursor: pointer; font-family: 'JetBrains Mono', monospace;" />
+                        </div>
+
+                        <div class="form-group" style="flex: 1; min-width: 220px; margin-bottom: 0;">
+                            <label for="endDate" style="font-size: 0.85rem; font-weight: 600; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+                                <i class="fas fa-calendar-check" style="color: var(--accent);"></i> To Date
+                            </label>
+                            <input type="date" id="endDate" class="date-picker-input" onclick="this.showPicker && this.showPicker()" style="color-scheme: dark; background: var(--input-bg, #0d1117); color: var(--text-primary); border: 1px solid var(--panel-border, #1f2937); border-radius: 10px; padding: 0.65rem 1rem; width: 100%; cursor: pointer; font-family: 'JetBrains Mono', monospace;" />
+                        </div>
+
+                        <div style="margin-bottom: 0; display: flex; align-items: center; gap: 0.75rem;">
+                            <button type="button" id="applyFilterBtn" class="primary-btn" onclick="applyCustomFilter()" style="padding: 0.65rem 1.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-filter"></i> Apply Filter
+                            </button>
+                        </div>
                     </div>
                 </section>
 
@@ -124,14 +201,17 @@
                 </div>
 
                 <section class="glass-panel" style="margin-top: 1.5rem;">
-                    <h2>Messages per Hour (Selected Day)</h2>
+                    <h2 id="activityChartTitle">Activity Distribution</h2>
                     <div style="height: 300px;">
                         <canvas id="countPerHourChart"></canvas>
                     </div>
                 </section>
 
                 <section class="glass-panel" style="margin-top: 1.5rem;">
-                    <h2>Messages for Selected Day</h2>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <h2 id="tableSectionTitle" style="margin: 0;">Messages for Selected Period</h2>
+                        <span id="filteredCountBadge" class="badge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent); font-weight: 600;">0 messages</span>
+                    </div>
                     <div id="dayTableContainer" class="table-container" style="max-height: 500px;">
                         <table id="dayTable">
                             <thead>
@@ -276,85 +356,168 @@
             }
         }
 
-        async function loadDayData(date) {
+        let activityChart = null;
+
+        function formatDateISO(dateObj) {
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function setPresetActive(activeId) {
+            ['btnPresetToday', 'btnPresetYesterday', 'btnPreset7d', 'btnPreset30d'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.classList.toggle('active', id === activeId);
+            });
+        }
+
+        async function applyPreset(type) {
+            const now = new Date();
+            let start = new Date();
+            let end = new Date();
+
+            if (type === 'today') {
+                start = now;
+                end = now;
+                setPresetActive('btnPresetToday');
+            } else if (type === 'yesterday') {
+                start.setDate(now.getDate() - 1);
+                end.setDate(now.getDate() - 1);
+                setPresetActive('btnPresetYesterday');
+            } else if (type === '7d') {
+                start.setDate(now.getDate() - 6);
+                end = now;
+                setPresetActive('btnPreset7d');
+            } else if (type === '30d') {
+                start.setDate(now.getDate() - 29);
+                end = now;
+                setPresetActive('btnPreset30d');
+            }
+
+            const startStr = formatDateISO(start);
+            const endStr = formatDateISO(end);
+
+            document.getElementById('startDate').value = startStr;
+            document.getElementById('endDate').value = endStr;
+
+            await loadRangeData(startStr, endStr);
+        }
+
+        async function applyCustomFilter() {
+            setPresetActive(null);
+            const startStr = document.getElementById('startDate').value;
+            const endStr = document.getElementById('endDate').value;
+            if (!startStr || !endStr) return;
+            await loadRangeData(startStr, endStr);
+        }
+
+        async function loadRangeData(startDate, endDate) {
             const tableBody = document.getElementById('dayTableBody');
             const loading = document.getElementById('dayLoading');
+            const tableTitle = document.getElementById('tableSectionTitle');
+            const chartTitle = document.getElementById('activityChartTitle');
+            const countBadge = document.getElementById('filteredCountBadge');
 
             tableBody.innerHTML = '';
             loading.style.display = 'block';
 
+            if (startDate === endDate) {
+                tableTitle.innerText = `Messages for ${startDate} (Single Day)`;
+                chartTitle.innerText = `Hourly Distribution (${startDate})`;
+            } else {
+                tableTitle.innerText = `Messages (${startDate} to ${endDate})`;
+                chartTitle.innerText = `Activity Distribution (${startDate} to ${endDate})`;
+            }
+
             try {
-                const msgs = await fetchJSON(`/api/stats/day/${date}`);
+                // Fetch messages for the range
+                const msgs = await fetchJSON(`/api/stats/range?start=${startDate}&end=${endDate}`);
                 loading.style.display = 'none';
+                countBadge.innerText = `${msgs.length} messages`;
 
                 if (msgs.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No messages for this date.</td></tr>';
+                    tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No messages found for this period.</td></tr>';
                 } else {
                     msgs.forEach(m => {
                         const tr = document.createElement('tr');
-                        const time = new Date(m.timestamp).toLocaleTimeString('sv-SE');
+                        const time = new Date(m.timestamp).toLocaleString('sv-SE', {
+                            month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+                        });
                         const address = m.alias || m.address;
                         const freq = m.frequency || '-';
                         const bitrateTag = m.bitrate ? `<span class="badge meta">${m.bitrate}bps</span>` : '';
                         tr.innerHTML = `
-                                <td class="id-cell">${m.id}</td>
-                                <td class="ts-cell">${time}</td>
-                                <td class="addr-cell"><span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">${freq}</span>${bitrateTag}</td>
-                                <td class="addr-cell"><span class="badge">${address}</span></td>
-                                <td class="msg-cell">${m.message}</td>
-                                <td class="actions-cell">
-                                    <div class="actions-wrapper">
-                                        <button class="lock-btn ${m.is_protected ? 'locked' : ''}" onclick="toggleLock(${m.id}, this)" title="${m.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
-                                            <i class="fas ${m.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
-                                        </button>
-                                        <div class="btn-divider"></div>
-                                        <button class="delete-btn" onclick="deleteMessage(${m.id}, this)" title="Delete message">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            `;
+                            <td class="id-cell">${m.id}</td>
+                            <td class="ts-cell">${time}</td>
+                            <td class="addr-cell"><span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">${freq}</span>${bitrateTag}</td>
+                            <td class="addr-cell"><span class="badge">${address}</span></td>
+                            <td class="msg-cell">${m.message}</td>
+                            <td class="actions-cell">
+                                <div class="actions-wrapper">
+                                    <button class="lock-btn ${m.is_protected ? 'locked' : ''}" onclick="toggleLock(${m.id}, this)" title="${m.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
+                                        <i class="fas ${m.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
+                                    </button>
+                                    <div class="btn-divider"></div>
+                                    <button class="delete-btn" onclick="deleteMessage(${m.id}, this)" title="Delete message">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        `;
                         tableBody.appendChild(tr);
                     });
                 }
 
-                // Update hour chart
-                const perHour = await fetchJSON(`/api/stats/count-per-hour/${date}`);
-                const hourLabels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
-                const hourCounts = Array(24).fill(0);
+                // Fetch activity distribution
+                const activityRes = await fetchJSON(`/api/stats/range-activity?start=${startDate}&end=${endDate}`);
+                const mode = activityRes.mode;
+                let chartLabels = [];
+                let chartCounts = [];
 
-                perHour.forEach(h => {
-                    hourCounts[parseInt(h.hour)] = h.count;
-                });
+                if (mode === 'hours') {
+                    chartLabels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+                    chartCounts = Array(24).fill(0);
+                    (activityRes.data || []).forEach(item => {
+                        chartCounts[item.label] = item.count;
+                    });
+                } else {
+                    chartLabels = (activityRes.data || []).map(d => d.label);
+                    chartCounts = (activityRes.data || []).map(d => d.count);
+                }
 
-                if (dayChart) dayChart.destroy();
+                if (activityChart) activityChart.destroy();
 
-                dayChart = new Chart(document.getElementById('countPerHourChart'), {
-                    type: 'line',
+                activityChart = new Chart(document.getElementById('countPerHourChart'), {
+                    type: mode === 'hours' ? 'line' : 'bar',
                     data: {
-                        labels: hourLabels,
+                        labels: chartLabels,
                         datasets: [{
                             label: 'Messages',
-                            data: hourCounts,
+                            data: chartCounts,
                             borderColor: '#38bdf8',
-                            backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                            backgroundColor: mode === 'hours' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.6)',
                             fill: true,
-                            tension: 0.4,
-                            pointRadius: 4,
+                            tension: 0.35,
+                            borderRadius: mode === 'hours' ? 0 : 4,
+                            pointRadius: mode === 'hours' ? 4 : 0,
                             pointBackgroundColor: '#38bdf8'
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false }
+                        },
                         scales: {
-                            y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                            y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.08)' } },
                             x: { grid: { display: false } }
                         }
                     }
                 });
             } catch (err) {
-                console.error('Error loading day data:', err);
+                console.error('Error loading range data:', err);
                 loading.innerText = 'Failed to fetch data.';
             }
         }
@@ -396,7 +559,6 @@
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    // Update UI button
                     btn.classList.toggle('locked', newState);
                     const icon = btn.querySelector('i');
                     icon.className = newState ? 'fas fa-lock' : 'fas fa-lock-open';
@@ -410,21 +572,27 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await renderGlobalCharts();
 
+            const startPicker = document.getElementById('startDate');
+            const endPicker = document.getElementById('endDate');
+
+            startPicker.addEventListener('change', () => applyCustomFilter());
+            endPicker.addEventListener('change', () => applyCustomFilter());
+
             try {
                 const dates = await fetchJSON('/api/stats/dates');
-                const picker = document.getElementById('statsDate');
 
                 if (dates.length > 0) {
-                    picker.max = dates[0];
-                    picker.min = dates[dates.length - 1];
-                    picker.value = dates[0];
+                    const latestDate = dates[0];
+                    startPicker.value = latestDate;
+                    endPicker.value = latestDate;
+                    setPresetActive('btnPresetToday');
 
-                    await loadDayData(picker.value);
-
-                    picker.addEventListener('change', (e) => loadDayData(e.target.value));
+                    await loadRangeData(latestDate, latestDate);
                 } else {
-                    picker.disabled = true;
-                    document.getElementById('dayTableBody').innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 2rem;">No history available.</td></tr>';
+                    const todayStr = formatDateISO(new Date());
+                    startPicker.value = todayStr;
+                    endPicker.value = todayStr;
+                    document.getElementById('dayTableBody').innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No history available.</td></tr>';
                 }
             } catch (err) {
                 console.error('Error fetching dates:', err);

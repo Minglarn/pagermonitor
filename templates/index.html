@@ -10,8 +10,221 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Fira+Code:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inconsolata:wght@400;700&family=JetBrains+Mono:wght@400;500;800&family=Roboto+Mono:wght@400;500;700&family=Source+Code+Pro:wght@400;600;800&family=Space+Mono:wght@400;700&family=Ubuntu+Mono:wght@400;700&family=Courier+Prime:wght@400;700&family=Share+Tech+Mono&family=Anonymous+Pro:wght@400;700&family=VT323&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- DataTables 2 CSS & Dependencies -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
+
+    <style>
+        /* Custom OLED / Glassmorphism styling for DataTables */
+        .dt-container {
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        .dt-container .dt-layout-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            padding: 0.35rem 0.25rem 0.15rem 0.25rem;
+        }
+
+        .dt-container .dt-length {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+        }
+
+        .dt-container .dt-length select {
+            background: var(--input-bg, #0d1117);
+            border: 1px solid var(--panel-border, #1f2937);
+            border-radius: 6px;
+            padding: 0.15rem 0.5rem;
+            height: 28px;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            outline: none;
+            cursor: pointer;
+            margin: 0 0.35rem;
+        }
+
+        .dt-container .dt-search {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .dt-container .dt-search input {
+            background: var(--input-bg, #0d1117);
+            border: 1px solid var(--panel-border, #1f2937);
+            border-radius: 6px;
+            padding: 0.2rem 0.65rem;
+            height: 28px;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .dt-container .dt-search input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .dt-container .dt-info {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            padding: 0.5rem 0;
+        }
+
+        .dt-container .dt-paging {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0.5rem 0;
+        }
+
+        .dt-container .dt-paging .dt-paging-button {
+            background: transparent !important;
+            border: 1px solid transparent !important;
+            color: var(--text-secondary) !important;
+            border-radius: 6px !important;
+            padding: 0.35rem 0.75rem !important;
+            margin: 0 1px !important;
+            cursor: pointer !important;
+            transition: all 0.2s !important;
+            user-select: none;
+        }
+
+        .dt-container .dt-paging .dt-paging-button:hover:not(.disabled) {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: var(--text-primary) !important;
+        }
+
+        .dt-container .dt-paging .dt-paging-button.current,
+        .dt-container .dt-paging .dt-paging-button.current:hover {
+            background: var(--accent, #38bdf8) !important;
+            color: #ffffff !important;
+            border-color: var(--accent, #38bdf8) !important;
+            font-weight: 600 !important;
+        }
+
+        .dt-container .dt-paging .dt-paging-button.disabled,
+        .dt-container .dt-paging .dt-paging-button.disabled:hover {
+            opacity: 0.35 !important;
+            cursor: not-allowed !important;
+        }
+
+        /* Table Auto-sizing */
+        table.dataTable.dashboard-dt {
+            width: 100% !important;
+            table-layout: auto !important;
+            border-collapse: separate !important;
+            border-spacing: 0 8px !important;
+            margin-top: 0.15rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+
+        table.dataTable.dashboard-dt thead th {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 50 !important;
+            background: var(--panel-bg, #0a0a0a) !important;
+            color: var(--text-secondary) !important;
+            border-bottom: 2px solid var(--panel-border, #1f2937) !important;
+            font-size: 0.75rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            padding: 0.5rem 0.8rem !important;
+            cursor: pointer;
+            white-space: nowrap !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+        }
+
+        table.dataTable.dashboard-dt thead th:hover {
+            color: var(--accent) !important;
+        }
+
+        /* Specific column sizing */
+        table.dataTable.dashboard-dt th.col-id,
+        table.dataTable.dashboard-dt td.id-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            padding: 0.6rem 0.5rem !important;
+        }
+
+        table.dataTable.dashboard-dt th.col-time,
+        table.dataTable.dashboard-dt td.ts-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            padding: 0.6rem 0.8rem !important;
+        }
+
+        table.dataTable.dashboard-dt th.col-meta,
+        table.dataTable.dashboard-dt td.meta-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            padding: 0.6rem 0.8rem !important;
+        }
+
+        /* CapCode (Alias) column with line breaking support */
+        table.dataTable.dashboard-dt th.col-addr,
+        table.dataTable.dashboard-dt td.addr-cell {
+            width: 140px !important;
+            min-width: 120px !important;
+            max-width: 155px !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            line-height: 1.3 !important;
+            padding: 0.6rem 0.75rem !important;
+        }
+
+        table.dataTable.dashboard-dt td.addr-cell .badge {
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            line-height: 1.3 !important;
+            display: inline-block !important;
+            text-align: left !important;
+            max-width: 100% !important;
+        }
+
+        table.dataTable.dashboard-dt th.col-actions,
+        table.dataTable.dashboard-dt td.actions-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            padding: 0.6rem 0.5rem !important;
+        }
+
+        table.dataTable.dashboard-dt th.col-msg,
+        table.dataTable.dashboard-dt td.msg-cell {
+            width: auto !important;
+            word-break: break-word !important;
+            padding: 0.6rem 1rem !important;
+        }
+
+        @keyframes messageFlash {
+            0% { background: rgba(56, 189, 248, 0.3); }
+            100% { background: var(--panel-bg); }
+        }
+
+        tr.new-msg-pulse {
+            animation: messageFlash 2s ease-out;
+        }
+    </style>
+
     <script>
-        // Apply theme and font settings immediately to prevent flickering
+        // Apply theme immediately to prevent flickering
         (function () {
             const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
@@ -100,23 +313,23 @@
             </header>
 
             <main>
-                <div class="glass-panel table-container">
-                    <table id="alarmsTable">
+                <div class="glass-panel table-container" style="padding: 0 1rem 0.5rem 1rem;">
+                    <table id="alarmsTable" class="dataTable dashboard-dt">
                         <thead>
                             <tr>
-                                <th>#</th>
-                                <th>Timestamp</th>
-                                <th>Frequency / Meta</th>
-                                <th>CapCode (Alias)</th>
-                                <th>Message</th>
-                                <th>Actions</th>
+                                <th class="col-id">#</th>
+                                <th class="col-time">Timestamp</th>
+                                <th class="col-meta">Frequency / Meta</th>
+                                <th class="col-addr">CapCode (Alias)</th>
+                                <th class="col-msg">Message</th>
+                                <th class="col-actions">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="alarmsBody">
-                            <!-- Alarms will be injected here via JavaScript -->
+                            <!-- Rows managed by DataTables -->
                         </tbody>
                     </table>
-                    <div id="loading" class="loading-state">Loading history...</div>
+                    <div id="loading" class="loading-state">Loading messages...</div>
                 </div>
             </main>
         </div>
@@ -127,7 +340,7 @@
         <div class="modal-content">
             <button class="close-btn" onclick="closeAliasModal()">&times;</button>
             <div class="modal-header">
-                <h2>Create/Edit Alias</h2>
+                <h2>Create / Edit Alias</h2>
                 <p>Link a readable name to this CapCode.</p>
             </div>
             <form id="aliasModalForm">
@@ -158,38 +371,29 @@
         <div class="modal-content" style="max-width: 400px; padding: 2rem; border-radius: 20px;">
             <div class="modal-header">
                 <h2 id="confirmTitle" style="color: var(--accent);">Confirm Action</h2>
-                <p id="confirmMessage" style="margin-top: 0.5rem; color: var(--text-secondary);">Are you sure you want
-                    to proceed?</p>
+                <p id="confirmMessage" style="margin-top: 0.5rem; color: var(--text-secondary);">Are you sure you want to proceed?</p>
             </div>
-            <div class="modal-footer">
-                <button class="btn btn-ghost" style="padding: 0.6rem 1.2rem; border-radius: 10px; cursor: pointer;"
-                    onclick="closeConfirm(false)">Cancel</button>
-                <button id="confirmActionBtn" class="btn btn-danger"
-                    style="padding: 0.6rem 1.2rem; border-radius: 10px; cursor: pointer; background: #ef4444; border: none; color: white;">Delete</button>
+            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
+                <button type="button" class="secondary-btn" onclick="closeConfirm(false)">Cancel</button>
+                <button type="button" id="confirmActionBtn" class="primary-btn danger-btn" style="background: #ef4444; border-color: #ef4444;">Delete</button>
             </div>
         </div>
     </div>
 
-    <!-- Scroll to Top Button -->
-    <button id="scrollToTop" class="scroll-to-top" title="Scroll to Top" onclick="scrollToTop()">
-        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M18 15l-6-6-6 6" />
-        </svg>
-    </button>
-
     <script>
-        // Global Modal Functions
+        let dataTable = null;
+        let alertWords = [];
+        let allAlarms = [];
+
         function openAliasModal(address) {
             document.getElementById('modal_address').value = address;
             document.getElementById('modal_alias').value = '';
             document.getElementById('modal_is_hidden').checked = false;
 
-            // Try to pre-fill if alias exists in memory
-            if (window.currentAlarmsData) {
-                const existing = window.currentAlarmsData.find(a => a.address === address);
+            if (allAlarms) {
+                const existing = allAlarms.find(a => a.address === address);
                 if (existing && existing.alias) {
                     document.getElementById('modal_alias').value = existing.alias;
-                    // We can't know is_hidden simply from history, but users can re-mute
                 }
             }
 
@@ -201,88 +405,81 @@
             document.getElementById('aliasModal').classList.remove('show');
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const alarmsBody = document.getElementById('alarmsBody');
-            const searchInput = document.getElementById('searchInput');
-            const loading = document.getElementById('loading');
-            let allAlarms = [];
-            let alertWords = [];
-            let isLoadingMore = false;
-            let hasReachedEnd = false;
-            let lastTopGroupKey = null; // Track topmost divider
-
-            // Fetch Alert Words
-            const fetchAlertWords = async () => {
+        // Fetch Alert Words
+        async function fetchAlertWords() {
+            try {
                 const res = await fetch('/api/alerts');
                 alertWords = await res.json();
-            };
-
-            // Highlight word matches
-            function highlightMessage(text) {
-                if (!alertWords.length) return text;
-                let highlighted = text;
-                alertWords.forEach(aw => {
-                    if (aw.is_active) {
-                        // Regex: Match the word ONLY if it is NOT part of an HTML tag
-                        // Uses a negative lookahead to ignore everything before a closing `>` 
-                        // if there wasn't an opening `<` first.
-                        const regex = new RegExp(`(${aw.word})(?![^<]*>)`, 'gi');
-                        highlighted = highlighted.replace(regex, `<span class="alert-word" style="color: ${aw.color || '#ef4444'}; border-bottom-color: ${aw.color || '#ef4444'}">$1</span>`);
-                    }
-                });
-                return highlighted;
+            } catch (e) {
+                console.error('Failed to load alert words:', e);
             }
+        }
 
-            // Formatter helper
-            function formatMessage(msgStr) {
-                let formatted = msgStr.replace(/<CR><LF>/g, '<br>').replace(/\n/g, '<br>');
-                return highlightMessage(formatted);
-            }
-
-            // Fetch and render historical alarms initially
-            const fetchAlarms = async (beforeId = null) => {
-                if (isLoadingMore || (beforeId && hasReachedEnd)) return;
-
-                try {
-                    let url = beforeId ? `/api/messages?before_id=${beforeId}` : '/api/messages';
-                    const currentQuery = searchInput.value.trim();
-                    if (currentQuery) {
-                        url += (url.includes('?') ? '&' : '?') + `search=${encodeURIComponent(currentQuery)}`;
-                    }
-
-                    if (beforeId) isLoadingMore = true;
-
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    const data = await response.json();
-
-                    if (data.length === 0) {
-                        if (beforeId) hasReachedEnd = true;
-                        if (!allAlarms.length) loading.innerText = 'No messages found.';
-                        return;
-                    }
-
-                    loading.style.display = 'none';
-
-                    if (beforeId) {
-                        // Append old messages to the end
-                        allAlarms = [...allAlarms, ...data];
-                    } else {
-                        // Initial load
-                        allAlarms = data;
-                    }
-
-                    window.currentAlarmsData = allAlarms;
-                    renderAlarms();
-                } catch (error) {
-                    console.error('Error fetching alarms:', error);
-                } finally {
-                    isLoadingMore = false;
+        // Highlight word matches
+        function highlightMessage(text) {
+            if (!alertWords.length) return text;
+            let highlighted = text;
+            alertWords.forEach(aw => {
+                if (aw.is_active) {
+                    const regex = new RegExp(`(${aw.word})(?![^<]*>)`, 'gi');
+                    highlighted = highlighted.replace(regex, `<span class="alert-word" style="color: ${aw.color || '#ef4444'}; border-bottom-color: ${aw.color || '#ef4444'}">$1</span>`);
                 }
-            };
+            });
+            return highlighted;
+        }
 
-            // Fetch and apply settings (for fonts)
-            const fetchSettings = async () => {
+        function formatMessage(msgStr) {
+            let formatted = (msgStr || '').replace(/<CR><LF>/g, '<br>').replace(/\n/g, '<br>');
+            return highlightMessage(formatted);
+        }
+
+        function createAlarmRowNode(alarm) {
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-id', alarm.id);
+
+            const hasAlert = alertWords.some(aw => aw.is_active && (alarm.message || '').toUpperCase().includes(aw.word.toUpperCase()));
+            if (hasAlert) {
+                tr.classList.add('alert-row', 'alert-pulse-bg');
+            }
+
+            const dateObj = new Date(alarm.timestamp);
+            const dateStr = dateObj.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
+            const timeStr = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const formattedTime = `${dateStr}<br>${timeStr}`;
+
+            const displayAddress = alarm.alias ? alarm.alias : alarm.address;
+            const bitrateTag = alarm.bitrate ? `<span class="badge meta">${alarm.bitrate}bps</span>` : '';
+            const funcLabel = alarm.function !== undefined ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
+            const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
+            const freqTag = alarm.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${alarm.frequency}</span>` : '';
+            const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta" style="margin-left: 5px;">Duplicate</span>` : '';
+
+            tr.innerHTML = `
+                <td class="id-cell">${alarm.id}</td>
+                <td class="ts-cell" data-order="${alarm.timestamp}">${formattedTime}</td>
+                <td class="meta-cell">${freqTag}${bitrateTag}${funcTag}${duplicateTag}</td>
+                <td class="addr-cell">
+                    <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
+                </td>
+                <td class="msg-cell">${formatMessage(alarm.message)}</td>
+                <td class="actions-cell">
+                    <div class="actions-wrapper">
+                        <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
+                            <i class="fas ${alarm.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
+                        </button>
+                        <div class="btn-divider"></div>
+                        <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete message">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            return tr;
+        }
+
+        // Fetch and apply settings (for fonts)
+        async function fetchSettings() {
+            try {
                 const res = await fetch('/api/settings');
                 const settings = await res.json();
                 if (settings.message_font) {
@@ -291,371 +488,200 @@
                 if (settings.message_font_size) {
                     document.documentElement.style.setProperty('--msg-size', `${settings.message_font_size}rem`);
                 }
-            };
+            } catch (e) {
+                console.error('Failed to load settings:', e);
+            }
+        }
 
-            const createAlarmRow = (alarm) => {
-                const tr = document.createElement('tr');
-                tr.className = 'fade-in';
+        // Confirmation modal helper
+        let confirmResolve = null;
+        window.showConfirm = (title, message, actionLabel = 'Delete') => {
+            document.getElementById('confirmTitle').innerText = title;
+            document.getElementById('confirmMessage').innerText = message;
+            document.getElementById('confirmActionBtn').innerText = actionLabel;
+            document.getElementById('confirmModal').classList.add('show');
 
-                const hasAlert = alertWords.some(aw => aw.is_active && alarm.message.toUpperCase().includes(aw.word.toUpperCase()));
-                if (hasAlert) {
-                    tr.classList.add('alert-row', 'alert-pulse-bg');
-                }
+            return new Promise(resolve => {
+                confirmResolve = resolve;
+                document.getElementById('confirmActionBtn').onclick = () => {
+                    document.getElementById('confirmModal').classList.remove('show');
+                    resolve(true);
+                };
+            });
+        };
 
-                const dateObj = new Date(alarm.timestamp);
-                const dateStr = dateObj.toLocaleDateString('sv-SE', {
-                    year: 'numeric', month: '2-digit', day: '2-digit'
-                });
-                const timeStr = dateObj.toLocaleTimeString('sv-SE', {
-                    hour: '2-digit', minute: '2-digit', second: '2-digit'
-                });
-                const formattedTime = `${dateStr}<br>${timeStr}`;
+        window.closeConfirm = (val) => {
+            document.getElementById('confirmModal').classList.remove('show');
+            if (confirmResolve) confirmResolve(val);
+        };
 
-                const displayAddress = alarm.alias ? alarm.alias : alarm.address;
-                const bitrateTag = alarm.bitrate ? `<span class="badge meta">${alarm.bitrate}bps</span>` : '';
-                const funcLabel = alarm.function !== undefined ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
-                const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
-                const freqTag = alarm.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${alarm.frequency}</span>` : '';
-                const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta" style="margin-left: 5px;">Duplicate</span>` : '';
+        window.deleteMessage = async (msgId, btn) => {
+            const confirmed = await showConfirm('Delete Message', 'Are you sure you want to permanently delete this message?');
+            if (!confirmed) return;
 
-                tr.innerHTML = `
-                    <td class="id-cell">${alarm.id}</td>
-                    <td class="ts-cell">${formattedTime}</td>
-                    <td class="addr-cell">${freqTag}${bitrateTag}${funcTag}${duplicateTag}</td>
-                    <td class="addr-cell">
-                        <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
-                    </td>
-                    <td class="msg-cell">${formatMessage(alarm.message)}</td>
-                    <td class="actions-cell">
-                        <div class="actions-wrapper">
-                            <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
-                                <i class="fas ${alarm.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
-                            </button>
-                            <div class="btn-divider"></div>
-                            <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete message">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </div>
-                    </td>
-                `;
-                return tr;
-            };
+            try {
+                const response = await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
+                const result = await response.json();
 
-            const renderAlarms = (maintainScroll = false) => {
-                const query = searchInput.value.toLowerCase();
-                const container = document.querySelector('.table-container');
-
-                // Save scroll position state
-                const previousScrollTop = container.scrollTop;
-                const previousScrollHeight = container.scrollHeight;
-                const wasAtTop = previousScrollTop < 50; // Threshold for "watching new messages"
-
-                alarmsBody.innerHTML = '';
-
-                const filtered = allAlarms;
-
-                let lastGroupKey = null;
-
-                if (filtered.length > 0) {
-                    const firstDate = new Date(filtered[0].timestamp);
-                    lastTopGroupKey = firstDate.toLocaleString('sv-SE', {
-                        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit'
-                    });
-                }
-
-                filtered.forEach((alarm, index) => {
-                    const dateObj = new Date(alarm.timestamp);
-                    const time = dateObj.toLocaleString('sv-SE', {
-                        year: 'numeric', month: '2-digit', day: '2-digit',
-                        hour: '2-digit', minute: '2-digit', second: '2-digit'
-                    });
-
-                    // Grouping logic removed
-
-                    const tr = document.createElement('tr');
-                    tr.className = 'fade-in';
-                    // Cap animation delay so items deep in the list don't stay invisible for seconds
-                    tr.style.animationDelay = `${Math.min(index, 15) * 0.03}s`;
-
-                    // Check for general alert row highlighting
-                    const hasAlert = alertWords.some(aw => aw.is_active && alarm.message.toUpperCase().includes(aw.word.toUpperCase()));
-                    if (hasAlert) {
-                        tr.classList.add('alert-row', 'alert-pulse-bg');
+                if (result.status === 'success') {
+                    allAlarms = allAlarms.filter(a => a.id !== msgId);
+                    if (dataTable) {
+                        const tr = $(btn).closest('tr');
+                        dataTable.row(tr).remove().draw(false);
                     }
-
-                    const dateStr = new Date(alarm.timestamp).toLocaleDateString('sv-SE', {
-                        year: 'numeric', month: '2-digit', day: '2-digit'
-                    });
-                    const timeStr = new Date(alarm.timestamp).toLocaleTimeString('sv-SE', {
-                        hour: '2-digit', minute: '2-digit', second: '2-digit'
-                    });
-                    const formattedTime = `${dateStr}<br>${timeStr}`;
-
-                    const displayAddress = alarm.alias ? alarm.alias : alarm.address;
-                    const bitrateTag = alarm.bitrate ? `<span class="badge meta">${alarm.bitrate}bps</span>` : '';
-                    const funcLabel = alarm.function !== undefined ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
-                    const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
-                    const freqTag = alarm.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${alarm.frequency}</span>` : '';
-
-                    const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta" style="margin-left: 5px;">Duplicate</span>` : '';
-
-                    tr.innerHTML = `
-                        <td class="id-cell">${alarm.id}</td>
-                        <td class="ts-cell">${formattedTime}</td>
-                        <td class="addr-cell">${freqTag}${bitrateTag}${funcTag}${duplicateTag}</td>
-                        <td class="addr-cell">
-                            <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
-                        </td>
-                        <td class="msg-cell">${formatMessage(alarm.message)}</td>
-                        <td class="actions-cell">
-                            <div class="actions-wrapper">
-                                <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
-                                    <i class="fas ${alarm.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
-                                </button>
-                                <div class="btn-divider"></div>
-                                <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete message">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
-                            </div>
-                        </td>
-                    `;
-                    alarmsBody.appendChild(tr);
-                });
-
-                // Restore scroll if needed
-                if (maintainScroll) {
-                    if (wasAtTop) {
-                        container.scrollTop = 0; // Stick to top for new messages
-                    } else {
-                        // Maintain relative position if content pushed down by new messages at the top
-                        const newScrollHeight = container.scrollHeight;
-                        const heightDifference = newScrollHeight - previousScrollHeight;
-                        if (heightDifference > 0) {
-                            container.scrollTop = previousScrollTop + heightDifference;
-                        } else {
-                            container.scrollTop = previousScrollTop;
-                        }
-                    }
+                } else {
+                    alert('Error deleting message: ' + result.message);
                 }
-            };
+            } catch (err) {
+                console.error('Delete error:', err);
+                alert('Failed to delete message.');
+            }
+        };
 
-            let searchTimeout = null;
-            searchInput.addEventListener('input', () => {
-                clearTimeout(searchTimeout);
-                // Reset states for a fresh search from the database
-                allAlarms = [];
-                alarmsBody.innerHTML = '';
-                hasReachedEnd = false;
-                isLoadingMore = false;
-                loading.style.display = 'block';
-                loading.innerText = 'Searching...';
+        window.toggleLock = async (msgId, btn) => {
+            const isLocked = btn.classList.contains('locked');
+            const newState = !isLocked;
 
-                searchTimeout = setTimeout(() => {
-                    fetchAlarms();
-                }, 400); // 400ms debounce
+            try {
+                const response = await fetch(`/api/messages/${msgId}/lock`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ protected: newState })
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    btn.classList.toggle('locked', newState);
+                    const icon = btn.querySelector('i');
+                    icon.className = newState ? 'fas fa-lock' : 'fas fa-lock-open';
+                    btn.title = newState ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)';
+
+                    const alarm = allAlarms.find(a => a.id === msgId);
+                    if (alarm) alarm.is_protected = newState;
+                }
+            } catch (err) {
+                console.error('Lock error:', err);
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const loading = document.getElementById('loading');
+            const searchInput = document.getElementById('searchInput');
+
+            await fetchSettings();
+            await fetchAlertWords();
+
+            // Initialize DataTables
+            dataTable = $('#alarmsTable').DataTable({
+                stateSave: true,
+                stateDuration: 60 * 60 * 24 * 365, // Persist table settings (page length, sort order, search) for 1 year
+                order: [[1, 'desc']], // Default: timestamp descending
+                pageLength: 50,
+                lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
+                autoWidth: false,
+                language: {
+                    search: "",
+                    searchPlaceholder: "Quick filter...",
+                    lengthMenu: "Show _MENU_ messages",
+                    info: "Showing _START_ to _END_ of _TOTAL_ messages",
+                    infoEmpty: "No messages found",
+                    infoFiltered: "(filtered from _MAX_ total)",
+                    zeroRecords: "No matching messages found",
+                    paginate: {
+                        first: "First",
+                        last: "Last",
+                        next: "Next",
+                        previous: "Prev"
+                    }
+                },
+                columnDefs: [
+                    { targets: 0, className: 'col-id id-cell' },
+                    { targets: 1, className: 'col-time ts-cell' },
+                    { targets: 2, className: 'col-meta meta-cell' },
+                    { targets: 3, className: 'col-addr addr-cell' },
+                    { targets: 4, className: 'col-msg msg-cell' },
+                    { targets: 5, className: 'col-actions actions-cell', orderable: false, searchable: false }
+                ]
             });
 
-
-            // Fetch historical logic
-            // Initial data fetch
-            fetchSettings();
-            fetchAlertWords().then(fetchAlarms);
-
-            // Setup Server-Sent Events (SSE) for Real-Time UI updates without polling
-            const evtSource = new EventSource("/stream");
-
-            // RX Indicator flash function
-            const rxIndicator = document.getElementById('rx-indicator');
-            const satIcon = document.getElementById('satellite-icon');
-            function flashRx() {
-                if (rxIndicator) {
-                    rxIndicator.classList.remove('active');
-                    void rxIndicator.offsetWidth; // trigger reflow
-                    rxIndicator.classList.add('active');
-                    setTimeout(() => rxIndicator.classList.remove('active'), 150);
-                }
-
-                if (satIcon) {
-                    satIcon.classList.remove('extreme-pulse');
-                    void satIcon.offsetWidth; // trigger reflow
-                    satIcon.classList.add('extreme-pulse');
-                }
+            // Restore search input from saved state if available
+            const savedState = dataTable.state.loaded();
+            if (savedState && savedState.search && savedState.search.search) {
+                searchInput.value = savedState.search.search;
             }
 
-            // SSE Connection Management
+            // Bind top search input to DataTables search
+            searchInput.addEventListener('input', function () {
+                dataTable.search(this.value).draw();
+            });
+
+            // Fetch initial messages (limit 200)
+            try {
+                const response = await fetch('/api/messages?limit=200');
+                if (!response.ok) throw new Error('Network error');
+                allAlarms = await response.json();
+
+                if (allAlarms.length > 0) {
+                    const rowNodes = allAlarms.map(a => createAlarmRowNode(a));
+                    dataTable.rows.add(rowNodes).draw();
+                }
+
+                loading.style.display = 'none';
+            } catch (error) {
+                console.error('Error fetching messages:', error);
+                loading.innerText = 'Failed to load messages.';
+            }
+
+            // Real-time SSE updates
+            const satIcon = document.getElementById('satellite-icon');
+            const rxIndicator = document.getElementById('rx-indicator');
             const statusMsg = document.getElementById('conn-status-msg');
 
-            evtSource.onopen = function() {
+            const evtSource = new EventSource("/stream");
+
+            evtSource.onopen = function () {
                 satIcon.classList.remove('conn-error');
                 satIcon.classList.add('conn-ok');
                 if (statusMsg) statusMsg.style.display = 'none';
-                console.log("SSE connected");
             };
 
-            evtSource.onerror = function(err) {
+            evtSource.onerror = function () {
                 satIcon.classList.remove('conn-ok');
                 satIcon.classList.add('conn-error');
                 if (statusMsg) {
                     statusMsg.innerText = "Connection Lost";
                     statusMsg.style.display = 'block';
                 }
-                console.error("SSE Error:", err);
             };
 
             evtSource.onmessage = function (event) {
+                // Flash activity
+                satIcon.classList.remove('extreme-pulse');
+                void satIcon.offsetWidth;
+                satIcon.classList.add('extreme-pulse');
+
+                if (rxIndicator) {
+                    rxIndicator.classList.add('rx-active');
+                    setTimeout(() => rxIndicator.classList.remove('rx-active'), 800);
+                }
+
                 const data = JSON.parse(event.data);
 
-                // Flash the indicator for any activity (message or ping)
-                flashRx();
-
-                if (data.type === 'ping') {
-                    // It's just a keep-alive or a blocked message, do nothing else.
-                    return;
-                }
-
-                // If it's a real message, process it
                 if (!allAlarms.some(a => a.id === data.id)) {
                     allAlarms.unshift(data);
-                    if (allAlarms.length > 500) allAlarms.pop();
+                    if (allAlarms.length > 1000) allAlarms.pop();
 
-                    loading.style.display = 'none';
+                    const newRow = createAlarmRowNode(data);
+                    newRow.classList.add('new-msg-pulse');
 
-                    // Save scroll position for stick-to-top logic
-                    const container = document.querySelector('.table-container');
-                    const wasAtTop = container.scrollTop < 50;
-
-                    if (!searchInput.value) {
-                        // OPTIMIZED: Prepend row instead of full render
-                        const previousScrollHeight = container.scrollHeight;
-                        const newRow = createAlarmRow(data);
-                        alarmsBody.prepend(newRow);
-
-                        // Prevent infinite DOM growth on client side
-                        if (alarmsBody.children.length > 500) {
-                            alarmsBody.lastElementChild.remove();
-                        }
-
-                        if (wasAtTop) {
-                            container.scrollTop = 0;
-                        } else {
-                            // Maintain scroll relative to view by compensating for new row height
-                            container.scrollTop += (container.scrollHeight - previousScrollHeight);
-                        }
-                    } else {
-                        // If searching, see if incoming message matches the query before injecting
-                        const q = searchInput.value.toLowerCase().normalize("NFC");
-                        const addr = String(data.address).toLowerCase().normalize("NFC");
-                        const msgStr = String(data.message).toLowerCase().normalize("NFC");
-                        const al = data.alias ? String(data.alias).toLowerCase().normalize("NFC") : "";
-
-                        if (addr.includes(q) || msgStr.includes(q) || al.includes(q)) {
-                            const newRow = createAlarmRow(data);
-                            alarmsBody.prepend(newRow);
-                        }
+                    if (dataTable) {
+                        dataTable.row.add(newRow).draw(false);
                     }
                 }
             };
 
-            // Infinite Scroll Detection
-            const tableContainer = document.querySelector('.table-container');
-            const topBtn = document.getElementById('scrollToTop');
-
-            tableContainer.addEventListener('scroll', () => {
-                // Scroll to top button visibility
-                if (tableContainer.scrollTop > 300) {
-                    topBtn.classList.add('show');
-                } else {
-                    topBtn.classList.remove('show');
-                }
-
-                // Check for bottom reach
-                const threshold = 100;
-                if (tableContainer.scrollHeight - tableContainer.scrollTop - tableContainer.clientHeight < threshold) {
-                    if (allAlarms.length > 0 && !isLoadingMore && !hasReachedEnd) {
-                        const oldestId = allAlarms[allAlarms.length - 1].id;
-                        fetchAlarms(oldestId);
-                    }
-                }
-            });
-
-            window.scrollToTop = () => {
-                tableContainer.scrollTo({ top: 0, behavior: 'smooth' });
-            };
-
-            // Custom Confirm Helper
-            let confirmResolve = null;
-            window.showConfirm = (title, message, actionLabel = 'Delete') => {
-                document.getElementById('confirmTitle').innerText = title;
-                document.getElementById('confirmMessage').innerText = message;
-                document.getElementById('confirmActionBtn').innerText = actionLabel;
-                document.getElementById('confirmModal').classList.add('show');
-
-                return new Promise(resolve => {
-                    confirmResolve = resolve;
-                    document.getElementById('confirmActionBtn').onclick = () => {
-                        document.getElementById('confirmModal').classList.remove('show');
-                        resolve(true);
-                    };
-                });
-            };
-
-            window.closeConfirm = (val) => {
-                document.getElementById('confirmModal').classList.remove('show');
-                if (confirmResolve) confirmResolve(val);
-            };
-
-            window.deleteMessage = async (msgId, btn) => {
-                const confirmed = await showConfirm('Delete Message', 'Are you sure you want to permanently delete this message?');
-                if (!confirmed) return;
-
-                try {
-                    const response = await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
-                    const result = await response.json();
-
-                    if (result.status === 'success') {
-                        // Remove from local array
-                        allAlarms = allAlarms.filter(a => a.id !== msgId);
-                        // Refresh display
-                        renderAlarms(true);
-                    } else {
-                        alert('Error deleting message: ' + result.message);
-                    }
-                } catch (err) {
-                    console.error('Delete error:', err);
-                    alert('Failed to delete message.');
-                }
-            };
-
-            window.toggleLock = async (msgId, btn) => {
-                const isLocked = btn.classList.contains('locked');
-                const newState = !isLocked;
-
-                try {
-                    const response = await fetch(`/api/messages/${msgId}/lock`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ protected: newState })
-                    });
-                    const result = await response.json();
-
-                    if (result.status === 'success') {
-                        // Update UI button
-                        btn.classList.toggle('locked', newState);
-                        const icon = btn.querySelector('i');
-                        icon.className = newState ? 'fas fa-lock' : 'fas fa-lock-open';
-                        btn.title = newState ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)';
-                        
-                        // Update local data
-                        const alarm = allAlarms.find(a => a.id === msgId);
-                        if (alarm) alarm.is_protected = newState;
-                    }
-                } catch (err) {
-                    console.error('Lock error:', err);
-                }
-            };
-            // Modal Form Submission Handling
+            // Handle alias modal save
             const aliasModalForm = document.getElementById('aliasModalForm');
-            const modalStatus = document.getElementById('modalStatus');
             const modalSaveBtn = document.getElementById('modalSaveBtn');
 
             aliasModalForm.addEventListener('submit', (e) => {
@@ -677,23 +703,16 @@
                     .then(res => res.json())
                     .then(data => {
                         if (data.status === 'success') {
-                            // Apply alias immediately to local data matching address
                             allAlarms.forEach(alarm => {
                                 if (alarm.address === payload.address) alarm.alias = payload.alias;
                             });
 
-                            // Ensure fresh data is loaded so unmuted capcodes reappear
-                            allAlarms = [];
-                            document.getElementById('alarmsBody').innerHTML = '';
-                            hasReachedEnd = false; // Reset pagination
-                            isLoadingMore = false;
-
-                            // Show loading text again
-                            document.getElementById('loading').style.display = 'block';
-                            document.getElementById('loading').innerText = 'Loading messages...';
-
-                            fetchAlarms(); // Re-fetch from DB
-
+                            // Re-render table with updated alias labels
+                            if (dataTable) {
+                                dataTable.clear();
+                                const rowNodes = allAlarms.map(a => createAlarmRowNode(a));
+                                dataTable.rows.add(rowNodes).draw();
+                            }
                             closeAliasModal();
                         } else {
                             alert('Error: ' + data.message);
@@ -708,7 +727,6 @@
                         modalSaveBtn.disabled = false;
                     });
             });
-
         });
     </script>
 </body>

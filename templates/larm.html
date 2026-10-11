@@ -29,27 +29,45 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.75rem;
-            gap: 1rem;
+            margin-bottom: 0.25rem;
+            gap: 0.75rem;
             flex-wrap: wrap;
+            padding: 0.35rem 0.25rem 0.15rem 0.25rem;
+        }
+
+        .dt-container .dt-length {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
         }
 
         .dt-container .dt-length select {
             background: var(--input-bg, #0d1117);
             border: 1px solid var(--panel-border, #1f2937);
-            border-radius: 8px;
-            padding: 0.35rem 0.6rem;
+            border-radius: 6px;
+            padding: 0.15rem 0.5rem;
+            height: 28px;
+            font-size: 0.8rem;
             color: var(--text-primary);
             outline: none;
             cursor: pointer;
-            margin: 0 0.4rem;
+            margin: 0 0.35rem;
+        }
+
+        .dt-container .dt-search {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
         }
 
         .dt-container .dt-search input {
             background: var(--input-bg, #0d1117);
             border: 1px solid var(--panel-border, #1f2937);
-            border-radius: 8px;
-            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            padding: 0.2rem 0.65rem;
+            height: 28px;
+            font-size: 0.8rem;
             color: var(--text-primary);
             outline: none;
             transition: all 0.2s;
@@ -110,21 +128,24 @@
             table-layout: auto !important;
             border-collapse: separate !important;
             border-spacing: 0 8px !important;
-            margin-top: 0.25rem !important;
+            margin-top: 0.15rem !important;
             margin-bottom: 0.5rem !important;
         }
 
         table.dataTable.larm-dt thead th {
-            background: transparent !important;
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 50 !important;
+            background: var(--panel-bg, #0a0a0a) !important;
             color: var(--text-secondary) !important;
-            border-bottom: 1px solid var(--panel-border) !important;
+            border-bottom: 2px solid var(--panel-border, #1f2937) !important;
             font-size: 0.75rem !important;
             text-transform: uppercase !important;
             letter-spacing: 0.05em !important;
-            padding: 0.6rem 0.8rem !important;
+            padding: 0.5rem 0.8rem !important;
             cursor: pointer;
             white-space: nowrap !important;
-            position: relative;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
         }
 
         table.dataTable.larm-dt thead th:hover {
@@ -156,9 +177,24 @@
 
         table.dataTable.larm-dt th.col-addr,
         table.dataTable.larm-dt td.addr-cell {
-            width: 1% !important;
-            white-space: nowrap !important;
-            padding: 0.6rem 0.8rem !important;
+            width: 140px !important;
+            min-width: 120px !important;
+            max-width: 150px !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            line-height: 1.3 !important;
+            padding: 0.6rem 0.75rem !important;
+        }
+
+        table.dataTable.larm-dt td.addr-cell .badge {
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            line-height: 1.3 !important;
+            display: inline-block !important;
+            text-align: left !important;
+            max-width: 100% !important;
         }
 
         table.dataTable.larm-dt th.col-hit,
@@ -285,7 +321,7 @@
             </header>
 
             <main>
-                <div class="glass-panel table-container" style="padding: 1.25rem;">
+                <div class="glass-panel table-container" style="padding: 0 1rem 0.5rem 1rem;">
                     <table id="alarmsTable" class="dataTable larm-dt">
                         <thead>
                             <tr>
@@ -562,6 +598,8 @@
 
             // Initialize DataTables
             dataTable = $('#alarmsTable').DataTable({
+                stateSave: true,
+                stateDuration: 60 * 60 * 24 * 365, // Persist table settings (page length, sort order, search) for 1 year
                 order: [[1, 'desc']], // Sort by timestamp descending
                 pageLength: 50,
                 lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
@@ -591,6 +629,12 @@
                     { targets: 6, className: 'col-actions actions-cell', orderable: false, searchable: false }
                 ]
             });
+
+            // Restore search input from saved state if available
+            const savedState = dataTable.state.loaded();
+            if (savedState && savedState.search && savedState.search.search) {
+                searchInput.value = savedState.search.search;
+            }
 
             // Bind top search input to DataTables search
             searchInput.addEventListener('input', function () {
