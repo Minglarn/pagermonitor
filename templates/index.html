@@ -221,6 +221,94 @@
         tr.new-msg-pulse {
             animation: messageFlash 2s ease-out;
         }
+
+        /* System Event Row Styling */
+        tr.system-event-row {
+            background: rgba(245, 158, 11, 0.05) !important;
+            border-left: 3px solid #f59e0b !important;
+        }
+        tr.system-event-row:hover {
+            background: rgba(245, 158, 11, 0.1) !important;
+        }
+
+        /* Floating Toast Notifications */
+        .toast-container {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: none;
+        }
+
+        .toast-item {
+            pointer-events: auto;
+            min-width: 320px;
+            max-width: 440px;
+            background: rgba(15, 23, 42, 0.94);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(245, 158, 11, 0.45);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(245, 158, 11, 0.2);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: #f1f5f9;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            animation: toastSlideIn 0.35s ease-out;
+            transition: all 0.3s ease;
+        }
+
+        .toast-item.hide {
+            opacity: 0;
+            transform: translateX(30px);
+        }
+
+        .toast-item .toast-icon {
+            color: #f59e0b;
+            font-size: 1.25rem;
+            margin-top: 2px;
+        }
+
+        .toast-item .toast-body {
+            flex: 1;
+        }
+
+        .toast-item .toast-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #fbbf24;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 2px;
+        }
+
+        .toast-item .toast-text {
+            font-size: 0.8rem;
+            color: #cbd5e1;
+            line-height: 1.4;
+        }
+
+        .toast-item .toast-close {
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 1.1rem;
+            line-height: 1;
+            cursor: pointer;
+            padding: 0 4px;
+        }
+
+        .toast-item .toast-close:hover {
+            color: #f1f5f9;
+        }
+
+        @keyframes toastSlideIn {
+            from { opacity: 0; transform: translateY(-15px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
     </style>
 
     <script>
@@ -335,6 +423,9 @@
         </div>
     </div>
 
+    <!-- Floating System Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <!-- Quick Alias Modal -->
     <div id="aliasModal" class="modal-overlay">
         <div class="modal-content">
@@ -433,19 +524,63 @@
             return highlightMessage(formatted);
         }
 
+        function showSystemToast(title, message) {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = 'toast-item';
+            toast.innerHTML = `
+                <i class="fas fa-sync-alt toast-icon"></i>
+                <div class="toast-body">
+                    <div class="toast-title">${title}</div>
+                    <div class="toast-text">${message}</div>
+                </div>
+                <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+            `;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('hide');
+                setTimeout(() => toast.remove(), 350);
+            }, 8000);
+        }
+
         function createAlarmRowNode(alarm) {
             const tr = document.createElement('tr');
             tr.setAttribute('data-id', alarm.id);
 
-            const hasAlert = alertWords.some(aw => aw.is_active && (alarm.message || '').toUpperCase().includes(aw.word.toUpperCase()));
-            if (hasAlert) {
-                tr.classList.add('alert-row', 'alert-pulse-bg');
-            }
+            const isSystem = alarm.address === 'SYSTEM' || alarm.frequency === 'RESTART' || alarm.is_system;
 
             const dateObj = new Date(alarm.timestamp);
             const dateStr = dateObj.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
             const timeStr = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
             const formattedTime = `${dateStr}<br>${timeStr}`;
+
+            if (isSystem) {
+                tr.classList.add('system-event-row');
+                const displayInstance = alarm.alias ? alarm.alias : 'System';
+                tr.innerHTML = `
+                    <td class="id-cell"><span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-weight: 700;">SYS</span></td>
+                    <td class="ts-cell" data-order="${alarm.timestamp}">${formattedTime}</td>
+                    <td class="meta-cell"><span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); font-weight: 700;">RESTART</span></td>
+                    <td class="addr-cell">
+                        <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent); font-weight: 600;">${displayInstance}</span>
+                    </td>
+                    <td class="msg-cell" style="color: #fcd34d; font-family: var(--msg-font, 'JetBrains Mono', monospace);"><i class="fas fa-sync-alt" style="margin-right: 6px; color: #f59e0b;"></i>${alarm.message}</td>
+                    <td class="actions-cell">
+                        <div class="actions-wrapper">
+                            <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete system entry">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                return tr;
+            }
+
+            const hasAlert = alertWords.some(aw => aw.is_active && (alarm.message || '').toUpperCase().includes(aw.word.toUpperCase()));
+            if (hasAlert) {
+                tr.classList.add('alert-row', 'alert-pulse-bg');
+            }
 
             const displayAddress = alarm.alias ? alarm.alias : alarm.address;
             const bitrateTag = alarm.bitrate ? `<span class="badge meta">${alarm.bitrate}bps</span>` : '';
@@ -666,6 +801,10 @@
                 }
 
                 const data = JSON.parse(event.data);
+
+                if (data.frequency === 'RESTART' || data.address === 'SYSTEM' || data.is_system) {
+                    showSystemToast(`SDR Watchdog: ${data.alias || 'Receiver'} Restarted`, data.message);
+                }
 
                 if (!allAlarms.some(a => a.id === data.id)) {
                     allAlarms.unshift(data);

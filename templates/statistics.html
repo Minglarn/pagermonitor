@@ -11,6 +11,11 @@
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- DataTables 2 CSS & Dependencies -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
+
     <script>
         // Apply theme immediately to prevent flickering
         (function () {
@@ -39,6 +44,210 @@
         }
     </script>
     <style>
+        /* Custom OLED / Glassmorphism styling for DataTables 2 */
+        .dt-container {
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            width: 100%;
+        }
+
+        .dt-container .dt-layout-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.35rem;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            padding: 0.35rem 0.25rem 0.15rem 0.25rem;
+        }
+
+        .dt-container .dt-length {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+        }
+
+        .dt-container .dt-length select {
+            background: var(--input-bg, #0d1117);
+            border: 1px solid var(--panel-border, #1f2937);
+            border-radius: 6px;
+            padding: 0.15rem 0.5rem;
+            height: 28px;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            outline: none;
+            cursor: pointer;
+            margin: 0 0.35rem;
+        }
+
+        .dt-container .dt-search {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .dt-container .dt-search input {
+            background: var(--input-bg, #0d1117);
+            border: 1px solid var(--panel-border, #1f2937);
+            border-radius: 6px;
+            padding: 0.2rem 0.65rem;
+            height: 28px;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .dt-container .dt-search input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .dt-container .dt-info {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            padding: 0.5rem 0;
+        }
+
+        .dt-container .dt-paging {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 0.5rem 0;
+        }
+
+        .dt-container .dt-paging .dt-paging-button {
+            background: transparent !important;
+            border: 1px solid transparent !important;
+            color: var(--text-secondary) !important;
+            border-radius: 6px !important;
+            padding: 0.35rem 0.75rem !important;
+            margin: 0 1px !important;
+            cursor: pointer !important;
+            transition: all 0.2s !important;
+            user-select: none;
+        }
+
+        .dt-container .dt-paging .dt-paging-button:hover:not(.disabled) {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: var(--text-primary) !important;
+        }
+
+        .dt-container .dt-paging .dt-paging-button.current,
+        .dt-container .dt-paging .dt-paging-button.current:hover {
+            background: var(--accent, #38bdf8) !important;
+            color: #ffffff !important;
+            border-color: var(--accent, #38bdf8) !important;
+            font-weight: 600 !important;
+        }
+
+        .dt-container .dt-paging .dt-paging-button.disabled,
+        .dt-container .dt-paging .dt-paging-button.disabled:hover {
+            opacity: 0.35 !important;
+            cursor: not-allowed !important;
+        }
+
+        /* Table Auto-sizing */
+        table.dataTable.stats-dt {
+            width: 100% !important;
+            table-layout: auto !important;
+            border-collapse: separate !important;
+            border-spacing: 0 8px !important;
+            margin-top: 0.15rem !important;
+            margin-bottom: 0.5rem !important;
+        }
+
+        table.dataTable.stats-dt thead th {
+            position: sticky !important;
+            top: 0 !important;
+            z-index: 50 !important;
+            background: var(--panel-bg, #0a0a0a) !important;
+            color: var(--text-secondary) !important;
+            border-bottom: 2px solid var(--panel-border, #1f2937) !important;
+            font-size: 0.75rem !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+            padding: 0.5rem 0.8rem !important;
+            cursor: pointer;
+            white-space: nowrap !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+        }
+
+        table.dataTable.stats-dt thead th:hover {
+            color: var(--accent) !important;
+        }
+
+        /* Specific column sizing */
+        table.dataTable.stats-dt th.col-id,
+        table.dataTable.stats-dt td.id-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            padding: 0.6rem 0.5rem !important;
+        }
+
+        table.dataTable.stats-dt th.col-time,
+        table.dataTable.stats-dt td.ts-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            padding: 0.6rem 0.8rem !important;
+        }
+
+        table.dataTable.stats-dt th.col-meta,
+        table.dataTable.stats-dt td.meta-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            padding: 0.6rem 0.8rem !important;
+        }
+
+        /* CapCode (Alias) column with line breaking support */
+        table.dataTable.stats-dt th.col-addr,
+        table.dataTable.stats-dt td.addr-cell {
+            width: 140px !important;
+            min-width: 120px !important;
+            max-width: 155px !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            line-height: 1.3 !important;
+            padding: 0.6rem 0.75rem !important;
+        }
+
+        table.dataTable.stats-dt td.addr-cell .badge {
+            white-space: normal !important;
+            word-break: break-word !important;
+            overflow-wrap: break-word !important;
+            line-height: 1.3 !important;
+            display: inline-block !important;
+            text-align: left !important;
+            max-width: 100% !important;
+        }
+
+        table.dataTable.stats-dt th.col-actions,
+        table.dataTable.stats-dt td.actions-cell {
+            width: 1% !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            padding: 0.6rem 0.5rem !important;
+        }
+
+        table.dataTable.stats-dt th.col-msg,
+        table.dataTable.stats-dt td.msg-cell {
+            width: auto !important;
+            word-break: break-word !important;
+            padding: 0.6rem 1rem !important;
+        }
+
+        /* System Event Row Styling */
+        tr.system-event-row {
+            background: rgba(245, 158, 11, 0.05) !important;
+            border-left: 3px solid #f59e0b !important;
+        }
+        tr.system-event-row:hover {
+            background: rgba(245, 158, 11, 0.1) !important;
+        }
         .date-picker-input {
             color-scheme: dark;
             background: var(--input-bg, #0d1117);
@@ -208,20 +417,20 @@
                 </section>
 
                 <section class="glass-panel" style="margin-top: 1.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
                         <h2 id="tableSectionTitle" style="margin: 0;">Messages for Selected Period</h2>
                         <span id="filteredCountBadge" class="badge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent); font-weight: 600;">0 messages</span>
                     </div>
-                    <div id="dayTableContainer" class="table-container" style="max-height: 500px;">
-                        <table id="dayTable">
+                    <div id="dayTableContainer" class="table-container" style="max-height: 600px; overflow-y: auto;">
+                        <table id="dayTable" class="dataTable stats-dt">
                             <thead>
                                 <tr>
-                                    <th>#</th>
-                                    <th>Time</th>
-                                    <th>Frequency</th>
-                                    <th>CapCode (Alias)</th>
-                                    <th>Message</th>
-                                    <th>Actions</th>
+                                    <th class="col-id">#</th>
+                                    <th class="col-time">Time</th>
+                                    <th class="col-meta">Frequency / Meta</th>
+                                    <th class="col-addr">CapCode (Alias)</th>
+                                    <th class="col-msg">Message</th>
+                                    <th class="col-actions">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="dayTableBody"></tbody>
@@ -412,14 +621,72 @@
             await loadRangeData(startStr, endStr);
         }
 
+        let statDataTable = null;
+
+        function createStatRowNode(m) {
+            const tr = document.createElement('tr');
+            const time = new Date(m.timestamp).toLocaleString('sv-SE', {
+                month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+            const safeMsg = m.message ? m.message.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+
+            const isSystem = m.address === 'SYSTEM' || m.frequency === 'RESTART' || m.is_system;
+            if (isSystem) {
+                tr.classList.add('system-event-row');
+                const displayInstance = m.alias ? m.alias : 'System';
+                tr.innerHTML = `
+                    <td class="id-cell"><span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-weight: 700;">SYS</span></td>
+                    <td class="ts-cell" data-order="${m.timestamp}">${time}</td>
+                    <td class="meta-cell"><span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); font-weight: 700;">RESTART</span></td>
+                    <td class="addr-cell">
+                        <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent); font-weight: 600;">${displayInstance}</span>
+                    </td>
+                    <td class="msg-cell" style="color: #fcd34d;"><i class="fas fa-sync-alt" style="margin-right: 6px; color: #f59e0b;"></i>${safeMsg}</td>
+                    <td class="actions-cell">
+                        <div class="actions-wrapper">
+                            <button class="delete-btn" onclick="deleteMessage(${m.id}, this)" title="Delete system entry">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                return tr;
+            }
+
+            const displayAddress = m.alias || m.address;
+            const freq = m.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${m.frequency}</span>` : '<span class="badge meta">-</span>';
+            const bitrateTag = m.bitrate ? `<span class="badge meta" style="margin-left: 4px;">${m.bitrate}bps</span>` : '';
+            const funcLabel = (m.function !== undefined && m.function !== null) ? ((m.function === 0 || m.function === 3) ? "Alpha" : "Num") : "";
+            const funcTag = funcLabel ? `<span class="badge meta" style="margin-left: 4px;">${funcLabel}</span>` : '';
+            const duplicateTag = m.is_duplicate ? `<span class="badge warning meta" style="margin-left: 4px;">Duplicate</span>` : '';
+
+            tr.innerHTML = `
+                <td class="id-cell">${m.id}</td>
+                <td class="ts-cell" data-order="${m.timestamp}">${time}</td>
+                <td class="meta-cell">${freq}${bitrateTag}${funcTag}${duplicateTag}</td>
+                <td class="addr-cell"><span class="badge" title="${m.address}">${displayAddress}</span></td>
+                <td class="msg-cell">${safeMsg}</td>
+                <td class="actions-cell">
+                    <div class="actions-wrapper">
+                        <button class="lock-btn ${m.is_protected ? 'locked' : ''}" onclick="toggleLock(${m.id}, this)" title="${m.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
+                            <i class="fas ${m.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
+                        </button>
+                        <div class="btn-divider"></div>
+                        <button class="delete-btn" onclick="deleteMessage(${m.id}, this)" title="Delete message">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </div>
+                </td>
+            `;
+            return tr;
+        }
+
         async function loadRangeData(startDate, endDate) {
-            const tableBody = document.getElementById('dayTableBody');
             const loading = document.getElementById('dayLoading');
             const tableTitle = document.getElementById('tableSectionTitle');
             const chartTitle = document.getElementById('activityChartTitle');
             const countBadge = document.getElementById('filteredCountBadge');
 
-            tableBody.innerHTML = '';
             loading.style.display = 'block';
 
             if (startDate === endDate) {
@@ -436,37 +703,14 @@
                 loading.style.display = 'none';
                 countBadge.innerText = `${msgs.length} messages`;
 
-                if (msgs.length === 0) {
-                    tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No messages found for this period.</td></tr>';
-                } else {
-                    msgs.forEach(m => {
-                        const tr = document.createElement('tr');
-                        const time = new Date(m.timestamp).toLocaleString('sv-SE', {
-                            month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit'
-                        });
-                        const address = m.alias || m.address;
-                        const freq = m.frequency || '-';
-                        const bitrateTag = m.bitrate ? `<span class="badge meta">${m.bitrate}bps</span>` : '';
-                        tr.innerHTML = `
-                            <td class="id-cell">${m.id}</td>
-                            <td class="ts-cell">${time}</td>
-                            <td class="addr-cell"><span class="badge" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">${freq}</span>${bitrateTag}</td>
-                            <td class="addr-cell"><span class="badge">${address}</span></td>
-                            <td class="msg-cell">${m.message}</td>
-                            <td class="actions-cell">
-                                <div class="actions-wrapper">
-                                    <button class="lock-btn ${m.is_protected ? 'locked' : ''}" onclick="toggleLock(${m.id}, this)" title="${m.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
-                                        <i class="fas ${m.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
-                                    </button>
-                                    <div class="btn-divider"></div>
-                                    <button class="delete-btn" onclick="deleteMessage(${m.id}, this)" title="Delete message">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </div>
-                            </td>
-                        `;
-                        tableBody.appendChild(tr);
-                    });
+                if (statDataTable) {
+                    statDataTable.clear();
+                    if (msgs.length > 0) {
+                        const rowNodes = msgs.map(m => createStatRowNode(m));
+                        statDataTable.rows.add(rowNodes).draw();
+                    } else {
+                        statDataTable.draw();
+                    }
                 }
 
                 // Fetch activity distribution
@@ -522,11 +766,6 @@
             }
         }
 
-        async function fetchJSON(url) {
-            const res = await fetch(url);
-            return res.json();
-        }
-
         window.deleteMessage = async (msgId, btn) => {
             if (!confirm('Are you sure you want to delete this message?')) return;
 
@@ -535,8 +774,13 @@
                 const result = await response.json();
 
                 if (result.status === 'success') {
-                    const row = btn.closest('tr');
-                    row.remove();
+                    if (statDataTable) {
+                        const tr = $(btn).closest('tr');
+                        statDataTable.row(tr).remove().draw(false);
+                    } else {
+                        const row = btn.closest('tr');
+                        if (row) row.remove();
+                    }
                 } else {
                     alert('Error deleting message: ' + result.message);
                 }
@@ -570,6 +814,39 @@
         };
 
         document.addEventListener('DOMContentLoaded', async () => {
+            // Initialize DataTables 2 for statistics table
+            statDataTable = $('#dayTable').DataTable({
+                stateSave: true,
+                stateDuration: 60 * 60 * 24 * 365,
+                order: [[1, 'desc']], // Timestamp descending
+                pageLength: 50,
+                lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
+                autoWidth: false,
+                language: {
+                    search: "",
+                    searchPlaceholder: "Filter messages...",
+                    lengthMenu: "Show _MENU_ messages",
+                    info: "Showing _START_ to _END_ of _TOTAL_ messages",
+                    infoEmpty: "No messages found",
+                    infoFiltered: "(filtered from _MAX_ total)",
+                    zeroRecords: "No matching messages found",
+                    paginate: {
+                        first: "First",
+                        last: "Last",
+                        next: "Next",
+                        previous: "Prev"
+                    }
+                },
+                columnDefs: [
+                    { targets: 0, className: 'col-id id-cell' },
+                    { targets: 1, className: 'col-time ts-cell' },
+                    { targets: 2, className: 'col-meta meta-cell' },
+                    { targets: 3, className: 'col-addr addr-cell' },
+                    { targets: 4, className: 'col-msg msg-cell' },
+                    { targets: 5, className: 'col-actions actions-cell', orderable: false, searchable: false }
+                ]
+            });
+
             await renderGlobalCharts();
 
             const startPicker = document.getElementById('startDate');
@@ -592,7 +869,7 @@
                     const todayStr = formatDateISO(new Date());
                     startPicker.value = todayStr;
                     endPicker.value = todayStr;
-                    document.getElementById('dayTableBody').innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 2rem;">No history available.</td></tr>';
+                    if (statDataTable) statDataTable.clear().draw();
                 }
             } catch (err) {
                 console.error('Error fetching dates:', err);

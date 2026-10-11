@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.11`
+- **CalVer**: `2026.10.11.1`
 - **Date**: 2026-10-11
 - **Language**: English
 
@@ -70,3 +70,19 @@
   - Alarms endpoint (`/alarms`) and query filtering (`alerts_only=1`).
   - Database statistics endpoint (`/api/database/stats`).
   - Auto-prune logic and timestamp comparison.
+  - Multi-SDR watchdog process monitoring and self-healing.
+
+### 7. Multi-SDR Watchdog & Self-Healing
+- **Automatic Process Crash Recovery**:
+  - Previously, if an SDR background process (`rtl_fm` or `multimon-ng`) crashed, the instance was retained in `active_instances` with dead processes, preventing the supervisor loop from restarting it.
+  - Implemented real-time process monitoring checking `p1.poll()`, `p2.poll()`, and thread liveness.
+  - On unexpected termination, `stop_instance_procs` cleans up remaining resources and triggers an automatic restart with backoff protection to avoid tight CPU loops.
+- **Persistent Logging & Real-time Alerts**:
+  - Automatically records a system event in the database (`messages.db`) upon watchdog recovery (`address: SYSTEM`, `frequency: RESTART`, `alias: <Instance Name>`).
+  - Allows searching and auditing receiver restarts weeks or months later directly in the Dashboard search and Statistics filters.
+  - Pushes an immediate Server-Sent Event (SSE) to all connected clients displaying a floating Toast notification banner and highlighting the recovery row in amber (`RESTART` badge).
+
+### 8. Statistics Table DataTables 2 Migration
+- Converted historical messages table in `statistics.html` to DataTables 2.
+- Resolved column layout overlap where frequency and timestamp badges collided.
+- Added persistent table settings (`stateSave`), customizable pagination (25, 50, 100, All), fast filtering, column sorting, and smooth message deletion/locking.

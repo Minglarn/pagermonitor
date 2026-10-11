@@ -392,6 +392,7 @@ def stop_instance_procs(instance_id):
 def run_sdr_process():
     """Supervisor loop that synchronizes active processes with DB config."""
     logger.info("SDR Supervisor started.")
+    last_restart_attempt = {}
     
     while True:
         try:
@@ -414,21 +415,48 @@ def run_sdr_process():
                 
                 # Check if we need to start or restart
                 should_start = False
+                is_watchdog_restart = False
                 if instance_id not in active_instances:
                     should_start = True
                 else:
-                    # Check if config changed
-                    active_conf = active_instances[instance_id]['config']
-                    changed = False
-                    for k in db_inst.keys():
-                        if str(active_conf.get(k)) != str(db_inst.get(k)):
-                            changed = True
-                            break
-                            
-                    if changed:
-                        logger.info(f"Config change detected for {db_inst['name']}. Restarting...")
+                    inst = active_instances[instance_id]
+                    p1 = inst.get('p1')
+                    p2 = inst.get('p2')
+                    thread = inst.get('thread')
+                    
+                    p1_dead = p1 is not None and p1.poll() is not None
+                    p2_dead = p2 is not None and p2.poll() is not None
+                    thread_dead = thread is not None and not thread.is_alive()
+                    
+                    if p1_dead or p2_dead or thread_dead:
+                        logger.warning(
+                            f"Watchdog: Instance {instance_id} ({db_inst['name']}) died unexpectedly "
+                            f"(p1_dead={p1_dead}, p2_dead={p2_dead}, thread_dead={thread_dead}). Restarting..."
+                        )
                         stop_instance_procs(instance_id)
+                        
+                        # Throttle restart to prevent rapid tight-loops if USB device disconnected
+                        last_time = last_restart_attempt.get(instance_id, 0)
+                        now = time.time()
+                        if now - last_time < 3:
+                            time.sleep(2)
+                        last_restart_attempt[instance_id] = time.time()
+                        
                         should_start = True
+                        is_watchdog_restart = True
+                    else:
+                        # Check if config changed
+                        active_conf = inst['config']
+                        changed = False
+                        for k in db_inst.keys():
+                            if str(active_conf.get(k)) != str(db_inst.get(k)):
+                                changed = True
+                                break
+                                
+                        if changed:
+                            logger.info(f"Config change detected for {db_inst['name']}. Restarting...")
+                            stop_instance_procs(instance_id)
+                            should_start = True
                 
                 if should_start:
                     p1, p2 = start_instance(db_inst)
@@ -446,6 +474,35 @@ def run_sdr_process():
                             'thread': monitor_thread
                         }
                         monitor_thread.start()
+
+                        if is_watchdog_restart:
+                            try:
+                                restart_text = f"Receiver processes died unexpectedly. Instance '{db_inst['name']}' recovered automatically by Watchdog."
+                                row_id, timestamp = save_message(
+                                    address='SYSTEM',
+                                    message=restart_text,
+                                    alias=db_inst['name'],
+                                    frequency='RESTART',
+                                    bitrate='WATCHDOG',
+                                    is_protected=False
+                                )
+                                event_payload = {
+                                    'id': row_id,
+                                    'timestamp': timestamp,
+                                    'address': 'SYSTEM',
+                                    'alias': db_inst['name'],
+                                    'message': restart_text,
+                                    'frequency': 'RESTART',
+                                    'bitrate': 'WATCHDOG',
+                                    'is_duplicate': False,
+                                    'is_protected': False,
+                                    'is_system': True
+                                }
+                                for cb in list(new_message_callbacks):
+                                    try: cb(event_payload)
+                                    except Exception: pass
+                            except Exception as e:
+                                logger.error(f"Failed to record watchdog restart event: {e}")
                     else:
                         logger.error(f"Failed to start {db_inst['name']}. Retrying next sync.")
 
