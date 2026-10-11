@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.11.10] - Prominent Zebra Striping, Edge-to-Edge Dividers & Razor-Sharp Badge Typography
+
+### Added
+- **Prominent Zebra Striping (Dark & Light Themes)**:
+  - Added distinct alternating row backgrounds across DataTables in Dashboard, Alarms, and Statistics views.
+  - In Dark theme: odd rows use `#0a0a0a` and even rows use `#141b24` with high-contrast hover (`rgba(56, 189, 248, 0.12)`).
+  - In Light theme: odd rows use `#ffffff` and even rows use `#eef2f6` with smooth hover (`#e2e8f0`).
+  - Added specialized alternating tinting for highlighted alert rows.
+
+### Fixed
+- **Edge-to-Edge Dividers & Table Alignment**:
+  - Removed inner padding (`padding: 0 !important;`) on table containers so table rows, zebra striping, and column/row dividers extend all the way flush to the outer panel borders.
+  - Relocated control padding to DataTables layout rows (`.dt-layout-row`) for search, page length, and pagination controls.
+  - Added clean cell padding on first and last columns (`1rem`) to keep contents beautifully aligned.
+- **Razor-Sharp Badge/Pill Typography (Removed Filter Effect)**:
+  - Fixed blurry and fuzzy appearance on badges/pills by removing `transform: scale(1.02)` and transform transitions that triggered Chromium GPU subpixel rasterization blur.
+  - Replaced fractional `calc(var(--msg-size) * 0.9)` with clean, crisp `0.8125rem` / `0.72rem` integer font sizing.
+  - Added `-webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: geometricPrecision;`.
+  - Added dedicated `.badge.meta.badge-freq` class with rich, high-contrast colors in both dark and light modes, replacing washed-out inline purple styles.
+
 ## [2026.10.11.9] - Restored Vertical Column Dividers in DataTables
 
 ### Fixed

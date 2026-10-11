@@ -56,10 +56,18 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 0.35rem;
             gap: 0.75rem;
             flex-wrap: wrap;
-            padding: 0.35rem 0.25rem 0.15rem 0.25rem;
+        }
+
+        .dt-container .dt-layout-row:first-child {
+            padding: 0.75rem 1rem 0.4rem 1rem !important;
+            border-bottom: 1px solid var(--panel-border, #1f2937);
+        }
+
+        .dt-container .dt-layout-row:last-child {
+            padding: 0.4rem 1rem 0.75rem 1rem !important;
+            border-top: 1px solid var(--panel-border, #1f2937);
         }
 
         .dt-container .dt-length {
@@ -149,14 +157,13 @@
             cursor: not-allowed !important;
         }
 
-        /* Table Auto-sizing without box-in-box */
+        /* Table Edge-to-edge layout with prominent zebra striping */
         table.dataTable.stats-dt {
             width: 100% !important;
             table-layout: auto !important;
             border-collapse: collapse !important;
             border-spacing: 0 !important;
-            margin-top: 0.15rem !important;
-            margin-bottom: 0.5rem !important;
+            margin: 0 !important;
         }
 
         table.dataTable.stats-dt thead th {
@@ -178,21 +185,53 @@
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
         }
 
+        table.dataTable.stats-dt thead th:first-child {
+            padding-left: 1rem !important;
+        }
+
         table.dataTable.stats-dt thead th:last-child {
             border-right: none !important;
+            padding-right: 1rem !important;
         }
 
         table.dataTable.stats-dt thead th:hover {
             color: var(--accent) !important;
         }
 
+        /* Prominent Zebra Striping - Dark Theme */
         table.dataTable.stats-dt tbody tr {
-            background: transparent !important;
             border-bottom: 1px solid var(--panel-border, #1f2937) !important;
+            transition: background 0.15s ease;
+        }
+
+        table.dataTable.stats-dt tbody tr:nth-child(odd) {
+            background: #0a0a0a !important;
+        }
+
+        table.dataTable.stats-dt tbody tr:nth-child(even) {
+            background: #141b24 !important;
         }
 
         table.dataTable.stats-dt tbody tr:hover {
-            background: rgba(255, 255, 255, 0.035) !important;
+            background: rgba(56, 189, 248, 0.12) !important;
+        }
+
+        /* Light Theme Table Striping */
+        [data-theme="light"] table.dataTable.stats-dt thead th {
+            background: #ffffff !important;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
+        }
+
+        [data-theme="light"] table.dataTable.stats-dt tbody tr:nth-child(odd) {
+            background: #ffffff !important;
+        }
+
+        [data-theme="light"] table.dataTable.stats-dt tbody tr:nth-child(even) {
+            background: #eef2f6 !important;
+        }
+
+        [data-theme="light"] table.dataTable.stats-dt tbody tr:hover {
+            background: #e2e8f0 !important;
         }
 
         table.dataTable.stats-dt tbody td {
@@ -200,17 +239,18 @@
             border-bottom: 1px solid var(--panel-border, #1f2937) !important;
             border-right: 1px solid var(--panel-border, #1f2937) !important;
             border-radius: 0 !important;
-            background: transparent !important;
         }
 
         table.dataTable.stats-dt tbody td:first-child {
             border-radius: 0 !important;
             border-left: none !important;
+            padding-left: 1rem !important;
         }
 
         table.dataTable.stats-dt tbody td:last-child {
             border-radius: 0 !important;
             border-right: none !important;
+            padding-right: 1rem !important;
         }
 
         /* Specific column sizing */
@@ -458,12 +498,12 @@
                     </div>
                 </section>
 
-                <section class="glass-panel" style="margin-top: 1.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                <section class="glass-panel" style="margin-top: 1.5rem; padding: 0; overflow: hidden;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.25rem 0.5rem 1.25rem; flex-wrap: wrap; gap: 0.5rem;">
                         <h2 id="tableSectionTitle" style="margin: 0;">Messages for Selected Period</h2>
-                        <span id="filteredCountBadge" class="badge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent); font-weight: 600;">0 messages</span>
+                        <span id="filteredCountBadge" class="badge" style="font-weight: 600;">0 messages</span>
                     </div>
-                    <div id="dayTableContainer" class="table-container" style="max-height: 600px; overflow-y: auto;">
+                    <div id="dayTableContainer" class="table-container" style="max-height: 600px; overflow-y: auto; padding: 0;">
                         <table id="dayTable" class="dataTable stats-dt">
                             <thead>
                                 <tr>
@@ -711,7 +751,7 @@
             }
 
             const displayAddress = m.alias || m.address;
-            const freq = m.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${m.frequency}</span>` : '<span class="badge meta">-</span>';
+            const freq = m.frequency ? `<span class="badge meta badge-freq">${m.frequency}</span>` : '<span class="badge meta">-</span>';
             const bitrateTag = m.bitrate ? `<span class="badge meta">${m.bitrate}bps</span>` : '';
             const funcLabel = (m.function !== undefined && m.function !== null) ? ((m.function === 0 || m.function === 3) ? "Alpha" : "Num") : "";
             const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';

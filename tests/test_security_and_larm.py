@@ -139,7 +139,7 @@ def test_settings_page_renders_with_autosave_and_wide_layout(client):
     assert 'autoSaveBadge' in html
     assert 'previewTextContent' in html
     assert 'addSdrModal' in html
-    assert 'v2026.10.11.9' in html
+    assert 'v2026.10.11.10' in html
 
 def test_settings_autosave_api(client):
     """Verifiera att uppdatering av visningsinställningar via POST /api/settings lyckas."""

@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.11.3`
+- **CalVer**: `2026.10.11.10`
 - **Date**: 2026-10-11
 - **Language**: English
 
@@ -228,6 +228,26 @@
 - **Åtgärd**:
   - Återställde `border-right: 1px solid var(--panel-border)` på samtliga kolumnhuvuden (`thead th`) och databoxar (`tbody td`) i Dashboard, Larm och Statistik.
   - Sista kolumnen (`:last-child`) hålls fri från `border-right` så att tabellens yttre ram förblir ren och snygg.
+
+### 21. Markant Zebra-mönster, Kant-till-Kant Avdelare & Knivskarpa Piller (v2026.10.11.10)
+- **Problem**:
+  - Tabellerna saknade tydlig radseparation (zebra-mönster), vilket gjorde det svårare att följa rader med mycket text.
+  - Tabellens avdelare och rader gick inte ända ut till panelens ytterkant på grund av inre containerpadding (`0.5rem`).
+  - Texten i alias- och meta-pillren (`.badge`) upplevdes suddig med filterkänsla på grund av GPU subpixel-skalning (`transform: scale(1.02)`), fraktionella typsnittsstorlekar (`calc(var(--msg-size) * 0.9)`) samt låg kontrast i ljust och mörkt läge.
+- **Åtgärd**:
+  - **Markant Zebra-mönster**:
+    - Mörkt läge: Udda rader har `#0a0a0a` och jämna rader har `#141b24` med distinkt blåtonad hover (`rgba(56, 189, 248, 0.12)`).
+    - Ljust läge: Udda rader har `#ffffff` och jämna rader har `#eef2f6` med tydlig hover (`#e2e8f0`).
+    - Larmrader har anpassad randning med distinkta rödtoner.
+  - **Avdelare ända ut till kanten**:
+    - Tog bort inline padding på tabellcontainrarna (`padding: 0 !important;`) och satte tabellerna till 100% bredd utan yttre marginal.
+    - Flyttade kontrollpadding till DataTables över- och undersektioner (`.dt-layout-row`).
+    - Lade till padding (`1rem`) på första och sista cellerna i tabellen så att innehållet hålls snyggt innanför medan avdelare och radbakgrunder går 100% kant-i-kant.
+  - **Knivskarp Piller-typografi**:
+    - Tog bort all `transform: scale(1.02)` och transition-scale som skapade suddig rasterisering.
+    - Bytte fraktionell fontstorlek mot fasta, skarpa integer rem-storlekar (`0.8125rem` / `0.72rem`).
+    - Lade till `-webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: geometricPrecision;`.
+    - Skapade dedikerad `.badge.meta.badge-freq`-klass med hög kontrast och ersatte tvättade inline-stilar.
 
 
 

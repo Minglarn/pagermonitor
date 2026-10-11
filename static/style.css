@@ -627,25 +627,31 @@ tr:hover td {
     margin: 0 1rem;
 }
 
-/* Badge for Address */
+/* Badge for Address and Tags - Razor Sharp Typography */
 .badge {
     display: inline-block;
     max-width: 100%;
     vertical-align: middle;
-    background: var(--badge-bg);
-    color: var(--accent);
-    padding: 0.3rem 0.6rem;
+    background: rgba(56, 189, 248, 0.12);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    padding: 0.25rem 0.55rem;
     border-radius: 6px;
-    font-family: var(--msg-font);
-    font-size: calc(var(--msg-size) * 0.9);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.8125rem;
     font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: 0.01em;
     cursor: pointer;
-    transition: background 0.2s ease, transform 0.1s ease;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: geometricPrecision;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
 .badge:hover {
-    background: rgba(88, 166, 255, 0.25);
-    transform: scale(1.02);
+    background: rgba(56, 189, 248, 0.22);
+    border-color: rgba(56, 189, 248, 0.6);
 }
 
 .msg-cell {
@@ -703,33 +709,83 @@ th:first-child,
 
 /* Badge Variations */
 .badge.success {
-    background: rgba(46, 160, 67, 0.15);
-    color: #3fb950;
-    border: 1px solid rgba(46, 160, 67, 0.4);
+    background: rgba(16, 185, 129, 0.18);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.45);
 }
 
 .badge.danger {
-    background: rgba(239, 68, 68, 0.15);
-    color: var(--danger);
-    border: 1px solid rgba(239, 68, 68, 0.4);
+    background: rgba(239, 68, 68, 0.18);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.45);
 }
 
 .badge.warning {
-    background: rgba(245, 158, 11, 0.15);
-    color: var(--warning);
-    border: 1px solid rgba(245, 158, 11, 0.4);
-    font-size: 0.7rem;
-    padding: 0.15rem 0.4rem;
+    background: rgba(245, 158, 11, 0.18);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    font-size: 0.72rem;
+    padding: 0.18rem 0.45rem;
+    font-weight: 600;
 }
 
 .badge.meta {
-    background: rgba(148, 163, 184, 0.1);
-    color: var(--text-secondary);
-    font-size: 0.7rem;
-    padding: 0.15rem 0.4rem;
-    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.18rem 0.45rem;
+    border: 1px solid rgba(255, 255, 255, 0.18);
     margin-left: 0.2rem;
     vertical-align: middle;
+}
+
+.badge.meta.badge-freq {
+    background: rgba(168, 85, 247, 0.18);
+    color: #d8b4fe;
+    border: 1px solid rgba(168, 85, 247, 0.45);
+}
+
+/* Light Mode Badges - High contrast, sharp readability */
+[data-theme="light"] .badge {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+}
+
+[data-theme="light"] .badge:hover {
+    background: #bae6fd;
+    border-color: #38bdf8;
+}
+
+[data-theme="light"] .badge.meta {
+    background: #f1f5f9;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+}
+
+[data-theme="light"] .badge.meta.badge-freq {
+    background: #f3e8ff;
+    color: #6b21a8;
+    border: 1px solid #c084fc;
+}
+
+[data-theme="light"] .badge.warning {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+[data-theme="light"] .badge.success {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #86efac;
+}
+
+[data-theme="light"] .badge.danger {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fca5a5;
 }
 
 /* Alert Word Styling */
