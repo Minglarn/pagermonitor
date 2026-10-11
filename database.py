@@ -28,7 +28,9 @@ def get_default_settings():
         'ppm_error': '0',
         'multimon_input_type': 'raw',
         'garbage_filter': 'true',
-        'garbage_filter_sensitivity': '50'
+        'garbage_filter_sensitivity': '50',
+        'auto_prune_enabled': 'true',
+        'auto_prune_days': '30'
     }
 
 def init_db():
@@ -583,17 +585,135 @@ def toggle_sdr_instance(instance_id, enabled):
 def clear_messages():
     """Delete all messages from the database."""
     conn = sqlite3.connect(DB_PATH)
-    c = conn.cursor()
-    c.execute('DELETE FROM messages')
-    c.execute('VACUUM')
-    conn.commit()
-    conn.close()
+    try:
+        c = conn.cursor()
+        c.execute('DELETE FROM messages')
+        conn.commit()
+        conn.isolation_level = None
+        c.execute('VACUUM')
+    finally:
+        conn.close()
 
 def prune_messages(days):
     """Delete messages older than X days, except protected ones."""
     conn = sqlite3.connect(DB_PATH)
+    try:
+        c = conn.cursor()
+        # Replace 'T' with space and use 'localtime' for accurate timestamp comparison
+        c.execute("""
+            DELETE FROM messages 
+            WHERE datetime(replace(timestamp, 'T', ' ')) <= datetime('now', 'localtime', '-' || ? || ' days') 
+            AND (is_protected IS NULL OR is_protected = 0)
+        """, (days,))
+        deleted_count = c.rowcount
+        conn.commit()
+        if deleted_count > 0:
+            conn.isolation_level = None
+            c.execute('VACUUM')
+        return deleted_count
+    finally:
+        conn.close()
+
+def auto_prune_if_enabled():
+    """Run automated data retention pruning if enabled in settings."""
+    settings = get_settings()
+    enabled = settings.get('auto_prune_enabled', 'true') in ('true', '1', True)
+    if not enabled:
+        return 0
+    try:
+        days = int(settings.get('auto_prune_days', 30))
+    except (ValueError, TypeError):
+        days = 30
+    return prune_messages(days)
+
+def get_database_stats():
+    """Retrieve comprehensive statistics about the database and retention."""
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    c.execute("DELETE FROM messages WHERE timestamp < datetime('now', '-' || ? || ' days') AND is_protected = 0", (days,))
-    c.execute('VACUUM')
-    conn.commit()
+    
+    # 1. Total message count
+    c.execute('SELECT COUNT(*) FROM messages')
+    total_messages = c.fetchone()[0]
+    
+    # 2. Oldest and newest timestamps
+    c.execute('SELECT MIN(timestamp), MAX(timestamp) FROM messages')
+    min_ts, max_ts = c.fetchone()
+    
+    # 3. Protected / locked messages
+    c.execute('SELECT COUNT(*) FROM messages WHERE is_protected = 1')
+    protected_count = c.fetchone()[0]
+    
+    # 4. Duplicate messages
+    c.execute('SELECT COUNT(*) FROM messages WHERE is_duplicate = 1')
+    duplicate_count = c.fetchone()[0]
+    
+    # 5. Alert hits (messages matching active alert_words)
+    c.execute('''
+        SELECT COUNT(*) FROM messages m
+        WHERE EXISTS (
+            SELECT 1 FROM alert_words aw
+            WHERE aw.is_active = 1
+            AND (
+                m.message LIKE '%' || aw.word || '%'
+                OR UPPER(m.message) LIKE '%' || UPPER(aw.word) || '%'
+            )
+        )
+    ''')
+    alert_hits = c.fetchone()[0]
+    
+    # 6. Unique CapCodes / addresses
+    c.execute('SELECT COUNT(DISTINCT address) FROM messages')
+    unique_addresses = c.fetchone()[0]
+    
+    # 7. Total aliases count
+    c.execute('SELECT COUNT(*) FROM aliases')
+    aliases_count = c.fetchone()[0]
+    
+    # 8. Active alert words count
+    c.execute('SELECT COUNT(*) FROM alert_words WHERE is_active = 1')
+    alert_words_count = c.fetchone()[0]
+    
     conn.close()
+    
+    # 9. Database file size on disk
+    db_size_bytes = 0
+    if os.path.exists(DB_PATH):
+        try:
+            db_size_bytes = os.path.getsize(DB_PATH)
+        except OSError:
+            pass
+            
+    def format_size(bytes_size):
+        if bytes_size < 1024:
+            return f"{bytes_size} B"
+        elif bytes_size < 1024 * 1024:
+            return f"{bytes_size / 1024:.1f} KB"
+        elif bytes_size < 1024 * 1024 * 1024:
+            return f"{bytes_size / (1024 * 1024):.2f} MB"
+        else:
+            return f"{bytes_size / (1024 * 1024 * 1024):.2f} GB"
+            
+    # Fetch auto-prune retention settings
+    settings = get_settings()
+    auto_prune_enabled = settings.get('auto_prune_enabled', 'true') in ('true', '1', True)
+    try:
+        auto_prune_days = int(settings.get('auto_prune_days', 30))
+    except (ValueError, TypeError):
+        auto_prune_days = 30
+        
+    return {
+        'total_messages': total_messages,
+        'alert_hits': alert_hits,
+        'oldest_timestamp': min_ts,
+        'newest_timestamp': max_ts,
+        'protected_count': protected_count,
+        'duplicate_count': duplicate_count,
+        'unique_addresses': unique_addresses,
+        'aliases_count': aliases_count,
+        'alert_words_count': alert_words_count,
+        'db_size_bytes': db_size_bytes,
+        'db_size_formatted': format_size(db_size_bytes),
+        'auto_prune_enabled': auto_prune_enabled,
+        'auto_prune_days': auto_prune_days
+    }
+

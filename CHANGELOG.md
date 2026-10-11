@@ -5,24 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
-## [2026.10.11] - LARM-sida och HTTP-säkerhetshärdning
+## [2026.10.11] - Database Stat Dashboard, Auto-Pruning, Alarms View & English Localization
 
 ### Added
-- Ny dedikerad sida för **LARM** (`/larm`) i sidomenyn som enbart listar händelser som får en träff (HIT) på bevakade ord i realtid.
-- Backend- och API-stöd för filtrering på enbart larmade meddelanden (`/api/messages?alerts_only=1`).
-- Färgkodade larmord-brickor i tabellen för tydlig överblick av vilket ord som triggat larmet.
-- Konfigurerbar HTTP Basic Auth via miljövariabler (`AUTH_USER` och `AUTH_PASS`) i `docker-compose.yml`.
-- Timing attack-skyddad lösenordsvalidering med `hmac.compare_digest` med fullt stöd för svenska tecken.
-- Härdade säkerhetsheaders på samtliga HTTP-svar: `X-Frame-Options` (Clickjacking), `X-Content-Type-Options`, `X-XSS-Protection`, `Referrer-Policy` och `Content-Security-Policy`.
-- Begränsning av inkommande nyttolast (`MAX_CONTENT_LENGTH = 2MB`) för att skydda mot DoS-minnesöverbelastning.
-- Full försvenskning av sidonavigering i samtliga vyer.
+- **Database Stat Dashboard**: Overhauled Settings -> Maintenance into a modern "Database Stat" view featuring 8 KPI cards: Total Messages, Watchlist Hits, Database Disk Size, Oldest Entry, Newest Entry, Protected Messages, Unique CapCodes, and Duplicate Count.
+- **Automated Retention & Auto-Pruning Scheduler**: Integrated background daemon thread executing every 6 hours to automatically prune records older than the configured threshold (default: 30 days) and reclaim space with SQLite `VACUUM`.
+- **Dedicated Alarms View**: Standalone `/alarms` page (with `/larm` retained as alias) displaying only messages triggering alert keywords in real time.
+- **Full English Localization**: Converted all UI templates, labels, forms, dialogs, API status strings, and documentation into English.
+- **HTTP Basic Authentication**: Optional username/password authentication configured via `AUTH_USER` and `AUTH_PASS` in `docker-compose.yml` and `.env`.
+- **Timing Attack Resistance**: Uses `hmac.compare_digest` with UTF-8 encoding for credential validation.
+- **Security Response Headers**: Added `X-Frame-Options: SAMEORIGIN`, `X-Content-Type-Options: nosniff`, `X-XSS-Protection`, `Referrer-Policy`, and `Content-Security-Policy`.
+- **DoS Protection**: Capped request payload size to 2MB (`MAX_CONTENT_LENGTH`).
+- **REST API Endpoints**:
+  - `GET /api/database/stats` returns real-time aggregated metrics.
+  - `POST /api/settings` supports `auto_prune_enabled` and `auto_prune_days`.
+  - `POST /api/messages/prune` returns deleted message count.
 
 ### Fixed
-- Åtgärdat felaktigt antal bindningsparametrar vid automatisk initiering av SDR-instanser i databasen.
-- Sanerat publika filer: Raderat temporära diff-filer, loggar och scratch-skript från versionshanteringen.
-- Härdat `.gitignore` för att utesluta databaser, loggar och lokala konfigurationsfiler.
-- Anonymiserat nätverkskonfiguration i `docker-compose.yml` för att förhindra exponering av interna adresser.
-- Omskrivit `README.md` på svenska utan emojis och uppdaterat dokumentation och walkthrough.
+- **SQLite ISO Timestamp Pruning**: Fixed query to use `datetime(replace(timestamp, 'T', ' ')) < datetime('now', '-' || ? || ' days')` so ISO timestamps stored by Python match SQLite datetime comparisons accurately.
+- **Repository Clean-up**: Removed untracked temporary diff files, scratch scripts, and exposed local configurations from git history.
+- **Hardened `.gitignore`**: Excluded local SQLite databases, debug logs, diffs, and `.env` credentials from being committed.
+- **Emoji Removal**: Fully purged all emojis from all web templates and documentation.
 
 ## [2026.02.22] - Initial Release & Upgrades
 

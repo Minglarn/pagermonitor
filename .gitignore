@@ -58,3 +58,7 @@ test_scratch*.py
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Local agent configurations
+.agents/
+

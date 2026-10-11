@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PagerMonitor - LARM</title>
+    <title>PagerMonitor - Alarms</title>
     <link rel="stylesheet" href="/static/style.css?v=2">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;600&family=Share+Tech+Mono&family=Anonymous+Pro:wght@400;700&family=VT323&family=Roboto+Mono:wght@400;600&family=Source+Code+Pro:wght@400;600&display=swap"
@@ -49,30 +49,30 @@
                     <i class="fas fa-th-large"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="/larm" class="nav-item active">
+                <a href="/alarms" class="nav-item active">
                     <i class="fas fa-bell"></i>
-                    <span>LARM</span>
+                    <span>Alarms</span>
                 </a>
                 <a href="/aliases" class="nav-item">
                     <i class="fas fa-tag"></i>
-                    <span>Alias</span>
+                    <span>Aliases</span>
                 </a>
                 <a href="/alerts" class="nav-item">
                     <i class="fas fa-filter"></i>
-                    <span>Bevakade ord</span>
+                    <span>Alert Words</span>
                 </a>
                 <a href="/statistics" class="nav-item">
                     <i class="fas fa-chart-bar"></i>
-                    <span>Statistik</span>
+                    <span>Statistics</span>
                 </a>
                 <a href="/settings" class="nav-item">
                     <i class="fas fa-cog"></i>
-                    <span>Inställningar</span>
+                    <span>Settings</span>
                 </a>
             </div>
 
             <div class="sidebar-footer">
-                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Växla sidomeny">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar">
                     <i class="fas fa-bars"></i>
                 </button>
             </div>
@@ -82,18 +82,18 @@
             <header>
                 <div class="header-content">
                     <div class="header-main">
-                        <h1>LARM</h1>
-                        <p>Händelser som matchar bevakade ord</p>
+                        <h1>Alarms</h1>
+                        <p>Real-time feed of watchlist alert matches</p>
                     </div>
                     <div class="search-container">
-                        <input type="text" id="searchInput" placeholder="Sök bland larm, CapCodes, alias...">
+                        <input type="text" id="searchInput" placeholder="Search alarms, CapCodes, aliases...">
                         <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                             stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
-                        <div id="rx-indicator" class="rx-status-dot" title="Tar emot data"></div>
+                        <div id="rx-indicator" class="rx-status-dot" title="Receiving data"></div>
                     </div>
                 </div>
             </header>
@@ -104,26 +104,26 @@
                         <thead>
                             <tr>
                                 <th>#</th>
-                                <th>Tidpunkt</th>
-                                <th>Frekvens / Meta</th>
+                                <th>Timestamp</th>
+                                <th>Frequency / Meta</th>
                                 <th>CapCode (Alias)</th>
-                                <th>Meddelande</th>
-                                <th>Träff</th>
-                                <th>Åtgärder</th>
+                                <th>Message</th>
+                                <th>Hit</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="alarmsBody">
-                            <!-- Larmhändelser läggs till här -->
+                            <!-- Alarm events will be injected here -->
                         </tbody>
                     </table>
-                    <div id="loading" class="loading-state">Laddar larmhändelser...</div>
+                    <div id="loading" class="loading-state">Loading alarms...</div>
                 </div>
             </main>
         </div>
     </div>
 
-    <!-- Scroll till toppen -->
-    <button id="scrollToTop" class="scroll-top-btn" onclick="scrollToTop()" title="Tillbaka till toppen">
+    <!-- Scroll to top -->
+    <button id="scrollToTop" class="scroll-top-btn" onclick="scrollToTop()" title="Scroll to top">
         <i class="fas fa-arrow-up"></i>
     </button>
 
@@ -132,42 +132,42 @@
         <div class="modal-content">
             <button class="close-btn" onclick="closeAliasModal()">&times;</button>
             <div class="modal-header">
-                <h2>Skapa / Redigera Alias</h2>
-                <p>Koppla ett läsbart namn till denna CapCode.</p>
+                <h2>Create / Edit Alias</h2>
+                <p>Attach a readable name to this CapCode address.</p>
             </div>
             <form id="aliasModalForm">
                 <div class="form-group">
-                    <label for="modal_address">CapCode-adress</label>
+                    <label for="modal_address">CapCode Address</label>
                     <input type="text" id="modal_address" name="address" readonly style="opacity: 0.7;">
                 </div>
                 <div class="form-group">
-                    <label for="modal_alias">Alias (Etikett)</label>
-                    <input type="text" id="modal_alias" name="alias" placeholder="t.ex. Räddningstjänst" required>
+                    <label for="modal_alias">Alias (Label)</label>
+                    <input type="text" id="modal_alias" name="alias" placeholder="e.g. Fire Department" required>
                 </div>
                 <div class="form-group checkbox-group">
                     <label>
                         <input type="checkbox" id="modal_is_hidden" name="is_hidden">
-                        Dölj meddelanden från denna adress
+                        Mute messages from this address (Hide)
                     </label>
                 </div>
                 <div class="form-actions">
-                    <button type="submit" id="modalSaveBtn" class="primary-btn">Spara Alias</button>
+                    <button type="submit" id="modalSaveBtn" class="primary-btn">Save Alias</button>
                 </div>
             </form>
             <div id="modalStatus" class="status-message"></div>
         </div>
     </div>
 
-    <!-- Bekräftelsemodal -->
+    <!-- Confirmation Modal -->
     <div id="confirmModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 400px; padding: 2rem; border-radius: 20px;">
             <div class="modal-header">
-                <h2 id="confirmTitle" style="color: var(--accent);">Bekräfta åtgärd</h2>
-                <p id="confirmMessage" style="margin-top: 0.5rem; color: var(--text-secondary);">Är du säker på att du vill fortsätta?</p>
+                <h2 id="confirmTitle" style="color: var(--accent);">Confirm Action</h2>
+                <p id="confirmMessage" style="margin-top: 0.5rem; color: var(--text-secondary);">Are you sure you want to proceed?</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="secondary-btn" onclick="closeConfirm(false)">Avbryt</button>
-                <button type="button" id="confirmActionBtn" class="primary-btn danger-btn">Ta bort</button>
+                <button type="button" class="secondary-btn" onclick="closeConfirm(false)">Cancel</button>
+                <button type="button" id="confirmActionBtn" class="primary-btn danger-btn">Delete</button>
             </div>
         </div>
     </div>
@@ -202,17 +202,17 @@
             let isLoadingMore = false;
             let hasReachedEnd = false;
 
-            // Hämta aktiva bevakade ord
+            // Fetch active alert words
             const fetchAlertWords = async () => {
                 try {
                     const res = await fetch('/api/alerts');
                     alertWords = await res.json();
                 } catch (e) {
-                    console.error('Kunde inte läsa in bevakade ord:', e);
+                    console.error('Failed to load alert words:', e);
                 }
             };
 
-            // Hitta vilket larmord som träffats
+            // Find matching alert word in message
             function findMatchingAlert(msgText) {
                 if (!alertWords || !alertWords.length) return null;
                 const upper = msgText.toUpperCase();
@@ -224,7 +224,7 @@
                 return null;
             }
 
-            // Färgmarkera larmord i texten
+            // Highlight alert words
             function highlightMessage(text) {
                 if (!alertWords.length) return text;
                 let highlighted = text;
@@ -242,7 +242,7 @@
                 return highlightMessage(formatted);
             }
 
-            // Hämta enbart larmhändelser från API
+            // Fetch only alarms from API
             const fetchAlarms = async (beforeId = null) => {
                 if (isLoadingMore || (beforeId && hasReachedEnd)) return;
 
@@ -256,13 +256,13 @@
                     if (beforeId) isLoadingMore = true;
 
                     const response = await fetch(url);
-                    if (!response.ok) throw new Error('Nätverksfel');
+                    if (!response.ok) throw new Error('Network error');
                     const data = await response.json();
 
                     if (data.length === 0) {
                         if (beforeId) hasReachedEnd = true;
                         if (!allAlarms.length) {
-                            loading.innerText = 'Inga larmhändelser hittades.';
+                            loading.innerText = 'No alarms found.';
                             loading.style.display = 'block';
                         }
                         return;
@@ -279,14 +279,14 @@
                     window.currentAlarmsData = allAlarms;
                     renderAlarms();
                 } catch (error) {
-                    console.error('Fel vid hämtning av larm:', error);
-                    loading.innerText = 'Kunde inte läsa in larmhändelser.';
+                    console.error('Error fetching alarms:', error);
+                    loading.innerText = 'Failed to load alarms.';
                 } finally {
                     isLoadingMore = false;
                 }
             };
 
-            // Hämta inställningar för typsnitt
+            // Fetch font settings
             const fetchSettings = async () => {
                 try {
                     const res = await fetch('/api/settings');
@@ -298,7 +298,7 @@
                         document.documentElement.style.setProperty('--msg-size', `${settings.message_font_size}rem`);
                     }
                 } catch (e) {
-                    console.error('Kunde inte läsa inställningar:', e);
+                    console.error('Failed to load settings:', e);
                 }
             };
 
@@ -307,14 +307,14 @@
                 tr.className = 'fade-in alert-row alert-pulse-bg';
 
                 const match = findMatchingAlert(alarm.message);
-                const hitWord = alarm.alert_word || (match ? match.word : 'LARM');
+                const hitWord = alarm.alert_word || (match ? match.word : 'ALARM');
                 const hitColor = alarm.alert_color || (match ? match.color : '#ef4444');
 
                 const dateObj = new Date(alarm.timestamp);
-                const dateStr = dateObj.toLocaleDateString('sv-SE', {
+                const dateStr = dateObj.toLocaleDateString(undefined, {
                     year: 'numeric', month: '2-digit', day: '2-digit'
                 });
-                const timeStr = dateObj.toLocaleTimeString('sv-SE', {
+                const timeStr = dateObj.toLocaleTimeString(undefined, {
                     hour: '2-digit', minute: '2-digit', second: '2-digit'
                 });
                 const formattedTime = `${dateStr}<br>${timeStr}`;
@@ -324,7 +324,7 @@
                 const funcLabel = alarm.function !== undefined ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
                 const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
                 const freqTag = alarm.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${alarm.frequency}</span>` : '';
-                const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta" style="margin-left: 5px;">Dubblett</span>` : '';
+                const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta" style="margin-left: 5px;">Duplicate</span>` : '';
 
                 const hitBadge = `<span class="badge" style="background: ${hitColor}22; color: ${hitColor}; border: 1px solid ${hitColor}66; font-weight: 700; text-transform: uppercase;"><i class="fas fa-tag" style="margin-right: 4px; font-size: 0.75rem;"></i>${hitWord}</span>`;
 
@@ -339,11 +339,11 @@
                     <td class="hit-cell">${hitBadge}</td>
                     <td class="actions-cell">
                         <div class="actions-wrapper">
-                            <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Lås upp' : 'Lås (skydda från rensning)'}">
+                            <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
                                 <i class="fas ${alarm.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
                             </button>
                             <div class="btn-divider"></div>
-                            <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Ta bort meddelande">
+                            <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete message">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </div>
@@ -361,7 +361,7 @@
                 alarmsBody.innerHTML = '';
 
                 if (allAlarms.length === 0) {
-                    loading.innerText = 'Inga larmhändelser hittades.';
+                    loading.innerText = 'No alarms found.';
                     loading.style.display = 'block';
                     return;
                 } else {
@@ -393,18 +393,18 @@
                 hasReachedEnd = false;
                 isLoadingMore = false;
                 loading.style.display = 'block';
-                loading.innerText = 'Söker larm...';
+                loading.innerText = 'Searching alarms...';
 
                 searchTimeout = setTimeout(() => {
                     fetchAlarms();
                 }, 400);
             });
 
-            // Initial hämtning
+            // Initial fetch
             fetchSettings();
             fetchAlertWords().then(() => fetchAlarms());
 
-            // SSE för larm i realtid
+            // SSE stream for real-time alarms
             const evtSource = new EventSource("/stream");
             const rxIndicator = document.getElementById('rx-indicator');
             const satIcon = document.getElementById('satellite-icon');
@@ -435,7 +435,7 @@
                 satIcon.classList.remove('conn-ok');
                 satIcon.classList.add('conn-error');
                 if (statusMsg) {
-                    statusMsg.innerText = "Anslutning bruten";
+                    statusMsg.innerText = "Connection Lost";
                     statusMsg.style.display = 'block';
                 }
             };
@@ -446,11 +446,11 @@
 
                 if (data.type === 'ping') return;
 
-                // Kontrollera om händelsen är en träff på bevakade ord
+                // Check if message is a watchlist match
                 const match = findMatchingAlert(data.message || '');
                 const isAlertHit = Boolean(data.alert_word || match);
 
-                // Endast larmhändelser ska visas på denna sida
+                // Only alarm hits are shown on this page
                 if (!isAlertHit) return;
 
                 if (!allAlarms.some(a => a.id === data.id)) {
@@ -514,9 +514,9 @@
                 tableContainer.scrollTo({ top: 0, behavior: 'smooth' });
             };
 
-            // Bekräftelsemodal
+            // Confirmation modal helper
             let confirmResolve = null;
-            window.showConfirm = (title, message, actionLabel = 'Ta bort') => {
+            window.showConfirm = (title, message, actionLabel = 'Delete') => {
                 document.getElementById('confirmTitle').innerText = title;
                 document.getElementById('confirmMessage').innerText = message;
                 document.getElementById('confirmActionBtn').innerText = actionLabel;
@@ -537,7 +537,7 @@
             };
 
             window.deleteMessage = async (msgId, btn) => {
-                const confirmed = await showConfirm('Ta bort meddelande', 'Vill du radera detta larmmeddelande permanent?');
+                const confirmed = await showConfirm('Delete Message', 'Are you sure you want to permanently delete this alarm message?');
                 if (!confirmed) return;
 
                 try {
@@ -548,11 +548,11 @@
                         allAlarms = allAlarms.filter(a => a.id !== msgId);
                         renderAlarms(true);
                     } else {
-                        alert('Fel vid borttagning: ' + result.message);
+                        alert('Error deleting message: ' + result.message);
                     }
                 } catch (err) {
-                    console.error('Borttagningsfel:', err);
-                    alert('Kunde inte ta bort meddelandet.');
+                    console.error('Delete error:', err);
+                    alert('Failed to delete message.');
                 }
             };
 
@@ -572,23 +572,23 @@
                         btn.classList.toggle('locked', newState);
                         const icon = btn.querySelector('i');
                         icon.className = newState ? 'fas fa-lock' : 'fas fa-lock-open';
-                        btn.title = newState ? 'Lås upp' : 'Lås (skydda från rensning)';
+                        btn.title = newState ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)';
 
                         const alarm = allAlarms.find(a => a.id === msgId);
                         if (alarm) alarm.is_protected = newState;
                     }
                 } catch (err) {
-                    console.error('Låsfel:', err);
+                    console.error('Lock error:', err);
                 }
             };
 
-            // Hantera alias-modal
+            // Handle alias modal
             const aliasModalForm = document.getElementById('aliasModalForm');
             const modalSaveBtn = document.getElementById('modalSaveBtn');
 
             aliasModalForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                modalSaveBtn.innerText = 'Sparar...';
+                modalSaveBtn.innerText = 'Saving...';
                 modalSaveBtn.disabled = true;
 
                 const payload = {
@@ -614,20 +614,20 @@
                             hasReachedEnd = false;
                             isLoadingMore = false;
                             document.getElementById('loading').style.display = 'block';
-                            document.getElementById('loading').innerText = 'Laddar larmhändelser...';
+                            document.getElementById('loading').innerText = 'Loading alarms...';
 
                             fetchAlarms();
                             closeAliasModal();
                         } else {
-                            alert('Fel: ' + data.message);
+                            alert('Error: ' + data.message);
                         }
                     })
                     .catch(err => {
-                        console.error('Alias-fel:', err);
-                        alert('Kunde inte spara alias.');
+                        console.error('Alias save error:', err);
+                        alert('Failed to save alias.');
                     })
                     .finally(() => {
-                        modalSaveBtn.innerText = 'Spara Alias';
+                        modalSaveBtn.innerText = 'Save Alias';
                         modalSaveBtn.disabled = false;
                     });
             });

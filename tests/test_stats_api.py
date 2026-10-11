@@ -90,3 +90,23 @@ def test_stats_freq_hits(client):
     assert isinstance(data, list)
     assert any(entry['frequency'] == '169.8M' for entry in data)
     assert any(entry['frequency'] == '170.0M' for entry in data)
+
+def test_database_stats_endpoint(client):
+    from database import save_message
+    save_message('55555', 'Stat message', frequency='169.8M')
+    resp = client.get('/api/database/stats')
+    assert resp.status_code == 200
+    stats = resp.get_json()
+    assert 'total_messages' in stats
+    assert stats['total_messages'] >= 1
+    assert 'db_size_formatted' in stats
+    assert 'auto_prune_days' in stats
+    assert 'auto_prune_enabled' in stats
+
+def test_prune_messages_and_retention(client):
+    from database import save_message, prune_messages
+    save_message('66666', 'Recent message')
+    # Prune with 0 days should delete messages not protected
+    deleted = prune_messages(0)
+    assert deleted >= 1
+

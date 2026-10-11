@@ -5,48 +5,49 @@
 [![Issues](https://img.shields.io/github/issues/Minglarn/pagermonitor.svg)](https://github.com/Minglarn/pagermonitor/issues)
 [![Stars](https://img.shields.io/github/stars/Minglarn/pagermonitor?style=social)](https://github.com/Minglarn/pagermonitor/stargazers)
 
-PagerMonitor är en komplett, containeriserad plattform för Software Defined Radio (SDR) utformad för att fånga upp, avkoda och övervaka POCSAG-personsökartrafik (t.ex. Minicall och Rikssökning). Systemet har ett modernt mörkt webbgränssnitt i realtid, dynamisk mottagarkonfiguration, stöd för flera parallella SDR-enheter, ett kraftfullt alias-system för CapCodes samt en dedikerad larmvy för bevakade händelser.
+PagerMonitor is a complete, containerized Software Defined Radio (SDR) platform designed to capture, decode, and monitor POCSAG pager transmissions. The system features a modern real-time dark web interface, dynamic receiver configuration, multi-SDR receiver support, a CapCode alias management engine, automated database maintenance, and a dedicated alarms view for monitored keywords.
 
 ---
 
-## Huvudfunktioner
+## Core Features
 
-* **Multi-SDR-stöd**: Kör och övervaka flera RTL-SDR-enheter samtidigt. Du kan tilldela en specifik mottagare för en frekvens och en annan för en annan, helt oberoende av varandra från samma gränssnitt.
-* **Dedikerad LARM-vy**: En separat sida i menyn som i realtid samlar alla meddelanden som har fått en träff (HIT) på dina bevakade ord, komplett med färgkodade larmbrickor.
-* **Avkodning och skräpfilter**: Använder `multimon-ng` för att avkoda POCSAG512, 1200 och 2400. Innehåller ett intelligent entropibaserat skräpfilter som sorterar bort brus och felaktiga avkodningar, men släpper igenom legitima korta meddelanden.
-* **Fullt stöd för svenska tecken**: Automatisk konvertering av personsökarstandardens specialtecken till Å, Ä och Ö samt snygg formatering av radbrytningar.
-* **Realtidsdashboard**: Modernt gränssnitt med `Server-Sent Events (SSE)` som omedelbart visar inkommande larm utan att webbläsaren behöver ladda om sidan. Fullt stöd för historisk bläddring via infinite scroll mot databasen.
-* **CapCode-alias och döljfunktion**: Koppla sifferadresser (t.ex. `1234567`) till begripliga namn (t.ex. `Station Centrum`). Om en adress skickar oönskat brus kan du dölja den, vilket tar bort dess meddelanden från flödet.
-* **Bevakade ord**: Lägg till kommaseparerade bevakningsord (t.ex. `BRAND, OLYCKA, HLR, AMBULANS`). Om ett meddelande innehåller något av orden markeras raden tydligt och visas i larmvyn.
-* **HTTP-säkerhet och åtkomstkontroll**: Inbyggt stöd för HTTP Basic Auth via miljövariabler, härdade säkerhetsheaders (skydd mot Clickjacking, MIME-sniffing och XSS) samt begränsning av förfrågningsstorlek för DoS-skydd.
-* **MQTT-integration**: Vidarebefordrar automatiskt avkodade meddelanden till en lokal MQTT-broker (t.ex. Home Assistant eller Node-RED). Eventuella alias inkluderas i JSON-strukturen.
-* **Deduplicering**: Systemet upptäcker och flaggar upprepade meddelanden som skickas inom 60 sekunder för att undvika dubbla notiser i anslutna system.
+* **Multi-SDR Support**: Run and monitor multiple RTL-SDR devices simultaneously. Assign individual receivers to distinct frequencies and sample rates, managed independently from a unified web interface.
+* **Dedicated Alarms View**: A standalone page that aggregates all messages matching your monitored alert keywords in real time, complete with color-coded alert badges.
+* **Decoding & Noise Filtering**: Powered by `multimon-ng` for decoding POCSAG 512, 1200, and 2400 baud. Features an intelligent entropy-based junk filter that discards noise and corrupted frames while preserving short legitimate messages.
+* **Character Set Support**: Built-in support for European and Swedish character sets (converting legacy pager representations to Å, Ä, and Ö) alongside clean newline formatting.
+* **Real-time Live Stream**: Modern user interface utilizing `Server-Sent Events (SSE)` for instantaneous message delivery without page reloads. Includes infinite scrolling for full database history browsing.
+* **CapCode Aliases & Muting**: Map numeric pager addresses (e.g. `1234567`) to descriptive names (e.g. `Station Central`). Mute noisy or unwanted addresses directly from the interface.
+* **Watchlist & Alert Words**: Configure custom comma-separated watchwords (e.g. `FIRE, ACCIDENT, CPR, AMBULANCE`). Matched messages are highlighted and streamed to the dedicated Alarms tab.
+* **Database Stats & Automated Retention**: Comprehensive database metric cards (total messages, watchlist hits, storage footprint, date ranges, duplicates, protected rows) and scheduled auto-pruning.
+* **HTTP Security & Hardening**: Optional HTTP Basic Authentication configurable via environment variables, hardened HTTP response headers (X-Frame-Options, X-Content-Type-Options, Content Security Policy), and request payload size caps to guard against denial of service.
+* **MQTT Integration**: Automatically forwards decoded messages to any local or remote MQTT broker (e.g. Home Assistant or Node-RED). Aliases and alert tags are included in the JSON payload.
+* **Deduplication Engine**: Automatically identifies and flags duplicate transmissions occurring within a configurable 60-second window to prevent repetitive notifications.
 
 ---
 
-## MQTT-struktur och hemautomation
+## MQTT Payload & Home Automation
 
-### Exempel på JSON-nyttolast
+### JSON Payload Example
 ```json
 {
   "timestamp": "2026-10-11T14:30:00.000000",
   "address": "1234567",
-  "message": "LARM: STOR BRAND I BYGGNAD\nSTATIONSGATAN 1\nSTYRKA 1 OCH 2 LARMADE",
-  "alias": "Raddningstjanst",
+  "message": "ALARM: COMMERCIAL BUILDING FIRE\nSTATION STREET 1\nUNITS 1 AND 2 DISPATCHED",
+  "alias": "Fire Department",
   "bitrate": "1200",
   "function": 3,
   "frequency": "169.8M",
-  "alert_word": "BRAND",
+  "alert_word": "FIRE",
   "alert_color": "#ef4444",
-  "sdr_name": "Mottagare 1",
+  "sdr_name": "Receiver 1",
   "is_duplicate": false
 }
 ```
 
-### Exempel på Home Assistant-automation
+### Home Assistant Automation Example
 ```yaml
-alias: "PagerMonitor: Skicka prioriterade larm"
-description: "Skickar avisering till mobila enheter nar ett bevakat ord traffas"
+alias: "PagerMonitor: Send Priority Alert"
+description: "Dispatches mobile notification when a monitored keyword is hit"
 triggers:
   - trigger: mqtt
     topic: pagermonitor/alarms
@@ -73,19 +74,20 @@ max: 10
 
 ---
 
-## Arkitektur
+## System Architecture
 
-Applikationen körs isolerat i en container och byggs från källkod (`librtlsdr` och `multimon-ng`) för högsta prestanda och drivrutinskompatibilitet.
+The application runs in an isolated container compiled from source (`librtlsdr` and `multimon-ng`) for maximum performance and driver compatibility:
 
-1. **Flask Backend**: Hanterar webbgränssnittet, REST API, inställningar, alias, säkerhetskontroll och SSE-strömmen för realtidsdata.
-2. **SDR Supervisor**: En bakgrundsprocess i Python som övervakar och styr instanser av `rtl_fm` kopplade mot `multimon-ng`. Om inställningar ändras i gränssnittet startas berörd SDR om sömlöst i bakgrunden.
-3. **SQLite-databas**: Meddelanden, alias och inställningar lagras i en SQLite-databas under `/app/data/` för att bevaras mellan omstarter.
+1. **Flask Backend**: Serves the web interface, REST API, authentication middleware, and Server-Sent Events stream.
+2. **SDR Supervisor**: Python background supervisor managing `rtl_fm` and `multimon-ng` subprocesses. Changing radio parameters in the UI triggers seamless live restarts.
+3. **Automated Scheduler**: Background maintenance thread executing database retention checks every 6 hours.
+4. **SQLite Database**: Messages, CapCode aliases, alert words, and SDR settings are persisted inside `/app/data/pagermonitor.db`.
 
 ---
 
-## Snabbstart med Docker Compose
+## Quickstart with Docker Compose
 
-All nödvändig miljö är förberedd i [docker-compose.yml](docker-compose.yml):
+Preconfigured deployment via [docker-compose.yml](docker-compose.yml):
 
 ```yaml
 services:
@@ -94,7 +96,7 @@ services:
     container_name: pagermonitor
     restart: unless-stopped
     devices:
-      # Nodvandigt pa Linux for att ge containern atkomst till USB-mottagaren
+      # Grants container access to the host USB SDR dongles on Linux
       - /dev/bus/usb:/dev/bus/usb
     volumes:
       - ./data:/app/data
@@ -105,53 +107,52 @@ services:
       - MQTT_PASS=${MQTT_PASS:-}
       - MQTT_TOPIC=${MQTT_TOPIC:-pagermonitor/alarms}
       - TZ=${TZ:-Europe/Stockholm}
-      # HTTP-autentisering (lamna AUTH_PASS tomt for att inaktivera)
+      # HTTP Basic Authentication (leave AUTH_PASS empty to disable)
       - AUTH_USER=${AUTH_USER:-admin}
       - AUTH_PASS=${AUTH_PASS:-}
     ports:
       - "7090:5000"
 ```
 
-### 1. Hårdvarukrav (Linux / Raspberry Pi)
-För att containern ska hitta din RTL-SDR-dongel krävs att Docker har åtkomst till USB-porten.
+### 1. Hardware Requirements (Linux / Raspberry Pi)
+Ensure Docker has access to your USB RTL-SDR dongles:
 
-Kontrollera att dina SDR-enheter är anslutna:
 ```bash
 lsusb
 ```
 
-*(Tips: Svartlista standard-DVB-T-drivrutiner på värddatorn om de blockerar RTL-SDR: `sudo rmmod dvb_usb_rtl28xxu`)*
+*(Tip: Blacklist default Linux DVB-T kernel drivers if they block RTL-SDR: `sudo rmmod dvb_usb_rtl28xxu`)*
 
-### 2. Konfigurera miljövariabler
-Kopiera exempelfilen och fyll i dina uppgifter:
+### 2. Configure Environment Variables
+Copy the example file and update your configuration:
 
 ```bash
 cp .env.example .env
 nano .env
 ```
 
-Om du vill skydda webbgränssnittet med lösenord sätter du `AUTH_PASS` i `.env`. Kör du bakom en reverse proxy som Nginx Proxy Manager kan du lämna `AUTH_PASS` tomt och låta proxyn hantera behörigheten.
+If running behind an authenticating reverse proxy (like Nginx Proxy Manager), leave `AUTH_PASS` blank. If deploying directly, provide a strong password for `AUTH_PASS`.
 
-### 3. Starta containern
+### 3. Launch Container
 ```bash
-# Starta i bakgrunden
+# Start in background
 docker compose up -d
 
-# Folj loggarna for att se att mottagaren startar korrekt
+# Inspect live logs
 docker compose logs -f
 ```
 
 ---
 
-## Gränssnitt och användning
+## Web Interface Overview
 
-Öppna webbläsaren och navigera till:
+Access the web interface at:
 **`http://<SERVER_IP>:7090`**
 
-### Sidonavigering
-* **Dashboard**: Realtidsöversikt över all inkommande trafik.
-* **LARM**: Dedikerad vy för händelser som har fått en träff på bevakade ord.
-* **Alias**: Hantera kopplingar mellan CapCode-adresser och läsbara namn samt döljfunktion.
-* **Bevakade ord**: Lägg till och redigera ord som ska trigga larm och färgmarkeras.
-* **Statistik**: Diagram och historisk statistik över meddelandevolymer, tider och frekvenser.
-* **Inställningar**: Konfigurera radiofrekvens, gain, teckenuppsättning och SDR-enheter.
+### Navigation
+* **Dashboard**: Real-time live feed of incoming pager traffic.
+* **Alarms**: Dedicated view for messages triggering watchlist hits.
+* **Aliases**: Map CapCodes to readable names and toggle muting.
+* **Alert Words**: Manage keywords that trigger alarms and highlighted badges.
+* **Statistics**: Historical graphs, hourly frequency charts, and daily logs.
+* **Settings**: Configure SDR hardware, audio filters, and inspect **Database Stat** KPI cards & automated data retention.

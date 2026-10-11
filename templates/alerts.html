@@ -49,25 +49,25 @@
                     <i class="fas fa-th-large"></i>
                     <span>Dashboard</span>
                 </a>
-                <a href="/larm" class="nav-item">
+                <a href="/alarms" class="nav-item">
                     <i class="fas fa-bell"></i>
-                    <span>LARM</span>
+                    <span>Alarms</span>
                 </a>
                 <a href="/aliases" class="nav-item">
                     <i class="fas fa-tag"></i>
-                    <span>Alias</span>
+                    <span>Aliases</span>
                 </a>
                 <a href="/alerts" class="nav-item active">
                     <i class="fas fa-filter"></i>
-                    <span>Bevakade ord</span>
+                    <span>Alert Words</span>
                 </a>
                 <a href="/statistics" class="nav-item">
                     <i class="fas fa-chart-bar"></i>
-                    <span>Statistik</span>
+                    <span>Statistics</span>
                 </a>
                 <a href="/settings" class="nav-item">
                     <i class="fas fa-cog"></i>
-                    <span>Inställningar</span>
+                    <span>Settings</span>
                 </a>
             </div>
 
@@ -80,22 +80,22 @@
 
         <div class="main-content">
             <header>
-                <h1><span class="highlight">Bevakade</span> ord</h1>
-                <p>Hantera ord som triggar larm och färgmarkeras i flödet.</p>
+                <h1><span class="highlight">Alert</span> Words</h1>
+                <p>Manage keywords that trigger alarms and are highlighted in the message stream.</p>
             </header>
 
             <main>
                 <div class="glass-panel form-container" style="padding: 1.5rem;">
                     <div class="form-group" style="margin-bottom: 0.5rem;">
                         <label for="wordsArea" style="font-size: 0.85rem; margin-bottom: 0.5rem; display: block;">
-                            Redigera bevakningsord nedan. Separera orden med kommatecken. Ej skiftlägeskänsligt.
+                            Edit watchwords below. Separate words with commas. Case-insensitive.
                         </label>
-                        <textarea id="wordsArea" rows="4" placeholder="t.ex. BRAND, OLYCKA, POLIS, AMBULANS, HLR"
+                        <textarea id="wordsArea" rows="4" placeholder="e.g. FIRE, ACCIDENT, POLICE, AMBULANCE, CPR"
                             style="width: 100%; padding: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 1rem; background: var(--input-bg, rgba(0,0,0,0.2)); color: var(--text-primary); border: 1px solid var(--panel-border); border-radius: 10px; resize: vertical;"></textarea>
                     </div>
                     <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.75rem;">
                         <button id="saveBtn" class="primary-btn" style="padding: 0.5rem 1.5rem;"
-                            onclick="saveWords()">Spara bevakningslista</button>
+                            onclick="saveWords()">Save Watchlist</button>
                         <span id="status" class="status-message"></span>
                     </div>
                 </div>

@@ -1,6 +1,7 @@
 import logging
 import os
 import hmac
+import threading
 from flask import Flask, jsonify, render_template, request, Response, stream_with_context
 import json
 import time
@@ -14,7 +15,8 @@ from database import (
     delete_alias, get_alert_words, save_alert_word, 
     delete_alert_word, get_default_settings,
     get_sdr_instances, save_sdr_instance, delete_sdr_instance, toggle_sdr_instance,
-    delete_message, toggle_message_lock
+    delete_message, toggle_message_lock, clear_messages, prune_messages,
+    get_database_stats, auto_prune_if_enabled
 )
 
 try:
@@ -33,21 +35,21 @@ log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
-# Begränsa maximal storlek på inkommande HTTP-anrop för att förhindra minnesöverbelastning (DoS)
+# Limit maximum payload size for incoming HTTP requests to prevent DoS memory exhaustion
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB
 
-# Autentisering via miljövariabler (t.ex. konfigurerat i docker-compose.yml)
+# Authentication via environment variables (configured in docker-compose.yml or .env)
 AUTH_USER = os.environ.get('AUTH_USER', '').strip()
 AUTH_PASS = os.environ.get('AUTH_PASS', '').strip()
 
 if AUTH_PASS:
-    logger.info("HTTP Basic Auth är aktiverat för användare: %s", AUTH_USER or 'admin')
+    logger.info("HTTP Basic Auth is enabled for user: %s", AUTH_USER or 'admin')
 else:
-    logger.info("HTTP Basic Auth är inaktiverat (inget AUTH_PASS angivet).")
+    logger.info("HTTP Basic Auth is disabled (no AUTH_PASS provided).")
 
 @app.before_request
 def require_authentication():
-    # Om inget lösenord konfigurerats tillåts all trafik (öppet läge)
+    # If no password is set, allow all traffic (open mode)
     if not AUTH_PASS:
         return None
         
@@ -56,22 +58,22 @@ def require_authentication():
     
     if not auth:
         return Response(
-            'Autentisering krävs', 401,
+            'Authentication Required', 401,
             {'WWW-Authenticate': 'Basic realm="PagerMonitor"'}
         )
         
     user_ok = hmac.compare_digest((auth.username or '').encode('utf-8'), expected_user.encode('utf-8'))
     pass_ok = hmac.compare_digest((auth.password or '').encode('utf-8'), AUTH_PASS.encode('utf-8'))
     if not (user_ok and pass_ok):
-        logger.warning(f"Misslyckat inloggningsförsök från {request.remote_addr} med användarnamn: {auth.username}")
+        logger.warning(f"Failed login attempt from {request.remote_addr} with username: {auth.username}")
         return Response(
-            'Ogiltigt användarnamn eller lösenord', 401,
+            'Invalid username or password', 401,
             {'WWW-Authenticate': 'Basic realm="PagerMonitor"'}
         )
 
 @app.after_request
 def set_security_headers(response):
-    # Säkra HTTP-svar mot vanliga webbattacker
+    # Harden HTTP responses against common web vulnerabilities
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-Frame-Options'] = 'SAMEORIGIN'
     response.headers['X-XSS-Protection'] = '1; mode=block'
@@ -86,10 +88,32 @@ def set_security_headers(response):
     )
     return response
 
+def start_prune_scheduler():
+    """Background thread to automatically prune old messages on schedule."""
+    def prune_loop():
+        # Initial sleep before first check
+        time.sleep(15)
+        while True:
+            try:
+                pruned = auto_prune_if_enabled()
+                if pruned > 0:
+                    logger.info(f"Automatic database maintenance: pruned {pruned} old messages.")
+            except Exception as e:
+                logger.error(f"Error in automatic prune scheduler: {e}")
+            # Check every 6 hours
+            time.sleep(6 * 3600)
+            
+    t = threading.Thread(target=prune_loop, daemon=True)
+    t.start()
+
+# Start the background maintenance scheduler
+start_prune_scheduler()
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
+@app.route('/alarms')
 @app.route('/larm')
 def larm_page():
     return render_template('larm.html')
@@ -97,15 +121,28 @@ def larm_page():
 @app.route('/statistics')
 def statistics_page():
     return render_template('statistics.html')
+
 @app.route('/settings')
 def settings_page():
     return render_template('settings.html')
+
 @app.route('/aliases')
 def aliases_page():
     return render_template('aliases.html')
+
 @app.route('/alerts')
 def alerts_page():
     return render_template('alerts.html')
+
+@app.route('/api/database/stats')
+def database_stats():
+    """Retrieve detailed database statistics including size, message counts, and oldest/newest timestamps."""
+    try:
+        stats = get_database_stats()
+        return jsonify(stats)
+    except Exception as e:
+        logger.error(f"Failed to fetch database stats: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 @app.route('/api/stats/dates')
 def stats_dates():
     conn = sqlite3.connect(database.DB_PATH)
@@ -185,10 +222,18 @@ def clear_all_messages():
 
 @app.route('/api/messages/prune', methods=['POST'])
 def prune_old_messages():
-    data = request.json
+    data = request.json or {}
     days = data.get('days', 30)
-    prune_messages(days)
-    return jsonify({"status": "success", "message": f"Messages older than {days} days pruned"})
+    try:
+        days = int(days)
+    except (ValueError, TypeError):
+        days = 30
+    deleted = prune_messages(days)
+    return jsonify({
+        "status": "success", 
+        "message": f"Successfully pruned {deleted} messages older than {days} days.",
+        "deleted_count": deleted
+    })
 
 @app.route('/api/settings/defaults')
 def settings_defaults():
@@ -199,7 +244,14 @@ def handle_settings():
     if request.method == 'POST':
         data = request.json
         # Handle each setting explicitly to prevent injected keys
-        allowed_keys = ['frequency', 'gain', 'device_serial', 'multimon_verbosity', 'multimon_charset', 'multimon_format', 'message_font', 'message_font_size', 'sample_rate', 'resample_rate', 'enable_dc_removal', 'ppm_error', 'enable_deemp', 'multimon_input_type', 'garbage_filter', 'garbage_filter_sensitivity']
+        allowed_keys = [
+            'frequency', 'gain', 'device_serial', 'multimon_verbosity', 
+            'multimon_charset', 'multimon_format', 'message_font', 
+            'message_font_size', 'sample_rate', 'resample_rate', 
+            'enable_dc_removal', 'ppm_error', 'enable_deemp', 
+            'multimon_input_type', 'garbage_filter', 'garbage_filter_sensitivity',
+            'auto_prune_enabled', 'auto_prune_days'
+        ]
         changed = False
         for key in allowed_keys:
             if key in data:
