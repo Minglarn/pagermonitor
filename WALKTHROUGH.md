@@ -195,3 +195,33 @@
     - Docker: `https://img.shields.io/badge/docker-GHCR-blue.svg?logo=docker&logoColor=white`
   - Pillren uppdateras nu dynamiskt och automatiskt vid varje versionsuppdatering.
 
+### 17. Korrigering av Alias-Radbrytning Mellan Ord (Borttagning av Ellipsis)
+- **Problem**:
+  - Efter den tidigare ändringen sattes `white-space: nowrap !important;` tillsammans med `overflow: hidden; text-overflow: ellipsis;` på aliasbrickorna (`.badge`).
+  - Detta ledde till att flerordsalias (som "Sjukvårdens Larmcentral") tvingades till en enda rad och klipptes av med tre punkter: "Sjukvårdens Larmcentr...".
+- **Åtgärd**:
+  - Ändrade `white-space` från `nowrap` till `normal` på både `td.addr-cell` och `.badge`.
+  - Tog bort `overflow: hidden` och `text-overflow: ellipsis`.
+  - Satte `word-break: normal !important;` och `overflow-wrap: break-word !important;`.
+  - Resultat: Ord hålls intakta utan avhuggna bokstäver, men flera ord radbryts naturligt vid mellanslag (t.ex. "Sjukvårdens" på rad 1 och "Larmcentral" på rad 2). Ingen text trunkeras med "...".
+
+### 18. Kompakt SDR Heartbeat i Loggen
+- **Problem**:
+  - Heartbeat-raden var över 280 tecken lång och upprepade serienummer, interna PID-nummer, frekvenser och inaktiverade enheter var 60:e sekund.
+- **Åtgärd**:
+  - Komprimerade loggformatet till att endast visa aktiva mottagares hälsostatus och tid sedan senaste mottagna larm:
+    `SDR Heartbeat: [RIKS 1] OK (22s) | [RIKS 2] OK (24s)`.
+  - Inaktiverade mottagare utelämnas för att spara loggutrymme.
+
+### 19. Borttagning av Ruta-i-Ruta Effekt & Minimering av Sidomarginaler (v2026.10.11.8)
+- **Problem**:
+  - Datatabellen hade en "ruta i ruta"-effekt där varje rad renderades som ett fristående flytande kort (`border-spacing: 0 8px`, `border-radius: 12px` per rad, egna ramar) inuti den övergripande glaspanelen.
+  - Dessutom fanns en stor onödig marginal (`padding: 2rem` = 32px) mot sidopanelen som slösade skärmutrymme.
+- **Åtgärd**:
+  - Byggde om tabellstrukturen i `style.css` och mallarna till `border-collapse: collapse` och `border-spacing: 0`.
+  - Ersatte de separata rad-korten med en enhetlig, modern tabellayout med diskreta 1px-delare (`border-bottom: 1px solid var(--panel-border)`) och subtil hover-effekt utan inre ramar och radiekant.
+  - Minskat yttre marginal (`.main-content` och `.dashboard-page .main-content`) från `2rem` till `0.75rem 1rem`, vilket flyttar innehållet närmare sidopanelen och maximerar den användbara bredden.
+
+
+
+

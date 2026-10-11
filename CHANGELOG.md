@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.11.8] - Clean Flat Table Layout, Minimized Sidebar Margins & Compact Heartbeat
+
+### Fixed
+- **Clean Flat Table Layout (Eliminated "Box-in-Box" Effect)**:
+  - Eliminated the disjointed card-per-row layout (`border-spacing: 0 8px`, `border-radius: 12px` per row) across Dashboard, Alarms, and Statistics tables.
+  - Replaced with a cohesive `border-collapse: collapse` table layout with sleek, unified horizontal 1px dividers (`border-bottom: 1px solid var(--panel-border)`), transparent row backgrounds, and subtle hover highlights.
+  - Removed inner nested borders and radius on `td:first-child` / `td:last-child`.
+- **Minimized Sidebar Margins**:
+  - Reduced outer `.main-content` and `.dashboard-page .main-content` padding from `2rem` (32px) down to `0.75rem 1rem`, significantly reducing wasted whitespace against the sidebar and expanding usable table width.
+  - Adjusted header margin-bottom to `0.75rem` and streamlined table-container padding.
+- **Compact SDR Heartbeat Logging**:
+  - Replaced the verbose 285-character multi-line heartbeat with a concise 55-character summary:
+    `SDR Heartbeat: [RIKS 1] OK (22s) | [RIKS 2] OK (24s)`.
+  - Suppressed disabled SDR instances from regular log spam.
+- **Alias Multi-Word Wrapping Without Ellipsis**:
+  - Restored natural word wrapping (`white-space: normal`) on CapCode aliases, allowing compound names ("Sjukvårdens Larmcentral") to wrap cleanly at whitespace without truncation or `...` ellipsis.
+
 ## [2026.10.11.7] - DB Load Latency Fix, Streamlined Drop Logging & Local Repository Badges
 
 ### Fixed

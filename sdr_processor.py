@@ -577,7 +577,7 @@ def run_sdr_process():
                     else:
                         logger.error(f"Failed to start {db_inst['name']}. Retrying next sync.")
 
-            # 3. Periodic supervisor heartbeat every 60 seconds
+            # 3. Periodic supervisor heartbeat every 60 seconds (compact summary)
             now = time.time()
             if now - last_heartbeat >= 60:
                 last_heartbeat = now
@@ -587,26 +587,34 @@ def run_sdr_process():
                     name = db_inst['name']
                     enabled = db_inst.get('enabled', 1)
                     if not enabled:
-                        status_parts.append(f"{name}: INAKTIVERAD")
                         continue
                     
                     inst = active_instances.get(inst_id)
                     if not inst:
-                        status_parts.append(f"{name}: EJ STARTAD / VANTAR")
+                        status_parts.append(f"[{name}] VANTAR")
                         continue
                         
                     p1 = inst.get('p1')
                     p2 = inst.get('p2')
                     p1_running = p1 is not None and p1.poll() is None
                     p2_running = p2 is not None and p2.poll() is None
-                    p1_st = f"KORS (PID {p1.pid})" if p1_running else f"DOD (kod {p1.poll() if p1 else 'N/A'})"
-                    p2_st = f"KORS (PID {p2.pid})" if p2_running else f"DOD (kod {p2.poll() if p2 else 'N/A'})"
-                    last_rec = inst.get('last_message_time')
-                    rec_info = f"senaste larm {int(now - last_rec)}s sedan" if last_rec else "inga larm an"
-                    serial_info = f"serial='{db_inst.get('device_serial')}'" if db_inst.get('device_serial') else "default-device"
-                    status_parts.append(f"[{name}] ({serial_info}, rtl_fm: {p1_st}, multimon: {p2_st}, freq: {db_inst.get('frequency', '?')}, {rec_info})")
+                    
+                    if p1_running and p2_running:
+                        last_rec = inst.get('last_message_time')
+                        if last_rec:
+                            elapsed = int(now - last_rec)
+                            ago = f"{elapsed}s" if elapsed < 60 else f"{elapsed // 60}m"
+                            status_parts.append(f"[{name}] OK ({ago})")
+                        else:
+                            status_parts.append(f"[{name}] OK (lyssnar)")
+                    else:
+                        dead = []
+                        if not p1_running: dead.append("rtl_fm")
+                        if not p2_running: dead.append("multimon")
+                        status_parts.append(f"[{name}] FEL ({'+'.join(dead)} dod)")
                 
-                logger.info(f"SDR Heartbeat: {len(status_parts)} konfigurerade mottagare -> {' | '.join(status_parts)}")
+                if status_parts:
+                    logger.info(f"SDR Heartbeat: {' | '.join(status_parts)}")
 
         except Exception as e:
             logger.error(f"Error in supervisor loop: {e}")
