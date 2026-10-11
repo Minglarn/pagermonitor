@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.11] - LARM-sida och HTTP-säkerhetshärdning
+
+### Added
+- Ny dedikerad sida för **LARM** (`/larm`) i sidomenyn som enbart listar händelser som får en träff (HIT) på bevakade ord i realtid.
+- Backend- och API-stöd för filtrering på enbart larmade meddelanden (`/api/messages?alerts_only=1`).
+- Färgkodade larmord-brickor i tabellen för tydlig överblick av vilket ord som triggat larmet.
+- Konfigurerbar HTTP Basic Auth via miljövariabler (`AUTH_USER` och `AUTH_PASS`) i `docker-compose.yml`.
+- Timing attack-skyddad lösenordsvalidering med `hmac.compare_digest` med fullt stöd för svenska tecken.
+- Härdade säkerhetsheaders på samtliga HTTP-svar: `X-Frame-Options` (Clickjacking), `X-Content-Type-Options`, `X-XSS-Protection`, `Referrer-Policy` och `Content-Security-Policy`.
+- Begränsning av inkommande nyttolast (`MAX_CONTENT_LENGTH = 2MB`) för att skydda mot DoS-minnesöverbelastning.
+- Full försvenskning av sidonavigering i samtliga vyer.
+
+### Fixed
+- Åtgärdat felaktigt antal bindningsparametrar vid automatisk initiering av SDR-instanser i databasen.
+
 ## [2026.02.22] - Initial Release & Upgrades
 
 ### Added

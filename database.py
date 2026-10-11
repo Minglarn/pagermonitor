@@ -149,6 +149,9 @@ def init_db():
             full_settings.get('resample_rate', '22050'),
             full_settings.get('enable_dc_removal', 'true'),
             full_settings.get('enable_deemp', 'true'),
+            full_settings.get('enable_high_quality_fir', 'false'),
+            full_settings.get('atan_math', 'std'),
+            full_settings.get('oversampling', '4'),
             full_settings.get('multimon_verbosity', '1'),
             full_settings.get('multimon_charset', 'SE'),
             full_settings.get('multimon_format', 'auto'),
@@ -238,7 +241,7 @@ def reindex_messages(already_open_conn=None):
         conn.commit()
         conn.close()
 
-def get_recent_messages(limit=100, before_id=None, search=None):
+def get_recent_messages(limit=100, before_id=None, search=None, alerts_only=False):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
@@ -258,6 +261,18 @@ def get_recent_messages(limit=100, before_id=None, search=None):
     if has_hidden:
         where_clauses.append('(a.is_hidden IS NULL OR a.is_hidden = 0)')
         
+    if alerts_only:
+        where_clauses.append('''
+            EXISTS (
+                SELECT 1 FROM alert_words aw
+                WHERE aw.is_active = 1
+                AND (
+                    m.message LIKE '%' || aw.word || '%'
+                    OR UPPER(m.message) LIKE '%' || UPPER(aw.word) || '%'
+                )
+            )
+        ''')
+
     if before_id:
         where_clauses.append('m.id < ?')
         params.append(before_id)

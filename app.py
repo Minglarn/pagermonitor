@@ -1,4 +1,6 @@
 import logging
+import os
+import hmac
 from flask import Flask, jsonify, render_template, request, Response, stream_with_context
 import json
 import time
@@ -31,10 +33,66 @@ log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
 app = Flask(__name__)
+# Begränsa maximal storlek på inkommande HTTP-anrop för att förhindra minnesöverbelastning (DoS)
+app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB
+
+# Autentisering via miljövariabler (t.ex. konfigurerat i docker-compose.yml)
+AUTH_USER = os.environ.get('AUTH_USER', '').strip()
+AUTH_PASS = os.environ.get('AUTH_PASS', '').strip()
+
+if AUTH_PASS:
+    logger.info("HTTP Basic Auth är aktiverat för användare: %s", AUTH_USER or 'admin')
+else:
+    logger.info("HTTP Basic Auth är inaktiverat (inget AUTH_PASS angivet).")
+
+@app.before_request
+def require_authentication():
+    # Om inget lösenord konfigurerats tillåts all trafik (öppet läge)
+    if not AUTH_PASS:
+        return None
+        
+    auth = request.authorization
+    expected_user = AUTH_USER if AUTH_USER else 'admin'
+    
+    if not auth:
+        return Response(
+            'Autentisering krävs', 401,
+            {'WWW-Authenticate': 'Basic realm="PagerMonitor"'}
+        )
+        
+    user_ok = hmac.compare_digest((auth.username or '').encode('utf-8'), expected_user.encode('utf-8'))
+    pass_ok = hmac.compare_digest((auth.password or '').encode('utf-8'), AUTH_PASS.encode('utf-8'))
+    if not (user_ok and pass_ok):
+        logger.warning(f"Misslyckat inloggningsförsök från {request.remote_addr} med användarnamn: {auth.username}")
+        return Response(
+            'Ogiltigt användarnamn eller lösenord', 401,
+            {'WWW-Authenticate': 'Basic realm="PagerMonitor"'}
+        )
+
+@app.after_request
+def set_security_headers(response):
+    # Säkra HTTP-svar mot vanliga webbattacker
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; "
+        "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; "
+        "img-src 'self' data:; "
+        "connect-src 'self';"
+    )
+    return response
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+@app.route('/larm')
+def larm_page():
+    return render_template('larm.html')
 
 @app.route('/statistics')
 def statistics_page():
@@ -115,8 +173,9 @@ def get_messages():
     before_id = request.args.get('before_id', type=int)
     limit = request.args.get('limit', default=100, type=int)
     search_query = request.args.get('search', default=None, type=str)
+    alerts_only = request.args.get('alerts_only', default='0').lower() in ('1', 'true')
     
-    messages = get_recent_messages(limit, before_id, search_query)
+    messages = get_recent_messages(limit, before_id, search_query, alerts_only=alerts_only)
     return jsonify(messages)
 
 @app.route('/api/messages/clear', methods=['POST'])

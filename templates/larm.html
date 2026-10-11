@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="sv">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PagerMonitor - LARM</title>
+    <link rel="stylesheet" href="/static/style.css?v=2">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;600&family=Share+Tech+Mono&family=Anonymous+Pro:wght@400;700&family=VT323&family=Roboto+Mono:wght@400;600&family=Source+Code+Pro:wght@400;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        (function () {
+            const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', theme);
+
+            const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+            if (isCollapsed) {
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.getElementById('sidebar').classList.add('collapsed');
+                });
+            }
+        })();
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
+        }
+    </script>
+</head>
+
+<body class="dashboard-page">
+    <div class="app-layout">
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <i id="satellite-icon" class="fas fa-satellite-dish"
+                    style="font-size: 1.5rem; color: var(--accent); transition: all 0.2s ease;"></i>
+                <div class="sidebar-logo">
+                    <h1>Pager<span>Monitor</span></h1>
+                    <p>POCSAG Monitor</p>
+                    <span id="conn-status-msg" class="conn-status-text" style="display: none;"></span>
+                </div>
+            </div>
+
+            <div class="sidebar-nav">
+                <a href="/" class="nav-item">
+                    <i class="fas fa-th-large"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/larm" class="nav-item active">
+                    <i class="fas fa-bell"></i>
+                    <span>LARM</span>
+                </a>
+                <a href="/aliases" class="nav-item">
+                    <i class="fas fa-tag"></i>
+                    <span>Alias</span>
+                </a>
+                <a href="/alerts" class="nav-item">
+                    <i class="fas fa-filter"></i>
+                    <span>Bevakade ord</span>
+                </a>
+                <a href="/statistics" class="nav-item">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Statistik</span>
+                </a>
+                <a href="/settings" class="nav-item">
+                    <i class="fas fa-cog"></i>
+                    <span>Inställningar</span>
+                </a>
+            </div>
+
+            <div class="sidebar-footer">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Växla sidomeny">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </nav>
+
+        <div class="main-content">
+            <header>
+                <div class="header-content">
+                    <div class="header-main">
+                        <h1>LARM</h1>
+                        <p>Händelser som matchar bevakade ord</p>
+                    </div>
+                    <div class="search-container">
+                        <input type="text" id="searchInput" placeholder="Sök bland larm, CapCodes, alias...">
+                        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <div id="rx-indicator" class="rx-status-dot" title="Tar emot data"></div>
+                    </div>
+                </div>
+            </header>
+
+            <main>
+                <div class="glass-panel table-container">
+                    <table id="alarmsTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Tidpunkt</th>
+                                <th>Frekvens / Meta</th>
+                                <th>CapCode (Alias)</th>
+                                <th>Meddelande</th>
+                                <th>Träff</th>
+                                <th>Åtgärder</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alarmsBody">
+                            <!-- Larmhändelser läggs till här -->
+                        </tbody>
+                    </table>
+                    <div id="loading" class="loading-state">Laddar larmhändelser...</div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Scroll till toppen -->
+    <button id="scrollToTop" class="scroll-top-btn" onclick="scrollToTop()" title="Tillbaka till toppen">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <!-- Quick Alias Modal -->
+    <div id="aliasModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeAliasModal()">&times;</button>
+            <div class="modal-header">
+                <h2>Skapa / Redigera Alias</h2>
+                <p>Koppla ett läsbart namn till denna CapCode.</p>
+            </div>
+            <form id="aliasModalForm">
+                <div class="form-group">
+                    <label for="modal_address">CapCode-adress</label>
+                    <input type="text" id="modal_address" name="address" readonly style="opacity: 0.7;">
+                </div>
+                <div class="form-group">
+                    <label for="modal_alias">Alias (Etikett)</label>
+                    <input type="text" id="modal_alias" name="alias" placeholder="t.ex. Räddningstjänst" required>
+                </div>
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="modal_is_hidden" name="is_hidden">
+                        Dölj meddelanden från denna adress
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" id="modalSaveBtn" class="primary-btn">Spara Alias</button>
+                </div>
+            </form>
+            <div id="modalStatus" class="status-message"></div>
+        </div>
+    </div>
+
+    <!-- Bekräftelsemodal -->
+    <div id="confirmModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 400px; padding: 2rem; border-radius: 20px;">
+            <div class="modal-header">
+                <h2 id="confirmTitle" style="color: var(--accent);">Bekräfta åtgärd</h2>
+                <p id="confirmMessage" style="margin-top: 0.5rem; color: var(--text-secondary);">Är du säker på att du vill fortsätta?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="secondary-btn" onclick="closeConfirm(false)">Avbryt</button>
+                <button type="button" id="confirmActionBtn" class="primary-btn danger-btn">Ta bort</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function openAliasModal(address) {
+            document.getElementById('modal_address').value = address;
+            document.getElementById('modal_alias').value = '';
+            document.getElementById('modal_is_hidden').checked = false;
+
+            if (window.currentAlarmsData) {
+                const existing = window.currentAlarmsData.find(a => a.address === address);
+                if (existing && existing.alias) {
+                    document.getElementById('modal_alias').value = existing.alias;
+                }
+            }
+
+            document.getElementById('aliasModal').classList.add('show');
+            document.getElementById('modal_alias').focus();
+        }
+
+        function closeAliasModal() {
+            document.getElementById('aliasModal').classList.remove('show');
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const alarmsBody = document.getElementById('alarmsBody');
+            const searchInput = document.getElementById('searchInput');
+            const loading = document.getElementById('loading');
+            let allAlarms = [];
+            let alertWords = [];
+            let isLoadingMore = false;
+            let hasReachedEnd = false;
+
+            // Hämta aktiva bevakade ord
+            const fetchAlertWords = async () => {
+                try {
+                    const res = await fetch('/api/alerts');
+                    alertWords = await res.json();
+                } catch (e) {
+                    console.error('Kunde inte läsa in bevakade ord:', e);
+                }
+            };
+
+            // Hitta vilket larmord som träffats
+            function findMatchingAlert(msgText) {
+                if (!alertWords || !alertWords.length) return null;
+                const upper = msgText.toUpperCase();
+                for (const aw of alertWords) {
+                    if (aw.is_active && upper.includes(aw.word.toUpperCase())) {
+                        return aw;
+                    }
+                }
+                return null;
+            }
+
+            // Färgmarkera larmord i texten
+            function highlightMessage(text) {
+                if (!alertWords.length) return text;
+                let highlighted = text;
+                alertWords.forEach(aw => {
+                    if (aw.is_active) {
+                        const regex = new RegExp(`(${aw.word})(?![^<]*>)`, 'gi');
+                        highlighted = highlighted.replace(regex, `<span class="alert-word" style="color: ${aw.color || '#ef4444'}; border-bottom-color: ${aw.color || '#ef4444'}">$1</span>`);
+                    }
+                });
+                return highlighted;
+            }
+
+            function formatMessage(msgStr) {
+                let formatted = (msgStr || '').replace(/<CR><LF>/g, '<br>').replace(/\n/g, '<br>');
+                return highlightMessage(formatted);
+            }
+
+            // Hämta enbart larmhändelser från API
+            const fetchAlarms = async (beforeId = null) => {
+                if (isLoadingMore || (beforeId && hasReachedEnd)) return;
+
+                try {
+                    let url = beforeId ? `/api/messages?alerts_only=1&before_id=${beforeId}` : '/api/messages?alerts_only=1';
+                    const currentQuery = searchInput.value.trim();
+                    if (currentQuery) {
+                        url += `&search=${encodeURIComponent(currentQuery)}`;
+                    }
+
+                    if (beforeId) isLoadingMore = true;
+
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('Nätverksfel');
+                    const data = await response.json();
+
+                    if (data.length === 0) {
+                        if (beforeId) hasReachedEnd = true;
+                        if (!allAlarms.length) {
+                            loading.innerText = 'Inga larmhändelser hittades.';
+                            loading.style.display = 'block';
+                        }
+                        return;
+                    }
+
+                    loading.style.display = 'none';
+
+                    if (beforeId) {
+                        allAlarms = [...allAlarms, ...data];
+                    } else {
+                        allAlarms = data;
+                    }
+
+                    window.currentAlarmsData = allAlarms;
+                    renderAlarms();
+                } catch (error) {
+                    console.error('Fel vid hämtning av larm:', error);
+                    loading.innerText = 'Kunde inte läsa in larmhändelser.';
+                } finally {
+                    isLoadingMore = false;
+                }
+            };
+
+            // Hämta inställningar för typsnitt
+            const fetchSettings = async () => {
+                try {
+                    const res = await fetch('/api/settings');
+                    const settings = await res.json();
+                    if (settings.message_font) {
+                        document.documentElement.style.setProperty('--msg-font', `'${settings.message_font}', monospace`);
+                    }
+                    if (settings.message_font_size) {
+                        document.documentElement.style.setProperty('--msg-size', `${settings.message_font_size}rem`);
+                    }
+                } catch (e) {
+                    console.error('Kunde inte läsa inställningar:', e);
+                }
+            };
+
+            const createAlarmRow = (alarm) => {
+                const tr = document.createElement('tr');
+                tr.className = 'fade-in alert-row alert-pulse-bg';
+
+                const match = findMatchingAlert(alarm.message);
+                const hitWord = alarm.alert_word || (match ? match.word : 'LARM');
+                const hitColor = alarm.alert_color || (match ? match.color : '#ef4444');
+
+                const dateObj = new Date(alarm.timestamp);
+                const dateStr = dateObj.toLocaleDateString('sv-SE', {
+                    year: 'numeric', month: '2-digit', day: '2-digit'
+                });
+                const timeStr = dateObj.toLocaleTimeString('sv-SE', {
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+                const formattedTime = `${dateStr}<br>${timeStr}`;
+
+                const displayAddress = alarm.alias ? alarm.alias : alarm.address;
+                const bitrateTag = alarm.bitrate ? `<span class="badge meta">${alarm.bitrate}bps</span>` : '';
+                const funcLabel = alarm.function !== undefined ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
+                const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
+                const freqTag = alarm.frequency ? `<span class="badge meta" style="background: rgba(168, 85, 247, 0.1); color: #a855f7;">${alarm.frequency}</span>` : '';
+                const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta" style="margin-left: 5px;">Dubblett</span>` : '';
+
+                const hitBadge = `<span class="badge" style="background: ${hitColor}22; color: ${hitColor}; border: 1px solid ${hitColor}66; font-weight: 700; text-transform: uppercase;"><i class="fas fa-tag" style="margin-right: 4px; font-size: 0.75rem;"></i>${hitWord}</span>`;
+
+                tr.innerHTML = `
+                    <td class="id-cell">${alarm.id}</td>
+                    <td class="ts-cell">${formattedTime}</td>
+                    <td class="addr-cell">${freqTag}${bitrateTag}${funcTag}${duplicateTag}</td>
+                    <td class="addr-cell">
+                        <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
+                    </td>
+                    <td class="msg-cell">${formatMessage(alarm.message)}</td>
+                    <td class="hit-cell">${hitBadge}</td>
+                    <td class="actions-cell">
+                        <div class="actions-wrapper">
+                            <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Lås upp' : 'Lås (skydda från rensning)'}">
+                                <i class="fas ${alarm.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
+                            </button>
+                            <div class="btn-divider"></div>
+                            <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Ta bort meddelande">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                return tr;
+            };
+
+            const renderAlarms = (maintainScroll = false) => {
+                const container = document.querySelector('.table-container');
+                const previousScrollTop = container.scrollTop;
+                const previousScrollHeight = container.scrollHeight;
+                const wasAtTop = previousScrollTop < 50;
+
+                alarmsBody.innerHTML = '';
+
+                if (allAlarms.length === 0) {
+                    loading.innerText = 'Inga larmhändelser hittades.';
+                    loading.style.display = 'block';
+                    return;
+                } else {
+                    loading.style.display = 'none';
+                }
+
+                allAlarms.forEach((alarm, index) => {
+                    const tr = createAlarmRow(alarm);
+                    tr.style.animationDelay = `${Math.min(index, 15) * 0.03}s`;
+                    alarmsBody.appendChild(tr);
+                });
+
+                if (maintainScroll) {
+                    if (wasAtTop) {
+                        container.scrollTop = 0;
+                    } else {
+                        const newScrollHeight = container.scrollHeight;
+                        const heightDifference = newScrollHeight - previousScrollHeight;
+                        container.scrollTop = previousScrollTop + (heightDifference > 0 ? heightDifference : 0);
+                    }
+                }
+            };
+
+            let searchTimeout = null;
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchTimeout);
+                allAlarms = [];
+                alarmsBody.innerHTML = '';
+                hasReachedEnd = false;
+                isLoadingMore = false;
+                loading.style.display = 'block';
+                loading.innerText = 'Söker larm...';
+
+                searchTimeout = setTimeout(() => {
+                    fetchAlarms();
+                }, 400);
+            });
+
+            // Initial hämtning
+            fetchSettings();
+            fetchAlertWords().then(() => fetchAlarms());
+
+            // SSE för larm i realtid
+            const evtSource = new EventSource("/stream");
+            const rxIndicator = document.getElementById('rx-indicator');
+            const satIcon = document.getElementById('satellite-icon');
+
+            function flashRx() {
+                if (rxIndicator) {
+                    rxIndicator.classList.remove('active');
+                    void rxIndicator.offsetWidth;
+                    rxIndicator.classList.add('active');
+                    setTimeout(() => rxIndicator.classList.remove('active'), 150);
+                }
+                if (satIcon) {
+                    satIcon.classList.remove('extreme-pulse');
+                    void satIcon.offsetWidth;
+                    satIcon.classList.add('extreme-pulse');
+                }
+            }
+
+            const statusMsg = document.getElementById('conn-status-msg');
+
+            evtSource.onopen = function () {
+                satIcon.classList.remove('conn-error');
+                satIcon.classList.add('conn-ok');
+                if (statusMsg) statusMsg.style.display = 'none';
+            };
+
+            evtSource.onerror = function (err) {
+                satIcon.classList.remove('conn-ok');
+                satIcon.classList.add('conn-error');
+                if (statusMsg) {
+                    statusMsg.innerText = "Anslutning bruten";
+                    statusMsg.style.display = 'block';
+                }
+            };
+
+            evtSource.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                flashRx();
+
+                if (data.type === 'ping') return;
+
+                // Kontrollera om händelsen är en träff på bevakade ord
+                const match = findMatchingAlert(data.message || '');
+                const isAlertHit = Boolean(data.alert_word || match);
+
+                // Endast larmhändelser ska visas på denna sida
+                if (!isAlertHit) return;
+
+                if (!allAlarms.some(a => a.id === data.id)) {
+                    allAlarms.unshift(data);
+                    if (allAlarms.length > 500) allAlarms.pop();
+
+                    loading.style.display = 'none';
+
+                    const container = document.querySelector('.table-container');
+                    const wasAtTop = container.scrollTop < 50;
+
+                    if (!searchInput.value) {
+                        const previousScrollHeight = container.scrollHeight;
+                        const newRow = createAlarmRow(data);
+                        alarmsBody.prepend(newRow);
+
+                        if (alarmsBody.children.length > 500) {
+                            alarmsBody.lastElementChild.remove();
+                        }
+
+                        if (wasAtTop) {
+                            container.scrollTop = 0;
+                        } else {
+                            container.scrollTop += (container.scrollHeight - previousScrollHeight);
+                        }
+                    } else {
+                        const q = searchInput.value.toLowerCase().normalize("NFC");
+                        const addr = String(data.address).toLowerCase().normalize("NFC");
+                        const msgStr = String(data.message).toLowerCase().normalize("NFC");
+                        const al = data.alias ? String(data.alias).toLowerCase().normalize("NFC") : "";
+
+                        if (addr.includes(q) || msgStr.includes(q) || al.includes(q)) {
+                            const newRow = createAlarmRow(data);
+                            alarmsBody.prepend(newRow);
+                        }
+                    }
+                }
+            };
+
+            // Infinite scroll
+            const tableContainer = document.querySelector('.table-container');
+            const topBtn = document.getElementById('scrollToTop');
+
+            tableContainer.addEventListener('scroll', () => {
+                if (tableContainer.scrollTop > 300) {
+                    topBtn.classList.add('show');
+                } else {
+                    topBtn.classList.remove('show');
+                }
+
+                const threshold = 100;
+                if (tableContainer.scrollHeight - tableContainer.scrollTop - tableContainer.clientHeight < threshold) {
+                    if (allAlarms.length > 0 && !isLoadingMore && !hasReachedEnd) {
+                        const oldestId = allAlarms[allAlarms.length - 1].id;
+                        fetchAlarms(oldestId);
+                    }
+                }
+            });
+
+            window.scrollToTop = () => {
+                tableContainer.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+
+            // Bekräftelsemodal
+            let confirmResolve = null;
+            window.showConfirm = (title, message, actionLabel = 'Ta bort') => {
+                document.getElementById('confirmTitle').innerText = title;
+                document.getElementById('confirmMessage').innerText = message;
+                document.getElementById('confirmActionBtn').innerText = actionLabel;
+                document.getElementById('confirmModal').classList.add('show');
+
+                return new Promise(resolve => {
+                    confirmResolve = resolve;
+                    document.getElementById('confirmActionBtn').onclick = () => {
+                        document.getElementById('confirmModal').classList.remove('show');
+                        resolve(true);
+                    };
+                });
+            };
+
+            window.closeConfirm = (val) => {
+                document.getElementById('confirmModal').classList.remove('show');
+                if (confirmResolve) confirmResolve(val);
+            };
+
+            window.deleteMessage = async (msgId, btn) => {
+                const confirmed = await showConfirm('Ta bort meddelande', 'Vill du radera detta larmmeddelande permanent?');
+                if (!confirmed) return;
+
+                try {
+                    const response = await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        allAlarms = allAlarms.filter(a => a.id !== msgId);
+                        renderAlarms(true);
+                    } else {
+                        alert('Fel vid borttagning: ' + result.message);
+                    }
+                } catch (err) {
+                    console.error('Borttagningsfel:', err);
+                    alert('Kunde inte ta bort meddelandet.');
+                }
+            };
+
+            window.toggleLock = async (msgId, btn) => {
+                const isLocked = btn.classList.contains('locked');
+                const newState = !isLocked;
+
+                try {
+                    const response = await fetch(`/api/messages/${msgId}/lock`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ protected: newState })
+                    });
+                    const result = await response.json();
+
+                    if (result.status === 'success') {
+                        btn.classList.toggle('locked', newState);
+                        const icon = btn.querySelector('i');
+                        icon.className = newState ? 'fas fa-lock' : 'fas fa-lock-open';
+                        btn.title = newState ? 'Lås upp' : 'Lås (skydda från rensning)';
+
+                        const alarm = allAlarms.find(a => a.id === msgId);
+                        if (alarm) alarm.is_protected = newState;
+                    }
+                } catch (err) {
+                    console.error('Låsfel:', err);
+                }
+            };
+
+            // Hantera alias-modal
+            const aliasModalForm = document.getElementById('aliasModalForm');
+            const modalSaveBtn = document.getElementById('modalSaveBtn');
+
+            aliasModalForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                modalSaveBtn.innerText = 'Sparar...';
+                modalSaveBtn.disabled = true;
+
+                const payload = {
+                    address: document.getElementById('modal_address').value,
+                    alias: document.getElementById('modal_alias').value,
+                    is_hidden: document.getElementById('modal_is_hidden').checked
+                };
+
+                fetch('/api/aliases', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            allAlarms.forEach(alarm => {
+                                if (alarm.address === payload.address) alarm.alias = payload.alias;
+                            });
+
+                            allAlarms = [];
+                            document.getElementById('alarmsBody').innerHTML = '';
+                            hasReachedEnd = false;
+                            isLoadingMore = false;
+                            document.getElementById('loading').style.display = 'block';
+                            document.getElementById('loading').innerText = 'Laddar larmhändelser...';
+
+                            fetchAlarms();
+                            closeAliasModal();
+                        } else {
+                            alert('Fel: ' + data.message);
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Alias-fel:', err);
+                        alert('Kunde inte spara alias.');
+                    })
+                    .finally(() => {
+                        modalSaveBtn.innerText = 'Spara Alias';
+                        modalSaveBtn.disabled = false;
+                    });
+            });
+        });
+    </script>
+</body>
+
+</html>

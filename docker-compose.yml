@@ -17,5 +17,8 @@ services:
       - MQTT_PASS=${MQTT_PASS:-}
       - MQTT_TOPIC=${MQTT_TOPIC:-pagermonitor/alarms}
       - TZ=${TZ:-Europe/Stockholm}
+      # HTTP-autentisering för att skydda webbgränssnittet
+      - AUTH_USER=${AUTH_USER:-admin}
+      - AUTH_PASS=${AUTH_PASS:-}
     ports:
-      - "5000:5000"
+      - "7090:5000"
