@@ -109,7 +109,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.11.3"
+APP_VERSION = "2026.10.11.4"
 
 @app.context_processor
 def inject_globals():
@@ -271,7 +271,7 @@ def stats_freq_hits():
 @app.route('/api/messages')
 def get_messages():
     before_id = request.args.get('before_id', type=int)
-    limit = request.args.get('limit', default=100, type=int)
+    limit = request.args.get('limit', default=None, type=int)
     search_query = request.args.get('search', default=None, type=str)
     alerts_only = request.args.get('alerts_only', default='0').lower() in ('1', 'true')
     
@@ -315,13 +315,19 @@ def handle_settings():
             'multimon_input_type', 'garbage_filter', 'garbage_filter_sensitivity',
             'auto_prune_enabled', 'auto_prune_days'
         ]
-        changed = False
+        sdr_restart_keys = {
+            'frequency', 'gain', 'device_serial', 'multimon_verbosity', 
+            'multimon_charset', 'multimon_format', 'sample_rate', 'resample_rate', 
+            'enable_dc_removal', 'ppm_error', 'enable_deemp', 'multimon_input_type'
+        }
+        sdr_restart_needed = False
         for key in allowed_keys:
             if key in data:
                 update_setting(key, data[key])
-                changed = True
+                if key in sdr_restart_keys:
+                    sdr_restart_needed = True
         
-        if changed:
+        if sdr_restart_needed:
             restart_sdr()
             
         return jsonify({"status": "success"})

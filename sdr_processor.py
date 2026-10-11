@@ -45,7 +45,13 @@ def is_garbage_message(message, sensitivity=50):
     temp_msg = re.sub(r'<[A-Z0-9]{2,4}>', '\x01', msg)
     length = len(temp_msg)
 
+    if length == 0:
+        return True
+
+    # Short alphanumeric messages (like 'AB', 'CD', 'P1', 'OK') are valid pager status codes
     if length < 3:
+        if temp_msg.isalnum():
+            return False
         return True
 
     # Scale thresholds based on sensitivity (0-100)
@@ -248,16 +254,30 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     function_code = parsed['function']
                     freq = config.get('frequency', 'Unknown')
 
-                    # GARBAGE FILTER - drop noise messages (if enabled in settings)
-                    settings = get_settings()
-                    if settings.get('garbage_filter', 'true') == 'true':
-                        sensitivity = int(settings.get('garbage_filter_sensitivity', '50'))
-                        if is_garbage_message(message, sensitivity):
-                            logger.debug(f"[{config['name']}] GARBAGE DROPPED -> Address: {address}, Msg: {message[:60]}...")
-                            for cb in list(new_message_callbacks):
-                                try: cb({'type': 'ping'})
-                                except Exception: pass
-                            continue
+                    # ALIAS LOOKUP & MUTING CHECK
+                    alias_info = get_alias_info(address)
+                    alias = alias_info['alias'] if alias_info else ''
+                    is_hidden = alias_info['is_hidden'] if alias_info else False
+                    
+                    if is_hidden:
+                        logger.info(f"[{config['name']}] DROPPED (Hidden Alias) -> Address: {address}")
+                        for cb in list(new_message_callbacks):
+                            try: cb({'type': 'ping'})
+                            except Exception: pass
+                        continue
+
+                    # GARBAGE FILTER - only filter un-aliased messages (configured aliases are never dropped)
+                    has_active_alias = bool(alias_info and not is_hidden)
+                    if not has_active_alias:
+                        settings = get_settings()
+                        if settings.get('garbage_filter', 'true') == 'true':
+                            sensitivity = int(settings.get('garbage_filter_sensitivity', '50'))
+                            if is_garbage_message(message, sensitivity):
+                                logger.debug(f"[{config['name']}] GARBAGE DROPPED -> Address: {address}, Msg: {message[:60]}...")
+                                for cb in list(new_message_callbacks):
+                                    try: cb({'type': 'ping'})
+                                    except Exception: pass
+                                continue
 
                     # DUPLICATE DETECTION
                     now = time.time()
@@ -276,17 +296,6 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                             cutoff = now - 300 # Keep last 5 mins
                             keys_to_del = [k for k, v in recent_messages_cache.items() if v < cutoff]
                             for k in keys_to_del: del recent_messages_cache[k]
-
-                    alias_info = get_alias_info(address)
-                    alias = alias_info['alias'] if alias_info else ''
-                    is_hidden = alias_info['is_hidden'] if alias_info else False
-                    
-                    if is_hidden:
-                        logger.info(f"[{config['name']}] DROPPED (Hidden Alias) -> Address: {address}")
-                        for cb in list(new_message_callbacks):
-                            try: cb({'type': 'ping'})
-                            except Exception: pass
-                        continue
                         
                     logger.info(f"[{config['name']}] DECODED -> Address: {address}, Alias: {alias}, Msg: {message} {'(DUPLICATE)' if is_duplicate else ''}")
                     

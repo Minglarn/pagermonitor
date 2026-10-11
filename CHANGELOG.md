@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.11.4] - Full-Width Settings Overhaul, Live Typography Preview & Seamless Auto-Save
+
+### Added
+- **Full-Width Responsive Settings Layout**: Expanded the settings container from an 800px column to a full-width responsive grid (`max-width: 1440px`) utilizing modern widescreen displays.
+- **Interactive Live Typography Preview**: Added a side-by-side real-time POCSAG message preview in the "Utseende & Visning" tab that dynamically reflects font family, text size slider changes, and theme styling in real-time.
+- **Seamless Auto-Save (Zero Save Buttons)**: Removed manual "Save" buttons across appearance, font, slider, and retention forms. Toggles and selects save immediately on change; range sliders and numeric inputs save with debounced background requests.
+- **Auto-Save Status Badge**: Added an animated header badge displaying live synchronization states ("Alla ändringar sparade", "Sparar ändringar...", "Kunde inte spara").
+- **Modal-Based SDR Receiver Creation**: Replaced browser `prompt()` with an integrated modal dialog for adding new SDR receivers with custom name and frequency validation.
+- **SDR Card Grid**: Redesigned multi-SDR receiver cards into an adaptive responsive grid with quick-toggle switches and hardware management links.
+
+### Changed
+- **Targeted SDR Process Restarts**: Optimized `/api/settings` to only restart radio decoding processes (`rtl_fm` / `multimon-ng`) when actual radio/hardware parameters change, allowing instant appearance and retention adjustments without interrupting live reception.
+- **Complete Swedish Localization in Settings**: Translated all settings tabs, forms, descriptions, tooltips, and modal dialogs to Swedish.
+
 ## [2026.10.11.3] - Unified Rules & Triggers, Watchdog USB Health Verification & CalVer Sidebar
 
 ### Added

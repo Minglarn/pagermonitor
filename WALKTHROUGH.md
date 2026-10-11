@@ -118,3 +118,30 @@
   - Elevated `rtl_fm` stderr error and warning messages to `logger.warning`/`logger.error` so USB driver resets and errors are fully visible in container logs.
   - Added `get_sdr_runtime_status()` returning active PID numbers, uptime, and last recorded error.
   - Updated Settings -> SDR Receivers cards to show real-time status badges (`Running (PID: 1234)` or `Not Running`).
+
+### 12. Full Database History Loading & Active Alias Protection
+- **Full Database Message Loading**:
+  - Removed the arbitrary `limit=200` query parameter when initializing the live Dashboard (`/`) and default `100` limit in `/api/messages`.
+  - The client now fetches all database records into DataTables 2 so searches (e.g. `RESTART`, specific addresses, keywords) search across the entire database history rather than just the latest 200 rows.
+- **Active Alias Preservation**:
+  - Restructured message processing in `sdr_processor.py` so alias lookup occurs before the garbage filter.
+  - User-configured active aliases (e.g. `1245952` -> "Nätverkssynk") are permanently exempt from the noise/entropy filter so their transmissions are never dropped.
+### 13. Full-Width Settings Overhaul, Live Typography Preview & Seamless Auto-Save
+- **Bred och Luftig Gränssnittslayout (Full Width)**:
+  - Tidigare var inställningssidan låst till en smal `max-width: 800px` kolumn som lämnade över hälften av skärmen tom.
+  - Skapade `.settings-container` med full responsiv bredd (`max-width: 1440px`, 100% vidd) som ger generöst utrymme för kort, reglage och tabeller.
+- **Sömlös Automatisk Sparning (Auto-Save)**:
+  - Eliminerade alla manuella "Spara"-knappar i inställningsfliken.
+  - Dropdowns (`theme`, `message_font`) och togglar (`garbage_filter`, `auto_prune_enabled`) sparas omedelbart vid förändring.
+  - Sliders (`message_font_size_slider`, `garbage_sensitivity_slider`) och textfält (`auto_prune_days`) sparas med bakgrunds-debouncing (350–400 ms) för mjuk och snabb interaktion.
+  - Implementerade en diskret statusindikator i sidhuvudet (`#autoSaveBadge`) med realtidslägen: "Alla ändringar sparade" (grön bock), "Sparar ändringar..." (snurrande laddare) och "Kunde inte spara" (röd varning).
+- **Interaktiv Live Typography & Appearance Preview**:
+  - Delade upp "Utseende & Visning" i en tvåkolumns split-layout: inställningskontroller till vänster och en levande förhandsgranskningsruta till höger.
+  - Förhandsgranskningen visar ett realistiskt larmmeddelande och uppdaterar typsnitt (`font-family`) samt textstorlek (`font-size`) i realtid när användaren drar i reglagen.
+- **Modern Modal för SDR-Mottagare**:
+  - Ersatte webbläsarens inbyggda `prompt()` med en integrerad modaldialog för att lägga till nya mottagare med namn och frekvensvalidering.
+- **Svensk Lokalisering av Inställningar**:
+  - Samtliga flikar, formulärfält, hjälpetiketter och dialoger i inställningsfliken är översatta till ren svenska.
+- **Optimerad SDR-Processomstart**:
+  - Ändrade `/api/settings` i `app.py` så att processomstart av `rtl_fm` och `multimon-ng` endast sker när faktiska radio-/hårdvarunycklar ändras. Ändringar av typsnitt, textstorlek, tema eller gallring avbryter inte längre radiomottagningen.
+

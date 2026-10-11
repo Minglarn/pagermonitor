@@ -101,3 +101,55 @@ def test_rules_page_and_sidebar_calver(client):
         assert 'Alert Words' in html
         assert 'sidebar-version' in html
         assert 'v2026.10.11' in html
+
+def test_get_all_messages_no_limit(client):
+    """Testa att /api/messages utan limit-parameter returnerar alla meddelanden utan 200-gräns."""
+    for i in range(250):
+        database.save_message("1000000", f"Test message #{i}")
+
+    res = client.get('/api/messages')
+    assert res.status_code == 200
+    data = res.get_json()
+    assert len(data) == 250
+
+def test_garbage_filter_allows_short_alphanumeric_codes():
+    """Testa att korta nätverkskoder som AB, CD, OK inte kastas av skräpfiltret."""
+    from sdr_processor import is_garbage_message
+    assert is_garbage_message("AB", 50) is False
+    assert is_garbage_message("CD", 50) is False
+    assert is_garbage_message("OK", 50) is False
+    assert is_garbage_message("", 50) is True
+
+def test_settings_page_renders_with_autosave_and_wide_layout(client):
+    """Verifiera att inställningssidan renderas i fullbredd med auto-save och förhandsgranskning."""
+    res = client.get('/settings')
+    assert res.status_code == 200
+    html = res.data.decode('utf-8')
+    assert 'settings-container' in html
+    assert 'autoSaveBadge' in html
+    assert 'previewTextContent' in html
+    assert 'addSdrModal' in html
+    assert 'v2026.10.11.4' in html
+
+def test_settings_autosave_api(client):
+    """Verifiera att uppdatering av visningsinställningar via POST /api/settings lyckas."""
+    payload = {
+        'message_font': 'JetBrains Mono',
+        'message_font_size': '1.1',
+        'garbage_filter': 'true',
+        'garbage_filter_sensitivity': '45',
+        'auto_prune_enabled': 'true',
+        'auto_prune_days': '45'
+    }
+    res = client.post('/api/settings', json=payload)
+    assert res.status_code == 200
+    assert res.get_json()['status'] == 'success'
+
+    # Verifiera att inställningarna faktiskt sparats
+    get_res = client.get('/api/settings')
+    assert get_res.status_code == 200
+    saved = get_res.get_json()
+    assert saved['message_font'] == 'JetBrains Mono'
+    assert saved['message_font_size'] == '1.1'
+    assert saved['garbage_filter_sensitivity'] == '45'
+

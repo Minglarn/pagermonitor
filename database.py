@@ -243,7 +243,7 @@ def reindex_messages(already_open_conn=None):
         conn.commit()
         conn.close()
 
-def get_recent_messages(limit=100, before_id=None, search=None, alerts_only=False):
+def get_recent_messages(limit=None, before_id=None, search=None, alerts_only=False):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
@@ -290,8 +290,10 @@ def get_recent_messages(limit=100, before_id=None, search=None, alerts_only=Fals
     if where_clauses:
         query += ' WHERE ' + ' AND '.join(where_clauses)
         
-    query += ' ORDER BY m.id DESC LIMIT ?'
-    params.append(limit)
+    query += ' ORDER BY m.id DESC'
+    if limit is not None and limit > 0:
+        query += ' LIMIT ?'
+        params.append(limit)
         
     c.execute(query, tuple(params))
     rows = c.fetchall()
