@@ -140,7 +140,7 @@
             color: var(--text-secondary) !important;
             border-top: none !important;
             border-left: none !important;
-            border-right: none !important;
+            border-right: 1px solid var(--panel-border, #1f2937) !important;
             border-bottom: 2px solid var(--panel-border, #1f2937) !important;
             font-size: 0.75rem !important;
             text-transform: uppercase !important;
@@ -149,6 +149,10 @@
             cursor: pointer;
             white-space: nowrap !important;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+        }
+
+        table.dataTable.larm-dt thead th:last-child {
+            border-right: none !important;
         }
 
         table.dataTable.larm-dt thead th:hover {
@@ -167,14 +171,18 @@
         table.dataTable.larm-dt tbody td {
             border: none !important;
             border-bottom: 1px solid var(--panel-border, #1f2937) !important;
+            border-right: 1px solid var(--panel-border, #1f2937) !important;
             border-radius: 0 !important;
             background: transparent !important;
         }
 
-        table.dataTable.larm-dt tbody td:first-child,
-        table.dataTable.larm-dt tbody td:last-child {
+        table.dataTable.larm-dt tbody td:first-child {
             border-radius: 0 !important;
             border-left: none !important;
+        }
+
+        table.dataTable.larm-dt tbody td:last-child {
+            border-radius: 0 !important;
             border-right: none !important;
         }
 

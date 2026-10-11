@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.11.9] - Restored Vertical Column Dividers in DataTables
+
+### Fixed
+- **Vertical Column Dividers (Restored)**:
+  - Re-added crisp vertical separator lines (`border-right: 1px solid var(--panel-border)`) between all table columns across `thead th` and `tbody td` in Dashboard, Alarms, and Statistics tables.
+  - Suppressed the divider on the last column (`:last-child { border-right: none }`) to maintain clean outer card borders.
+
 ## [2026.10.11.8] - Clean Flat Table Layout, Minimized Sidebar Margins & Compact Heartbeat
 
 ### Fixed

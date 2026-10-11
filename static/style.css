@@ -574,6 +574,7 @@ td {
     background: transparent;
     border: none;
     border-bottom: 1px solid var(--panel-border);
+    border-right: 1px solid var(--panel-border);
     color: var(--text-primary);
     font-size: 0.95rem;
     transition: background 0.15s ease;

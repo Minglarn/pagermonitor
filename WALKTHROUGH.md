@@ -222,6 +222,14 @@
   - Ersatte de separata rad-korten med en enhetlig, modern tabellayout med diskreta 1px-delare (`border-bottom: 1px solid var(--panel-border)`) och subtil hover-effekt utan inre ramar och radiekant.
   - Minskat yttre marginal (`.main-content` och `.dashboard-page .main-content`) från `2rem` till `0.75rem 1rem`, vilket flyttar innehållet närmare sidopanelen och maximerar den användbara bredden.
 
+### 20. Återställning av Kolumnavdelare i DataTables (v2026.10.11.9)
+- **Problem**:
+  - När "ruta i ruta"-effekten togs bort försvann även de vertikala avdelarna mellan kolumnerna i tabellen.
+- **Åtgärd**:
+  - Återställde `border-right: 1px solid var(--panel-border)` på samtliga kolumnhuvuden (`thead th`) och databoxar (`tbody td`) i Dashboard, Larm och Statistik.
+  - Sista kolumnen (`:last-child`) hålls fri från `border-right` så att tabellens yttre ram förblir ren och snygg.
+
+
 
 
 
