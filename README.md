@@ -1,5 +1,10 @@
 # PagerMonitor
 
+[![Version](https://img.shields.io/badge/version-2026.10.11-007ec6.svg)](CHANGELOG.md)
+[![Last Commit](https://img.shields.io/github/last-commit/Minglarn/pagermonitor.svg)](https://github.com/Minglarn/pagermonitor/commits/main)
+[![Issues](https://img.shields.io/github/issues/Minglarn/pagermonitor.svg)](https://github.com/Minglarn/pagermonitor/issues)
+[![Stars](https://img.shields.io/github/stars/Minglarn/pagermonitor?style=social)](https://github.com/Minglarn/pagermonitor/stargazers)
+
 PagerMonitor är en komplett, containeriserad plattform för Software Defined Radio (SDR) utformad för att fånga upp, avkoda och övervaka POCSAG-personsökartrafik (t.ex. Minicall och Rikssökning). Systemet har ett modernt mörkt webbgränssnitt i realtid, dynamisk mottagarkonfiguration, stöd för flera parallella SDR-enheter, ett kraftfullt alias-system för CapCodes samt en dedikerad larmvy för bevakade händelser.
 
 ---
