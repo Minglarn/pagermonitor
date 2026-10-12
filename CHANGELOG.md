@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.7] - Befintliga Larmordstabell och Unicode-stöd för Larmfiltrering
+
+### Fixed
+- **Befintliga larmord i gränssnittet (Alert Words Table)**:
+  - Lade till en fullständig tabell för "Befintliga larmord" direkt under textrutan i fliken Alert Words på `/rules` och `/alerts`.
+  - Visar samtliga sparade larmord med larmordsbadge, färgkod, aktiv-status samt direktknapp för att ta bort enskilda ord.
+  - Tabellen och textrutan synkroniseras nu automatiskt direkt när användaren sparar eller tar bort ord.
+  - Åtgärdade förvirringen kring varför nytillagda ord (såsom "SKADA") inte syntes i någon lista efter att ha sparats.
+
+### Added
+- **Unicode-oberoende larmmatchning (Å, Ä, Ö)**:
+  - Registrerade funktionen `UPPER_UNICODE` i SQLite-anslutningar så att larmfiltrering för svenska ord (t.ex. `STÖLD`, `LÄCKA`, `DÖD`, `MILITÄR`, `ÖVERFALL`, `SKADA`) matchar skiftlägesoberoende oavsett om texten är gemener eller versaler.
+  - Lade till automatiserade enhetstester för larmordstabellens rendering samt svensk Unicode-matchning i `tests/test_security_and_larm.py`.
+
 ## [2026.10.12.6] - Fix Contrast and Typography for DECODED Messages in Light Theme
 
 ### Fixed

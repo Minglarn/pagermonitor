@@ -8,6 +8,12 @@ from datetime import datetime
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'messages.db')
 
+def get_connection():
+    """Create a sqlite3 connection with Unicode-aware helper functions."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.create_function("UPPER_UNICODE", 1, lambda s: (s or '').upper())
+    return conn
+
 def get_default_settings():
     return {
         'frequency': '169.8M',
@@ -249,7 +255,7 @@ def reindex_messages(already_open_conn=None):
         conn.close()
 
 def get_recent_messages(limit=None, before_id=None, search=None, alerts_only=False):
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     
     # Check if we have the is_hidden column in aliases
@@ -275,7 +281,7 @@ def get_recent_messages(limit=None, before_id=None, search=None, alerts_only=Fal
                 WHERE aw.is_active = 1
                 AND (
                     m.message LIKE '%' || aw.word || '%'
-                    OR UPPER(m.message) LIKE '%' || UPPER(aw.word) || '%'
+                    OR UPPER_UNICODE(m.message) LIKE '%' || UPPER_UNICODE(aw.word) || '%'
                 )
             )
         ''')
@@ -635,7 +641,7 @@ def auto_prune_if_enabled():
 
 def get_database_stats():
     """Retrieve comprehensive statistics about the database and retention."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     
     # 1. Total message count
@@ -662,7 +668,7 @@ def get_database_stats():
             WHERE aw.is_active = 1
             AND (
                 m.message LIKE '%' || aw.word || '%'
-                OR UPPER(m.message) LIKE '%' || UPPER(aw.word) || '%'
+                OR UPPER_UNICODE(m.message) LIKE '%' || UPPER_UNICODE(aw.word) || '%'
             )
         )
     ''')

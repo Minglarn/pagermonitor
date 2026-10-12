@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.6`
+- **CalVer**: `2026.10.12.7`
 - **Date**: 2026-10-12
 - **Language**: English / Swedish
 
@@ -327,16 +327,23 @@
   - **Versionsspårbarhet (CalVer)**:
     - Uppdaterade CalVer till `2026.10.12.5` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
 
-### 27. Korrigering av Textkontrast och Typografi för DECODED-Meddelanden i Ljust Tema (v2026.10.12.6)
-- **Problem**:
-  - Vid användning av ljust tema (`[data-theme="light"]`) blev avkodade larmrader (`.console-log-row.is-decoded`) svåra att läsa på grund av att ljus mintgrön text (`#a7f3d0`) visades mot en ljusgrön bakgrund.
-- **Åtgärd**:
-  - Införde dynamiska temavariabler i [static/console.css](file:///d:/antigravity/pager-monitor/static/console.css):
-    - **Ljust tema**: Texten visas nu i mörk skogsgrön färg (`#064e3b`) mot mjukt ljusgrön bakgrund (`#f0fdf4`) och med en skarp mörkgrön vänstermarginal (`#059669`), vilket ger hög kontrast (WCAG AAA) och utmärkt läsbarhet.
-    - **Mörkt tema**: Texten visas i krispigt vit färg (`#f1f5f9`) mot mörkgrön bakgrund (`rgba(16, 185, 129, 0.12)`).
-  - I [static/console.js](file:///d:/antigravity/pager-monitor/static/console.js) formateras `DECODED ->` nu som en distinkt grön badge `<span class="console-tag-decoded">DECODED &rarr;</span>` med vit text, vilket separerar statusetiketten från larmmeddelandet.
-  - Säkrad kontrast även för felrader och varningsrader i ljust tema via `--console-error-text` och `--console-warning-text`.
-  - Höjde CalVer till `2026.10.12.6` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+### 28. Befintliga Larmordstabell och Unicode-stöd för Larmfiltrering (v2026.10.12.7)
+- **Problem & Bakgrund**:
+  - När användaren skrev in larmord såsom "SKADA" under Alert Words och klickade på Spara, fanns det ingen tabell eller lista under knappen som visade de sparade orden. Detta skapade förvirring eftersom fliken för CapCode Aliases visade en tydlig tabell ("Existing Aliases") med alla sparade poster.
+  - Dessutom hanterade standard SQLite endast ASCII skiftlägesoberoende för `LIKE` och `UPPER()`, vilket gjorde att svenska larmord med å, ä, ö (t.ex. `STÖLD`, `LÄCKA`, `DÖD`) inte matchades skiftlägesoberoende i databasfrågor om meddelandet hade gemener.
+- **Åtgärder**:
+  - **Tabell för Befintliga larmord i gränssnittet**:
+    - Lade till en sektion "Befintliga larmord" med en tabell (`#alertsTableBody`) direkt under textrutan och spara-knappen i både [templates/rules.html](file:///d:/antigravity/pager-monitor/templates/rules.html) och [templates/alerts.html](file:///d:/antigravity/pager-monitor/templates/alerts.html).
+    - Varje larmord visas med en färgad badge, färgkodindikator, aktiv-status ("Aktiv") samt en raderingsknapp för att ta bort enskilda ord direkt i tabellen.
+    - Funktionerna `loadWords()`, `saveWords()` och nya `deleteAlertWord(id)` synkroniserar direkt databas, tabell och textruta.
+  - **Unicode-oberoende larmfiltrering**:
+    - Registrerade en anpassad SQLite-funktion `UPPER_UNICODE` i [database.py](file:///d:/antigravity/pager-monitor/database.py) via hjälparfunktionen `get_connection()`.
+    - Detta garanterar att ord som `SKADA`, `STÖLD`, `LÄCKA`, `DÖD`, `MILITÄR` och `ÖVERFALL` matchar både gemener och versaler i databasfrågor (`alerts_only=1`).
+  - **Testning & Verifiering**:
+    - Lade till automatiserade enhetstester i [tests/test_security_and_larm.py](file:///d:/antigravity/pager-monitor/tests/test_security_and_larm.py) som verifierar rendering av larmordstabellen i `/rules` och `/alerts`, samt Unicode-matchning av svenska larmord.
+    - Samtliga 34 enhetstester passerar utan anmärkning.
+  - **Versionsspårbarhet (CalVer)**:
+    - Höjde CalVer till `2026.10.12.7` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
 
 
 

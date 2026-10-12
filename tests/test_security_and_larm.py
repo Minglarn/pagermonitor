@@ -2,7 +2,7 @@ import os
 import tempfile
 import sqlite3
 import pytest
-from app import app
+from app import app, APP_VERSION
 import database
 
 @pytest.fixture(scope='function')
@@ -100,7 +100,7 @@ def test_rules_page_and_sidebar_calver(client):
         assert 'CapCode Aliases' in html
         assert 'Alert Words' in html
         assert 'sidebar-version' in html
-        assert 'v2026.10.12.2' in html
+        assert f'v{APP_VERSION}' in html
 
 def test_get_all_messages_no_limit(client):
     """Testa att /api/messages utan limit-parameter returnerar alla meddelanden utan 200-gräns."""
@@ -139,7 +139,7 @@ def test_settings_page_renders_with_autosave_and_wide_layout(client):
     assert 'autoSaveBadge' in html
     assert 'previewTextContent' in html
     assert 'addSdrModal' in html
-    assert 'v2026.10.12.2' in html
+    assert f'v{APP_VERSION}' in html
 
 def test_settings_autosave_api(client):
     """Verifiera att uppdatering av visningsinställningar via POST /api/settings lyckas."""
@@ -191,6 +191,29 @@ def test_copy_button_in_templates(client):
         html = res.data.decode('utf-8')
         assert 'copyMessageText' in html
         assert 'copy-btn' in html
+
+def test_alert_words_table_rendered_in_rules(client):
+    """Verifiera att tabellen för befintliga larmord renderas i /rules och /alerts."""
+    for path in ['/rules', '/alerts']:
+        res = client.get(path)
+        assert res.status_code == 200
+        html = res.data.decode('utf-8')
+        assert 'alertsTableBody' in html
+        assert 'Befintliga larmord' in html
+
+def test_alert_word_unicode_case_insensitive_matching(client):
+    """Verifiera att larmord med svenska tecken som STÖLD och SKADA matchar i sökningar."""
+    database.save_alert_word("STÖLD", "#ef4444", True)
+    database.save_alert_word("SKADA", "#ef4444", True)
+    database.save_message("1234567", "Larm om stöld i butik")
+    database.save_message("1234568", "Trafikolycka med personskada")
+
+    res = client.get('/api/messages?alerts_only=1')
+    assert res.status_code == 200
+    messages = res.get_json()
+    texts = [m['message'] for m in messages]
+    assert any("stöld" in t.lower() for t in texts)
+    assert any("skada" in t.lower() for t in texts)
 
 
 

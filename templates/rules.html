@@ -140,15 +140,34 @@
                     <div id="tab-alerts" class="tab-content">
                         <div class="form-group" style="margin-bottom: 0.5rem;">
                             <label for="wordsArea" style="font-size: 0.85rem; margin-bottom: 0.5rem; display: block;">
-                                Edit watchwords below. Separate words with commas. Case-insensitive.
+                                Redigera larmord nedan. Separera ord med kommatecken. Skiftlägesoberoende.
                             </label>
-                            <textarea id="wordsArea" rows="5" placeholder="e.g. FIRE, ACCIDENT, POLICE, AMBULANCE, CPR"
+                            <textarea id="wordsArea" rows="5" placeholder="t.ex. OLYCKA, BRAND, AMBULANS, SKADA, POLIS"
                                 style="width: 100%; padding: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 1rem; background: var(--input-bg, rgba(0,0,0,0.2)); color: var(--text-primary); border: 1px solid var(--panel-border); border-radius: 10px; resize: vertical;"></textarea>
                         </div>
                         <div style="display: flex; align-items: center; gap: 1rem; margin-top: 1rem;">
                             <button id="saveBtn" class="primary-btn" style="padding: 0.5rem 1.5rem;"
-                                onclick="saveWords()">Save Watchlist</button>
+                                onclick="saveWords()">Spara larmord</button>
                             <span id="status" class="status-message"></span>
+                        </div>
+
+                        <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Befintliga larmord</h3>
+                        <div class="table-container" style="min-height: auto;">
+                            <table class="glass-table" style="border-spacing: 0 4px;">
+                                <thead>
+                                    <tr>
+                                        <th>Larmord</th>
+                                        <th>Färg</th>
+                                        <th>Status</th>
+                                        <th>Åtgärd</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="alertsTableBody">
+                                    <tr>
+                                        <td colspan="4" style="text-align:center;">Laddar larmord...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -308,22 +327,98 @@
         // --- Alert Words Logic ---
         let currentAlerts = [];
 
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function renderAlertsTable() {
+            const tbody = document.getElementById('alertsTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            if (!currentAlerts || currentAlerts.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-secondary);">Inga larmord sparade ännu.</td></tr>';
+                return;
+            }
+
+            currentAlerts.forEach(alert => {
+                const color = alert.color || '#ef4444';
+                const statusBadge = alert.is_active !== false 
+                    ? '<span class="badge success">Aktiv</span>' 
+                    : '<span class="badge danger">Inaktiv</span>';
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>
+                            <span class="badge" style="background: rgba(239, 68, 68, 0.15); color: ${color}; font-weight: 700; border: 1px solid ${color}40;">
+                                ${escapeHtml(alert.word)}
+                            </span>
+                        </td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: ${color}; border: 1px solid rgba(255,255,255,0.3);"></span>
+                                <span style="font-family: monospace; font-size: 0.85rem; color: var(--text-secondary);">${color}</span>
+                            </div>
+                        </td>
+                        <td>${statusBadge}</td>
+                        <td class="actions-cell">
+                            <div class="actions-wrapper">
+                                <button class="delete-btn" onclick="deleteAlertWord(${alert.id})" title="Ta bort larmord">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
         async function loadWords() {
             try {
                 const res = await fetch('/api/alerts');
                 currentAlerts = await res.json();
                 const words = currentAlerts.map(a => a.word).join(', ');
                 document.getElementById('wordsArea').value = words;
+                renderAlertsTable();
             } catch (err) {
                 console.error("Error loading alert words:", err);
             }
         }
 
+        window.deleteAlertWord = async function (id) {
+            const alert = currentAlerts.find(a => a.id === id);
+            const wordName = alert ? alert.word : '';
+            if (!confirm(`Är du säker på att du vill ta bort larmordet "${wordName}"?`)) return;
+
+            try {
+                const res = await fetch('/api/alerts', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    await loadWords();
+                    const statusEl = document.getElementById('status');
+                    if (statusEl) {
+                        statusEl.innerText = `Larmord "${wordName}" borttaget!`;
+                        statusEl.className = 'status-message success show';
+                        setTimeout(() => statusEl.classList.remove('show'), 3000);
+                    }
+                }
+            } catch (err) {
+                console.error("Kunde inte ta bort larmord:", err);
+            }
+        };
+
         async function saveWords() {
             const btn = document.getElementById('saveBtn');
             const statusEl = document.getElementById('status');
             btn.disabled = true;
-            btn.innerText = 'Saving...';
+            btn.innerText = 'Sparar...';
 
             const rawText = document.getElementById('wordsArea').value;
             const newWords = rawText.split(',').map(w => w.trim().toUpperCase()).filter(w => w.length > 0);
@@ -350,15 +445,15 @@
                     });
                 }
 
-                statusEl.innerText = 'Watchlist saved!';
+                statusEl.innerText = 'Larmord sparade!';
                 statusEl.className = 'status-message success show';
                 await loadWords();
             } catch (e) {
-                statusEl.innerText = 'Error: ' + e.message;
+                statusEl.innerText = 'Fel: ' + e.message;
                 statusEl.className = 'status-message error show';
             } finally {
                 btn.disabled = false;
-                btn.innerText = 'Save Watchlist';
+                btn.innerText = 'Spara larmord';
                 setTimeout(() => statusEl.classList.remove('show'), 3000);
             }
         }

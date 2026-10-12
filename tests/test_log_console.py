@@ -8,9 +8,11 @@ class TestLogConsole(unittest.TestCase):
     def setUp(self):
         self.client = app.test_client()
         log_manager.clear()
+        logging.getLogger().setLevel(logging.INFO)
 
     def test_log_capture_and_history(self):
         logger = logging.getLogger("test_module")
+        logger.setLevel(logging.INFO)
         logger.info("Test meddelande info")
         logger.warning("Test meddelande varning")
         logger.error("Test meddelande fel")
@@ -49,6 +51,7 @@ class TestLogConsole(unittest.TestCase):
 
     def test_filter_by_decoded(self):
         logger = logging.getLogger("sdr_processor")
+        logger.setLevel(logging.INFO)
         logger.info("[RIKS 1] RAW: POCSAG1200: Address: 1234567")
         logger.info("[RIKS 1] DECODED -> Address: 1234567, Alias: Test Station, Msg: Alarm text")
         logger.info("SDR Heartbeat: [RIKS 1] OK")
