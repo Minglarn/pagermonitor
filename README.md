@@ -1,6 +1,6 @@
 # PagerMonitor
 
-[![Version](https://img.shields.io/badge/version-2026.10.12.2-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2026.10.12.3-blue.svg)](CHANGELOG.md)
 [![GitHub last commit](https://img.shields.io/github/last-commit/Minglarn/pagermonitor)](https://github.com/Minglarn/pagermonitor/commits/main)
 [![GitHub issues](https://img.shields.io/github/issues/Minglarn/pagermonitor)](https://github.com/Minglarn/pagermonitor/issues)
 [![GitHub stars](https://img.shields.io/github/stars/Minglarn/pagermonitor?style=social)](https://github.com/Minglarn/pagermonitor/stargazers)
@@ -19,6 +19,7 @@ PagerMonitor is a complete, containerized Software Defined Radio (SDR) platform 
 
 * **Multi-SDR Support**: Run and monitor multiple RTL-SDR devices simultaneously. Assign individual receivers to distinct frequencies and sample rates, managed independently from a unified web interface.
 * **Dedicated Alarms View**: A standalone page that aggregates all messages matching your monitored alert keywords in real time, complete with color-coded alert badges.
+* **Real-time Docker & System Console**: Universal bottom-docked terminal available across all views that streams 100% of container and Python logs via SSE, with ANSI/log-level color badges, word-wrap toggling, autoscroll, and real-time text filtering.
 * **Decoding & Noise Filtering**: Powered by `multimon-ng` for decoding POCSAG 512, 1200, and 2400 baud. Features an intelligent entropy-based junk filter that discards noise and corrupted frames while preserving short legitimate messages.
 * **Character Set Support**: Built-in support for European and Swedish character sets (converting legacy pager representations to Å, Ä, and Ö) alongside clean newline formatting.
 * **Real-time Live Stream**: Modern user interface utilizing `Server-Sent Events (SSE)` for instantaneous message delivery without page reloads. Includes infinite scrolling for full database history browsing.

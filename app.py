@@ -25,10 +25,14 @@ except ImportError:
     def init_mqtt():
         pass
 from sdr_processor import start_sdr_thread, restart_sdr, on_new_message, get_sdr_runtime_status
+from log_streamer import setup_log_capture, log_manager
 
 # Setup basic logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Initialize in-memory log capture and stdout/stderr stream tee for UI console
+setup_log_capture()
 
 # Disable werkzeug HTTP request logs
 log = logging.getLogger('werkzeug')
@@ -109,7 +113,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.12.2"
+APP_VERSION = "2026.10.12.3"
 
 @app.context_processor
 def inject_globals():
@@ -525,6 +529,45 @@ def stream():
             if q in client_queues:
                 client_queues.remove(q)
             
+    response = Response(event_stream(), content_type='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['X-Accel-Buffering'] = 'no'
+    response.headers['Connection'] = 'keep-alive'
+    return response
+
+# Log Console Endpoints
+@app.route('/api/logs/history')
+def get_log_history():
+    limit = request.args.get('limit', default=500, type=int)
+    level = request.args.get('level', default=None, type=str)
+    search = request.args.get('search', default=None, type=str)
+    logs = log_manager.get_history(limit=limit, min_level=level, search=search)
+    return jsonify({'status': 'success', 'logs': logs, 'total': len(logs)})
+
+@app.route('/api/logs/clear', methods=['POST'])
+def clear_log_history():
+    log_manager.clear()
+    return jsonify({'status': 'success', 'message': 'Logghistorik rensad'})
+
+@app.route('/api/logs/stream')
+def stream_logs():
+    @stream_with_context
+    def event_stream():
+        q = log_manager.subscribe()
+        try:
+            yield ": connected\n\n"
+            while True:
+                try:
+                    entry = q.get(timeout=20)
+                    yield f"data: {json.dumps(entry)}\n\n"
+                except Empty:
+                    yield ": ping\n\n"
+        except GeneratorExit:
+            log_manager.unsubscribe(q)
+        except Exception as e:
+            logger.error(f"SSE log stream error: {e}")
+            log_manager.unsubscribe(q)
+
     response = Response(event_stream(), content_type='text/event-stream')
     response.headers['Cache-Control'] = 'no-cache'
     response.headers['X-Accel-Buffering'] = 'no'

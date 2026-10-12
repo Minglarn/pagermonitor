@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.3] - Real-time Docker & System Console Dock
+
+### Added
+- **Global Docker- och Systemkonsol**:
+  - Implementerade ett dockat konsolfönster i botten av gränssnittet tillgängligt på samtliga sidor (`index.html`, `larm.html`, `statistics.html`, `settings.html`, `rules.html`, `sdr_settings.html`, `aliases.html`, `alerts.html`).
+  - Visar 100 % av all loggutdata som normalt syns i `docker logs` via in-process logg-interception och stream-tee för både `logging` och `stdout`/`stderr`.
+- **Färgkodning & ANSI-stöd**:
+  - Färgkodade loggnivå-badges för `INFO` (cyan/blå), `WARNING` (bärnsten), `ERROR`/`CRITICAL` (röd), `DEBUG` (lila) och `RAW`/`STDOUT` (smaragdgrön).
+  - Integrerad parser för ANSI escape-koder som konverterar terminalfärger till formaterade span-element.
+- **Radbrytning & Textformatering (Word-wrap)**:
+  - Interaktiv verktygsradsknapp för att växla mellan radbrytning (`white-space: pre-wrap`) och horisontell terminalrullning (`white-space: pre`).
+- **Autoscroll & Användarvänlighet**:
+  - Intelligent autoscroll som automatiskt följer nya loggar vid botten men pausas när användaren manuellt scrollar uppåt för inspektion.
+  - Sök- och filtreringsfunktion i realtid (Alla, Info, Varningar, Fel, SDR / System).
+  - Exportfunktion för att ladda ner visade loggar som `.txt`.
+  - Resize-handtag för att dynamiskt ändra konsolhöjden samt spara användarinställningar och minimeringsläge i `localStorage`.
+- **Backend Log Streamer (`log_streamer.py`)**:
+  - Egen `LogManager` med in-memory ringbuffer (2 500 loggrader) och Server-Sent Events (SSE) via `/api/logs/stream`.
+  - Endpoints för historik (`GET /api/logs/history`) och tömning (`POST /api/logs/clear`).
+
 ## [2026.10.12.2] - Extended POCSAG Multimon Buffer & One-Click Message Copying
 
 ### Added

@@ -1,9 +1,9 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.2`
+- **CalVer**: `2026.10.12.3`
 - **Date**: 2026-10-12
-- **Language**: English
+- **Language**: English / Swedish
 
 ---
 
@@ -270,6 +270,38 @@
   - Lade till stilregler för `.copy-btn`, `.copy-btn:hover` och `.copy-btn.copied` i [style.css](file:///d:/antigravity/pager-monitor/static/style.css).
 - **Versionshantering**:
   - Höjde CalVer till `2026.10.12.2` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md), [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md) och testsviten.
+
+### 24. Global Docker- & Systemkonsol med Realtidsströmning, Färgkodning och Radbrytning (v2026.10.12.3)
+- **Bakgrund och Syfte**:
+  - För att underlätta felsökning och övervakning ville användaren ha en konsol-logg längst ner i gränssnittet som visar exakt allt som Docker-loggen (`docker logs pagermonitor`) visar, med stöd för färger, radbrytning och realtidsuppdatering, tillgänglig på samtliga sidor i applikationen.
+- **Arkitektur & Log Capture (`log_streamer.py`)**:
+  - **In-process Log Interception**: Istället för att montera den osäkra `/var/run/docker.sock` i containern, kopplas en anpassad `MemoryLogHandler` direkt till Pythons rotlogger (`logging.getLogger()`) samt en trådsäker `StdoutTee`-wrapper runt `sys.stdout` och `sys.stderr`.
+  - **100 % Paritet med Docker-logg**: Fångar alla loggmeddelanden från `app.py`, `sdr_processor.py`, `database.py`, `mqtt_client.py` samt direkta utskrifter (`print`) och subprocessfel.
+  - **Loop- & Dubbelloggningsskydd**: Använder thread-local state (`_tls.in_logging`) för att förhindra att meddelanden som redan hanterats av logghandlern dubbleras när de skrivs till terminalen.
+  - **Ringbuffer & Historik**: Sparar de senaste 2 500 loggraderna i minnet (`collections.deque(maxlen=2500)`) för omedelbar leverans vid sidladdning via `GET /api/logs/history`.
+  - **Realtidsströmning via SSE**: Nya loggar strömmas kontinuerligt till anslutna webbläsare via `GET /api/logs/stream` med keep-alive pings.
+- **Frontend Konsoldocka (`static/console.js` & `static/console.css`)**:
+  - **Placering & Universell Tillgänglighet**:
+    - Konsolen är dockad i botten av gränssnittet och anpassar sig automatiskt till sidebarens bredd (både i expanderat och hopfällt läge).
+    - Inkluderad på alla sidor: Dashboard (`index.html`), Larm (`larm.html`), Statistik (`statistics.html`), Inställningar (`settings.html`), Regler (`rules.html`), SDR-inställningar (`sdr_settings.html`), Alias (`aliases.html`) och Larmord (`alerts.html`).
+  - **Färgkodning & ANSI-stöd**:
+    - Distinkta färgade badges för loggnivåer: `INFO` (cyan/blå), `WARNING` (bärnsten), `ERROR`/`CRITICAL` (röd), `DEBUG` (lila) och `RAW`/`STDOUT` (smaragdgrön).
+    - Integrerad ANSI-parser som översätter terminal-escape-koder (`\x1b[31m`, `\x1b[32m`, etc.) till motsvarande CSS-stilar och rensar bort styrtecken.
+  - **Radbrytning (Word-wrap Toggle)**:
+    - En knapp i konsolens verktygsfält växlar direkt mellan radbrytning (`white-space: pre-wrap; word-break: break-word;`) och horisontell terminalrullning (`white-space: pre; overflow-x: auto;`).
+  - **Autoscroll & Inspektion**:
+    - Konsolen följer automatiskt nya loggar till botten. Om användaren scrollar uppåt för att läsa äldre meddelanden pausas autoscroll automatiskt så att läsningen inte avbryts.
+  - **Interaktiva Verktyg**:
+    - **Filter**: Snabbknappar för att visa *Alla*, *Info*, *Varningar*, *Fel* eller *SDR / System*.
+    - **Fritextsökning**: Sökfält med realtidsfiltrering av loggraderna.
+    - **Höjdjustering**: Dragbart resize-handtag i överkant för fri höjdjustering mellan 160 px och 85 % av fönsterhöjden.
+    - **Maximera/Minimera**: Växla mellan kompakt visning, helskärmsvy eller minimerad list i botten.
+    - **Senaste logg-ticker**: När konsolen är minimerad visas den senaste loggraden avklippt i listen så att man direkt ser om något händer.
+    - **Export**: Ladda ner loggen som en `.txt`-fil med ett klick.
+    - **State Persistence**: Sparar minimeringsläge, vald höjd, radbrytning, autoscroll och filter i `localStorage`.
+- **Versionsspårbarhet (CalVer)**:
+  - Uppdaterade CalVer till `2026.10.12.3` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
 
 
 
