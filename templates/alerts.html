@@ -90,17 +90,17 @@
                         <div class="alerts-editor-column">
                             <div class="form-group" style="margin-bottom: 0.5rem;">
                                 <label for="wordsArea" style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.35rem; display: block; color: var(--text-primary);">
-                                    Redigera larmord
+                                    Edit Alert Words
                                 </label>
                                 <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 0.75rem;">
-                                    Separera ord med kommatecken. Sökningen är skiftlägesoberoende med fullt stöd för svenska tecken (Å, Ä, Ö).
+                                    Separate words with commas. The search is case-insensitive with full support for Swedish characters (Å, Ä, Ö).
                                 </p>
-                                <textarea id="wordsArea" rows="7" placeholder="t.ex. OLYCKA, BRAND, AMBULANS, SKADA, POLIS"
+                                <textarea id="wordsArea" rows="7" placeholder="e.g. ACCIDENT, FIRE, AMBULANCE, INJURY, POLICE"
                                     style="width: 100%; padding: 0.85rem; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; line-height: 1.6; background: var(--input-bg, rgba(0,0,0,0.2)); color: var(--text-primary); border: 1px solid var(--panel-border); border-radius: 10px; resize: vertical; box-sizing: border-box;"></textarea>
                             </div>
                             <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.75rem;">
                                 <button id="saveBtn" class="primary-btn" style="padding: 0.6rem 1.6rem; font-weight: 600;"
-                                    onclick="saveWords()">Spara larmord</button>
+                                    onclick="saveWords()">Save Alert Words</button>
                                 <span id="status" class="status-message"></span>
                             </div>
                         </div>
@@ -108,22 +108,22 @@
                         <div class="alerts-table-column">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
                                 <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">
-                                    Befintliga larmord <span id="alertCountBadge" class="badge meta" style="margin-left: 0.5rem; font-size: 0.8rem;">0 st</span>
+                                    Configured Alert Words <span id="alertCountBadge" class="badge meta" style="margin-left: 0.5rem; font-size: 0.8rem;">0 words</span>
                                 </h3>
                             </div>
                             <div class="table-container" style="min-height: auto; max-height: 65vh; overflow-y: auto;">
                                 <table class="glass-table" style="border-spacing: 0 4px; width: 100%;">
                                     <thead>
                                         <tr>
-                                            <th style="width: 35%;">Larmord</th>
-                                            <th style="width: 25%;">Färg</th>
+                                            <th style="width: 35%;">Alert Word</th>
+                                            <th style="width: 25%;">Color</th>
                                             <th style="width: 25%;">Status</th>
-                                            <th style="width: 15%; text-align: center;">Åtgärd</th>
+                                            <th style="width: 15%; text-align: center;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="alertsTableBody">
                                         <tr>
-                                            <td colspan="4" style="text-align:center;">Laddar larmord...</td>
+                                            <td colspan="4" style="text-align:center;">Loading alert words...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -174,7 +174,7 @@
         function renderAlertsTable() {
             const countBadge = document.getElementById('alertCountBadge');
             if (countBadge) {
-                countBadge.innerText = `${currentAlerts ? currentAlerts.length : 0} st`;
+                countBadge.innerText = `${currentAlerts ? currentAlerts.length : 0} words`;
             }
 
             const tbody = document.getElementById('alertsTableBody');
@@ -182,15 +182,15 @@
             tbody.innerHTML = '';
 
             if (!currentAlerts || currentAlerts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-secondary);">Inga larmord sparade ännu.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-secondary);">No alert words configured yet.</td></tr>';
                 return;
             }
 
             currentAlerts.forEach(alert => {
                 const color = alert.color || '#ef4444';
                 const statusBadge = alert.is_active !== false 
-                    ? '<span class="badge success">Aktiv</span>' 
-                    : '<span class="badge danger">Inaktiv</span>';
+                    ? '<span class="badge success">Active</span>' 
+                    : '<span class="badge danger">Inactive</span>';
 
                 tbody.innerHTML += `
                     <tr>
@@ -208,7 +208,7 @@
                         <td>${statusBadge}</td>
                         <td class="actions-cell">
                             <div class="actions-wrapper">
-                                <button class="delete-btn" onclick="deleteAlertWord(${alert.id})" title="Ta bort larmord">
+                                <button class="delete-btn" onclick="deleteAlertWord(${alert.id})" title="Delete alert word">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
                             </div>
@@ -233,7 +233,7 @@
         window.deleteAlertWord = async function (id) {
             const alert = currentAlerts.find(a => a.id === id);
             const wordName = alert ? alert.word : '';
-            if (!confirm(`Är du säker på att du vill ta bort larmordet "${wordName}"?`)) return;
+            if (!confirm(`Are you sure you want to delete the alert word "${wordName}"?`)) return;
 
             try {
                 const res = await fetch('/api/alerts', {
@@ -246,13 +246,13 @@
                     await loadWords();
                     const statusEl = document.getElementById('status');
                     if (statusEl) {
-                        statusEl.innerText = `Larmord "${wordName}" borttaget!`;
+                        statusEl.innerText = `Alert word "${wordName}" deleted!`;
                         statusEl.className = 'status-message success show';
                         setTimeout(() => statusEl.classList.remove('show'), 3000);
                     }
                 }
             } catch (err) {
-                console.error("Kunde inte ta bort larmord:", err);
+                console.error("Could not delete alert word:", err);
             }
         };
 
@@ -260,7 +260,7 @@
             const btn = document.getElementById('saveBtn');
             const statusEl = document.getElementById('status');
             btn.disabled = true;
-            btn.innerText = 'Sparar...';
+            btn.innerText = 'Saving...';
 
             const rawText = document.getElementById('wordsArea').value;
             const newWords = rawText.split(',').map(w => w.trim().toUpperCase()).filter(w => w.length > 0);
@@ -293,15 +293,15 @@
                     });
                 }
 
-                statusEl.innerText = 'Larmord sparade!';
+                statusEl.innerText = 'Alert words saved!';
                 statusEl.className = 'status-message success show';
                 await loadWords(); // Reload to sync state
             } catch (e) {
-                statusEl.innerText = 'Fel: ' + e.message;
+                statusEl.innerText = 'Error: ' + e.message;
                 statusEl.className = 'status-message error show';
             } finally {
                 btn.disabled = false;
-                btn.innerText = 'Spara larmord';
+                btn.innerText = 'Save Alert Words';
                 setTimeout(() => statusEl.classList.remove('show'), 3000);
             }
         }

@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.13] - Vertikalt Staplade Actions, Duplikatgruppering (Merge & 2x/3x Badge) och Fullständig Engelsk Översättning
+
+### Added
+- **Duplikatgruppering till Samma Händelse (Lösning 1)**:
+  - Nytt rekommenderat läge i duplikathanteringen (`duplicate_handling = 'merge'`).
+  - Istället för att skapa nya dubblettrader i databasen slås identiska återutsändningar samman i samma händelse.
+  - Varje upprepning ökar en `repeat_count`-räknare och uppdaterar `last_timestamp`.
+  - En distinkt lila märke (`repeat-badge`, t.ex. `2x`, `3x`) visas i tabellen tillsammans med en indikation om senaste tidpunkt `(Last: HH:MM:SS)`.
+  - SSE-klienten tar emot händelser av typen `repeat_update` och uppdaterar befintlig tabellrad i realtid med en mjuk animationspuls (`repeat-pulse`).
+- **Vertikalt Staplade Action-knappar (Prio på Message)**:
+  - Omformaterat `.actions-wrapper` från horisontell rad till vertikal kolumn (`flex-direction: column; gap: 4px;`).
+  - Begränsat bredden på kolumnen Actions (`th.col-actions`, `td.actions-cell`) till 38px/44px max (minskning från ca 115px), vilket frigör ca 75-80px horisontell bredd på mindre desktop-skärmar.
+  - Prioriterar meddelandekolumnen (`MESSAGE`) så att texten inte trycks ihop eller radbryts onödigt.
+
+### Changed
+- **Fullständig Översättning till Engelska**:
+  - Samtliga inställningsvyer, flikar, förklarande texter, kort, knappar och statusmeddelanden i [settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html) är nu helt på engelska.
+  - Larmordshanteringen i [alerts.html](file:///d:/antigravity/pager-monitor/templates/alerts.html) och [rules.html](file:///d:/antigravity/pager-monitor/templates/rules.html) har översatts till engelska.
+  - Alla action-knappar (kopiera, lås, ta bort) och deras tooltips och bekräftelsemeddelanden har översatts till engelska över samtliga vyer.
+
+## [2026.10.12.12] - Live Paus- och Buffertläge samt Visuell Eteraktivitet (Activity Ribbon / Radio Waterfall)
+
+### Added
+- **Live "Paus & Buffert"-läge för realtidsflödet**:
+  - Implementerat en dedikerad kontrollknapp (`#livePauseBtn`) i Dashboard och Larmvyn bredvid sökfältet.
+  - Tillåter att frysa datatabellen när man läser eller granskar specifika meddelanden utan att nya inkommande rader förskjuter tabellen.
+  - Inkommande meddelanden samlas i en klientbuffert (`pausedQueue`) med en dynamisk räknare på paus-knappen (`#livePauseBadge`) och en diskret informationslist (`#pausedNotificationBar`) ovanför tabellen.
+  - Vid återupptagning (*Visa och återuppta*) spolas alla buffrade meddelanden in i DataTables i korrekt ordning med mjuk visuell animationspuls (`.new-msg-pulse`).
+- **Visuell "Eteraktivitet" (Activity Ribbon / Radio Waterfall)**:
+  - En kompakt, elegant aktivitetsremsa (`#activityRibbonPanel`) ovanför huvudtabellen som visualiserar radioaktiviteten över de senaste 60 minuterna per SDR-mottagare / frekvens.
+  - Byggd med hårdvaruaccelererad HTML5 Canvas och Retina/High-DPI-skalning för 60 FPS utan DOM-överbelastning.
+  - Automatisk spår-detektering för alla aktiva SDR-mottagare (`RIKS 1`, `RIKS 2` etc.) från `/api/sdr` och inkommande frekvenser.
+  - Färgkodade pelare med differentiering för normal trafik (cyan/blå gradient), larmträffar (neonröd) och duplikat (amber).
+  - Realtidspuls på aktuell minut (`Nu`) och live-dioder som blinkar grönt vid mottagning på respektive frekvens.
+  - Interaktiv hover-tooltip som visar exakt klockslag, frekvens och antal meddelanden/larm för varje minut.
+  - Klick på en kanalrad filtrerar tabellen omedelbart till den specifika mottagaren/frekvensen.
+  - Möjlighet att minimera/fälla ihop panelen via toggle-knapp (`#ribbonToggleBtn`) med sparat läge i `localStorage`.
+
 ## [2026.10.12.11] - Korrigering av Bakgrundspilar i Rullgardinsmenyer
 
 ### Fixed

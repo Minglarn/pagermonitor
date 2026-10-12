@@ -293,10 +293,12 @@
 
         table.dataTable.larm-dt th.col-actions,
         table.dataTable.larm-dt td.actions-cell {
-            width: 1% !important;
+            width: 38px !important;
+            min-width: 38px !important;
+            max-width: 44px !important;
             white-space: nowrap !important;
             text-align: center !important;
-            padding: 0.6rem 0.5rem !important;
+            padding: 4px 2px !important;
         }
 
         table.dataTable.larm-dt th.col-msg,
@@ -390,18 +392,37 @@
                         <h1>Alarms</h1>
                         <p>Real-time feed of watchlist alert matches</p>
                     </div>
-                    <div class="search-container">
-                        <input type="text" id="searchInput" placeholder="Search alarms, CapCodes, aliases...">
-                        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <div id="rx-indicator" class="rx-status-dot" title="Receiving data"></div>
+                    <div class="header-right-tools">
+                        <button id="livePauseBtn" class="live-pause-btn" onclick="toggleLivePause()" title="Pausa larmflödet">
+                            <span class="live-pause-dot"></span>
+                            <i class="fas fa-pause" id="livePauseIcon"></i>
+                            <span id="livePauseText">Live</span>
+                            <span id="livePauseBadge" class="live-pause-badge" style="display: none;">0</span>
+                        </button>
+                        <div class="search-container">
+                            <input type="text" id="searchInput" placeholder="Search alarms, CapCodes, aliases...">
+                            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <div id="rx-indicator" class="rx-status-dot" title="Receiving data"></div>
+                        </div>
                     </div>
                 </div>
             </header>
+
+            <!-- Paused Notification Bar -->
+            <div id="pausedNotificationBar" class="paused-notification-bar" style="display: none;">
+                <div class="paused-bar-left">
+                    <span class="paused-pulse-icon"><i class="fas fa-pause"></i></span>
+                    <span>Larmflödet är pausat &mdash; <strong><span id="pausedBannerCount">0</span> nya larm</strong> i bufferten</span>
+                </div>
+                <button class="resume-flow-btn" onclick="toggleLivePause()">
+                    <i class="fas fa-play"></i> Visa och återuppta
+                </button>
+            </div>
 
             <main>
                 <div class="glass-panel table-container" style="padding: 0;">
@@ -483,6 +504,53 @@
         let dataTable = null;
         let alertWords = [];
         let allAlarms = [];
+        let isLivePaused = false;
+        let pausedQueue = [];
+
+        function toggleLivePause() {
+            isLivePaused = !isLivePaused;
+            const btn = document.getElementById('livePauseBtn');
+            const icon = document.getElementById('livePauseIcon');
+            const text = document.getElementById('livePauseText');
+            const badge = document.getElementById('livePauseBadge');
+            const bar = document.getElementById('pausedNotificationBar');
+            const bannerCount = document.getElementById('pausedBannerCount');
+
+            if (isLivePaused) {
+                if (btn) btn.classList.add('is-paused');
+                if (icon) { icon.classList.remove('fa-pause'); icon.classList.add('fa-play'); }
+                if (text) text.textContent = 'Pausad';
+                if (btn) btn.title = 'Klicka för att återuppta larmflödet';
+                if (bar && pausedQueue.length > 0) bar.style.display = 'flex';
+            } else {
+                if (btn) btn.classList.remove('is-paused');
+                if (icon) { icon.classList.remove('fa-play'); icon.classList.add('fa-pause'); }
+                if (text) text.textContent = 'Live';
+                if (btn) btn.title = 'Pausa larmflödet';
+                if (badge) { badge.style.display = 'none'; badge.textContent = '0'; }
+                if (bar) bar.style.display = 'none';
+                if (bannerCount) bannerCount.textContent = '0';
+
+                // Flush queued alarms into table (in order)
+                if (pausedQueue.length > 0) {
+                    const rowsToAdd = [];
+                    while (pausedQueue.length > 0) {
+                        const data = pausedQueue.shift();
+                        if (!allAlarms.some(a => a.id === data.id)) {
+                            allAlarms.unshift(data);
+                            if (allAlarms.length > 1000) allAlarms.pop();
+
+                            const newRow = createAlarmRowNode(data);
+                            newRow.classList.add('new-alarm-pulse');
+                            rowsToAdd.push(newRow);
+                        }
+                    }
+                    if (dataTable && rowsToAdd.length > 0) {
+                        dataTable.rows.add(rowsToAdd).draw(false);
+                    }
+                }
+            }
+        }
 
         function openAliasModal(address) {
             document.getElementById('modal_address').value = address;
@@ -565,7 +633,12 @@
             const dateObj = new Date(alarm.timestamp);
             const dateStr = dateObj.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
             const timeStr = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            const formattedTime = `${dateStr}<br>${timeStr}`;
+            let formattedTime = `${dateStr}<br>${timeStr}`;
+            if (alarm.last_timestamp && alarm.repeat_count > 1) {
+                const lastDate = new Date(alarm.last_timestamp);
+                const lastTimeStr = lastDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                formattedTime += `<div class="last-seen-time">(Last: ${lastTimeStr})</div>`;
+            }
 
             const displayAddress = alarm.alias ? alarm.alias : alarm.address;
             const bitrateTag = alarm.bitrate ? `<span class="badge meta">${alarm.bitrate}bps</span>` : '';
@@ -573,13 +646,14 @@
             const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
             const freqTag = alarm.frequency ? `<span class="badge meta badge-freq">${alarm.frequency}</span>` : '';
             const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
+            const repeatTag = (alarm.repeat_count && alarm.repeat_count > 1) ? `<span class="badge repeat-badge meta" title="Repeated ${alarm.repeat_count} times">${alarm.repeat_count}x</span>` : '';
 
             const hitBadge = `<span class="badge" style="background: ${hitColor}22; color: ${hitColor}; border: 1px solid ${hitColor}66; font-weight: 700; text-transform: uppercase;"><i class="fas fa-tag" style="margin-right: 4px; font-size: 0.75rem;"></i>${hitWord}</span>`;
 
             tr.innerHTML = `
                 <td class="id-cell">${alarm.id}</td>
                 <td class="ts-cell" data-order="${alarm.timestamp}">${formattedTime}</td>
-                <td class="meta-cell"><div class="meta-wrapper">${freqTag}${bitrateTag}${funcTag}${duplicateTag}</div></td>
+                <td class="meta-cell"><div class="meta-wrapper">${freqTag}${bitrateTag}${funcTag}${duplicateTag}${repeatTag}</div></td>
                 <td class="addr-cell">
                     <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
                 </td>
@@ -587,7 +661,7 @@
                 <td class="hit-cell">${hitBadge}</td>
                 <td class="actions-cell">
                     <div class="actions-wrapper">
-                        <button class="copy-btn" onclick="copyMessageText(this)" title="Kopiera meddelande">
+                        <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">
                             <i class="far fa-copy"></i>
                         </button>
                         <div class="btn-divider"></div>
@@ -710,11 +784,11 @@
             const origClass = icon ? icon.className : '';
             btn.classList.add('copied');
             if (icon) icon.className = 'fas fa-check';
-            btn.setAttribute('title', 'Kopierad!');
+            btn.setAttribute('title', 'Copied!');
             setTimeout(() => {
                 btn.classList.remove('copied');
                 if (icon) icon.className = origClass;
-                btn.setAttribute('title', 'Kopiera meddelande');
+                btn.setAttribute('title', 'Copy message');
             }, 1500);
         };
 
@@ -866,6 +940,45 @@
 
                 if (!data || data.type === 'ping' || !data.id) return;
 
+                // Handle merged duplicate / repeat update
+                if (data.type === 'repeat_update') {
+                    const existing = allAlarms.find(a => a.id === data.id);
+                    if (existing) {
+                        existing.repeat_count = data.repeat_count;
+                        existing.last_timestamp = data.last_timestamp;
+                    }
+                    const rowEl = document.querySelector(`tr[data-id="${data.id}"]`);
+                    if (rowEl) {
+                        const metaWrapper = rowEl.querySelector('.meta-cell .meta-wrapper');
+                        if (metaWrapper) {
+                            let badge = metaWrapper.querySelector('.repeat-badge');
+                            if (!badge) {
+                                badge = document.createElement('span');
+                                badge.className = 'badge repeat-badge meta';
+                                metaWrapper.appendChild(badge);
+                            }
+                            badge.textContent = `${data.repeat_count}x`;
+                            badge.title = `Repeated ${data.repeat_count} times`;
+                        }
+                        const tsCell = rowEl.querySelector('.ts-cell');
+                        if (tsCell && data.last_timestamp) {
+                            let lastSeenEl = tsCell.querySelector('.last-seen-time');
+                            const lastDate = new Date(data.last_timestamp);
+                            const lastTimeStr = lastDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                            if (!lastSeenEl) {
+                                lastSeenEl = document.createElement('div');
+                                lastSeenEl.className = 'last-seen-time';
+                                tsCell.appendChild(lastSeenEl);
+                            }
+                            lastSeenEl.textContent = `(Last: ${lastTimeStr})`;
+                        }
+                        rowEl.classList.remove('repeat-pulse');
+                        void rowEl.offsetWidth;
+                        rowEl.classList.add('repeat-pulse');
+                    }
+                    return;
+                }
+
                 // Hide duplicates in table if configured
                 if (data.is_duplicate && appSettings.duplicate_handling === 'hide') {
                     return;
@@ -877,15 +990,28 @@
                 // Only alarm hits are shown on this page
                 if (!isAlertHit) return;
 
-                if (!allAlarms.some(a => a.id === data.id)) {
-                    allAlarms.unshift(data);
-                    if (allAlarms.length > 1000) allAlarms.pop();
+                if (isLivePaused) {
+                    pausedQueue.push(data);
+                    const badge = document.getElementById('livePauseBadge');
+                    const bannerCount = document.getElementById('pausedBannerCount');
+                    const bar = document.getElementById('pausedNotificationBar');
+                    if (badge) {
+                        badge.textContent = pausedQueue.length;
+                        badge.style.display = 'inline-flex';
+                    }
+                    if (bannerCount) bannerCount.textContent = pausedQueue.length;
+                    if (bar) bar.style.display = 'flex';
+                } else {
+                    if (!allAlarms.some(a => a.id === data.id)) {
+                        allAlarms.unshift(data);
+                        if (allAlarms.length > 1000) allAlarms.pop();
 
-                    const newRow = createAlarmRowNode(data);
-                    newRow.classList.add('new-alarm-pulse');
+                        const newRow = createAlarmRowNode(data);
+                        newRow.classList.add('new-alarm-pulse');
 
-                    if (dataTable) {
-                        dataTable.row.add(newRow).draw(false);
+                        if (dataTable) {
+                            dataTable.row.add(newRow).draw(false);
+                        }
                     }
                 }
             };

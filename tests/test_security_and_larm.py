@@ -199,7 +199,7 @@ def test_alert_words_table_rendered_in_rules(client):
         assert res.status_code == 200
         html = res.data.decode('utf-8')
         assert 'alertsTableBody' in html
-        assert 'Befintliga larmord' in html
+        assert 'Configured Alert Words' in html or 'Befintliga larmord' in html
 
 def test_alert_word_unicode_case_insensitive_matching(client):
     """Verifiera att larmord med svenska tecken som STÖLD och SKADA matchar i sökningar."""
@@ -246,4 +246,54 @@ def test_settings_duplicate_and_theme_styling(client):
     assert 'class="settings-subpanel"' in html
     assert 'id="duplicate_handling" class="form-input"' in html
     assert 'id="duplicate_window" class="form-input"' in html
+
+def test_live_pause_and_activity_ribbon_rendered(client):
+    """Verifiera att Live-Paus-knapp och Eteraktivitet finns i Dashboard och Larm."""
+    res_dash = client.get('/')
+    assert res_dash.status_code == 200
+    dash_html = res_dash.data.decode('utf-8')
+    assert 'id="livePauseBtn"' in dash_html
+    assert 'id="pausedNotificationBar"' in dash_html
+    assert 'id="activityRibbonPanel"' in dash_html
+    assert 'waterfall.js' in dash_html
+
+    res_larm = client.get('/larm')
+    assert res_larm.status_code == 200
+    larm_html = res_larm.data.decode('utf-8')
+    assert 'id="livePauseBtn"' in larm_html
+    assert 'id="pausedNotificationBar"' in larm_html
+
+def test_duplicate_merge_and_repeat_count(client):
+    """Verifiera att upprepade meddelanden kan slås samman med repeat_count och last_timestamp."""
+    # Spara ett grundmeddelande
+    msg_id, _ = database.save_message("187249", "PRI-1-Alarm: Reset till Alarm Brandlarm")
+    assert msg_id is not None
+
+    # Hämta och verifiera initial repeat_count
+    msgs = database.get_recent_messages(limit=10)
+    target = next((m for m in msgs if m['id'] == msg_id), None)
+    assert target is not None
+    assert target.get('repeat_count') == 1
+
+    # Öka repeat count
+    new_count = database.increment_message_repeat(msg_id, "2026-10-12T19:35:00")
+    assert new_count == 2
+
+    # Hämta igen och kontrollera repeat_count och last_timestamp
+    msgs_updated = database.get_recent_messages(limit=10)
+    target_updated = next((m for m in msgs_updated if m['id'] == msg_id), None)
+    assert target_updated is not None
+    assert target_updated.get('repeat_count') == 2
+    assert target_updated.get('last_timestamp') == "2026-10-12T19:35:00"
+
+def test_actions_column_narrow_width_styling(client):
+    """Verifiera att tabellernas action-kolumner är konfigurerade med smal bredd för vertikal stapling."""
+    for path in ['/', '/larm', '/statistics']:
+        res = client.get(path)
+        assert res.status_code == 200
+        html = res.data.decode('utf-8')
+        assert 'col-actions' in html
+        assert '38px !important' in html
+
+
 

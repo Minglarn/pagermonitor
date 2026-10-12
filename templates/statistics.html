@@ -312,10 +312,12 @@
 
         table.dataTable.stats-dt th.col-actions,
         table.dataTable.stats-dt td.actions-cell {
-            width: 1% !important;
+            width: 38px !important;
+            min-width: 38px !important;
+            max-width: 44px !important;
             white-space: nowrap !important;
             text-align: center !important;
-            padding: 0.6rem 0.5rem !important;
+            padding: 4px 2px !important;
         }
 
         table.dataTable.stats-dt th.col-msg,
@@ -741,7 +743,7 @@
                     <td class="msg-cell" style="color: #fcd34d;"><i class="fas fa-sync-alt" style="margin-right: 6px; color: #f59e0b;"></i>${safeMsg}</td>
                     <td class="actions-cell">
                         <div class="actions-wrapper">
-                            <button class="copy-btn" onclick="copyMessageText(this)" title="Kopiera meddelande">
+                            <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">
                                 <i class="far fa-copy"></i>
                             </button>
                             <div class="btn-divider"></div>
@@ -760,16 +762,24 @@
             const funcLabel = (m.function !== undefined && m.function !== null) ? ((m.function === 0 || m.function === 3) ? "Alpha" : "Num") : "";
             const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
             const duplicateTag = m.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
+            const repeatTag = (m.repeat_count && m.repeat_count > 1) ? `<span class="badge repeat-badge meta" title="Repeated ${m.repeat_count} times">${m.repeat_count}x</span>` : '';
+
+            let timeDisplay = time;
+            if (m.last_timestamp && m.repeat_count > 1) {
+                const lastDate = new Date(m.last_timestamp);
+                const lastTimeStr = lastDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                timeDisplay += `<div class="last-seen-time">(Last: ${lastTimeStr})</div>`;
+            }
 
             tr.innerHTML = `
                 <td class="id-cell">${m.id}</td>
-                <td class="ts-cell" data-order="${m.timestamp}">${time}</td>
-                <td class="meta-cell"><div class="meta-wrapper">${freq}${bitrateTag}${funcTag}${duplicateTag}</div></td>
+                <td class="ts-cell" data-order="${m.timestamp}">${timeDisplay}</td>
+                <td class="meta-cell"><div class="meta-wrapper">${freq}${bitrateTag}${funcTag}${duplicateTag}${repeatTag}</div></td>
                 <td class="addr-cell"><span class="badge" title="${m.address}">${displayAddress}</span></td>
                 <td class="msg-cell">${safeMsg}</td>
                 <td class="actions-cell">
                     <div class="actions-wrapper">
-                        <button class="copy-btn" onclick="copyMessageText(this)" title="Kopiera meddelande">
+                        <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">
                             <i class="far fa-copy"></i>
                         </button>
                         <div class="btn-divider"></div>
@@ -935,11 +945,11 @@
             const origClass = icon ? icon.className : '';
             btn.classList.add('copied');
             if (icon) icon.className = 'fas fa-check';
-            btn.setAttribute('title', 'Kopierad!');
+            btn.setAttribute('title', 'Copied!');
             setTimeout(() => {
                 btn.classList.remove('copied');
                 if (icon) icon.className = origClass;
-                btn.setAttribute('title', 'Kopiera meddelande');
+                btn.setAttribute('title', 'Copy message');
             }, 1500);
         };
 

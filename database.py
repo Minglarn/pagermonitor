@@ -35,7 +35,7 @@ def get_default_settings():
         'multimon_input_type': 'raw',
         'garbage_filter': 'true',
         'garbage_filter_sensitivity': '50',
-        'duplicate_handling': 'mark',
+        'duplicate_handling': 'merge',
         'duplicate_window': '120',
         'auto_prune_enabled': 'true',
         'auto_prune_days': '30'
@@ -56,12 +56,23 @@ def init_db():
             bitrate TEXT DEFAULT '',
             frequency TEXT DEFAULT '',
             is_duplicate INTEGER DEFAULT 0,
-            is_protected INTEGER DEFAULT 0
+            is_protected INTEGER DEFAULT 0,
+            repeat_count INTEGER DEFAULT 1,
+            last_timestamp TEXT DEFAULT ''
         )
     ''')
     
     # Try adding columns to existing messages table
-    for col, type_info in [('alias', 'TEXT DEFAULT ""'), ('function_code', 'INTEGER DEFAULT 0'), ('bitrate', 'TEXT DEFAULT ""'), ('frequency', 'TEXT DEFAULT ""'), ('is_duplicate', 'INTEGER DEFAULT 0'), ('is_protected', 'INTEGER DEFAULT 0')]:
+    for col, type_info in [
+        ('alias', 'TEXT DEFAULT ""'),
+        ('function_code', 'INTEGER DEFAULT 0'),
+        ('bitrate', 'TEXT DEFAULT ""'),
+        ('frequency', 'TEXT DEFAULT ""'),
+        ('is_duplicate', 'INTEGER DEFAULT 0'),
+        ('is_protected', 'INTEGER DEFAULT 0'),
+        ('repeat_count', 'INTEGER DEFAULT 1'),
+        ('last_timestamp', 'TEXT DEFAULT ""')
+    ]:
         try:
             c.execute(f'ALTER TABLE messages ADD COLUMN {col} {type_info}')
         except sqlite3.OperationalError:
@@ -193,16 +204,39 @@ def init_db():
     conn.commit()
     conn.close()
 
-def save_message(address, message, alias='', function_code=0, bitrate='', frequency='', is_duplicate=False, is_protected=False):
+def save_message(address, message, alias='', function_code=0, bitrate='', frequency='', is_duplicate=False, is_protected=False, repeat_count=1, last_timestamp=None):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     timestamp = datetime.now().isoformat()
-    c.execute('INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-              (timestamp, address, message, alias, function_code, bitrate, frequency, 1 if is_duplicate else 0, 1 if is_protected else 0))
+    if last_timestamp is None:
+        last_timestamp = timestamp
+    c.execute('''
+        INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected, repeat_count, last_timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (timestamp, address, message, alias, function_code, bitrate, frequency, 1 if is_duplicate else 0, 1 if is_protected else 0, repeat_count, last_timestamp))
     row_id = c.lastrowid
     conn.commit()
     conn.close()
     return row_id, timestamp
+
+def increment_message_repeat(msg_id, last_timestamp=None):
+    """Increments repeat_count and updates last_timestamp on an existing message."""
+    if not last_timestamp:
+        last_timestamp = datetime.now().isoformat()
+    conn = sqlite3.connect(DB_PATH)
+    c = conn.cursor()
+    c.execute('''
+        UPDATE messages
+        SET repeat_count = COALESCE(repeat_count, 1) + 1,
+            last_timestamp = ?
+        WHERE id = ?
+    ''', (last_timestamp, msg_id))
+    conn.commit()
+    c.execute('SELECT repeat_count FROM messages WHERE id = ?', (msg_id,))
+    row = c.fetchone()
+    count = row[0] if row else 1
+    conn.close()
+    return count
 
 def toggle_message_lock(msg_id, protected):
     """Toggle the protected/locked status of a message."""
@@ -237,14 +271,16 @@ def reindex_messages(already_open_conn=None):
             bitrate TEXT DEFAULT '',
             frequency TEXT DEFAULT '',
             is_duplicate INTEGER DEFAULT 0,
-            is_protected INTEGER DEFAULT 0
+            is_protected INTEGER DEFAULT 0,
+            repeat_count INTEGER DEFAULT 1,
+            last_timestamp TEXT DEFAULT ''
         )
     ''')
     
     # 2. Copy data ordered by timestamp (or old id)
     c.execute('''
-        INSERT INTO messages_new (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected)
-        SELECT timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected
+        INSERT INTO messages_new (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected, repeat_count, last_timestamp)
+        SELECT timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected, COALESCE(repeat_count, 1), COALESCE(last_timestamp, timestamp)
         FROM messages ORDER BY timestamp ASC
     ''')
     
@@ -348,6 +384,14 @@ def get_recent_messages(limit=None, before_id=None, search=None, alerts_only=Fal
             msg['is_duplicate'] = bool(row[col_names.index('is_duplicate')])
         if 'is_protected' in col_names:
             msg['is_protected'] = bool(row[col_names.index('is_protected')])
+        if 'repeat_count' in col_names:
+            msg['repeat_count'] = row[col_names.index('repeat_count')] or 1
+        else:
+            msg['repeat_count'] = 1
+        if 'last_timestamp' in col_names:
+            msg['last_timestamp'] = row[col_names.index('last_timestamp')] or ''
+        else:
+            msg['last_timestamp'] = ''
             
         messages.append(msg)
     return messages

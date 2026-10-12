@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Fira+Code:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inconsolata:wght@400;700&family=JetBrains+Mono:wght@400;500;800&family=Roboto+Mono:wght@400;500;700&family=Source+Code+Pro:wght@400;600;800&family=Space+Mono:wght@400;700&family=Ubuntu+Mono:wght@400;700&family=Courier+Prime:wght@400;700&family=Share+Tech+Mono&family=Anonymous+Pro:wght@400;700&family=VT323&display=swap');
 @import url('/static/console.css');
+@import url('/static/waterfall.css');
 
 :root {
     /* Base Colors - OLED Theme */
@@ -1086,32 +1087,60 @@ th:first-child,
 }
 
 .actions-wrapper {
-    display: inline-flex; /* Better for text-align: center parent */
+    display: inline-flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 4px;
     margin: 0;
-    padding: 0;
+    padding: 2px 0;
     vertical-align: middle;
 }
 
 .btn-divider {
-    width: 1px;
-    height: 16px;
-    background: rgba(148, 163, 184, 0.4);
+    display: none !important;
 }
 
 .delete-btn, .lock-btn, .edit-btn, .copy-btn {
-    width: 32px;
-    height: 32px;
+    width: 26px;
+    height: 26px;
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 6px;
+    border-radius: 5px;
     border: none;
     cursor: pointer;
     transition: all 0.2s ease;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
+}
+
+/* Repeat / Merge Badge Styling */
+.badge.repeat-badge {
+    background: rgba(168, 85, 247, 0.18) !important;
+    color: #c084fc !important;
+    border: 1px solid rgba(168, 85, 247, 0.5) !important;
+    font-weight: 800 !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.03em !important;
+    padding: 0.15rem 0.45rem !important;
+}
+
+.last-seen-time {
+    display: block;
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    margin-top: 3px;
+    opacity: 0.85;
+    font-family: var(--msg-font, 'JetBrains Mono', monospace);
+}
+
+@keyframes repeatFlash {
+    0% { background: rgba(168, 85, 247, 0.35) !important; }
+    100% { background: transparent; }
+}
+
+tr.repeat-pulse {
+    animation: repeatFlash 1.5s ease-out;
 }
 
 .copy-btn {

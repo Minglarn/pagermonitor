@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.11`
+- **CalVer**: `2026.10.12.12`
 - **Date**: 2026-10-12
 - **Language**: English / Swedish
 
@@ -431,4 +431,61 @@
     - `background-size: 1rem 1rem !important;`
 - **Testning**:
   - Verifierat att alla 36 enhetstester passerar och att CSS-reglerna förhindrar all form av bakgrundsrepetition.
+
+---
+
+## 33. Live Paus- och Buffertläge samt Visuell Eteraktivitet (Activity Ribbon / Radio Waterfall) (v2026.10.12.12)
+- **Bakgrund och Syfte**:
+  - Vid övervakning och analys av intensiv radiotrafik över flera SDR-stickor kan ett snabbt flöde av inkommande meddelanden göra det svårt att läsa och inspektera enskilda larm utan att tabellen rör sig.
+  - Samtidigt saknades en direkt översiktsbild av den senaste timmens radioaktivitet per SDR-mottagare och frekvens för att direkt kunna avgöra aktivitetstoppar, tysta perioder och kanalbalans mellan stickorna.
+- **Åtgärder**:
+  - **Live "Paus & Buffert"-läge**:
+    - Skapade kontrollknappen `#livePauseBtn` bredvid sökfältet i både Dashboard ([index.html](file:///d:/antigravity/pager-monitor/templates/index.html)) och Larmvyn ([larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html)).
+    - När användaren pausar skiftar knappen till bärnstensfärg ("Pausad") och inkommande meddelanden från SSE-strömmen ackumuleras i klientkön `pausedQueue`.
+    - En dynamisk räknare på knappen (`#livePauseBadge`) samt en diskret informationsbanner (`#pausedNotificationBar`) visar exakt hur många nya meddelanden som väntar i bufferten.
+    - Vid klick på knappen eller "Visa och återuppta" spolas alla buffrade meddelanden in i DataTables i korrekt kronologisk ordning med visuell infasningsanimering (`.new-msg-pulse`).
+  - **Visuell "Eteraktivitet" (Activity Ribbon / Radio Waterfall)**:
+    - Utvecklade en hårdvaruaccelererad HTML5 Canvas-komponent i [static/waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js) och [static/waterfall.css](file:///d:/antigravity/pager-monitor/static/waterfall.css).
+    - Monterade panelen `#activityRibbonPanel` direkt ovanför huvudtabellen på Dashboarden.
+    - Renderar en rullande 60-minuters tidslinje (uppdelad i 60 1-minuters slots från -60 min till "Nu") separat per aktiv SDR-mottagare (t.ex. RIKS 1 / 169.800 MHz och RIKS 2 / 169.925 MHz).
+    - Färgkodning:
+      - Normal trafik: Gradient från himmelsblått `#38bdf8` till djupblått `#0284c7`.
+      - Larmordsträffar: Neonröd indikering `#ef4444` med ljus toppkant.
+      - Duplikat: Bärnsten `#f59e0b`.
+    - Realtidsåterkoppling: Aktuell minutslot ("Nu") har en aktiv ljuspuls vid inkommande anrop och mottagarens statusdiod blinkar grönt vid mottagning.
+    - Interaktivitet:
+      - Hover-tooltip som visar exakt klockslag, frekvens, antal meddelanden och eventuella larmträffar för vald minut.
+      - Klick på en kanalrad filtrerar automatiskt DataTables till den valda mottagaren/frekvensen.
+      - Kollapsfunktion (`#ribbonToggleBtn`) med sparat tillstånd i `localStorage`.
+  - **Testning och Verifiering**:
+    - Lade till testet `test_live_pause_and_activity_ribbon_rendered` i [tests/test_security_and_larm.py](file:///d:/antigravity/pager-monitor/tests/test_security_and_larm.py).
+    - Samtliga 37 automatiserade tester passerar felfritt.
+
+## 34. Vertikalt Staplade Actions, Duplikatgruppering (Merge & 2x/3x) och Engelsk Översättning (2026-10-12)
+- **Bakgrund och Behov**:
+  - På smalare desktop-skärmar tog kolumnen ACTIONS upp för mycket horisontellt utrymme (~115px), vilket trängde ihop MESSAGE-kolumnen och tvingade fram oönskade radbrytningar.
+  - När samma larm sänds ut flera gånger inom en kort tidsrymd skapades dubblettrader i tabellen. Användaren önskade "Lösning 1": slå samman upprepningar till samma händelse-ID, visa en repeat-bricka (t.ex. `2x`, `3x`) och uppdatera senaste tidsstämpel utan att skapa nya rader.
+  - Inställningssidan och delar av larmordsadministrationen hade fortfarande svenska gränssnittstexter trots systemstandarden att applikationsgränssnittet skall vara på engelska.
+- **Genomförda Åtgärder**:
+  - **Vertikalt Staplade Action-knappar (Prio på MESSAGE)**:
+    - I [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css) ändrades `.actions-wrapper` från horisontell flex till vertikal (`flex-direction: column; gap: 4px; padding: 2px 0;`).
+    - Dolda avskiljare `.btn-divider` (`display: none !important;`).
+    - Ändrade knappdimensioner för `.delete-btn`, `.lock-btn`, `.edit-btn`, `.copy-btn` till 26x26px.
+    - Begränsade kolumnbredden för `th.col-actions` och `td.actions-cell` i [index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html) och [statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html) till `width: 38px !important; min-width: 38px !important; max-width: 44px !important;`. Detta frigör ca 75-80px horisontell bredd för MESSAGE.
+  - **Duplikatgruppering till Samma Händelse (Lösning 1)**:
+    - Databas: Lagt till kolumnerna `repeat_count INTEGER DEFAULT 1` och `last_timestamp TEXT DEFAULT ''` i tabellen `messages` i [database.py](file:///d:/antigravity/pager-monitor/database.py).
+    - Implementerade funktionen `increment_message_repeat(msg_id, last_timestamp)` i databaslagret.
+    - SDR-processor: I [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py) sparar `recent_messages_cache` nu meddelandets ID och upprepningsantal. När `duplicate_handling == 'merge'` detekteras ökas antalet upprepningar på befintlig rad i databasen och en `repeat_update`-händelse skickas via SSE utan att infoga en ny databasrad.
+    - Gränssnitt: I [index.html](file:///d:/antigravity/pager-monitor/templates/index.html) och [larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html) renderas `<span class="badge repeat-badge meta">2x</span>` och `(Last: HH:MM:SS)`. Vid realtidsuppdatering (`repeat_update`) uppdateras raden dynamiskt och animeras med `repeat-pulse`.
+    - Konfiguration: Gjort `merge` till rekommenderat och standardiserat alternativ i inställningsdialogen för `duplicate_handling`.
+  - **Fullständig Engelsk Översättning**:
+    - [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html): Samtliga flikar, rubriker, sektioner, formulärtexter och modaler översatta till engelska.
+    - [templates/alerts.html](file:///d:/antigravity/pager-monitor/templates/alerts.html) och [templates/rules.html](file:///d:/antigravity/pager-monitor/templates/rules.html): Alla fält, hjälptexter, tabellhuvuden, statusmärken och dialoger översatta till engelska.
+    - Knappar: Samtliga kopierings- och åtgärdsknappar visar engelska tooltips (`Copy message`, `Copied!`, `Delete message`, `Lock/Unlock message`).
+  - **Testning och Spårbarhet**:
+    - Tillagt `test_duplicate_merge_and_repeat_count` och `test_actions_column_narrow_width_styling` i [tests/test_security_and_larm.py](file:///d:/antigravity/pager-monitor/tests/test_security_and_larm.py).
+    - Samtliga 39 automatiserade tester passerade.
+    - Versionsbump till CalVer `2026.10.12.13`.
+
+
 

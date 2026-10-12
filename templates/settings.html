@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PagerMonitor - Inställningar</title>
+    <title>PagerMonitor - Settings</title>
     <link rel="stylesheet" href="/static/style.css?v=4">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inconsolata:wght@400;700&family=JetBrains+Mono:wght@400;500;800&family=Roboto+Mono:wght@400;500;700&family=Source+Code+Pro:wght@400;600;800&family=Space+Mono:wght@400;700&family=Ubuntu+Mono:wght@400;700&family=Courier+Prime:wght@400;700&family=Share+Tech+Mono&family=Anonymous+Pro:wght@400;700&family=VT323&display=swap"
@@ -52,24 +52,24 @@
                 </a>
                 <a href="/alarms" class="nav-item">
                     <i class="fas fa-bell"></i>
-                    <span>Larm</span>
+                    <span>Alarms</span>
                 </a>
                 <a href="/rules" class="nav-item">
                     <i class="fas fa-sliders-h"></i>
-                    <span>Regler & Triggers</span>
+                    <span>Rules & Triggers</span>
                 </a>
                 <a href="/statistics" class="nav-item">
                     <i class="fas fa-chart-bar"></i>
-                    <span>Statistik</span>
+                    <span>Statistics</span>
                 </a>
                 <a href="/settings" class="nav-item active">
                     <i class="fas fa-cog"></i>
-                    <span>Inställningar</span>
+                    <span>Settings</span>
                 </a>
             </div>
 
             <div class="sidebar-footer">
-                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Växla meny">
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Menu">
                     <i class="fas fa-bars"></i>
                 </button>
             </div>
@@ -81,25 +81,25 @@
                     <!-- Header with Auto-save indicator -->
                     <div class="settings-header-bar">
                         <div>
-                            <h2>Inställningar</h2>
-                            <p>Konfigurera radiomottagare, gränssnitt, meddelandefiltrering och databaslagring</p>
+                            <h2>Settings</h2>
+                            <p>Configure SDR receivers, display appearance, message filtering, and database storage</p>
                         </div>
                         <div id="autoSaveBadge" class="autosave-badge synced">
                             <i class="fas fa-check-circle"></i>
-                            <span id="autoSaveText">Alla ändringar sparade</span>
+                            <span id="autoSaveText">All changes saved</span>
                         </div>
                     </div>
 
                     <!-- Navigation Tabs -->
                     <div class="settings-tabs">
                         <button class="tab-trigger active" onclick="switchTab('radio')">
-                            <i class="fas fa-broadcast-tower" style="margin-right: 6px;"></i> SDR-Mottagare
+                            <i class="fas fa-broadcast-tower" style="margin-right: 6px;"></i> SDR Receivers
                         </button>
                         <button class="tab-trigger" onclick="switchTab('display')">
-                            <i class="fas fa-palette" style="margin-right: 6px;"></i> Utseende & Visning
+                            <i class="fas fa-palette" style="margin-right: 6px;"></i> Appearance & Display
                         </button>
                         <button class="tab-trigger" onclick="switchTab('maintenance')">
-                            <i class="fas fa-database" style="margin-right: 6px;"></i> Databas & Underhåll
+                            <i class="fas fa-database" style="margin-right: 6px;"></i> Database & Storage
                         </button>
                     </div>
 
@@ -107,13 +107,13 @@
                     <div id="tab-radio" class="tab-content active">
                         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;">
                             <div>
-                                <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">Anslutna SDR-Mottagare</h3>
+                                <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">Connected SDR Receivers</h3>
                                 <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
-                                    Hantera RTL-SDR-enheter, frekvenser, hårdvaruparametrar och avkodningsprocesser.
+                                    Manage RTL-SDR dongles, frequencies, hardware parameters, and decoding processes.
                                 </p>
                             </div>
                             <button type="button" class="primary-btn" onclick="openAddSdrModal()" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.55rem 1.1rem;">
-                                <i class="fas fa-plus"></i> Lägg till mottagare
+                                <i class="fas fa-plus"></i> Add Receiver
                             </button>
                         </div>
 
@@ -127,22 +127,22 @@
                         <div class="settings-split-layout">
                             <!-- Controls Column -->
                             <div class="settings-col-controls">
-                                <!-- Card 1: Gränssnitt & Typografi -->
+                                <!-- Card 1: Interface & Typography -->
                                 <div class="settings-subpanel">
                                     <h4 style="margin: 0 0 0.85rem 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
-                                        <i class="fas fa-palette" style="color: var(--accent);"></i> Gränssnitt & Typografi
+                                        <i class="fas fa-palette" style="color: var(--accent);"></i> Interface & Typography
                                     </h4>
 
                                     <div class="form-group" style="margin-bottom: 0.75rem;">
                                         <label for="theme" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 0.3rem; color: var(--text-primary);">
-                                            Färgtema
+                                            Color Theme
                                         </label>
                                         <select id="theme" class="form-input">
-                                            <option value="dark">Mörkt tema (Standard)</option>
-                                            <option value="light">Ljust tema</option>
+                                            <option value="dark">Dark Theme (Default)</option>
+                                            <option value="light">Light Theme</option>
                                         </select>
                                         <small style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
-                                            Ändras och tillämpas direkt i hela gränssnittet.
+                                            Applies instantly across the entire interface.
                                         </small>
                                     </div>
 
@@ -150,7 +150,7 @@
                                         <div class="col" style="flex: 1.2; min-width: 180px;">
                                             <div class="form-group" style="margin-bottom: 0;">
                                                 <label for="message_font" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 0.3rem; color: var(--text-primary);">
-                                                    Typsnitt för meddelanden
+                                                    Message Font
                                                 </label>
                                                 <select id="message_font" class="form-input">
                                                     <option value="JetBrains Mono">JetBrains Mono</option>
@@ -172,7 +172,7 @@
                                         <div class="col" style="flex: 1; min-width: 140px;">
                                             <div class="form-group" style="margin-bottom: 0;">
                                                 <label for="message_font_size_slider" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 0.3rem; color: var(--text-primary);">
-                                                    Textstorlek (<span id="font_size_val">1.0</span> rem)
+                                                    Font Size (<span id="font_size_val">1.0</span> rem)
                                                 </label>
                                                 <input type="range" id="message_font_size_slider" min="0.5" max="2.0" step="0.05" value="1.0" style="width: 100%; margin-top: 0.4rem;">
                                             </div>
@@ -180,71 +180,72 @@
                                     </div>
                                 </div>
 
-                                <!-- Card 2: Filter & Duplikathantering -->
+                                <!-- Card 2: Filter & Duplicate Handling -->
                                 <div class="settings-subpanel">
                                     <h4 style="margin: 0 0 0.85rem 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
-                                        <i class="fas fa-filter" style="color: var(--accent);"></i> Signalfiltrering & Duplikathantering
+                                        <i class="fas fa-filter" style="color: var(--accent);"></i> Signal Filtering & Duplicate Handling
                                     </h4>
 
-                                    <!-- Skräpfilter -->
+                                    <!-- Garbage Filter -->
                                     <div class="form-group checkbox-group" style="margin-bottom: 0.5rem;">
                                         <label style="font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
                                             <input type="checkbox" id="garbage_filter" checked>
-                                            Aktivera skräpfilter för radiosignaler
+                                            Enable garbage filter for radio noise
                                         </label>
                                     </div>
 
                                     <div id="filterSensitivityGroup">
                                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
                                             <label for="garbage_sensitivity_slider" style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
-                                                Filterkänslighet: <strong id="sensitivity_val" style="color: var(--text-primary);">50</strong>%
+                                                Filter Sensitivity: <strong id="sensitivity_val" style="color: var(--text-primary);">50</strong>%
                                             </label>
                                         </div>
                                         <div style="display: flex; align-items: center; gap: 0.6rem;">
                                             <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Mild</span>
                                             <input type="range" id="garbage_sensitivity_slider" min="10" max="90" step="5" value="50" style="flex: 1;">
-                                            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Aggressiv</span>
+                                            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Aggressive</span>
                                         </div>
                                         <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.4; margin: 0.4rem 0 0 0;">
-                                            Beräknar meddelandets läsbarhet utifrån bokstäver och symboler för att filtrera bort brus.
+                                            Calculates message readability based on characters and symbols to filter out RF noise.
                                         </p>
                                     </div>
 
                                     <!-- Subtle Divider -->
                                     <div style="border-top: 1px solid var(--panel-border); margin: 0.85rem 0;"></div>
 
-                                    <!-- Duplikathantering -->
+                                    <!-- Duplicate Handling -->
                                     <div>
                                         <div style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; color: var(--text-primary); margin-bottom: 0.25rem;">
                                             <i class="fas fa-copy" style="color: var(--accent); font-size: 0.8rem;"></i>
-                                            Duplikathantering & Larmrepetition
+                                            Duplicate Handling & Pager Repeats
                                         </div>
                                         <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.35; margin: 0 0 0.65rem 0;">
-                                            Styr hur systemet hanterar återkommande eller identiska meddelanden från samma CapCode.
+                                            Controls how the system handles recurring or identical transmissions from the same CapCode.
                                         </p>
 
                                         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                                             <div style="flex: 1.2; min-width: 180px;">
                                                 <label for="duplicate_handling" style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">
-                                                    Åtgärd för duplikat
+                                                    Duplicate Action
                                                 </label>
                                                 <select id="duplicate_handling" class="form-input">
-                                                    <option value="mark">Markera med badge (Standard)</option>
-                                                    <option value="hide">Dölj i tabeller (Spara i databas)</option>
-                                                    <option value="discard">Kasta helt (Spara och skicka ej)</option>
+                                                    <option value="mark">Mark as separate row with badge (Default)</option>
+                                                    <option value="merge">Group into same event (Increment 2x, 3x badge) (Recommended)</option>
+                                                    <option value="hide">Hide in tables (Save to database)</option>
+                                                    <option value="discard">Discard completely (Do not save or send)</option>
                                                 </select>
                                             </div>
 
                                             <div style="flex: 0.8; min-width: 130px;">
                                                 <label for="duplicate_window" style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">
-                                                    Tidsfönster (sekunder)
+                                                    Time Window (seconds)
                                                 </label>
                                                 <input type="number" id="duplicate_window" class="form-input" min="5" max="3600" step="5" value="120">
                                             </div>
                                         </div>
 
                                         <p style="color: var(--text-secondary); font-size: 0.72rem; line-height: 1.35; margin: 0.5rem 0 0 0;">
-                                            Identiska meddelanden från samma CapCode inom angivet tidsfönster hanteras enligt vald åtgärd.
+                                            Identical transmissions from the same CapCode within the specified time window are handled according to the selected action.
                                         </p>
                                     </div>
                                 </div>
@@ -254,7 +255,7 @@
                             <div class="settings-col-preview">
                                 <div class="preview-card">
                                     <div class="preview-card-header">
-                                        <span><i class="fas fa-eye" style="margin-right: 6px; color: var(--accent);"></i> Realtidsförhandsgranskning</span>
+                                        <span><i class="fas fa-eye" style="margin-right: 6px; color: var(--accent);"></i> Real-time Preview</span>
                                         <span id="previewFontLabel" style="font-size: 0.72rem; color: var(--accent);">JetBrains Mono &bull; 1.0rem</span>
                                     </div>
 
@@ -262,17 +263,17 @@
                                         <div class="preview-meta">
                                             <span><i class="far fa-clock"></i> 20:14:02</span>
                                             <span><i class="fas fa-hashtag"></i> 0123456</span>
-                                            <span>Funktion: <strong>Alfa</strong></span>
-                                            <span class="preview-badge emergency">PRIORITET 1</span>
+                                            <span>Function: <strong>Alpha</strong></span>
+                                            <span class="preview-badge emergency">PRIORITY 1</span>
                                         </div>
                                         <div id="previewTextContent">
-                                            <span class="preview-highlight">LARM:</span> Trafikolycka singel, personbil i dike på RV40. Räddningstjänst och ambulans larmade. Avfart 87 mot centrum.
+                                            <span class="preview-highlight">ALARM:</span> Single-vehicle road accident, car in ditch on HWY 40. Fire services and EMS dispatched. Exit 87 towards downtown.
                                         </div>
                                     </div>
 
                                     <div style="margin-top: 1rem; padding: 0.75rem; border-radius: 6px; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2); font-size: 0.78rem; color: var(--text-secondary); display: flex; align-items: center; gap: 0.5rem;">
                                         <i class="fas fa-info-circle" style="color: var(--accent);"></i>
-                                        <span>Ändringar i typsnitt och storlek slår igenom direkt i förhandsgranskningen och sparas automatiskt i bakgrunden.</span>
+                                        <span>Changes to font family and size take effect instantly in the preview and are saved automatically in the background.</span>
                                     </div>
                                 </div>
                             </div>
@@ -284,13 +285,13 @@
                         <div class="maintenance-group">
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
                                 <div>
-                                    <h3 style="margin: 0; color: var(--text-primary); font-size: 1.15rem;">Databasöversikt & Hälsometrik</h3>
+                                    <h3 style="margin: 0; color: var(--text-primary); font-size: 1.15rem;">Database Overview & Health Metrics</h3>
                                     <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0.25rem 0 0 0;">
-                                        Lagringsstatus i realtid, integritetskontroll och automatiserad gallring.
+                                        Real-time storage status, integrity verification, and automated retention.
                                     </p>
                                 </div>
                                 <button type="button" class="secondary-btn" onclick="loadDatabaseStats()" style="font-size: 0.85rem; padding: 0.45rem 1rem; margin: 0;">
-                                    <i class="fas fa-sync-alt" style="margin-right: 6px;"></i> Uppdatera statistik
+                                    <i class="fas fa-sync-alt" style="margin-right: 6px;"></i> Refresh Stats
                                 </button>
                             </div>
 
@@ -298,74 +299,74 @@
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
                                 <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border);">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Totalt meddelanden</span>
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Total Messages</span>
                                         <i class="fas fa-database" style="color: var(--accent); opacity: 0.8;"></i>
                                     </div>
                                     <div id="stat_total_messages" style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary);">-</div>
-                                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Lagrade rader</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Stored rows</div>
                                 </div>
 
                                 <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border);">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Larm-träffar</span>
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Watchlist Hits</span>
                                         <i class="fas fa-bell" style="color: #ef4444; opacity: 0.8;"></i>
                                     </div>
                                     <div id="stat_alert_hits" style="font-size: 1.6rem; font-weight: 800; color: #ef4444;">-</div>
-                                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Triggade larm</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Triggered alarms</div>
                                 </div>
 
                                 <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border);">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Databasstorlek</span>
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Database Size</span>
                                         <i class="fas fa-hdd" style="color: #3b82f6; opacity: 0.8;"></i>
                                     </div>
                                     <div id="stat_db_size" style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary);">-</div>
-                                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Diskavtryck</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Disk footprint</div>
                                 </div>
 
                                 <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border);">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Äldsta post</span>
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Oldest Entry</span>
                                         <i class="fas fa-history" style="color: #10b981; opacity: 0.8;"></i>
                                     </div>
                                     <div id="stat_oldest_date" style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</div>
-                                    <div id="stat_oldest_time" style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Första tidstämpel</div>
+                                    <div id="stat_oldest_time" style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">First timestamp</div>
                                 </div>
 
                                 <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border);">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Nyaste post</span>
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Newest Entry</span>
                                         <i class="fas fa-clock" style="color: #a855f7; opacity: 0.8;"></i>
                                     </div>
                                     <div id="stat_newest_date" style="font-size: 0.95rem; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">-</div>
-                                    <div id="stat_newest_time" style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Senaste tidstämpel</div>
+                                    <div id="stat_newest_time" style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Latest timestamp</div>
                                 </div>
 
                                 <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border);">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Skyddade</span>
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Protected</span>
                                         <i class="fas fa-lock" style="color: #eab308; opacity: 0.8;"></i>
                                     </div>
                                     <div id="stat_protected" style="font-size: 1.6rem; font-weight: 800; color: #eab308;">-</div>
-                                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Låsta mot gallring</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Locked from pruning</div>
                                 </div>
 
                                 <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border);">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Unika CapCodes</span>
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Unique CapCodes</span>
                                         <i class="fas fa-hashtag" style="color: var(--accent); opacity: 0.8;"></i>
                                     </div>
                                     <div id="stat_unique_addresses" style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary);">-</div>
-                                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Unika adresser</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Distinct addresses</div>
                                 </div>
 
                                 <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border);">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Dubbletter</span>
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 600;">Duplicates</span>
                                         <i class="fas fa-clone" style="color: #64748b; opacity: 0.8;"></i>
                                     </div>
                                     <div id="stat_duplicates" style="font-size: 1.6rem; font-weight: 800; color: var(--text-primary);">-</div>
-                                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Inom 60s fönster</div>
+                                    <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Within time window</div>
                                 </div>
                             </div>
 
@@ -374,29 +375,29 @@
                                 <!-- Scheduled Pruning Card -->
                                 <div class="glass-panel" style="padding: 1.5rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
                                     <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary); font-size: 1.05rem;">
-                                        <i class="fas fa-clock" style="color: var(--accent); margin-right: 8px;"></i> Automatisk Schemalagd Gallring
+                                        <i class="fas fa-clock" style="color: var(--accent); margin-right: 8px;"></i> Automated Scheduled Pruning
                                     </h4>
                                     <p style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.45; margin-bottom: 1.25rem;">
-                                        När automatisk gallring är aktiverad körs en bakgrundsprocess var 6:e timme som raderar meddelanden äldre än vald gräns. <b>Låsta (skyddade) meddelanden bevaras alltid.</b>
+                                        When automated pruning is enabled, a background process runs every 6 hours deleting messages older than the retention threshold. <b>Locked (protected) messages are always preserved.</b>
                                     </p>
 
                                     <div class="form-group checkbox-group" style="margin-bottom: 1.25rem;">
                                         <label style="font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; color: var(--text-primary);">
                                             <input type="checkbox" id="auto_prune_enabled">
-                                            Aktivera automatisk schemalagd gallring
+                                            Enable automated scheduled pruning
                                         </label>
                                     </div>
 
                                     <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
                                         <label for="auto_prune_days" style="font-size: 0.85rem; color: var(--text-primary); margin: 0; font-weight: 500;">
-                                            Spara meddelanden i:
+                                            Keep messages for:
                                         </label>
                                         <input type="number" id="auto_prune_days" min="1" max="3650" value="30" class="form-input"
                                             style="width: 85px; text-align: center; padding: 0.45rem 0.6rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
-                                        <span style="font-size: 0.85rem; color: var(--text-secondary);">dagar</span>
+                                        <span style="font-size: 0.85rem; color: var(--text-secondary);">days</span>
                                     </div>
                                     <small style="display: block; margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-secondary);">
-                                        Inställningen sparas automatiskt så fort du ändrar den.
+                                        Setting is saved automatically as soon as it is modified.
                                     </small>
                                 </div>
 
@@ -404,41 +405,41 @@
                                 <div class="glass-panel" style="padding: 1.5rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02); display: flex; flex-direction: column; justify-content: space-between; gap: 1.25rem;">
                                     <div>
                                         <h4 style="margin: 0 0 0.5rem 0; color: var(--text-primary); font-size: 1.05rem;">
-                                            <i class="fas fa-tools" style="color: var(--accent); margin-right: 8px;"></i> Manuella Databasåtgärder
+                                            <i class="fas fa-tools" style="color: var(--accent); margin-right: 8px;"></i> Manual Database Actions
                                         </h4>
                                         <p style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.45; margin-bottom: 1.25rem;">
-                                            Utför direktstädning av databasen vid behov.
+                                            Perform immediate database maintenance when needed.
                                         </p>
                                     </div>
 
                                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: 1.25rem; border-bottom: 1px solid var(--panel-border);">
                                         <div>
-                                            <h5 style="margin: 0; font-size: 0.9rem; color: var(--text-primary);">Gallra gamla meddelanden nu</h5>
+                                            <h5 style="margin: 0; font-size: 0.9rem; color: var(--text-primary);">Prune old messages now</h5>
                                             <p style="margin: 0.2rem 0 0 0; font-size: 0.75rem; color: var(--text-secondary);">
-                                                Raderar omedelbart icke-skyddade meddelanden äldre än angivna dagar.
+                                                Immediately deletes non-protected messages older than specified days.
                                             </p>
                                         </div>
                                         <div style="display: flex; gap: 0.5rem; align-items: center;">
                                             <input type="number" id="pruneDays" class="form-input" value="30" min="1"
                                                 style="width: 75px; text-align: center; padding: 0.4rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary);">
-                                            <span style="font-size: 0.85rem; color: var(--text-secondary);">dagar</span>
+                                            <span style="font-size: 0.85rem; color: var(--text-secondary);">days</span>
                                             <button type="button" class="secondary-btn" onclick="pruneDatabase()"
                                                 style="border-color: var(--accent); color: var(--accent); padding: 0.45rem 1rem; margin: 0;">
-                                                Gallra nu
+                                                Prune Now
                                             </button>
                                         </div>
                                     </div>
 
                                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
                                         <div>
-                                            <h5 style="margin: 0; font-size: 0.9rem; color: #ef4444;">Töm alla meddelanden</h5>
+                                            <h5 style="margin: 0; font-size: 0.9rem; color: #ef4444;">Purge all messages</h5>
                                             <p style="margin: 0.2rem 0 0 0; font-size: 0.75rem; color: var(--text-secondary);">
-                                                Raderar alla meddelanden permanent. Alias och larmord sparas.
+                                                Permanently deletes all messages. Aliases and alert words are preserved.
                                             </p>
                                         </div>
                                         <button type="button" class="primary-btn" onclick="emptyDatabase()"
                                             style="background: #ef4444; border-color: #ef4444; padding: 0.5rem 1.2rem; margin: 0;">
-                                            Töm databas
+                                            Purge Database
                                         </button>
                                     </div>
                                 </div>
@@ -457,33 +458,33 @@
         <div class="modal-content" style="max-width: 480px; padding: 2rem; border-radius: 16px;">
             <div class="modal-header" style="margin-bottom: 1.5rem;">
                 <h3 style="margin: 0; color: var(--accent); font-size: 1.25rem;">
-                    <i class="fas fa-broadcast-tower" style="margin-right: 8px;"></i> Lägg till SDR-mottagare
+                    <i class="fas fa-broadcast-tower" style="margin-right: 8px;"></i> Add SDR Receiver
                 </h3>
                 <p style="margin: 0.4rem 0 0 0; font-size: 0.82rem; color: var(--text-secondary);">
-                    Skapa en ny mottagarkonfiguration för RTL-SDR eller kompatibel radio.
+                    Create a new receiver configuration for RTL-SDR or compatible radio.
                 </p>
             </div>
             <form id="addSdrForm" onsubmit="submitNewSDR(event)">
                 <div class="form-group" style="margin-bottom: 1.25rem;">
                     <label for="new_sdr_name" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">
-                        Mottagarens namn *
+                        Receiver Name *
                     </label>
-                    <input type="text" id="new_sdr_name" required placeholder="t.ex. RTL-SDR Primär" class="form-input"
+                    <input type="text" id="new_sdr_name" required placeholder="e.g. RTL-SDR Primary" class="form-input"
                         style="width: 100%; padding: 0.7rem 0.9rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary); box-sizing: border-box;">
                 </div>
                 <div class="form-group" style="margin-bottom: 1.5rem;">
                     <label for="new_sdr_freq" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">
-                        Frekvens *
+                        Frequency *
                     </label>
-                    <input type="text" id="new_sdr_freq" required value="169.8M" placeholder="t.ex. 169.8M eller 169800000" class="form-input"
+                    <input type="text" id="new_sdr_freq" required value="169.8M" placeholder="e.g. 169.8M or 169800000" class="form-input"
                         style="width: 100%; padding: 0.7rem 0.9rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary); box-sizing: border-box;">
                 </div>
                 <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
                     <button type="button" class="secondary-btn" onclick="closeAddSdrModal()" style="margin: 0; padding: 0.55rem 1.2rem;">
-                        Avbryt
+                        Cancel
                     </button>
                     <button type="submit" id="addSdrSubmitBtn" class="primary-btn" style="margin: 0; padding: 0.55rem 1.2rem;">
-                        Skapa mottagare
+                        Create Receiver
                     </button>
                 </div>
             </form>
@@ -494,17 +495,17 @@
     <div id="confirmModal" class="modal-overlay">
         <div class="modal-content" style="max-width: 420px; padding: 2rem; border-radius: 16px;">
             <div class="modal-header">
-                <h3 id="confirmTitle" style="color: var(--accent); margin: 0; font-size: 1.2rem;">Bekräfta åtgärd</h3>
+                <h3 id="confirmTitle" style="color: var(--accent); margin: 0; font-size: 1.2rem;">Confirm Action</h3>
                 <p id="confirmMessage" style="margin-top: 0.6rem; color: var(--text-secondary); font-size: 0.88rem; line-height: 1.45;">
-                    Är du säker på att du vill fortsätta?
+                    Are you sure you want to proceed?
                 </p>
             </div>
             <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 2rem;">
                 <button type="button" class="secondary-btn" style="margin: 0; padding: 0.55rem 1.2rem;" onclick="closeConfirm(false)">
-                    Avbryt
+                    Cancel
                 </button>
                 <button type="button" id="confirmActionBtn" class="primary-btn" style="margin: 0; padding: 0.55rem 1.2rem; background: #ef4444; border-color: #ef4444;">
-                    Fortsätt
+                    Proceed
                 </button>
             </div>
         </div>
@@ -522,11 +523,11 @@
 
             badge.className = `autosave-badge ${state}`;
             if (state === 'saving') {
-                badge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span id="autoSaveText">Sparar ändringar...</span>';
+                badge.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span id="autoSaveText">Saving changes...</span>';
             } else if (state === 'synced') {
-                badge.innerHTML = '<i class="fas fa-check-circle"></i> <span id="autoSaveText">Alla ändringar sparade</span>';
+                badge.innerHTML = '<i class="fas fa-check-circle"></i> <span id="autoSaveText">All changes saved</span>';
             } else if (state === 'error') {
-                badge.innerHTML = '<i class="fas fa-exclamation-circle"></i> <span id="autoSaveText">Kunde inte spara</span>';
+                badge.innerHTML = '<i class="fas fa-exclamation-circle"></i> <span id="autoSaveText">Could not save</span>';
             }
         }
 
@@ -548,7 +549,7 @@
                 return data;
             })
             .catch(err => {
-                console.error('Fel vid sparande av inställningar:', err);
+                console.error('Error saving settings:', err);
                 setSaveStatus('error');
             });
         }
@@ -584,7 +585,7 @@
                     currentSDRs = data;
                     renderSDRList();
                 })
-                .catch(err => console.error('Kunde inte läsa SDR-mottagare:', err));
+                .catch(err => console.error('Could not load SDR receivers:', err));
         }
 
         function renderSDRList() {
@@ -593,9 +594,9 @@
                 list.innerHTML = `
                     <div style="grid-column: 1/-1; text-align: center; padding: 3rem 1.5rem; border: 1px dashed var(--panel-border); border-radius: 12px; background: rgba(255,255,255,0.01);">
                         <i class="fas fa-broadcast-tower" style="font-size: 2.2rem; color: var(--text-secondary); opacity: 0.5; margin-bottom: 0.75rem; display: block;"></i>
-                        <p style="color: var(--text-primary); font-weight: 600; margin: 0 0 0.25rem 0;">Inga mottagare konfigurerade ännu</p>
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 1rem 0;">Klicka på "+ Lägg till mottagare" ovan för att ansluta en RTL-SDR eller radio.</p>
-                        <button type="button" class="primary-btn" onclick="openAddSdrModal()">Lägg till första mottagaren</button>
+                        <p style="color: var(--text-primary); font-weight: 600; margin: 0 0 0.25rem 0;">No receivers configured yet</p>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0 0 1rem 0;">Click "+ Add Receiver" above to connect an RTL-SDR or radio.</p>
+                        <button type="button" class="primary-btn" onclick="openAddSdrModal()">Add First Receiver</button>
                     </div>`;
                 return;
             }
@@ -603,35 +604,35 @@
             list.innerHTML = currentSDRs.map(sdr => {
                 let statusBadge = '';
                 if (!sdr.enabled) {
-                    statusBadge = '<span class="badge" style="opacity: 0.6;">Avaktiverad</span>';
+                    statusBadge = '<span class="badge" style="opacity: 0.6;">Disabled</span>';
                 } else if (sdr.is_running) {
                     const pidInfo = sdr.rtl_fm_pid ? ` (PID: ${sdr.rtl_fm_pid})` : '';
-                    statusBadge = `<span class="badge success" title="Mottagaren körs och avkodar">Aktiv${pidInfo}</span>`;
+                    statusBadge = `<span class="badge success" title="Receiver running and decoding">Active${pidInfo}</span>`;
                 } else {
                     const errTitle = sdr.last_error ? ` title="${sdr.last_error}"` : '';
-                    statusBadge = `<span class="badge danger"${errTitle}>Stoppad</span>`;
+                    statusBadge = `<span class="badge danger"${errTitle}>Stopped</span>`;
                 }
 
                 return `
                 <div class="sdr-card ${sdr.enabled ? '' : 'disabled'}">
                     <div class="sdr-card-header">
                         <h3>${sdr.name}</h3>
-                        <label class="switch" title="Aktivera / Avaktivera mottagare">
+                        <label class="switch" title="Enable / Disable receiver">
                             <input type="checkbox" ${sdr.enabled ? 'checked' : ''} onchange="toggleSDR(${sdr.id}, this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
                     <div class="sdr-card-body">
                         <div class="sdr-info"><span>Status:</span> <strong>${statusBadge}</strong></div>
-                        <div class="sdr-info"><span>Frekvens:</span> <strong>${sdr.frequency}</strong></div>
-                        <div class="sdr-info"><span>Enhets-ID / Serienr:</span> <strong>${sdr.device_serial || 'Standard'}</strong></div>
+                        <div class="sdr-info"><span>Frequency:</span> <strong>${sdr.frequency}</strong></div>
+                        <div class="sdr-info"><span>Device ID / Serial:</span> <strong>${sdr.device_serial || 'Default'}</strong></div>
                     </div>
                     <div class="sdr-card-actions">
                         <a href="/settings/sdr/${sdr.id}" class="secondary-btn" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
-                            <i class="fas fa-sliders-h"></i> Hårdvara
+                            <i class="fas fa-sliders-h"></i> Hardware
                         </a>
                         <button type="button" class="secondary-btn" onclick="confirmDeleteSDR(${sdr.id}, '${sdr.name}')" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
-                            <i class="fas fa-trash-alt"></i> Ta bort
+                            <i class="fas fa-trash-alt"></i> Delete
                         </button>
                     </div>
                 </div>
@@ -640,7 +641,7 @@
         }
 
         function openAddSdrModal() {
-            document.getElementById('new_sdr_name').value = `Mottagare ${currentSDRs.length + 1}`;
+            document.getElementById('new_sdr_name').value = `Receiver ${currentSDRs.length + 1}`;
             document.getElementById('new_sdr_freq').value = '169.8M';
             document.getElementById('addSdrModal').classList.add('show');
             document.getElementById('new_sdr_name').focus();
@@ -654,7 +655,7 @@
             e.preventDefault();
             const btn = document.getElementById('addSdrSubmitBtn');
             btn.disabled = true;
-            btn.innerText = 'Skapar...';
+            btn.innerText = 'Creating...';
 
             const payload = {
                 name: document.getElementById('new_sdr_name').value.trim(),
@@ -669,16 +670,16 @@
             .then(res => res.json())
             .then(() => {
                 closeAddSdrModal();
-                showStatus('Ny mottagare skapad!', 'success');
+                showStatus('New receiver created successfully!', 'success');
                 loadSDRs();
             })
             .catch(err => {
-                console.error('Kunde inte skapa mottagare:', err);
-                showStatus('Kunde inte skapa mottagare', 'error');
+                console.error('Could not create receiver:', err);
+                showStatus('Could not create receiver', 'error');
             })
             .finally(() => {
                 btn.disabled = false;
-                btn.innerText = 'Skapa mottagare';
+                btn.innerText = 'Create Receiver';
             });
         }
 
@@ -691,7 +692,7 @@
             })
             .then(() => {
                 setSaveStatus('synced');
-                showStatus('Mottagare ' + (enabled ? 'aktiverad' : 'avaktiverad'), 'success');
+                showStatus('Receiver ' + (enabled ? 'enabled' : 'disabled'), 'success');
                 loadSDRs();
             })
             .catch(err => {
@@ -702,9 +703,9 @@
 
         async function confirmDeleteSDR(id, name) {
             const confirmed = await showConfirm(
-                'Ta bort mottagare?',
-                `Vill du ta bort mottagaren "${name}" permanent?`,
-                'Ta bort',
+                'Delete Receiver?',
+                `Are you sure you want to permanently delete receiver "${name}"?`,
+                'Delete',
                 true
             );
             if (!confirmed) return;
@@ -712,12 +713,12 @@
             fetch(`/api/sdr/${id}`, { method: 'DELETE' })
                 .then(res => res.json())
                 .then(() => {
-                    showStatus('Mottagaren raderad', 'success');
+                    showStatus('Receiver deleted', 'success');
                     loadSDRs();
                 })
                 .catch(err => {
-                    console.error('Kunde inte ta bort mottagare:', err);
-                    showStatus('Kunde inte ta bort mottagare', 'error');
+                    console.error('Could not delete receiver:', err);
+                    showStatus('Could not delete receiver', 'error');
                 });
         }
 
@@ -778,7 +779,7 @@
 
                     updatePreviewUI();
                 })
-                .catch(err => console.error('Kunde inte läsa globala inställningar:', err));
+                .catch(err => console.error('Could not load global settings:', err));
         }
 
         // Database Statistics & Maintenance
@@ -795,8 +796,8 @@
                         document.getElementById('stat_oldest_date').innerText = d.toLocaleDateString();
                         document.getElementById('stat_oldest_time').innerText = d.toLocaleTimeString();
                     } else {
-                        document.getElementById('stat_oldest_date').innerText = 'Inga';
-                        document.getElementById('stat_oldest_time').innerText = 'Inga poster';
+                        document.getElementById('stat_oldest_date').innerText = 'None';
+                        document.getElementById('stat_oldest_time').innerText = 'No records';
                     }
 
                     if (stats.newest_timestamp) {
@@ -804,8 +805,8 @@
                         document.getElementById('stat_newest_date').innerText = d.toLocaleDateString();
                         document.getElementById('stat_newest_time').innerText = d.toLocaleTimeString();
                     } else {
-                        document.getElementById('stat_newest_date').innerText = 'Inga';
-                        document.getElementById('stat_newest_time').innerText = 'Inga poster';
+                        document.getElementById('stat_newest_date').innerText = 'None';
+                        document.getElementById('stat_newest_time').innerText = 'No records';
                     }
 
                     document.getElementById('stat_protected').innerText = Number(stats.protected_count || 0).toLocaleString();
@@ -816,7 +817,7 @@
                     document.getElementById('auto_prune_days').value = stats.auto_prune_days || 30;
                 })
                 .catch(err => {
-                    console.error('Kunde inte läsa databasstatistik:', err);
+                    console.error('Could not load database stats:', err);
                 });
         }
 
@@ -828,7 +829,7 @@
         }, 400);
 
         let confirmResolve = null;
-        function showConfirm(title, message, actionLabel = 'Fortsätt', danger = false) {
+        function showConfirm(title, message, actionLabel = 'Proceed', danger = false) {
             document.getElementById('confirmTitle').innerText = title;
             document.getElementById('confirmMessage').innerText = message;
             const actionBtn = document.getElementById('confirmActionBtn');
@@ -859,9 +860,9 @@
 
         async function emptyDatabase() {
             const confirmed = await showConfirm(
-                'Töm hela databasen?',
-                'Detta raderar ALLA lagrade meddelanden permanent. Åtgärden kan inte ångras. (Alias, larmord och hårdvaruinställningar bevaras).',
-                'Töm allt nu',
+                'Purge entire database?',
+                'This permanently deletes ALL stored messages. This action cannot be undone. (Aliases, alert words, and hardware settings are preserved).',
+                'Purge All Now',
                 true
             );
 
@@ -870,21 +871,21 @@
             fetch('/api/messages/clear', { method: 'POST' })
                 .then(res => res.json())
                 .then(() => {
-                    showStatus('Databasen tömd framgångsrikt!', 'success');
+                    showStatus('Database purged successfully!', 'success');
                     loadDatabaseStats();
                 })
                 .catch(err => {
-                    console.error('Fel vid tömning av databas:', err);
-                    showStatus('Kunde inte tömma databasen.', 'error');
+                    console.error('Error clearing database:', err);
+                    showStatus('Could not clear database.', 'error');
                 });
         }
 
         async function pruneDatabase() {
             const days = document.getElementById('pruneDays').value;
             const confirmed = await showConfirm(
-                'Gallra gamla meddelanden?',
-                `Vill du radera icke-skyddade meddelanden äldre än ${days} dagar?`,
-                'Gallra nu',
+                'Prune old messages?',
+                `Do you want to delete non-protected messages older than ${days} days?`,
+                'Prune Now',
                 false
             );
 
@@ -898,12 +899,12 @@
                 .then(res => res.json())
                 .then(data => {
                     const count = data.deleted_count !== undefined ? data.deleted_count : 0;
-                    showStatus(`Rensade ${count} meddelanden äldre än ${days} dagar!`, 'success');
+                    showStatus(`Pruned ${count} messages older than ${days} days!`, 'success');
                     loadDatabaseStats();
                 })
                 .catch(err => {
-                    console.error('Fel vid gallring av databas:', err);
-                    showStatus('Kunde inte gallra databasen.', 'error');
+                    console.error('Error pruning database:', err);
+                    showStatus('Could not prune database.', 'error');
                 });
         }
 

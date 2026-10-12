@@ -6,8 +6,9 @@ import os
 import signal
 import time
 import sys
+from datetime import datetime
 from queue import Empty
-from database import save_message, get_alias_info, check_alert_words, get_sdr_instances, get_settings
+from database import save_message, get_alias_info, check_alert_words, get_sdr_instances, get_settings, increment_message_repeat
 from mqtt_client import publish_message
 
 logger = logging.getLogger(__name__)
@@ -309,24 +310,48 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         dup_window = int(settings.get('duplicate_window', '120'))
                     except (ValueError, TypeError):
                         dup_window = 120
-                    dup_handling = settings.get('duplicate_handling', 'mark')
+                    dup_handling = settings.get('duplicate_handling', 'merge')
 
                     now = time.time()
                     msg_key = (address, message)
                     is_duplicate = False
+                    cached_entry = None
                     
                     with cache_lock:
                         if msg_key in recent_messages_cache:
-                            last_time = recent_messages_cache[msg_key]
+                            entry = recent_messages_cache[msg_key]
+                            last_time = entry['time'] if isinstance(entry, dict) else entry
                             if (now - last_time) <= dup_window:
                                 is_duplicate = True
-                        recent_messages_cache[msg_key] = now
+                                cached_entry = entry if isinstance(entry, dict) else {'time': last_time, 'id': None, 'repeat_count': 1}
                         
                         # Prune cache occasionally
                         if len(recent_messages_cache) > 500:
                             cutoff = now - max(300, dup_window * 2)
-                            keys_to_del = [k for k, v in recent_messages_cache.items() if v < cutoff]
+                            keys_to_del = [k for k, v in recent_messages_cache.items() if (v['time'] if isinstance(v, dict) else v) < cutoff]
                             for k in keys_to_del: del recent_messages_cache[k]
+
+                    if is_duplicate and dup_handling == 'merge' and cached_entry and cached_entry.get('id'):
+                        cached_id = cached_entry['id']
+                        now_iso = datetime.now().isoformat()
+                        new_count = increment_message_repeat(cached_id, now_iso)
+                        cached_entry['time'] = now
+                        cached_entry['repeat_count'] = new_count
+                        
+                        logger.info(f"[{config['name']}] RAW: {line} [MERGED] Repeat count {new_count}x on ID {cached_id}")
+                        
+                        repeat_data = {
+                            'type': 'repeat_update',
+                            'id': cached_id,
+                            'repeat_count': new_count,
+                            'last_timestamp': now_iso,
+                            'frequency': freq,
+                            'address': address
+                        }
+                        for cb in list(new_message_callbacks):
+                            try: cb(repeat_data)
+                            except Exception: pass
+                        continue
 
                     if is_duplicate and dup_handling == 'discard':
                         logger.info(f"[{config['name']}] RAW: {line} [DROPPED] Cause: DUPLICATE")
@@ -338,8 +363,15 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     logger.info(f"[{config['name']}] DECODED -> Address: {address}, Alias: {alias}, Msg: {message} {'(DUPLICATE)' if is_duplicate else ''}")
                     
                     alert_match = check_alert_words(message)
-                    msg_id, timestamp = save_message(address, message, alias, function_code, f"{protocol_type} {bitrate}".strip(), frequency=freq, is_duplicate=is_duplicate)
+                    msg_id, timestamp = save_message(address, message, alias, function_code, f"{protocol_type} {bitrate}".strip(), frequency=freq, is_duplicate=is_duplicate, repeat_count=1, last_timestamp=None)
                     
+                    with cache_lock:
+                        recent_messages_cache[msg_key] = {
+                            'time': now,
+                            'id': msg_id,
+                            'repeat_count': 1
+                        }
+
                     metadata = {
                         'bitrate': bitrate,
                         'function': function_code,
@@ -347,7 +379,9 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         'alert_word': alert_match['word'] if alert_match else None,
                         'alert_color': alert_match['color'] if alert_match else None,
                         'sdr_name': config['name'],
-                        'is_duplicate': is_duplicate
+                        'is_duplicate': is_duplicate,
+                        'repeat_count': 1,
+                        'last_timestamp': timestamp
                     }
                     
                     publish_message(address, message, timestamp, alias, metadata=metadata)
@@ -355,7 +389,9 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     msg_data = {
                         'type': 'message', 'id': msg_id, 'timestamp': timestamp,
                         'address': address, 'message': message, 'alias': alias,
-                        'is_duplicate': is_duplicate
+                        'is_duplicate': is_duplicate,
+                        'repeat_count': 1,
+                        'last_timestamp': timestamp
                     }
                     msg_data.update(metadata)
                     for cb in list(new_message_callbacks):
