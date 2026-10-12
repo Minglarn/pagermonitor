@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.1`
+- **CalVer**: `2026.10.12.2`
 - **Date**: 2026-10-12
 - **Language**: English
 
@@ -258,6 +258,19 @@
   - Tog bort den felaktiga `else:`-satsen i `sdr_processor.py` så att hela flödet (dubblettkontroll, larmordsmatchning, sparande i databasen, publicering till MQTT samt utskick till anslutna SSE-klienter) körs korrekt inuti `if parsed:`.
   - Skapade automatiserat enhetstest `test_monitor_instance_saves_and_broadcasts_message` i [test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py) som simulerar inkommande multimon-ng-rader och verifierar att data sparas till databas och skickas till realtids-callbacks.
   - Uppdaterade versionshantering (CalVer `2026.10.12.1`) i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md), [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md) och testsviten.
+ 
+### 23. Utökad POCSAG-buffert i multimon-ng och 1-Klicks Meddelandekopiering (v2026.10.12.2)
+- **Utökad POCSAG-buffert i multimon-ng**:
+  - **Problem**: Standardkällkoden i `multimon-ng` (`multimon.h` och `pocsag.c`) har en hårdkodad gräns på 512 bytes (`buffer[512]`). När långa SOS Alarm CAD-meddelanden överstiger ca 500 tecken triggar multimon-ng `Warning: Message too long`, tappar synk och klipper meddelandet.
+  - **Åtgärd**: I [Dockerfile](file:///d:/antigravity/pager-monitor/Dockerfile) lades `sed`-patchar till under byggsteget för att öka `buffer[512]` till `buffer[4096]` i `multimon.h` samt utöka strängbuffertarna (`alpha_string`, `num_string`, `skyper_string`) till 8 192 tecken i `pocsag.c`. Detta tillåter kompletta meddelanden upp till ca 4 600 tecken.
+- **1-Klicks Meddelandekopiering**:
+  - Lade till en dedikerad kopieringsknapp (`.copy-btn`) i åtgärdskolumnen (*Actions*) i Database Explorer ([statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html)), Live Monitor ([index.html](file:///d:/antigravity/pager-monitor/templates/index.html)) och Alarmlistan ([larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html)).
+  - Vid klick kopieras ren meddelandetext till urklipp med `navigator.clipboard` (med fallback till dolt textarea-element för osäkra kontexter).
+  - Knappen ger omedelbar visuell feedback genom att ikonen temporärt skiftar till en grön bock (`fas fa-check`) med tooltip "Kopierad!" i 1,5 sekund.
+  - Lade till stilregler för `.copy-btn`, `.copy-btn:hover` och `.copy-btn.copied` i [style.css](file:///d:/antigravity/pager-monitor/static/style.css).
+- **Versionshantering**:
+  - Höjde CalVer till `2026.10.12.2` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md), [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md) och testsviten.
+
 
 
 

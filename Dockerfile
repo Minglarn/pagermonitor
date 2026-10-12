@@ -16,9 +16,13 @@ RUN git clone https://github.com/steve-m/librtlsdr.git . \
     && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DINSTALL_UDEV_RULES=ON .. \
     && make -j$(nproc) && make install
 
-# Build multimon-ng
+# Build multimon-ng with extended POCSAG buffer (4096 bytes / 8192 chars)
 WORKDIR /build/multimon-ng
 RUN git clone https://github.com/EliasOenal/multimon-ng.git . \
+    && sed -i 's/unsigned char buffer\[512\];/unsigned char buffer[4096];/' multimon.h \
+    && sed -i 's/char alpha_string\[1024\];/char alpha_string[8192];/' pocsag.c \
+    && sed -i 's/char num_string\[1024\];/char num_string[8192];/' pocsag.c \
+    && sed -i 's/char skyper_string\[1024\];/char skyper_string[8192];/' pocsag.c \
     && mkdir build && cd build \
     && cmake .. \
     && make -j$(nproc) && make install

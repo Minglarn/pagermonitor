@@ -690,6 +690,10 @@
                     <td class="msg-cell" style="color: #fcd34d; font-family: var(--msg-font, 'JetBrains Mono', monospace);"><i class="fas fa-sync-alt" style="margin-right: 6px; color: #f59e0b;"></i>${alarm.message}</td>
                     <td class="actions-cell">
                         <div class="actions-wrapper">
+                            <button class="copy-btn" onclick="copyMessageText(this)" title="Kopiera meddelande">
+                                <i class="far fa-copy"></i>
+                            </button>
+                            <div class="btn-divider"></div>
                             <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete system entry">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
@@ -721,6 +725,10 @@
                 <td class="msg-cell">${formatMessage(alarm.message)}</td>
                 <td class="actions-cell">
                     <div class="actions-wrapper">
+                        <button class="copy-btn" onclick="copyMessageText(this)" title="Kopiera meddelande">
+                            <i class="far fa-copy"></i>
+                        </button>
+                        <div class="btn-divider"></div>
                         <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
                             <i class="fas ${alarm.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
                         </button>
@@ -820,6 +828,43 @@
                 console.error('Lock error:', err);
             }
         };
+
+        window.copyMessageText = (btn) => {
+            const tr = btn.closest('tr');
+            if (!tr) return;
+            const msgCell = tr.querySelector('.msg-cell');
+            if (!msgCell) return;
+            const text = msgCell.innerText || msgCell.textContent || '';
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
+            } else {
+                fallbackCopy(text);
+            }
+
+            const icon = btn.querySelector('i');
+            const origClass = icon ? icon.className : '';
+            btn.classList.add('copied');
+            if (icon) icon.className = 'fas fa-check';
+            btn.setAttribute('title', 'Kopierad!');
+            setTimeout(() => {
+                btn.classList.remove('copied');
+                if (icon) icon.className = origClass;
+                btn.setAttribute('title', 'Kopiera meddelande');
+            }, 1500);
+        };
+
+        function fallbackCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            ta.style.top = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try { document.execCommand('copy'); } catch (e) {}
+            document.body.removeChild(ta);
+        }
 
         document.addEventListener('DOMContentLoaded', async () => {
             const loading = document.getElementById('loading');

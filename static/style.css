@@ -1100,7 +1100,7 @@ th:first-child,
     background: rgba(148, 163, 184, 0.4);
 }
 
-.delete-btn, .lock-btn, .edit-btn {
+.delete-btn, .lock-btn, .edit-btn, .copy-btn {
     width: 32px;
     height: 32px;
     display: flex;
@@ -1111,6 +1111,21 @@ th:first-child,
     cursor: pointer;
     transition: all 0.2s ease;
     font-size: 0.9rem;
+}
+
+.copy-btn {
+    background: rgba(148, 163, 184, 0.1);
+    color: #94a3b8;
+}
+
+.copy-btn:hover {
+    background: rgba(56, 189, 248, 0.2);
+    color: #38bdf8;
+}
+
+.copy-btn.copied {
+    background: rgba(34, 197, 94, 0.2) !important;
+    color: #22c55e !important;
 }
 
 .delete-btn {

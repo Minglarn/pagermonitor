@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.2] - Extended POCSAG Multimon Buffer & One-Click Message Copying
+
+### Added
+- **One-Click Message Copy Action**:
+  - Added a dedicated copy button (`.copy-btn`) to the actions column in Database Explorer (`statistics.html`), Live Monitor (`index.html`), and Alarms view (`larm.html`).
+  - Automatically copies full message text to clipboard using the Clipboard API with legacy fallback support.
+  - Visual feedback on copy: the icon transitions to a green checkmark (`fa-check`) with a "Kopierad!" tooltip for 1.5 seconds.
+- **Extended POCSAG Buffer in multimon-ng**:
+  - Patched `multimon.h` and `pocsag.c` during Docker build, increasing internal POCSAG receive buffer from 512 bytes to 4,096 bytes and string buffers to 8,192 characters.
+  - Prevents premature truncation and `Warning: Message too long` sync drops on lengthy CAD (Computer-Aided Dispatch) emergency messages exceeding 500 characters.
+
 ## [2026.10.12.1] - Fix SDR Processor Ingestion Pipeline & Persistence
 
 ### Fixed
