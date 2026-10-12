@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PagerMonitor - Rules & Triggers</title>
-    <link rel="stylesheet" href="/static/style.css?v=3">
+    <link rel="stylesheet" href="/static/style.css?v={{ app_version }}">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=JetBrains+Mono:wght@400;600&family=Share+Tech+Mono&family=Anonymous+Pro:wght@400;700&family=VT323&family=Roboto+Mono:wght@400;600&family=Source+Code+Pro:wght@400;600&display=swap"
         rel="stylesheet">
@@ -82,7 +82,7 @@
             </header>
 
             <main>
-                <div class="glass-panel form-container wide" style="padding: 1.5rem;">
+                <div class="glass-panel rules-container" style="padding: 1.75rem 2rem; width: 100%; box-sizing: border-box;">
                     <div class="settings-tabs">
                         <button id="trigger-aliases" class="tab-trigger active" onclick="switchTab('aliases')">
                             <i class="fas fa-tag" style="margin-right: 0.5rem;"></i>CapCode Aliases
@@ -95,15 +95,15 @@
                     <!-- Tab 1: CapCode Aliases -->
                     <div id="tab-aliases" class="tab-content active">
                         <form id="aliasForm" style="display: flex; align-items: flex-end; gap: 1rem; flex-wrap: wrap;">
-                            <div class="form-group" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+                            <div class="form-group" style="flex: 1; min-width: 160px; margin-bottom: 0;">
                                 <label for="address" style="font-size: 0.75rem; margin-bottom: 0.25rem;">CapCode</label>
                                 <input type="text" id="address" name="address" placeholder="e.g. 1234567" required
-                                    style="padding: 0.5rem;">
+                                    style="padding: 0.5rem; width: 100%; box-sizing: border-box;">
                             </div>
-                            <div class="form-group" style="flex: 1; min-width: 140px; margin-bottom: 0;">
+                            <div class="form-group" style="flex: 2; min-width: 200px; margin-bottom: 0;">
                                 <label for="alias" style="font-size: 0.75rem; margin-bottom: 0.25rem;">Alias</label>
                                 <input type="text" id="alias" name="alias" placeholder="e.g. Fire Dept" required
-                                    style="padding: 0.5rem;">
+                                    style="padding: 0.5rem; width: 100%; box-sizing: border-box;">
                             </div>
                             <div class="form-group checkbox-group" style="margin-bottom: 0; white-space: nowrap;">
                                 <label style="font-size: 0.8rem;">
@@ -112,19 +112,19 @@
                                 </label>
                             </div>
                             <button type="submit" id="saveAliasBtn" class="primary-btn"
-                                style="padding: 0.5rem 1.2rem; white-space: nowrap;">Save Alias</button>
+                                style="padding: 0.5rem 1.4rem; white-space: nowrap;">Save Alias</button>
                         </form>
                         <div id="statusMessage" class="status-message"></div>
 
                         <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Existing Aliases</h3>
-                        <div class="table-container" style="min-height: auto;">
-                            <table class="glass-table" style="border-spacing: 0 4px;">
+                        <div class="table-container" style="min-height: auto; width: 100%;">
+                            <table class="glass-table" style="border-spacing: 0 4px; width: 100%;">
                                 <thead>
                                     <tr>
-                                        <th>CapCode</th>
-                                        <th>Alias</th>
-                                        <th>Status</th>
-                                        <th>Action</th>
+                                        <th style="width: 20%;">CapCode</th>
+                                        <th style="width: 50%;">Alias</th>
+                                        <th style="width: 15%;">Status</th>
+                                        <th style="width: 15%; text-align: center;">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody id="aliasTableBody">
@@ -138,36 +138,49 @@
 
                     <!-- Tab 2: Alert Words -->
                     <div id="tab-alerts" class="tab-content">
-                        <div class="form-group" style="margin-bottom: 0.5rem;">
-                            <label for="wordsArea" style="font-size: 0.85rem; margin-bottom: 0.5rem; display: block;">
-                                Redigera larmord nedan. Separera ord med kommatecken. Skiftlägesoberoende.
-                            </label>
-                            <textarea id="wordsArea" rows="5" placeholder="t.ex. OLYCKA, BRAND, AMBULANS, SKADA, POLIS"
-                                style="width: 100%; padding: 0.75rem; font-family: 'JetBrains Mono', monospace; font-size: 1rem; background: var(--input-bg, rgba(0,0,0,0.2)); color: var(--text-primary); border: 1px solid var(--panel-border); border-radius: 10px; resize: vertical;"></textarea>
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 1rem; margin-top: 1rem;">
-                            <button id="saveBtn" class="primary-btn" style="padding: 0.5rem 1.5rem;"
-                                onclick="saveWords()">Spara larmord</button>
-                            <span id="status" class="status-message"></span>
-                        </div>
+                        <div class="alerts-layout-grid">
+                            <div class="alerts-editor-column">
+                                <div class="form-group" style="margin-bottom: 0.5rem;">
+                                    <label for="wordsArea" style="font-size: 0.9rem; font-weight: 600; margin-bottom: 0.35rem; display: block; color: var(--text-primary);">
+                                        Redigera larmord
+                                    </label>
+                                    <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 0.75rem;">
+                                        Separera ord med kommatecken. Sökningen är skiftlägesoberoende med fullt stöd för svenska tecken (Å, Ä, Ö).
+                                    </p>
+                                    <textarea id="wordsArea" rows="7" placeholder="t.ex. OLYCKA, BRAND, AMBULANS, SKADA, POLIS"
+                                        style="width: 100%; padding: 0.85rem; font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; line-height: 1.6; background: var(--input-bg, rgba(0,0,0,0.2)); color: var(--text-primary); border: 1px solid var(--panel-border); border-radius: 10px; resize: vertical; box-sizing: border-box;"></textarea>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 1rem; margin-top: 0.75rem;">
+                                    <button id="saveBtn" class="primary-btn" style="padding: 0.6rem 1.6rem; font-weight: 600;"
+                                        onclick="saveWords()">Spara larmord</button>
+                                    <span id="status" class="status-message"></span>
+                                </div>
+                            </div>
 
-                        <h3 style="margin-top: 1.5rem; margin-bottom: 0.75rem;">Befintliga larmord</h3>
-                        <div class="table-container" style="min-height: auto;">
-                            <table class="glass-table" style="border-spacing: 0 4px;">
-                                <thead>
-                                    <tr>
-                                        <th>Larmord</th>
-                                        <th>Färg</th>
-                                        <th>Status</th>
-                                        <th>Åtgärd</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="alertsTableBody">
-                                    <tr>
-                                        <td colspan="4" style="text-align:center;">Laddar larmord...</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                            <div class="alerts-table-column">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                                    <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">
+                                        Befintliga larmord <span id="alertCountBadge" class="badge meta" style="margin-left: 0.5rem; font-size: 0.8rem;">0 st</span>
+                                    </h3>
+                                </div>
+                                <div class="table-container" style="min-height: auto; max-height: 65vh; overflow-y: auto;">
+                                    <table class="glass-table" style="border-spacing: 0 4px; width: 100%;">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 35%;">Larmord</th>
+                                                <th style="width: 25%;">Färg</th>
+                                                <th style="width: 25%;">Status</th>
+                                                <th style="width: 15%; text-align: center;">Åtgärd</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="alertsTableBody">
+                                            <tr>
+                                                <td colspan="4" style="text-align:center;">Laddar larmord...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -335,6 +348,11 @@
         }
 
         function renderAlertsTable() {
+            const countBadge = document.getElementById('alertCountBadge');
+            if (countBadge) {
+                countBadge.innerText = `${currentAlerts ? currentAlerts.length : 0} st`;
+            }
+
             const tbody = document.getElementById('alertsTableBody');
             if (!tbody) return;
             tbody.innerHTML = '';

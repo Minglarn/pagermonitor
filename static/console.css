@@ -57,8 +57,22 @@ body:has(.sidebar.collapsed) .console-dock {
 @media (max-width: 768px) {
     .console-dock {
         left: 0 !important;
+        bottom: calc(52px + env(safe-area-inset-bottom)) !important;
+        border-bottom: 1px solid var(--console-border);
+    }
+
+    .console-dock.maximized {
+        bottom: 0 !important;
+        top: 0 !important;
+        height: 100vh !important;
+        z-index: 10050 !important;
+    }
+
+    body.console-open .main-content {
+        padding-bottom: calc(var(--console-current-height, 280px) + 65px + env(safe-area-inset-bottom)) !important;
     }
 }
+
 
 /* Resize handle at top of console */
 .console-resize-handle {

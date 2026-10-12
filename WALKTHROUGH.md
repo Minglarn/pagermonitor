@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.7`
+- **CalVer**: `2026.10.12.8`
 - **Date**: 2026-10-12
 - **Language**: English / Swedish
 
@@ -342,14 +342,35 @@
   - **Testning & Verifiering**:
     - Lade till automatiserade enhetstester i [tests/test_security_and_larm.py](file:///d:/antigravity/pager-monitor/tests/test_security_and_larm.py) som verifierar rendering av larmordstabellen i `/rules` och `/alerts`, samt Unicode-matchning av svenska larmord.
     - Samtliga 34 enhetstester passerar utan anmärkning.
-  - **Versionsspårbarhet (CalVer)**:
-    - Höjde CalVer till `2026.10.12.7` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+  - **Fullbredd & Responsiv 2-kolumnslayout för Regler & Larmord**:
+    - Åtgärdade problemet där sidan `/rules` (och `/alerts`) var låst till en smal centrerad container (`max-width: 800px`) vilket skapade stora tomma vita ytor på breda skärmar.
+    - Införde klassen `.rules-container` med `width: 100%; max-width: 100%;` som låter panelen fylla hela den tillgängliga bredden och linjera med sidhuvudet.
+    - Implementerade en modern 2-kolumns grid-layout (`.alerts-layout-grid`) på datorskärmar:
+      - **Vänster kolumn (Editor)**: Textruta för att redigera larmord och "Spara larmord"-knapp.
+      - **Höger kolumn (Tabell)**: Tabellen med alla sparade larmord (`Befintliga larmord`) och larmordsräknare (`alertCountBadge`).
+    - På mindre skärmar staplas kolumnerna automatiskt för optimal responsivitet.
+    - Länkade om CSS-stilmallen med dynamisk cache-busting (`style.css?v={{ app_version }}`).
 
-
-
-
-
-
+### 29. Mobilvy och Fast Bottom Navigation Bar (v2026.10.12.8)
+- **Problem & Bakgrund**:
+  - PagerMonitor var initialt designat för widescreen-datorer med en fast sidomeny (260px bredd eller 80px minimerad) som klämde ihop innehållet på mobila skärmar (360–430px bredd).
+  - Tabellerna med 6 kolumner ledde till horisontell överflödning och inställningsflikar bröts ojämnt över flera rader.
+  - Användaren önskade att sidopanelen skulle omvandlas till en mobil bottom bar för enhandsanvändning med tummen.
+- **Åtgärder**:
+  - **Fast Bottom Navigation Bar**:
+    - Vid skärmbredder `<= 768px` förvandlas sidomenyn automatiskt till en bottenmeny med `position: fixed; bottom: 0; left: 0; right: 0;`.
+    - Presenterar de 5 primära vyerna: Dashboard, Larm, Regler & Triggers, Statistik och Inställningar med tydliga ikoner och etiketter.
+    - Integrerade bakgrundsblur (glassmorphism), aktiv-indikator (`--accent` och badge-glöd) samt stöd för skärmstreck på iOS och Android (`env(safe-area-inset-bottom)`).
+  - **Responsiv Layout & Skärmanpassning**:
+    - `.main-content` tilldelas 100% bredd med dynamisk bottenmarginal för att ge plats åt navigationsraden (`calc(68px + env(safe-area-inset-bottom))`).
+    - Scroll-to-top-knappen placeras automatiskt strax ovanför bottenraden.
+    - Döljer indexkolumnen (`#`) i DataTables på mobil för att ge maximal horisontell plats åt CapCode och larmmeddelande.
+    - Inställningsflikar i [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html) och [templates/rules.html](file:///d:/antigravity/pager-monitor/templates/rules.html) har försetts med horisontell touch-scrollning.
+    - Formelement, SDR-kort och statistikdiagram staplas i 1 kolumn för fingertryck.
+    - Docker- och systemkonsoldockan positioneras direkt ovanför bottenraden på mobila enheter.
+  - **Testning & Verifiering**:
+    - Verifierad i mobil viewport (390x844) via subagent-browser, med verifierad navigering mellan Dashboard, Alarms och Settings.
+    - Alla 34 automatiserade tester passerar felfritt.
 
 
 

@@ -5,7 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.8] - Mobilvy och Fast Bottom Navigation Bar
+
+### Added
+- **Fast Bottom Navigation Bar för mobila skärmar**:
+  - På skärmar <= 768px bredd konverteras den traditionella fasta sidopanelen automatiskt till en modern, flytande Bottom Navigation Bar.
+  - Placerar de 5 primära navigeringslänkarna (Dashboard, Larm, Regler & Triggers, Statistik, Inställningar) lättåtkomliga för tummen med jämnt fördelade ikoner och etiketter.
+  - Inkluderar fullt stöd för iOS och Android Safe Areas (`env(safe-area-inset-bottom)`) samt bakgrundsblur (glassmorphism).
+- **Responsiv layout och touch-anpassning**:
+  - Huvudinnehållet anpassar sig automatiskt till 100% skärmbredd utan att knuffas av sidopanelen.
+  - Scroll-to-top-knappen flyter dynamiskt ovanför mobilraden.
+  - DataTables döljer indexkolumnen (`#`) på mobil för att frigöra maximal horisontell yta för larmmeddelanden och CapCodes.
+  - Inställningsflikar stöder nu horisontell touch-scrollning utan att brytas i vertikalt hackiga rader.
+  - Formelement, SDR-kort och statistikdiagram staplas responsivt till 1 kolumn.
+  - Docker- och systemkonsoldockan dockar snyggt ovanför den mobila navigationsraden.
+
 ## [2026.10.12.7] - Befintliga Larmordstabell och Unicode-stöd för Larmfiltrering
+
 
 ### Fixed
 - **Befintliga larmord i gränssnittet (Alert Words Table)**:
