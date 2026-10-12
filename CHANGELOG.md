@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.11] - Korrigering av Bakgrundspilar i Rullgardinsmenyer
+
+### Fixed
+- **Repeterande Bakgrundsikoner i Rullgardinsmenyer (Select Controls)**:
+  - Åtgärdat felet där rullgardinsmenyer (`<select class="form-input">`) i ljust tema täcktes av ett mönster av repeterande pil-ikoner (`v v v v v`).
+  - Orsaken var att CSS-regeln `background: #ffffff;` för ljust tema nollställde webbläsarens `background-repeat` och `background-position`, vilket fick den anpassade SVG-chevronen att tapetsera hela inmatningsrutan.
+  - Ändrat till `background-color: #ffffff;` samt tilldelat explicita `background-repeat: no-repeat !important;`, `background-position: right 0.75rem center !important;` och fixerad storlek `1rem 1rem !important;`.
+
 ## [2026.10.12.10] - Avlägsnande av CapCode-gruppering och Förfinat Inställningsgränssnitt
 
 ### Removed

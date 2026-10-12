@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.9`
+- **CalVer**: `2026.10.12.11`
 - **Date**: 2026-10-12
 - **Language**: English / Swedish
 
@@ -416,3 +416,19 @@
     - Avstånden (`gap` och `padding`) sänktes för inställningscontainern, flikarna och kontrollkolumnen så att vyn är harmonisk och tight utan onödiga tomrum.
 - **Testning**:
   - Samtliga 36 tester i pytest kördes och verifierades med exit code 0.
+
+---
+
+## 32. Korrigering av Repeterande Bakgrundspilar i Rullgardinsmenyer (v2026.10.12.11)
+- **Problem**:
+  - I ljust tema visades ett tätt mönster av repeterade pil-ikoner (`v v v v v`) över hela textytan i alla formulärrullgardiner (`Färgtema`, `Typsnitt för meddelanden`, `Åtgärd för duplikat`).
+  - Orsaken var att regeln `[data-theme="light"] .form-input` använde CSS-shorthand `background: #ffffff;`, vilket återställde `background-repeat` till `repeat` och `background-position` till `0 0` i stället för att bevara egenskaperna från `select.form-input`. När SVG-bilden applicerades i nästa regel repeterades den över hela elementet.
+- **Åtgärder**:
+  - I [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css) ändrades shorthand `background: #ffffff;` till `background-color: #ffffff;`.
+  - Explicita egenskaper med `!important` sattes på `select.form-input` och `[data-theme="light"] select.form-input`:
+    - `background-repeat: no-repeat !important;`
+    - `background-position: right 0.75rem center !important;`
+    - `background-size: 1rem 1rem !important;`
+- **Testning**:
+  - Verifierat att alla 36 enhetstester passerar och att CSS-reglerna förhindrar all form av bakgrundsrepetition.
+
