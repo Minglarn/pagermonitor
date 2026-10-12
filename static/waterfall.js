@@ -49,31 +49,43 @@ window.WaterfallManager = (function () {
     function normalizeFrequency(freq) {
         if (!freq) return 'Unknown';
         let f = String(freq).trim();
-        if (f.endsWith('M') || f.endsWith('MHz')) {
-            f = f.replace(/MHz|M/gi, '').trim();
+        f = f.replace(/MHz|M|Hz/gi, '').trim();
+        const num = parseFloat(f);
+        if (!isNaN(num)) {
+            return num.toFixed(4);
         }
         return f;
     }
 
-    function getChannelKey(sdrName, frequency) {
+    function getChannelKey(frequency) {
         const normFreq = normalizeFrequency(frequency);
-        if (sdrName && sdrName !== 'Unknown') {
-            return `sdr_${sdrName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
-        }
         return `freq_${normFreq.replace(/[^a-z0-9]/g, '_')}`;
     }
 
     function registerChannel(sdrName, frequency) {
-        const key = getChannelKey(sdrName, frequency);
+        if (!frequency || frequency === 'Unknown') return null;
+        const key = getChannelKey(frequency);
+        const normFreq = normalizeFrequency(frequency);
+
+        let matchedName = sdrName;
+        const matchInst = sdrInstances.find(i => normalizeFrequency(i.frequency) === normFreq);
+        if (matchInst && matchInst.name) {
+            matchedName = matchInst.name;
+        }
+        if (!matchedName || matchedName === 'Unknown' || matchedName.startsWith('Freq ')) {
+            matchedName = matchInst ? matchInst.name : `Freq ${frequency}`;
+        }
+
         if (!channels[key]) {
-            let displayName = sdrName;
-            if (!displayName || displayName === 'Unknown') {
-                const matchInstance = sdrInstances.find(i => normalizeFrequency(i.frequency) === normalizeFrequency(frequency));
-                if (matchInstance) displayName = matchInstance.name;
-                else displayName = `Freq ${frequency}`;
-            }
-            channels[key] = createChannelObj(key, displayName, frequency);
+            channels[key] = createChannelObj(key, matchedName, frequency);
             renderChannelRows();
+        } else {
+            // Update to configured SDR name if previously generic
+            if (matchedName && !matchedName.startsWith('Freq ') && channels[key].name !== matchedName) {
+                channels[key].name = matchedName;
+                if (frequency && frequency !== 'Unknown') channels[key].frequency = frequency;
+                renderChannelRows();
+            }
         }
         return channels[key];
     }
@@ -105,7 +117,7 @@ window.WaterfallManager = (function () {
                     <canvas class="waterfall-canvas" id="canvas-${ch.id}" height="24"></canvas>
                 </div>
                 <div class="channel-stats-cell">
-                    <span id="count-${ch.id}"><strong>${ch.total60m}</strong> larm</span>
+                    <span id="count-${ch.id}"><strong>${ch.total60m}</strong> msgs</span>
                 </div>
             `;
 
@@ -182,13 +194,13 @@ window.WaterfallManager = (function () {
             if (tooltipEl) {
                 let alertHtml = '';
                 if (bin.alerts > 0) {
-                    alertHtml = `<div class="tooltip-alert">${bin.alerts} larmträff${bin.alerts > 1 ? 'ar' : ''}</div>`;
+                    alertHtml = `<div class="tooltip-alert">${bin.alerts} alert match${bin.alerts > 1 ? 'es' : ''}</div>`;
                 }
-                let dupHtml = bin.duplicates > 0 ? ` (${bin.duplicates} duplikat)` : '';
+                let dupHtml = bin.duplicates > 0 ? ` (${bin.duplicates} duplicate${bin.duplicates > 1 ? 's' : ''})` : '';
 
                 tooltipEl.innerHTML = `
                     <div class="tooltip-header">${channel.name} (${channel.frequency}) &bull; ${timeStr}</div>
-                    <div class="tooltip-body">${bin.total} meddelande${bin.total === 1 ? '' : 'n'}${dupHtml}</div>
+                    <div class="tooltip-body">${bin.total} message${bin.total === 1 ? '' : 's'}${dupHtml}</div>
                     ${alertHtml}
                 `;
                 tooltipEl.style.left = `${e.clientX}px`;
@@ -325,7 +337,7 @@ window.WaterfallManager = (function () {
 
             // Update count badges
             const countEl = document.getElementById(`count-${ch.id}`);
-            if (countEl) countEl.innerHTML = `<strong>${ch.total60m}</strong> larm`;
+            if (countEl) countEl.innerHTML = `<strong>${ch.total60m}</strong> msgs`;
             const sumCountEl = document.getElementById(`summary-count-${ch.id}`);
             if (sumCountEl) sumCountEl.textContent = ch.total60m;
 
@@ -344,7 +356,7 @@ window.WaterfallManager = (function () {
             ch.total60m = ch.bins.reduce((sum, b) => sum + b.total, 0);
 
             const countEl = document.getElementById(`count-${ch.id}`);
-            if (countEl) countEl.innerHTML = `<strong>${ch.total60m}</strong> larm`;
+            if (countEl) countEl.innerHTML = `<strong>${ch.total60m}</strong> msgs`;
             const sumCountEl = document.getElementById(`summary-count-${ch.id}`);
             if (sumCountEl) sumCountEl.textContent = ch.total60m;
         });
@@ -363,30 +375,34 @@ window.WaterfallManager = (function () {
 
         if (isCollapsed) {
             if (icon) { icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
-            if (label) label.textContent = 'Visa';
+            if (label) label.textContent = 'Show';
         } else {
             if (icon) { icon.classList.remove('fa-chevron-down'); icon.classList.add('fa-chevron-up'); }
-            if (label) label.textContent = 'Dölj';
+            if (label) label.textContent = 'Hide';
             setTimeout(() => drawAllCanvases(), 50);
         }
 
-        localStorage.setItem('pagermonitor-ribbon-collapsed', isCollapsed);
+        localStorage.setItem('pagermonitor-ribbon-collapsed', isCollapsed ? 'true' : 'false');
     }
 
     async function init(initialMessages = [], filterCallback = null) {
         initTooltip();
         onFilterCallback = filterCallback;
 
-        // Restore collapsed state
-        const savedCollapsed = localStorage.getItem('pagermonitor-ribbon-collapsed') === 'true';
-        if (savedCollapsed) {
-            const panel = document.getElementById('activityRibbonPanel');
-            const icon = document.getElementById('ribbonToggleIcon');
-            const label = document.querySelector('.ribbon-toggle-label');
-            if (panel) panel.classList.add('collapsed');
-            if (icon) { icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
-            if (label) label.textContent = 'Visa';
-            isCollapsed = true;
+        // Default to COLLAPSED (true) unless user explicitly saved 'false'
+        const savedCollapsed = localStorage.getItem('pagermonitor-ribbon-collapsed');
+        const shouldCollapse = (savedCollapsed === null) ? true : (savedCollapsed === 'true');
+        
+        isCollapsed = shouldCollapse;
+        const panel = document.getElementById('activityRibbonPanel');
+        const icon = document.getElementById('ribbonToggleIcon');
+        const label = document.querySelector('.ribbon-toggle-label');
+        if (panel) panel.classList.toggle('collapsed', isCollapsed);
+        if (icon) {
+            icon.className = isCollapsed ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
+        }
+        if (label) {
+            label.textContent = isCollapsed ? 'Show' : 'Hide';
         }
 
         // Fetch configured SDR instances

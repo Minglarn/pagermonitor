@@ -80,48 +80,48 @@
             <div class="console-header" id="consoleHeaderBar">
                 <div class="console-header-left">
                     <span class="console-title">
-                        <i class="fas fa-terminal"></i> Konsol
+                        <i class="fas fa-terminal"></i> Console
                     </span>
-                    <span class="console-live-badge" title="Direktansluten till Docker och systemlogg">
+                    <span class="console-live-badge" title="Connected to system and process logs">
                         <span class="console-live-dot"></span> Live
                     </span>
-                    <span class="console-count-badge" id="consoleCountBadge">0 rader</span>
-                    <div class="console-ticker" id="consoleTicker">Väntar på loggar...</div>
+                    <span class="console-count-badge" id="consoleCountBadge">0 lines</span>
+                    <div class="console-ticker" id="consoleTicker">Waiting for logs...</div>
                 </div>
 
                 <div class="console-header-tools" onclick="event.stopPropagation()">
                     <div class="console-filter-group" style="display: flex; gap: 4px;">
-                        <button class="console-filter-btn ${state.activeFilter === 'ALL' ? 'active' : ''}" data-filter="ALL">Alla</button>
+                        <button class="console-filter-btn ${state.activeFilter === 'ALL' ? 'active' : ''}" data-filter="ALL">All</button>
                         <button class="console-filter-btn ${state.activeFilter === 'DECODED' ? 'active' : ''}" data-filter="DECODED">DECODED</button>
                         <button class="console-filter-btn ${state.activeFilter === 'INFO' ? 'active' : ''}" data-filter="INFO">Info</button>
-                        <button class="console-filter-btn ${state.activeFilter === 'WARNING' ? 'active' : ''}" data-filter="WARNING">Varningar</button>
-                        <button class="console-filter-btn ${state.activeFilter === 'ERROR' ? 'active' : ''}" data-filter="ERROR">Fel</button>
+                        <button class="console-filter-btn ${state.activeFilter === 'WARNING' ? 'active' : ''}" data-filter="WARNING">Warnings</button>
+                        <button class="console-filter-btn ${state.activeFilter === 'ERROR' ? 'active' : ''}" data-filter="ERROR">Errors</button>
                         <button class="console-filter-btn ${state.activeFilter === 'SDR' ? 'active' : ''}" data-filter="SDR">SDR / System</button>
                     </div>
 
                     <div class="console-search-box">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="consoleSearchInput" placeholder="Sök i logg..." value="${escapeHtml(state.searchQuery)}">
+                        <input type="text" id="consoleSearchInput" placeholder="Search logs..." value="${escapeHtml(state.searchQuery)}">
                     </div>
                 </div>
 
                 <div class="console-header-actions" onclick="event.stopPropagation()">
-                    <button class="console-action-btn ${state.wrapLines ? 'active' : ''}" id="consoleWrapBtn" title="Växla radbrytning (Word-wrap)">
-                        <i class="fas fa-align-left"></i> Radbryt
+                    <button class="console-action-btn ${state.wrapLines ? 'active' : ''}" id="consoleWrapBtn" title="Toggle word wrap">
+                        <i class="fas fa-align-left"></i> Wrap
                     </button>
-                    <button class="console-action-btn ${state.autoScroll ? 'active' : ''}" id="consoleAutoScrollBtn" title="Växla automatisk rullning till botten">
+                    <button class="console-action-btn ${state.autoScroll ? 'active' : ''}" id="consoleAutoScrollBtn" title="Toggle autoscroll to bottom">
                         <i class="fas fa-arrow-down"></i> Autoscroll
                     </button>
-                    <button class="console-action-btn" id="consoleClearBtn" title="Rensa loggvyn">
+                    <button class="console-action-btn" id="consoleClearBtn" title="Clear log view">
                         <i class="fas fa-trash-alt"></i>
                     </button>
-                    <button class="console-action-btn" id="consoleDownloadBtn" title="Ladda ner logg som textfil">
+                    <button class="console-action-btn" id="consoleDownloadBtn" title="Download log as text file">
                         <i class="fas fa-download"></i>
                     </button>
-                    <button class="console-action-btn" id="consoleMaximizeBtn" title="Maximera / Återställ storlek">
+                    <button class="console-action-btn" id="consoleMaximizeBtn" title="Maximize / Restore">
                         <i class="fas fa-expand"></i>
                     </button>
-                    <button class="console-action-btn toggle-chevron" id="consoleToggleBtn" title="Minimera / Expandera konsol">
+                    <button class="console-action-btn toggle-chevron" id="consoleToggleBtn" title="Minimize / Expand console">
                         <i class="fas fa-chevron-${state.isOpen ? 'down' : 'up'}"></i>
                     </button>
                 </div>
@@ -130,7 +130,7 @@
             <div class="console-body" id="consoleBody">
                 <div class="console-logs-list ${state.wrapLines ? 'wrap-lines' : ''}" id="consoleLogsList">
                     <div class="console-empty-state" id="consoleEmptyState">
-                        <i class="fas fa-circle-notch fa-spin"></i> Hämtar systemlogg...
+                        <i class="fas fa-circle-notch fa-spin"></i> Fetching system logs...
                     </div>
                 </div>
             </div>
@@ -418,13 +418,13 @@
         const filtered = state.logs.filter(logMatchesFilter);
 
         if (countBadge) {
-            countBadge.innerText = `${state.logs.length} rader${state.logs.length !== filtered.length ? ` (${filtered.length} visade)` : ''}`;
+            countBadge.innerText = `${state.logs.length} lines${state.logs.length !== filtered.length ? ` (${filtered.length} shown)` : ''}`;
         }
 
         if (filtered.length === 0) {
             list.innerHTML = `
                 <div class="console-empty-state">
-                    <i class="fas fa-info-circle"></i> Inga loggmeddelanden matchar aktuellt filter.
+                    <i class="fas fa-info-circle"></i> No log messages match current filter.
                 </div>
             `;
             return;
@@ -545,12 +545,12 @@
                 }
             }
         } catch (err) {
-            console.warn('PagerMonitor Console: Kunde inte hämta logghistorik:', err);
+            console.warn('PagerMonitor Console: Could not fetch log history:', err);
             const list = document.getElementById('consoleLogsList');
             if (list) {
                 list.innerHTML = `
                     <div class="console-empty-state">
-                        <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> Väntar på att ansluta till loggservern...
+                        <i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> Waiting to connect to log server...
                     </div>
                 `;
             }

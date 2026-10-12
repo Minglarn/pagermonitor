@@ -295,5 +295,15 @@ def test_actions_column_narrow_width_styling(client):
         assert 'col-actions' in html
         assert '38px !important' in html
 
+def test_activity_ribbon_collapsed_and_table_layout_fixed(client):
+    """Verifiera att RF Activity startar kollapsad och att dashboard-tabellen har table-layout: fixed."""
+    res = client.get('/')
+    assert res.status_code == 200
+    html = res.data.decode('utf-8')
+    assert 'class="activity-ribbon-panel collapsed"' in html
+    assert 'table-layout: fixed !important;' in html
+    assert 'overflow-wrap: anywhere' in html
+
+
 
 

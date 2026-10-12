@@ -160,7 +160,8 @@
         /* Table Edge-to-edge layout with prominent zebra striping */
         table.dataTable.stats-dt {
             width: 100% !important;
-            table-layout: auto !important;
+            max-width: 100% !important;
+            table-layout: fixed !important;
             border-collapse: collapse !important;
             border-spacing: 0 !important;
             margin: 0 !important;
@@ -256,24 +257,30 @@
         /* Specific column sizing */
         table.dataTable.stats-dt th.col-id,
         table.dataTable.stats-dt td.id-cell {
-            width: 1% !important;
+            width: 55px !important;
+            min-width: 50px !important;
+            max-width: 65px !important;
             white-space: nowrap !important;
             text-align: center !important;
-            padding: 0.6rem 0.5rem !important;
+            padding: 0.6rem 0.4rem !important;
         }
 
         table.dataTable.stats-dt th.col-time,
         table.dataTable.stats-dt td.ts-cell {
-            width: 1% !important;
+            width: 110px !important;
+            min-width: 105px !important;
+            max-width: 120px !important;
             white-space: nowrap !important;
-            padding: 0.6rem 0.8rem !important;
+            padding: 0.6rem 0.5rem !important;
         }
 
         table.dataTable.stats-dt th.col-meta,
         table.dataTable.stats-dt td.meta-cell {
-            width: 1% !important;
+            width: 125px !important;
+            min-width: 115px !important;
+            max-width: 135px !important;
             white-space: nowrap !important;
-            padding: 0.5rem 0.8rem !important;
+            padding: 0.5rem 0.6rem !important;
             vertical-align: middle !important;
         }
 
@@ -292,12 +299,12 @@
         /* CapCode (Alias) column */
         table.dataTable.stats-dt th.col-addr,
         table.dataTable.stats-dt td.addr-cell {
-            width: 190px !important;
-            min-width: 160px !important;
-            max-width: 250px !important;
+            width: 150px !important;
+            min-width: 140px !important;
+            max-width: 180px !important;
             white-space: normal !important;
             line-height: 1.35 !important;
-            padding: 0.6rem 0.75rem !important;
+            padding: 0.6rem 0.6rem !important;
         }
 
         table.dataTable.stats-dt td.addr-cell .badge {
@@ -310,11 +317,27 @@
             max-width: 100% !important;
         }
 
-        table.dataTable.stats-dt th.col-actions,
+        table.dataTable.stats-dt th.col-actions {
+            width: 38px !important;
+            min-width: 38px !important;
+            max-width: 42px !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            padding: 0.65rem 0.2rem !important;
+            background-image: none !important;
+            cursor: default !important;
+        }
+
+        table.dataTable.stats-dt th.col-actions::before,
+        table.dataTable.stats-dt th.col-actions::after {
+            display: none !important;
+            content: "" !important;
+        }
+
         table.dataTable.stats-dt td.actions-cell {
             width: 38px !important;
             min-width: 38px !important;
-            max-width: 44px !important;
+            max-width: 42px !important;
             white-space: nowrap !important;
             text-align: center !important;
             padding: 4px 2px !important;
@@ -324,7 +347,8 @@
         table.dataTable.stats-dt td.msg-cell {
             width: auto !important;
             word-break: break-word !important;
-            padding: 0.6rem 1rem !important;
+            overflow-wrap: anywhere !important;
+            padding: 0.6rem 0.85rem !important;
         }
 
         /* System Event Row Styling */
@@ -514,7 +538,7 @@
                                     <th class="col-meta">Frequency / Meta</th>
                                     <th class="col-addr">CapCode (Alias)</th>
                                     <th class="col-msg">Message</th>
-                                    <th class="col-actions">Actions</th>
+                                    <th class="col-actions" data-orderable="false" title="Actions" aria-label="Actions"><i class="fas fa-ellipsis-v"></i></th>
                                 </tr>
                             </thead>
                             <tbody id="dayTableBody"></tbody>
@@ -744,7 +768,7 @@
                     <td class="actions-cell">
                         <div class="actions-wrapper">
                             <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">
-                                <i class="far fa-copy"></i>
+                                <i class="fas fa-copy"></i>
                             </button>
                             <div class="btn-divider"></div>
                             <button class="delete-btn" onclick="deleteMessage(${m.id}, this)" title="Delete system entry">
@@ -780,7 +804,7 @@
                 <td class="actions-cell">
                     <div class="actions-wrapper">
                         <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">
-                            <i class="far fa-copy"></i>
+                            <i class="fas fa-copy"></i>
                         </button>
                         <div class="btn-divider"></div>
                         <button class="lock-btn ${m.is_protected ? 'locked' : ''}" onclick="toggleLock(${m.id}, this)" title="${m.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">

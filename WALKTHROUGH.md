@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.12`
+- **CalVer**: `2026.10.12.14`
 - **Date**: 2026-10-12
 - **Language**: English / Swedish
 
@@ -486,6 +486,38 @@
     - Tillagt `test_duplicate_merge_and_repeat_count` och `test_actions_column_narrow_width_styling` i [tests/test_security_and_larm.py](file:///d:/antigravity/pager-monitor/tests/test_security_and_larm.py).
     - Samtliga 39 automatiserade tester passerade.
     - Versionsbump till CalVer `2026.10.12.13`.
+
+## 35. Persistent Kollapsad Eteraktivitet, Skarpa Action-ikoner och Normaliserade SDR-kanaler (v2026.10.12.14)
+- **Bakgrund och Identifierade Problem**:
+  - Eteraktivitets-panelen (Activity Ribbon / Waterfall) tog onödig vertikal yta i realtidsvyn vid sidladdning och behövde starta kollapsad som standard, med användarens preferenser sparade i webbläsaren.
+  - Action-ikonerna upplevdes som suddiga och disiga i användargränssnittet (särskilt i ljust tema), och det fanns misstankar om oönskade CSS-filter.
+  - Undersökning visade att en motstridig CSS-regel satte `opacity: 0.6` på radera-knappen, samtidigt som kopieringsknappen använde Font Awesome Regular (`far fa-copy`) vars tunna 1px-konturer antialiasades kraftigt och blev suddiga.
+  - Vattenfallet genererade duplicerade kanalrader (`RIKS 1` och `RIKS 2` respektive generiska frekvenser `Freq 161.4375M` och `Freq 169.800M`), där de namngivna SDR-kanalerna fick noll larm registrerade eftersom inkommande meddelanden saknade `sdr_name` och genererade en separat nyckel.
+  - Tabellens kolumner orsakade horisontell scrollning på desktop på grund av att `ACTION`-kolumnen expanderade och sorteringspilar trängde ut elementen.
+- **Genomförda Åtgärder**:
+  - **Persistent Kollapsad Eteraktivitet**:
+    - I [static/waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js) ändrades standardläget till kollapsat (`shouldCollapse = (savedCollapsed === null) ? true : (savedCollapsed === 'true')`).
+    - Panelens tillstånd synkas nu till `localStorage.setItem('pagermonitor-ribbon-collapsed', ...)` och läses in omedelbart vid sidladdning.
+    - Förrenderas med klassen `collapsed` i [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html) för att undvika layoutfladder vid start.
+  - **Knivskarpa Action-ikoner och Knappar**:
+    - Raderade den motstridiga regeln i [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css) som satte `opacity: 0.6` på `.delete-btn svg`.
+    - Bytte ut `far fa-copy` mot solid `fas fa-copy` i samtliga mallar ([index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html)). Fyllda solida ikoner förhindrar subpixel-luddighet.
+    - Tillämpade `text-rendering: geometricPrecision; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;` på `.delete-btn`, `.lock-btn`, `.copy-btn` och `.edit-btn`.
+    - Skapade distinkta, högkontrastiga stilar för både mörkt tema och ljust tema (`[data-theme="light"]`) med tydliga borders och färgkodning.
+  - **Normalisering av SDR- och Frekvenskanaler i Vattenfallet**:
+    - Kanalnyckeln genereras nu entydigt från normaliserad numerisk frekvens (`freq_` + `parseFloat(f).toFixed(4)`), vilket garanterar att både konfigurerade SDR-instanser och inkommande meddelanden samlas i en och samma kanalrad.
+    - Konfigurerade SDR-namn ges prioritet över råa frekvensetiketter.
+  - **Fast Tabellayout och Eliminering av Horisontell Scroll**:
+    - Införde `table-layout: fixed !important;` på `table.dataTable.dashboard-dt` med dedikerade pixelbredder (`col-id`: 55px, `col-time`: 110px, `col-meta`: 125px, `col-addr`: 150px, `col-actions`: 38px) och flytande bredd för `col-msg`.
+    - Dolda sorteringspilar och ersatt rubrik med `<i class="fas fa-ellipsis-v"></i>` för åtgärdskolumnen.
+    - Satte `overflow-x: hidden;` på skrivbordsvisning i [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css).
+  - **Fullständig Engelsk Översättning**:
+    - Samtliga återstående delar av gränssnittet, inklusive konsoldockan, aktivitetspanelen och realtidspausningsbannern, har översatts till engelska.
+  - **Testning och Spårbarhet**:
+    - Tillagt `test_activity_ribbon_collapsed_and_table_layout_fixed` i [tests/test_security_and_larm.py](file:///d:/antigravity/pager-monitor/tests/test_security_and_larm.py).
+    - Samtliga 40 enhetstester passerar felfritt.
+    - Versionsbump till CalVer `2026.10.12.14`.
+
 
 
 

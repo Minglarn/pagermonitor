@@ -133,7 +133,8 @@
         /* Table Edge-to-edge layout with prominent zebra striping */
         table.dataTable.dashboard-dt {
             width: 100% !important;
-            table-layout: auto !important;
+            max-width: 100% !important;
+            table-layout: fixed !important;
             border-collapse: collapse !important;
             border-spacing: 0 !important;
             margin: 0 !important;
@@ -254,24 +255,30 @@
         /* Specific column sizing */
         table.dataTable.dashboard-dt th.col-id,
         table.dataTable.dashboard-dt td.id-cell {
-            width: 1% !important;
+            width: 55px !important;
+            min-width: 50px !important;
+            max-width: 65px !important;
             white-space: nowrap !important;
             text-align: center !important;
-            padding: 0.6rem 0.5rem !important;
+            padding: 0.6rem 0.4rem !important;
         }
 
         table.dataTable.dashboard-dt th.col-time,
         table.dataTable.dashboard-dt td.ts-cell {
-            width: 1% !important;
+            width: 110px !important;
+            min-width: 105px !important;
+            max-width: 120px !important;
             white-space: nowrap !important;
-            padding: 0.6rem 0.8rem !important;
+            padding: 0.6rem 0.5rem !important;
         }
 
         table.dataTable.dashboard-dt th.col-meta,
         table.dataTable.dashboard-dt td.meta-cell {
-            width: 1% !important;
+            width: 125px !important;
+            min-width: 115px !important;
+            max-width: 135px !important;
             white-space: nowrap !important;
-            padding: 0.5rem 0.8rem !important;
+            padding: 0.5rem 0.6rem !important;
             vertical-align: middle !important;
         }
 
@@ -290,12 +297,12 @@
         /* CapCode (Alias) column */
         table.dataTable.dashboard-dt th.col-addr,
         table.dataTable.dashboard-dt td.addr-cell {
-            width: 190px !important;
-            min-width: 160px !important;
-            max-width: 250px !important;
+            width: 150px !important;
+            min-width: 140px !important;
+            max-width: 180px !important;
             white-space: normal !important;
             line-height: 1.35 !important;
-            padding: 0.6rem 0.75rem !important;
+            padding: 0.6rem 0.6rem !important;
         }
 
         table.dataTable.dashboard-dt td.addr-cell .badge {
@@ -308,11 +315,27 @@
             max-width: 100% !important;
         }
 
-        table.dataTable.dashboard-dt th.col-actions,
+        table.dataTable.dashboard-dt th.col-actions {
+            width: 38px !important;
+            min-width: 38px !important;
+            max-width: 42px !important;
+            white-space: nowrap !important;
+            text-align: center !important;
+            padding: 0.65rem 0.2rem !important;
+            background-image: none !important;
+            cursor: default !important;
+        }
+
+        table.dataTable.dashboard-dt th.col-actions::before,
+        table.dataTable.dashboard-dt th.col-actions::after {
+            display: none !important;
+            content: "" !important;
+        }
+
         table.dataTable.dashboard-dt td.actions-cell {
             width: 38px !important;
             min-width: 38px !important;
-            max-width: 44px !important;
+            max-width: 42px !important;
             white-space: nowrap !important;
             text-align: center !important;
             padding: 4px 2px !important;
@@ -322,7 +345,8 @@
         table.dataTable.dashboard-dt td.msg-cell {
             width: auto !important;
             word-break: break-word !important;
-            padding: 0.6rem 1rem !important;
+            overflow-wrap: anywhere !important;
+            padding: 0.6rem 0.85rem !important;
         }
 
         @keyframes messageFlash {
@@ -497,7 +521,7 @@
                         <p>Live POCSAG messages and pager traffic</p>
                     </div>
                     <div class="header-right-tools">
-                        <button id="livePauseBtn" class="live-pause-btn" onclick="toggleLivePause()" title="Pausa realtidsflödet">
+                        <button id="livePauseBtn" class="live-pause-btn" onclick="toggleLivePause()" title="Pause real-time feed">
                             <span class="live-pause-dot"></span>
                             <i class="fas fa-pause" id="livePauseIcon"></i>
                             <span id="livePauseText">Live</span>
@@ -517,22 +541,22 @@
                 </div>
             </header>
 
-            <!-- Activity Ribbon / Radio Waterfall -->
-            <div class="activity-ribbon-panel" id="activityRibbonPanel">
+            <!-- Activity Ribbon / Radio Waterfall (Collapsed by default, saved in localStorage) -->
+            <div class="activity-ribbon-panel collapsed" id="activityRibbonPanel">
                 <div class="ribbon-header">
                     <div class="ribbon-title-group">
                         <i class="fas fa-wave-square ribbon-icon"></i>
-                        <span class="ribbon-title">Eteraktivitet</span>
-                        <span class="ribbon-subtitle">Senaste 60 minuter</span>
-                        <span class="ribbon-live-pill"><span class="ribbon-pulse-dot"></span>Realtid</span>
+                        <span class="ribbon-title">RF Activity</span>
+                        <span class="ribbon-subtitle">Last 60 minutes</span>
+                        <span class="ribbon-live-pill"><span class="ribbon-pulse-dot"></span>Live</span>
                     </div>
                     <div class="ribbon-channel-summary" id="ribbonChannelSummary">
                         <!-- Dynamic channel summary pills -->
                     </div>
                     <div class="ribbon-actions">
-                        <button class="ribbon-toggle-btn" id="ribbonToggleBtn" onclick="toggleActivityRibbon()" title="Dölj / Visa eteraktivitet">
-                            <i class="fas fa-chevron-up" id="ribbonToggleIcon"></i>
-                            <span class="ribbon-toggle-label">Dölj</span>
+                        <button class="ribbon-toggle-btn" id="ribbonToggleBtn" onclick="toggleActivityRibbon()" title="Toggle RF Activity Ribbon">
+                            <i class="fas fa-chevron-down" id="ribbonToggleIcon"></i>
+                            <span class="ribbon-toggle-label">Show</span>
                         </button>
                     </div>
                 </div>
@@ -547,7 +571,7 @@
                             <span>-45 min</span>
                             <span>-30 min</span>
                             <span>-15 min</span>
-                            <span class="scale-now">Nu</span>
+                            <span class="scale-now">Now</span>
                         </div>
                         <div class="timeline-count-col"></div>
                     </div>
@@ -558,10 +582,10 @@
             <div id="pausedNotificationBar" class="paused-notification-bar" style="display: none;">
                 <div class="paused-bar-left">
                     <span class="paused-pulse-icon"><i class="fas fa-pause"></i></span>
-                    <span>Realtidsflödet är pausat &mdash; <strong><span id="pausedBannerCount">0</span> nya meddelanden</strong> i bufferten</span>
+                    <span>Real-time feed is paused &mdash; <strong><span id="pausedBannerCount">0</span> new messages</strong> in buffer</span>
                 </div>
                 <button class="resume-flow-btn" onclick="toggleLivePause()">
-                    <i class="fas fa-play"></i> Visa och återuppta
+                    <i class="fas fa-play"></i> Resume Feed
                 </button>
             </div>
 
@@ -575,7 +599,7 @@
                                 <th class="col-meta">Frequency / Meta</th>
                                 <th class="col-addr">CapCode (Alias)</th>
                                 <th class="col-msg">Message</th>
-                                <th class="col-actions">Actions</th>
+                                <th class="col-actions" data-orderable="false" title="Actions" aria-label="Actions"><i class="fas fa-ellipsis-v"></i></th>
                             </tr>
                         </thead>
                         <tbody id="alarmsBody">
@@ -662,14 +686,14 @@
             if (isLivePaused) {
                 if (btn) btn.classList.add('is-paused');
                 if (icon) { icon.classList.remove('fa-pause'); icon.classList.add('fa-play'); }
-                if (text) text.textContent = 'Pausad';
-                if (btn) btn.title = 'Klicka för att återuppta realtidsflödet';
+                if (text) text.textContent = 'Paused';
+                if (btn) btn.title = 'Click to resume real-time feed';
                 if (bar && pausedQueue.length > 0) bar.style.display = 'flex';
             } else {
                 if (btn) btn.classList.remove('is-paused');
                 if (icon) { icon.classList.remove('fa-play'); icon.classList.add('fa-pause'); }
                 if (text) text.textContent = 'Live';
-                if (btn) btn.title = 'Pausa realtidsflödet';
+                if (btn) btn.title = 'Pause real-time feed';
                 if (badge) { badge.style.display = 'none'; badge.textContent = '0'; }
                 if (bar) bar.style.display = 'none';
                 if (bannerCount) bannerCount.textContent = '0';
@@ -807,7 +831,7 @@
                     <td class="actions-cell">
                         <div class="actions-wrapper">
                             <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">
-                                <i class="far fa-copy"></i>
+                                <i class="fas fa-copy"></i>
                             </button>
                             <div class="btn-divider"></div>
                             <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete system entry">
@@ -843,7 +867,7 @@
                 <td class="actions-cell">
                     <div class="actions-wrapper">
                         <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">
-                            <i class="far fa-copy"></i>
+                            <i class="fas fa-copy"></i>
                         </button>
                         <div class="btn-divider"></div>
                         <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">

@@ -369,7 +369,7 @@ main {
     flex: 1;
     min-height: 0;
     position: relative;
-    overflow-x: auto;
+    overflow-x: hidden;
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
@@ -1104,14 +1104,27 @@ th:first-child,
 .delete-btn, .lock-btn, .edit-btn, .copy-btn {
     width: 26px;
     height: 26px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     border-radius: 5px;
-    border: none;
+    border: 1px solid transparent;
     cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 0.8rem;
+    transition: all 0.15s ease;
+    font-size: 0.85rem;
+    line-height: 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: geometricPrecision;
+}
+
+.delete-btn i, .lock-btn i, .edit-btn i, .copy-btn i {
+    line-height: 1;
+    display: inline-block;
+    opacity: 1 !important;
+    filter: none !important;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 /* Repeat / Merge Badge Styling */
@@ -1144,53 +1157,63 @@ tr.repeat-pulse {
 }
 
 .copy-btn {
-    background: rgba(148, 163, 184, 0.1);
-    color: #94a3b8;
+    background: rgba(148, 163, 184, 0.14);
+    color: #cbd5e1;
+    border-color: rgba(148, 163, 184, 0.25);
 }
 
 .copy-btn:hover {
-    background: rgba(56, 189, 248, 0.2);
+    background: rgba(56, 189, 248, 0.25);
     color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.4);
 }
 
 .copy-btn.copied {
     background: rgba(34, 197, 94, 0.2) !important;
     color: #22c55e !important;
+    border-color: rgba(34, 197, 94, 0.4) !important;
 }
 
 .delete-btn {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    background: rgba(239, 68, 68, 0.14);
+    color: #f87171;
+    border-color: rgba(239, 68, 68, 0.28);
 }
 
 .delete-btn:hover {
     background: #ef4444;
     color: white;
+    border-color: #ef4444;
 }
 
 .lock-btn {
-    background: rgba(56, 189, 248, 0.1);
+    background: rgba(56, 189, 248, 0.14);
     color: #38bdf8;
+    border-color: rgba(56, 189, 248, 0.28);
 }
 
 .lock-btn:hover {
     background: #38bdf8;
     color: white;
+    border-color: #38bdf8;
 }
 
 .lock-btn.locked {
-    background: #38bdf8;
+    background: #0284c7;
     color: white;
+    border-color: #0284c7;
 }
 
 .edit-btn {
-    background: rgba(168, 85, 247, 0.1);
-    color: #a855f7;
+    background: rgba(168, 85, 247, 0.14);
+    color: #c084fc;
+    border-color: rgba(168, 85, 247, 0.28);
 }
 
 .edit-btn:hover {
     background: #a855f7;
     color: white;
+    border-color: #a855f7;
 }
 
 .primary-btn:disabled {
@@ -1619,33 +1642,67 @@ tr.repeat-pulse {
 }
 
 
-.delete-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-secondary);
-    cursor: pointer;
-    padding: 6px;
-    border-radius: 8px;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto;
+/* Crisp Action Buttons for Light Theme */
+[data-theme="light"] .copy-btn {
+    background: #f1f5f9;
+    color: #334155;
+    border-color: #cbd5e1;
 }
 
-.delete-btn:hover {
-    background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+[data-theme="light"] .copy-btn:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+    border-color: #94a3b8;
 }
 
-.delete-btn svg {
-    opacity: 0.6;
-    transition: opacity 0.2s ease;
+[data-theme="light"] .copy-btn.copied {
+    background: #dcfce7 !important;
+    color: #15803d !important;
+    border-color: #86efac !important;
 }
 
-.delete-btn:hover svg {
-    opacity: 1;
+[data-theme="light"] .lock-btn {
+    background: #e0f2fe;
+    color: #0284c7;
+    border-color: #bae6fd;
 }
+
+[data-theme="light"] .lock-btn:hover {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0284c7;
+}
+
+[data-theme="light"] .lock-btn.locked {
+    background: #0284c7;
+    color: #ffffff;
+    border-color: #0284c7;
+}
+
+[data-theme="light"] .delete-btn {
+    background: #fee2e2;
+    color: #dc2626;
+    border-color: #fecaca;
+}
+
+[data-theme="light"] .delete-btn:hover {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+}
+
+[data-theme="light"] .edit-btn {
+    background: #f3e8ff;
+    color: #7e22ce;
+    border-color: #e9d5ff;
+}
+
+[data-theme="light"] .edit-btn:hover {
+    background: #7e22ce;
+    color: #ffffff;
+    border-color: #7e22ce;
+}
+
 
 /* Action buttons for text-based actions (Aliases page) */
 .action-btn {

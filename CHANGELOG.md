@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.14] - Eteraktivitet Kollapsad som Standard, Skarpa Action-ikoner, Normaliserade SDR-kanaler och Fast Tabellayout
+
+### Added
+- **Persistent Kollapsläge för Eteraktivitet (Activity Ribbon)**:
+  - Vattenfallet / eteraktiviteten startar nu alltid kollapsad som standard för att maximera utrymmet för realtidsmeddelandena.
+  - Användarens val (öppen eller kollapsad) sparas i webbläsarens `localStorage` (`pagermonitor-ribbon-collapsed`) och förblir ihågkommet mellan omladdningar.
+  - Förrenderas med klassen `collapsed` direkt i servermallen för att undvika layoutskiftningar.
+- **Skarpa och Tydliga Action-ikoner**:
+  - Bytte ut Font Awesome regular `far fa-copy` mot solid `fas fa-copy`, vilket eliminerar antialiasing-suddighet på små ikonytor.
+  - Raderade motstridig `opacity: 0.6`-regel som orsakade att raderingsikonen upplevdes blek och luddig.
+  - Tillämpade `text-rendering: geometricPrecision`, subpixel font-smoothing samt subtila borders med hög kontrast för både ljust (`[data-theme="light"]`) och mörkt tema.
+
+### Fixed
+- **Horisontell Scrollbar och Kolumnspill för Actions**:
+  - Införde `table-layout: fixed !important` med fasta pixelbredder för alla metadatakolumner (`col-id`: 55px, `col-time`: 110px, `col-meta`: 125px, `col-addr`: 150px, `col-actions`: 38px) och flytande bredd för `col-msg`.
+  - Ersatte texten "Actions" med en ren vertikal ikon `<i class="fas fa-ellipsis-v"></i>` och dolde DataTables sorteringspilar på kolumnen för att förhindra kolumnexpansion.
+  - Satte `.table-container` till `overflow-x: hidden;` på desktop för att helt förhindra horisontella rullningslister.
+- **Dubblerade SDR-kanaler i Eteraktivitet**:
+  - Normaliserade kanalnyckel-genereringen i `waterfall.js` till avrundad frekvens (`freq_XXXX`). Konfigurerade SDR-instanser (`RIKS 1`, `RIKS 2`) och inkommande meddelandefrekvenser mappar nu till exakt samma vattenfallskanal istället för att skapa separata frekvensrader med noll träffar.
+- **Helhetlig Engelsk Översättning**:
+  - Översatt alla etiketter och dialoger i Activity Ribbon, pausningsbannern, Action-kolumnerna och konsoldockan till engelska.
+
 ## [2026.10.12.13] - Vertikalt Staplade Actions, Duplikatgruppering (Merge & 2x/3x Badge) och Fullständig Engelsk Översättning
 
 ### Added
