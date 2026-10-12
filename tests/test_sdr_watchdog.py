@@ -97,3 +97,44 @@ class TestSdrWatchdog(unittest.TestCase):
         self.assertEqual(status[42]['rtl_fm_pid'], 4321)
         self.assertEqual(status[42]['multimon_pid'], 4322)
         self.assertEqual(status[42]['last_error'], "usb_claim_interface error -6")
+
+    @patch('sdr_processor.save_message')
+    @patch('sdr_processor.publish_message')
+    @patch('sdr_processor.get_alias_info')
+    def test_monitor_instance_saves_and_broadcasts_message(self, mock_alias, mock_publish, mock_save):
+        """Verifiera att monitor_instance faktiskt sparar och notifierar callbacks vid mottaget meddelande."""
+        mock_alias.return_value = None
+        mock_save.return_value = (101, '2026-10-12 06:00:00')
+
+        received_events = []
+        callback = lambda data: received_events.append(data)
+        sdr_processor.on_new_message(callback)
+
+        mock_p1 = MagicMock()
+        mock_p1.stderr.readline.side_effect = [b'']
+        mock_p1.poll.return_value = 0
+
+        mock_p2 = MagicMock()
+        mock_p2.stdout.readline.side_effect = [
+            'POCSAG1200: Address: 1234567  Function: 3  Alpha: Test Larm Text\n',
+            ''
+        ]
+        mock_p2.poll.return_value = 0
+
+        stop_event = MagicMock()
+        stop_event.is_set.side_effect = [False, False, True]
+
+        config = {'id': 1, 'name': 'RIKS 1', 'frequency': '169.8M'}
+
+        try:
+            sdr_processor.monitor_instance(1, mock_p1, mock_p2, stop_event, config)
+            mock_save.assert_called_once()
+            args, kwargs = mock_save.call_args
+            self.assertEqual(args[0], '1234567')
+            self.assertEqual(args[1], 'Test Larm Text')
+            mock_publish.assert_called_once()
+            self.assertTrue(any(e.get('address') == '1234567' for e in received_events))
+        finally:
+            if callback in sdr_processor.new_message_callbacks:
+                sdr_processor.new_message_callbacks.remove(callback)
+

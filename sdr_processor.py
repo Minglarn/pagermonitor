@@ -295,8 +295,6 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                                 continue
 
                     logger.info(f"[{config['name']}] RAW: {line}")
-                else:
-                    logger.info(f"[{config['name']}] RAW: {line}")
 
                     # DUPLICATE DETECTION
                     now = time.time()

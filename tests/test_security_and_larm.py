@@ -100,7 +100,7 @@ def test_rules_page_and_sidebar_calver(client):
         assert 'CapCode Aliases' in html
         assert 'Alert Words' in html
         assert 'sidebar-version' in html
-        assert 'v2026.10.11' in html
+        assert 'v2026.10.12.1' in html
 
 def test_get_all_messages_no_limit(client):
     """Testa att /api/messages utan limit-parameter returnerar alla meddelanden utan 200-gräns."""
@@ -139,7 +139,7 @@ def test_settings_page_renders_with_autosave_and_wide_layout(client):
     assert 'autoSaveBadge' in html
     assert 'previewTextContent' in html
     assert 'addSdrModal' in html
-    assert 'v2026.10.11.10' in html
+    assert 'v2026.10.12.1' in html
 
 def test_settings_autosave_api(client):
     """Verifiera att uppdatering av visningsinställningar via POST /api/settings lyckas."""

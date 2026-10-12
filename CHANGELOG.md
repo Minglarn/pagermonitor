@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.1] - Fix SDR Processor Ingestion Pipeline & Persistence
+
+### Fixed
+- **SDR Message Ingestion & Persistence Pipeline**:
+  - Fixed an errant `else` block indentation regression in `sdr_processor.py` that caused decoded POCSAG/AFSK messages to be logged as `RAW` but completely bypass database storage (`save_message`), MQTT publishing (`publish_message`), and live web client callbacks (`new_message_callbacks`).
+  - Restored real-time stream delivery to the DataTables dashboard and historical database logging.
+  - Added regression test `test_monitor_instance_saves_and_broadcasts_message` to verify that incoming multimon-ng output lines are parsed, saved to the database, published to MQTT, and broadcast to live SSE streams.
+
 ## [2026.10.11.10] - Prominent Zebra Striping, Edge-to-Edge Dividers & Razor-Sharp Badge Typography
 
 ### Added

@@ -1,8 +1,8 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.11.10`
-- **Date**: 2026-10-11
+- **CalVer**: `2026.10.12.1`
+- **Date**: 2026-10-12
 - **Language**: English
 
 ---
@@ -248,6 +248,17 @@
     - Bytte fraktionell fontstorlek mot fasta, skarpa integer rem-storlekar (`0.8125rem` / `0.72rem`).
     - Lade till `-webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: geometricPrecision;`.
     - Skapade dedikerad `.badge.meta.badge-freq`-klass med hög kontrast och ersatte tvättade inline-stilar.
+ 
+### 22. Korrigering av Avkodningspipeline och Databaslagring i SDR-Processor (v2026.10.12.1)
+- **Problem**:
+  - Inga nya händelser dök upp i realtidsflödet (DataTables) eller sparades i SQLite-databasen sedan föregående kväll (omkring kl. 20:00).
+  - I loggarna syntes det att multimon-ng och rtl_fm tog emot rådata och loggade `RAW: POCSAG...`, men inga händelser gick vidare till webbläsaren eller databasen.
+  - Orsaken spårades till en oavsiktlig `else:`-sats som hamnat framför `# DUPLICATE DETECTION` i `sdr_processor.py`. När ett meddelande avkodades korrekt (`if parsed:`) avbröts exekveringen direkt efter loggningen och hoppade över sparande (`save_message`), MQTT (`publish_message`) och SSE-notifieringar (`new_message_callbacks`).
+- **Åtgärd**:
+  - Tog bort den felaktiga `else:`-satsen i `sdr_processor.py` så att hela flödet (dubblettkontroll, larmordsmatchning, sparande i databasen, publicering till MQTT samt utskick till anslutna SSE-klienter) körs korrekt inuti `if parsed:`.
+  - Skapade automatiserat enhetstest `test_monitor_instance_saves_and_broadcasts_message` i [test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py) som simulerar inkommande multimon-ng-rader och verifierar att data sparas till databas och skickas till realtids-callbacks.
+  - Uppdaterade versionshantering (CalVer `2026.10.12.1`) i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md), [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md) och testsviten.
+
 
 
 
