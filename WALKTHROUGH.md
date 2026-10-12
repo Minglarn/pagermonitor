@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.15`
+- **CalVer**: `2026.10.12.16`
 - **Date**: 2026-10-12
 - **Language**: English / Swedish
 
@@ -527,6 +527,15 @@
   - Tillämpade `max-width: 100% !important; box-sizing: border-box !important; overflow: hidden !important; text-overflow: ellipsis !important;` på `.meta-wrapper` och `.badge` så att inget element kan spilla över cellens kantlinje.
   - Förbättrade bitrate-formateringen: Om databasen innehåller protokollnamnet `"POCSAG 1200"` extraheras hastigheten till ett rent och standardiserat format `"1200bps"` istället för klumpiga `"POCSAG 1200bps"`.
   - Versionsbump till CalVer `2026.10.12.15`.
+
+## 37. Ändrat Kolumnnamn till RF / META och Optimerad Kolumnbredd (v2026.10.12.16)
+- **Bakgrund**:
+  - Med kompakta piller ("161.4375M", "1200bps") fanns det onödig tom yta till höger i metadatakolumnen på grund av den tidigare långa rubriken "FREQUENCY / META".
+- **Åtgärder**:
+  - Ändrade kolumnrubriken från `Frequency / Meta` till `RF / Meta` i [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html) och [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html).
+  - Minskat kolumnens bredd från 170px till **115px** (`min-width: 105px; max-width: 130px;`), vilket sparar 55px och ger mer plats åt meddelandet.
+  - Versionsbump till CalVer `2026.10.12.16`.
+
 
 
 

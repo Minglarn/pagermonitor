@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.16] - Ändrat Kolumnnamn till RF / META och Optimerad Kolumnbredd (115px)
+
+### Changed
+- **Optimerat Kolumnnamn och Bredd för RF / META**:
+  - Ändrade kolumnrubriken från långa `FREQUENCY / META` (16 tecken) till mer tekniskt och koncist `RF / META` (9 tecken) i [index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html) och [statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html).
+  - Minskat kolumnens fasta bredd från 170px till **115px** (`min-width: 105px; max-width: 130px;`).
+  - Detta eliminerar onödig tom yta till höger om de kompakta pillren och frigör ytterligare 55px horisontell bredd för `MESSAGE`- och `CAPCODE`-kolumnerna.
+
 ## [2026.10.12.15] - Breddning av FREQUENCY / META och Ren Formatering av Bitrate-piller
 
 ### Fixed
