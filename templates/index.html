@@ -274,11 +274,11 @@
 
         table.dataTable.dashboard-dt th.col-meta,
         table.dataTable.dashboard-dt td.meta-cell {
-            width: 125px !important;
-            min-width: 115px !important;
-            max-width: 135px !important;
+            width: 170px !important;
+            min-width: 160px !important;
+            max-width: 195px !important;
             white-space: nowrap !important;
-            padding: 0.5rem 0.6rem !important;
+            padding: 0.5rem 0.65rem !important;
             vertical-align: middle !important;
         }
 
@@ -287,11 +287,18 @@
             flex-direction: column !important;
             align-items: flex-start !important;
             gap: 3px !important;
+            width: 100% !important;
+            max-width: 100% !important;
         }
 
         table.dataTable.dashboard-dt td.meta-cell .badge {
             margin: 0 !important;
             white-space: nowrap !important;
+            display: inline-block !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
         }
 
         /* CapCode (Alias) column */
@@ -849,7 +856,24 @@
             }
 
             const displayAddress = alarm.alias ? alarm.alias : alarm.address;
-            const bitrateTag = alarm.bitrate ? `<span class="badge meta">${alarm.bitrate}bps</span>` : '';
+            let formattedBitrate = '';
+            if (alarm.bitrate) {
+                let bStr = String(alarm.bitrate).trim();
+                if (bStr && bStr !== 'WATCHDOG') {
+                    if (/^POCSAG\s*\d+$/i.test(bStr)) {
+                        formattedBitrate = bStr.replace(/^POCSAG\s*/i, '') + 'bps';
+                    } else if (/^\d+$/.test(bStr)) {
+                        formattedBitrate = bStr + 'bps';
+                    } else if (!bStr.toLowerCase().endsWith('bps')) {
+                        formattedBitrate = bStr + 'bps';
+                    } else {
+                        formattedBitrate = bStr;
+                    }
+                } else if (bStr === 'WATCHDOG') {
+                    formattedBitrate = 'WATCHDOG';
+                }
+            }
+            const bitrateTag = formattedBitrate ? `<span class="badge meta">${formattedBitrate}</span>` : '';
             const funcLabel = alarm.function !== undefined ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
             const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
             const freqTag = alarm.frequency ? `<span class="badge meta badge-freq">${alarm.frequency}</span>` : '';

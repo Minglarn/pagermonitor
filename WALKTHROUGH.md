@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.14`
+- **CalVer**: `2026.10.12.15`
 - **Date**: 2026-10-12
 - **Language**: English / Swedish
 
@@ -517,6 +517,17 @@
     - Tillagt `test_activity_ribbon_collapsed_and_table_layout_fixed` i [tests/test_security_and_larm.py](file:///d:/antigravity/pager-monitor/tests/test_security_and_larm.py).
     - Samtliga 40 enhetstester passerar felfritt.
     - Versionsbump till CalVer `2026.10.12.14`.
+
+## 36. Breddning av FREQUENCY / META och Ren Formatering av Bitrate-piller (v2026.10.12.15)
+- **Problem**:
+  - Kolumnrubriken "FREQUENCY / META" avhöggs till "FREQUENCY / MET" eftersom kolumnbredden var låst till 125px (sorteringspilen och rubriktexten rymdes inte).
+  - Pillret "POCSAG 1200bps" flöt ut över cellens gräns in i CapCode-kolumnen då pillret saknade `max-width: 100%` och box-sizing och texten var för lång.
+- **Åtgärder**:
+  - Ökade `col-meta` till `width: 170px !important; min-width: 160px !important; max-width: 195px !important;` i [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html) och [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html).
+  - Tillämpade `max-width: 100% !important; box-sizing: border-box !important; overflow: hidden !important; text-overflow: ellipsis !important;` på `.meta-wrapper` och `.badge` så att inget element kan spilla över cellens kantlinje.
+  - Förbättrade bitrate-formateringen: Om databasen innehåller protokollnamnet `"POCSAG 1200"` extraheras hastigheten till ett rent och standardiserat format `"1200bps"` istället för klumpiga `"POCSAG 1200bps"`.
+  - Versionsbump till CalVer `2026.10.12.15`.
+
 
 
 

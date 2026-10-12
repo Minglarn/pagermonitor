@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.15] - Breddning av FREQUENCY / META och Ren Formatering av Bitrate-piller
+
+### Fixed
+- **Kolumnrubrik och Piller Spiller Ut ur Cellen i FREQUENCY / META**:
+  - Kolumnen `col-meta` var för snävt begränsad till 125px, vilket ledde till att tabellrubriken avhöggs till "FREQUENCY / MET" (sorteringspilen och texten rymdes inte) samt att pillret "POCSAG 1200bps" svämmade över cellens gräns in i CapCode-kolumnen.
+  - Ökade `col-meta` bredd till 170px (`min-width: 160px; max-width: 195px;`) över samtliga vyer ([index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html)).
+  - Lagt till `max-width: 100% !important; box-sizing: border-box !important; overflow: hidden !important; text-overflow: ellipsis !important;` på alla `.badge`-element och `.meta-wrapper` så att piller aldrig kan spilla över cellens linjer.
+  - Förbättrade bitrate-formateringen så att t.ex. `"POCSAG 1200"` visas kompakt och rent som `"1200bps"` istället för klumpiga `"POCSAG 1200bps"`.
+
 ## [2026.10.12.14] - Eteraktivitet Kollapsad som Standard, Skarpa Action-ikoner, Normaliserade SDR-kanaler och Fast Tabellayout
 
 ### Added
