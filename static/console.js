@@ -92,6 +92,7 @@
                 <div class="console-header-tools" onclick="event.stopPropagation()">
                     <div class="console-filter-group" style="display: flex; gap: 4px;">
                         <button class="console-filter-btn ${state.activeFilter === 'ALL' ? 'active' : ''}" data-filter="ALL">Alla</button>
+                        <button class="console-filter-btn ${state.activeFilter === 'DECODED' ? 'active' : ''}" data-filter="DECODED">DECODED</button>
                         <button class="console-filter-btn ${state.activeFilter === 'INFO' ? 'active' : ''}" data-filter="INFO">Info</button>
                         <button class="console-filter-btn ${state.activeFilter === 'WARNING' ? 'active' : ''}" data-filter="WARNING">Varningar</button>
                         <button class="console-filter-btn ${state.activeFilter === 'ERROR' ? 'active' : ''}" data-filter="ERROR">Fel</button>
@@ -346,7 +347,11 @@
         const lvl = (log.level || '').toUpperCase();
         const src = (log.name || '').toLowerCase();
 
-        // Level filter
+        // Filter criteria
+        if (state.activeFilter === 'DECODED') {
+            const raw = (log.raw || log.message || '');
+            if (!raw.includes('DECODED ->')) return false;
+        }
         if (state.activeFilter === 'INFO' && lvl !== 'INFO') return false;
         if (state.activeFilter === 'WARNING' && lvl !== 'WARNING' && lvl !== 'WARN') return false;
         if (state.activeFilter === 'ERROR' && lvl !== 'ERROR' && lvl !== 'CRITICAL') return false;
@@ -368,7 +373,8 @@
     function createLogRowNode(log) {
         const row = document.createElement('div');
         const lvlLower = (log.level || 'info').toLowerCase();
-        row.className = `console-log-row ${lvlLower === 'error' ? 'is-error' : ''} ${lvlLower === 'warning' || lvlLower === 'warn' ? 'is-warning' : ''}`;
+        const isDecoded = (log.raw || log.message || '').includes('DECODED ->');
+        row.className = `console-log-row ${lvlLower === 'error' ? 'is-error' : ''} ${lvlLower === 'warning' || lvlLower === 'warn' ? 'is-warning' : ''} ${isDecoded ? 'is-decoded' : ''}`;
 
         const time = escapeHtml(log.time || (log.timestamp ? log.timestamp.split(' ')[1] : ''));
         const levelBadge = `<span class="console-log-level ${getLevelClass(log.level)}">${escapeHtml(log.level || 'INFO')}</span>`;

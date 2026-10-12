@@ -197,6 +197,12 @@ body:has(.sidebar.collapsed) .console-dock {
     font-weight: 600;
 }
 
+.console-filter-btn[data-filter="DECODED"].active {
+    background: #10b981;
+    border-color: #10b981;
+    color: #ffffff;
+}
+
 .console-search-box {
     position: relative;
     display: flex;
@@ -403,6 +409,16 @@ body:has(.sidebar.collapsed) .console-dock {
 
 .console-log-row.is-warning .console-log-msg {
     color: #fde68a;
+}
+
+.console-log-row.is-decoded {
+    background: rgba(16, 185, 129, 0.08);
+    border-left: 2px solid #10b981;
+}
+
+.console-log-row.is-decoded .console-log-msg {
+    color: #a7f3d0;
+    font-weight: 500;
 }
 
 /* ANSI Colors in message */

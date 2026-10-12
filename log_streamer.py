@@ -90,7 +90,10 @@ class LogManager:
 
         if min_level and min_level.upper() != 'ALL':
             lvl_upper = min_level.upper()
-            all_logs = [l for l in all_logs if l['level'] == lvl_upper]
+            if lvl_upper == 'DECODED':
+                all_logs = [l for l in all_logs if 'DECODED ->' in l['raw']]
+            else:
+                all_logs = [l for l in all_logs if l['level'] == lvl_upper]
 
         if limit and limit > 0:
             return all_logs[-limit:]

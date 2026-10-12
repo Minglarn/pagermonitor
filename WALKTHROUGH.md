@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.4`
+- **CalVer**: `2026.10.12.5`
 - **Date**: 2026-10-12
 - **Language**: English / Swedish
 
@@ -311,6 +311,22 @@
   - Lade till skyddsregel: Om meddelandet har hög läsbarhet (`readable_ratio >= 0.85`, normal klartext), avfärdas det inte på grund av symbolmönster.
   - Lade till regressionstestet `test_is_garbage_message_allows_desigo_separator_and_drops_noise` i [tests/test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py) som verifierar att DesigoCC-larm, ellipser och asterisklarm släpps igenom medan faktiskt radiobrus droppas.
   - Höjde CalVer till `2026.10.12.4` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
+### 26. Dedikerat DECODED-Filter i Konsoldockan (v2026.10.12.5)
+- **Bakgrund och Syfte**:
+  - Användaren önskade ett dedikerat filter i konsolen för att uteslutande kunna se och följa de framgångsrikt avkodade larmmeddelandena i realtid utan att drunkna i RAW-meddelandeströmmar, heartbeats och systemdiagnostik.
+- **Implementation**:
+  - **Verktygsfält & Filterknapp**: Lade till filterknappen `DECODED` i [static/console.js](file:///d:/antigravity/pager-monitor/static/console.js) med distinkt smaragdgrön färgmarkering när den är aktiv.
+  - **Realtids- och historikfiltrering**:
+    - När `DECODED` är valt i konsolen filtreras alla rader som innehåller `DECODED -> Address: ..., Alias: ..., Msg: ...`.
+    - I [log_streamer.py](file:///d:/antigravity/pager-monitor/log_streamer.py) lades stöd till för `level=DECODED` i `get_history()` så att även API-anrop (`/api/logs/history?level=DECODED`) returnerar enbart avkodade larm.
+  - **Visuell Framhävning**:
+    - Avkodade rader i konsolen (`.console-log-row.is-decoded`) ges en diskret grön vänstermarginal och mjuk tonad bakgrund så att de sticker ut tydligt även när man granskar hela loggen (*Alla*).
+  - **Testning & Verifiering**:
+    - Lade till testet `test_filter_by_decoded` i [tests/test_log_console.py](file:///d:/antigravity/pager-monitor/tests/test_log_console.py) som verifierar att `level=DECODED` endast plockar ut de avkodade larmen.
+  - **Versionsspårbarhet (CalVer)**:
+    - Uppdaterade CalVer till `2026.10.12.5` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
 
 
 

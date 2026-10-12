@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.5] - Dedicated DECODED Filter in Console Dock
+
+### Added
+- **Dedikerat DECODED-filter i konsoldockan**:
+  - Lade till en direkt filterknapp `DECODED` i konsolens verktygsfält på samtliga sidor.
+  - Filtrerar fram uteslutande framgångsrikt avkodade larmmeddelanden (`DECODED -> Address: ..., Alias: ..., Msg: ...`) och exkluderar RAW-strömmar, heartbeats och allmänna systemmeddelanden.
+  - Lade till visuell framhävning för avkodade loggrader (`.console-log-row.is-decoded`) med en smaragdgrön accentlinje och tonad bakgrund.
+  - Stöd för `level=DECODED` i historik-API:et (`GET /api/logs/history?level=DECODED`) i `log_streamer.py`.
+  - Regressionstest tillagt i `tests/test_log_console.py`.
+
 ## [2026.10.12.4] - Fix False-Positive Garbage Drops for Pager Separator Lines
 
 ### Fixed

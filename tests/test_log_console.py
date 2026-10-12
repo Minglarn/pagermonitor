@@ -47,5 +47,17 @@ class TestLogConsole(unittest.TestCase):
         res_history = self.client.get('/api/logs/history')
         self.assertEqual(len(res_history.get_json()['logs']), 0)
 
+    def test_filter_by_decoded(self):
+        logger = logging.getLogger("sdr_processor")
+        logger.info("[RIKS 1] RAW: POCSAG1200: Address: 1234567")
+        logger.info("[RIKS 1] DECODED -> Address: 1234567, Alias: Test Station, Msg: Alarm text")
+        logger.info("SDR Heartbeat: [RIKS 1] OK")
+
+        res = self.client.get('/api/logs/history?level=DECODED')
+        self.assertEqual(res.status_code, 200)
+        logs = res.get_json()['logs']
+        self.assertEqual(len(logs), 1)
+        self.assertIn("DECODED ->", logs[0]['message'])
+
 if __name__ == '__main__':
     unittest.main()
