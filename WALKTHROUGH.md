@@ -397,6 +397,22 @@
 - **Testning**:
   - Samtliga 36 tester i testsviten kördes och passerade felfritt.
 
+---
 
-
-
+## 31. Borttagning av CapCode-gruppering och Förfinat Inställningsgränssnitt (v2026.10.12.10)
+- **Problem**:
+  1. Användaren rapporterade att radgrupperingen i DataTables inte motsvarade förväntningarna och bad om att ta bort funktionen.
+  2. Rutorna under Duplikathantering i Inställningar följde inte temat (saknade klasser och styles och visades som standardwebbläsarrutor med råa kanter i ljust tema).
+  3. Marginalerna mellan rutorna i Inställningar var överdrivet stora och upplevdes röriga.
+- **Åtgärder**:
+  - **Borttagning av CapCode-gruppering**:
+    - Rensade bort RowGroup 1.5.1 CDN-skript och CSS från [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html) och [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html).
+    - Tog bort knappen "Gruppera CapCode", hjälpfunktionen `toggleCapcodeGrouping` och grupperingsrelaterad kod. Återställde ren DataTables-sortering (`order: [[1, 'desc']]`).
+    - Rensade ut `.header-action-btn` och `tr.group-header-row` ur [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css).
+  - **Temastyling och Kompakt Inställningsvy**:
+    - I [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css) lades klasserna `.form-input` och `.settings-subpanel` till med anpassade variabler för ljust tema (`#ffffff` bakgrund, `#cbd5e1` ram, mörk text) och mörkt tema (`--input-bg`, `--panel-border`, `--text-primary`), komplett med SVG-pil och fokusmarkering (`--accent-glow`).
+    - I [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html) applicerades `class="form-input"` på både `<select id="duplicate_handling">` och `<input type="number" id="duplicate_window">`.
+    - Skräpfilter och Duplikathantering slogs samman till en gemensam panel med en ren avgränsare, och Gränssnitt & Typografi placerades i en motsvarande enhetlig panel.
+    - Avstånden (`gap` och `padding`) sänktes för inställningscontainern, flikarna och kontrollkolumnen så att vyn är harmonisk och tight utan onödiga tomrum.
+- **Testning**:
+  - Samtliga 36 tester i pytest kördes och verifierades med exit code 0.

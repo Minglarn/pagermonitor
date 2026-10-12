@@ -238,15 +238,12 @@ def test_duplicate_handling_hide_in_api(client):
     # Återställ inställning
     database.update_setting('duplicate_handling', 'mark')
 
-def test_capcode_grouping_and_rowgroup_in_templates(client):
-    """Verifiera att grupperingsknappen och DataTables RowGroup finns i index och larm templaten."""
-    for path in ['/', '/larm']:
-        res = client.get(path)
-        assert res.status_code == 200
-        html = res.data.decode('utf-8')
-        assert 'groupCapcodeBtn' in html
-        assert 'toggleCapcodeGrouping' in html
-        assert 'rowGroup' in html
-
-
+def test_settings_duplicate_and_theme_styling(client):
+    """Verifiera att inställningsvyn har subpanels och form-input på duplikatkontroller."""
+    res = client.get('/settings')
+    assert res.status_code == 200
+    html = res.data.decode('utf-8')
+    assert 'class="settings-subpanel"' in html
+    assert 'id="duplicate_handling" class="form-input"' in html
+    assert 'id="duplicate_window" class="form-input"' in html
 

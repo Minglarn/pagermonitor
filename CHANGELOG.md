@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.10] - Avlägsnande av CapCode-gruppering och Förfinat Inställningsgränssnitt
+
+### Removed
+- **CapCode Radgruppering**:
+  - Helt avlägsnat funktionen för DataTables-gruppering per CapCode från Dashboard och Larmvyn efter användarutvärdering.
+  - Rensat bort externa RowGroup CDN-resurser, knappar, CSS och relaterade JavaScript-hjälpare.
+
+### Fixed
+- **Temastyling och Kompakt Layout i Inställningar**:
+  - Åtgärdat formulärrutorna för *Åtgärd för duplikat* och *Tidsfönster* i [settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html) så att de använder den enhetliga klassen `form-input` och följer ljust och mörkt tema (med skräddarsydd chevron, bakgrund, kantlinjer och fokusmarkering).
+  - Grupperat *Signalfiltrering* och *Duplikathantering* i en gemensam, stilren panel (`settings-subpanel`) med en subtil avgränsare för att eliminera onödiga isolerade kort.
+  - Grupperat *Färgtema*, *Typsnitt* och *Textstorlek* i en sammanhållen panel (`settings-subpanel`).
+  - Minskat överdrivna marginaler och padding på inställningscontainern, flikraden och kolumnavstånden så att gränssnittet upplevs rent, kompakt och välbalanserat.
+
 ## [2026.10.12.9] - Duplikathantering, CapCode DataTables Gruppering och Persistent Konsolfilter
 
 ### Added

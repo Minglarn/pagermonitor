@@ -76,7 +76,7 @@
         </nav>
 
         <div class="main-content">
-            <main style="padding: 1.5rem 2rem;">
+            <main style="padding: 0.5rem 0;">
                 <div class="glass-panel settings-container">
                     <!-- Header with Auto-save indicator -->
                     <div class="settings-header-bar">
@@ -127,110 +127,126 @@
                         <div class="settings-split-layout">
                             <!-- Controls Column -->
                             <div class="settings-col-controls">
-                                <div class="form-group" style="margin-bottom: 1.25rem;">
-                                    <label for="theme" style="font-weight: 600; display: block; margin-bottom: 0.4rem; color: var(--text-primary);">
-                                        Färgtema
-                                    </label>
-                                    <select id="theme" class="form-input" style="width: 100%; padding: 0.75rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary); cursor: pointer;">
-                                        <option value="dark">Mörkt tema (Standard)</option>
-                                        <option value="light">Ljust tema</option>
-                                    </select>
-                                    <small style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.3rem; display: block;">
-                                        Ändras och tillämpas direkt i hela gränssnittet.
-                                    </small>
-                                </div>
+                                <!-- Card 1: Gränssnitt & Typografi -->
+                                <div class="settings-subpanel">
+                                    <h4 style="margin: 0 0 0.85rem 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fas fa-palette" style="color: var(--accent);"></i> Gränssnitt & Typografi
+                                    </h4>
 
-                                <div class="row-group" style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                    <div class="col" style="flex: 1.2; min-width: 220px;">
-                                        <div class="form-group" style="margin-bottom: 1.25rem;">
-                                            <label for="message_font" style="font-weight: 600; display: block; margin-bottom: 0.4rem; color: var(--text-primary);">
-                                                Typsnitt för meddelanden
-                                            </label>
-                                            <select id="message_font" class="form-input" style="width: 100%; padding: 0.75rem 1rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary); cursor: pointer;">
-                                                <option value="JetBrains Mono">JetBrains Mono</option>
-                                                <option value="Fira Code">Fira Code</option>
-                                                <option value="Inconsolata">Inconsolata</option>
-                                                <option value="IBM Plex Mono">IBM Plex Mono</option>
-                                                <option value="Roboto Mono">Roboto Mono</option>
-                                                <option value="Source Code Pro">Source Code Pro</option>
-                                                <option value="Space Mono">Space Mono</option>
-                                                <option value="Ubuntu Mono">Ubuntu Mono</option>
-                                                <option value="Courier Prime">Courier Prime</option>
-                                                <option value="Share Tech Mono">Share Tech Mono (ANSI)</option>
-                                                <option value="Anonymous Pro">Anonymous Pro</option>
-                                                <option value="VT323">VT323 (Retro)</option>
-                                            </select>
-                                        </div>
+                                    <div class="form-group" style="margin-bottom: 0.75rem;">
+                                        <label for="theme" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 0.3rem; color: var(--text-primary);">
+                                            Färgtema
+                                        </label>
+                                        <select id="theme" class="form-input">
+                                            <option value="dark">Mörkt tema (Standard)</option>
+                                            <option value="light">Ljust tema</option>
+                                        </select>
+                                        <small style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+                                            Ändras och tillämpas direkt i hela gränssnittet.
+                                        </small>
                                     </div>
 
-                                    <div class="col" style="flex: 1; min-width: 180px;">
-                                        <div class="form-group" style="margin-bottom: 1.25rem;">
-                                            <label for="message_font_size_slider" style="font-weight: 600; display: block; margin-bottom: 0.4rem; color: var(--text-primary);">
-                                                Textstorlek (<span id="font_size_val">1.0</span> rem)
-                                            </label>
-                                            <input type="range" id="message_font_size_slider" min="0.5" max="2.0" step="0.05" value="1.0" style="width: 100%; margin-top: 0.4rem;">
+                                    <div class="row-group" style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                        <div class="col" style="flex: 1.2; min-width: 180px;">
+                                            <div class="form-group" style="margin-bottom: 0;">
+                                                <label for="message_font" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 0.3rem; color: var(--text-primary);">
+                                                    Typsnitt för meddelanden
+                                                </label>
+                                                <select id="message_font" class="form-input">
+                                                    <option value="JetBrains Mono">JetBrains Mono</option>
+                                                    <option value="Fira Code">Fira Code</option>
+                                                    <option value="Inconsolata">Inconsolata</option>
+                                                    <option value="IBM Plex Mono">IBM Plex Mono</option>
+                                                    <option value="Roboto Mono">Roboto Mono</option>
+                                                    <option value="Source Code Pro">Source Code Pro</option>
+                                                    <option value="Space Mono">Space Mono</option>
+                                                    <option value="Ubuntu Mono">Ubuntu Mono</option>
+                                                    <option value="Courier Prime">Courier Prime</option>
+                                                    <option value="Share Tech Mono">Share Tech Mono (ANSI)</option>
+                                                    <option value="Anonymous Pro">Anonymous Pro</option>
+                                                    <option value="VT323">VT323 (Retro)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="col" style="flex: 1; min-width: 140px;">
+                                            <div class="form-group" style="margin-bottom: 0;">
+                                                <label for="message_font_size_slider" style="font-weight: 600; font-size: 0.85rem; display: block; margin-bottom: 0.3rem; color: var(--text-primary);">
+                                                    Textstorlek (<span id="font_size_val">1.0</span> rem)
+                                                </label>
+                                                <input type="range" id="message_font_size_slider" min="0.5" max="2.0" step="0.05" value="1.0" style="width: 100%; margin-top: 0.4rem;">
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                <div class="glass-panel" style="padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border); background: rgba(255, 255, 255, 0.02);">
-                                    <div class="form-group checkbox-group" style="margin-bottom: 0.75rem;">
-                                        <label style="font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; color: var(--text-primary);">
+                                <!-- Card 2: Filter & Duplikathantering -->
+                                <div class="settings-subpanel">
+                                    <h4 style="margin: 0 0 0.85rem 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fas fa-filter" style="color: var(--accent);"></i> Signalfiltrering & Duplikathantering
+                                    </h4>
+
+                                    <!-- Skräpfilter -->
+                                    <div class="form-group checkbox-group" style="margin-bottom: 0.5rem;">
+                                        <label style="font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
                                             <input type="checkbox" id="garbage_filter" checked>
                                             Aktivera skräpfilter för radiosignaler
                                         </label>
                                     </div>
 
                                     <div id="filterSensitivityGroup">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                                            <label for="garbage_sensitivity_slider" style="font-size: 0.85rem; color: var(--text-secondary); margin: 0;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                            <label for="garbage_sensitivity_slider" style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
                                                 Filterkänslighet: <strong id="sensitivity_val" style="color: var(--text-primary);">50</strong>%
                                             </label>
                                         </div>
-                                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                                        <div style="display: flex; align-items: center; gap: 0.6rem;">
                                             <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Mild</span>
                                             <input type="range" id="garbage_sensitivity_slider" min="10" max="90" step="5" value="50" style="flex: 1;">
                                             <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Aggressiv</span>
                                         </div>
-                                        <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.45; margin: 0.6rem 0 0 0;">
-                                            Filtret beräknar läsbarheten i varje avkodat meddelande genom att analysera förhållandet mellan bokstäver, siffror och skiljetecken gentemot slumpmässiga symboler. <b>Mild</b> släpper igenom mer brus, medan <b>Aggressiv</b> kräver naturliga ordstrukturer och vokaler.
+                                        <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.4; margin: 0.4rem 0 0 0;">
+                                            Beräknar meddelandets läsbarhet utifrån bokstäver och symboler för att filtrera bort brus.
                                         </p>
                                     </div>
-                                </div>
 
-                                <div class="glass-panel" style="padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border); background: rgba(255, 255, 255, 0.02); margin-top: 1rem;">
-                                    <div style="margin-bottom: 0.75rem;">
-                                        <label style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem; color: var(--text-primary); margin: 0 0 0.5rem 0;">
-                                            <i class="fas fa-copy" style="color: var(--accent);"></i>
+                                    <!-- Subtle Divider -->
+                                    <div style="border-top: 1px solid var(--panel-border); margin: 0.85rem 0;"></div>
+
+                                    <!-- Duplikathantering -->
+                                    <div>
+                                        <div style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; color: var(--text-primary); margin-bottom: 0.25rem;">
+                                            <i class="fas fa-copy" style="color: var(--accent); font-size: 0.8rem;"></i>
                                             Duplikathantering & Larmrepetition
-                                        </label>
-                                        <p style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.4; margin: 0 0 0.75rem 0;">
+                                        </div>
+                                        <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.35; margin: 0 0 0.65rem 0;">
                                             Styr hur systemet hanterar återkommande eller identiska meddelanden från samma CapCode.
                                         </p>
-                                    </div>
 
-                                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                                        <div style="flex: 1; min-width: 200px;">
-                                            <label for="duplicate_handling" style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 0.35rem;">
-                                                Åtgärd för duplikat
-                                            </label>
-                                            <select id="duplicate_handling" style="width: 100%;">
-                                                <option value="mark">Markera med badge (Standard)</option>
-                                                <option value="hide">Dölj i tabeller (Spara i databas)</option>
-                                                <option value="discard">Kasta helt (Spara och skicka ej)</option>
-                                            </select>
+                                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                            <div style="flex: 1.2; min-width: 180px;">
+                                                <label for="duplicate_handling" style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">
+                                                    Åtgärd för duplikat
+                                                </label>
+                                                <select id="duplicate_handling" class="form-input">
+                                                    <option value="mark">Markera med badge (Standard)</option>
+                                                    <option value="hide">Dölj i tabeller (Spara i databas)</option>
+                                                    <option value="discard">Kasta helt (Spara och skicka ej)</option>
+                                                </select>
+                                            </div>
+
+                                            <div style="flex: 0.8; min-width: 130px;">
+                                                <label for="duplicate_window" style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">
+                                                    Tidsfönster (sekunder)
+                                                </label>
+                                                <input type="number" id="duplicate_window" class="form-input" min="5" max="3600" step="5" value="120">
+                                            </div>
                                         </div>
 
-                                        <div style="flex: 1; min-width: 160px;">
-                                            <label for="duplicate_window" style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 0.35rem;">
-                                                Tidsfönster (sekunder)
-                                            </label>
-                                            <input type="number" id="duplicate_window" min="5" max="3600" step="5" value="120" style="width: 100%;">
-                                        </div>
+                                        <p style="color: var(--text-secondary); font-size: 0.72rem; line-height: 1.35; margin: 0.5rem 0 0 0;">
+                                            Identiska meddelanden från samma CapCode inom angivet tidsfönster hanteras enligt vald åtgärd.
+                                        </p>
                                     </div>
-                                    <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.45; margin: 0.6rem 0 0 0;">
-                                        Identiska meddelanden från samma CapCode inom det angivna tidsfönstret (t.ex. repetitioner efter 60 sekunder) hanteras enligt vald åtgärd ovan.
-                                    </p>
                                 </div>
                             </div>
 
