@@ -138,3 +138,22 @@ class TestSdrWatchdog(unittest.TestCase):
             if callback in sdr_processor.new_message_callbacks:
                 sdr_processor.new_message_callbacks.remove(callback)
 
+    def test_is_garbage_message_allows_desigo_separator_and_drops_noise(self):
+        """Verifiera att legitima larm med avgränsarlinjer (som DesigoCC) inte klassas som skräp, medan radiobrus fångas."""
+        desigo_msg = (
+            "Larm DesigoCC Vimmerby Hälsocentral:Prioritet: Akut\n\n"
+            "Anläggning: Vimmerby Hälsocentral\n\n"
+            "Tid för event: 2026-10-12 08:41:48\n\n"
+            "Site: Region Kalmar.Fastigheter.Norr.Vimmerby vardcentral.Hus 1.Övrigt.Larmer\n\n"
+            "Object: N/A GP-S_Låda \n\n"
+            "Cause:  Larm (Till)\n\n"
+            "---------------------- End of message ----------------------"
+        )
+        self.assertFalse(sdr_processor.is_garbage_message(desigo_msg, sensitivity=50))
+        self.assertFalse(sdr_processor.is_garbage_message("SOS Larm... Brand i byggnad", sensitivity=50))
+        self.assertFalse(sdr_processor.is_garbage_message("*** VIKTIGT LARM *** Prov", sensitivity=50))
+
+        # Reellt radiobrus
+        self.assertTrue(sdr_processor.is_garbage_message("~~~|||$$$@@@", sensitivity=50))
+        self.assertTrue(sdr_processor.is_garbage_message("   bT(d", sensitivity=50))
+

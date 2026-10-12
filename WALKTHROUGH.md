@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.3`
+- **CalVer**: `2026.10.12.4`
 - **Date**: 2026-10-12
 - **Language**: English / Swedish
 
@@ -301,6 +301,16 @@
     - **State Persistence**: Sparar minimeringsläge, vald höjd, radbrytning, autoscroll och filter i `localStorage`.
 - **Versionsspårbarhet (CalVer)**:
   - Uppdaterade CalVer till `2026.10.12.3` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
+### 25. Korrigering av Skräpfilter för Avgränsarlinjer och Formatering (v2026.10.12.4)
+- **Problem**:
+  - Fullt giltiga larmmeddelanden (exempelvis från Siemens DesigoCC och SOS Alarm) droppades felaktigt med `[DROPPED] Cause: GARBAGE`.
+  - Orsaken var att `is_garbage_message()` i [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py) använde ett strikt symbolregex `[^a-zA-Z0-9\såäöÅÄÖ]{3,}` som triggade på legitima formateringslinjer såsom `---------------------- End of message ----------------------` (22 bindestreck i rad) samt ellipser (`...`), asterisker (`*** LARM ***`) och likhetstecken (`===`).
+- **Åtgärd**:
+  - Uppdaterade symbolkontrollen i `is_garbage_message()` så att legitima skilje- och avgränsartecken (`-`, `=`, `.`, `*`, `_`, `/`, `:`, `;`, `!`, `?`, `,`, `(`, `)`, `"`, `'`, `%`, `#`) undantas från radiostörningsbruskontrollen.
+  - Lade till skyddsregel: Om meddelandet har hög läsbarhet (`readable_ratio >= 0.85`, normal klartext), avfärdas det inte på grund av symbolmönster.
+  - Lade till regressionstestet `test_is_garbage_message_allows_desigo_separator_and_drops_noise` i [tests/test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py) som verifierar att DesigoCC-larm, ellipser och asterisklarm släpps igenom medan faktiskt radiobrus droppas.
+  - Höjde CalVer till `2026.10.12.4` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
 
 
 

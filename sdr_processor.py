@@ -60,8 +60,8 @@ def is_garbage_message(message, sensitivity=50):
     # control_ratio_max: 0.25 (lenient) -> 0.05 (strict)
     control_max = 0.25 - (sensitivity / 100.0) * 0.20
 
-    # Count readable characters (letters, digits, common Swedish, common punctuation/spaces)
-    readable = sum(1 for c in temp_msg if c.isalnum() or c in ' .,;:!?-()/@&+=%\n\r\täöåÄÖÅ')
+    # Count readable characters (letters, digits, common Swedish, punctuation, separators, symbols)
+    readable = sum(1 for c in temp_msg if c.isalnum() or c in ' .,;:!?-()/@&+=%*#_"\n\r\täöåÄÖÅ')
     # Count control characters (ASCII 0-31 except tab/newline/cr)
     control = sum(1 for c in temp_msg if ord(c) < 32 and c not in '\t\n\r')
 
@@ -72,9 +72,16 @@ def is_garbage_message(message, sensitivity=50):
     if control_ratio > control_max:
         return True
 
-    # Pattern check: Too many consecutive symbols/non-alphanumeric (except space)
-    if re.search(r'[^a-zA-Z0-9\såäöÅÄÖ]{3,}', temp_msg):
-        return True
+    # Pattern check: Too many consecutive noise symbols.
+    # Standard formatting characters (such as hyphens '-', equal signs '=', dots '...', asterisks '***', underscores '___')
+    # are frequently used in pager dispatches as section headers or end-of-message footers.
+    # Therefore, we only reject clusters of non-formatting noise symbols, and skip this check if the message is highly readable.
+    if readable_ratio < 0.85:
+        # Check for sequences of obscure noise symbols
+        if re.search(r'[~|\\^{}\$@\x00-\x1f]{3,}', temp_msg):
+            return True
+        if re.search(r'[^a-zA-Z0-9\såäöÅÄÖ\-=\._\*/:;!\?,()\"\'%#]{3,}', temp_msg):
+            return True
 
     # Entropy check for longer messages
     if length > 5:
@@ -98,11 +105,11 @@ def is_garbage_message(message, sensitivity=50):
             if temp_msg[i].isalpha() and temp_msg[i-1].isalpha():
                 if temp_msg[i].isupper() != temp_msg[i-1].isupper():
                     case_changes += 1
-        if case_changes / len(letters) > 0.35:
+        if (case_changes / len(letters)) > 0.35 and readable_ratio < 0.90:
             return True
 
-    # Real messages usually have some vowels if they contain many letters
-    if len(letters) > 2 and vowels == 0 and digits < 3:
+    # Real messages usually have some vowels if they contain letters and no digits
+    if len(letters) >= 3 and vowels == 0 and digits < 2:
         return True
 
     # Too few readable characters

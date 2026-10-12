@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.4] - Fix False-Positive Garbage Drops for Pager Separator Lines
+
+### Fixed
+- **Skräpfilter (is_garbage_message)**:
+  - Åtgärdade ett allvarligt fel där legitima larmmeddelanden med avskiljarlinjefält (t.ex. Siemens DesigoCC och SOS Alarm med `---------------------- End of message ----------------------` eller `===` eller `...` eller `*** LARM ***`) felaktigt droppades som `GARBAGE`.
+  - Uppdaterade symbolkontrollen så att vanliga formateringstecken och separatorer (`-`, `=`, `.`, `*`, `_`, `/`) undantas från bruskontrollen.
+  - Säkrade att meddelanden med hög läsbarhet (`readable_ratio >= 0.85`) aldrig avfärdas på grund av avgränsningslinjer eller ellipser.
+  - Lade till regressionstest `test_is_garbage_message_allows_desigo_separator_and_drops_noise` i testsviten.
+
 ## [2026.10.12.3] - Real-time Docker & System Console Dock
 
 ### Added
