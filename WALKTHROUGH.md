@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.8`
+- **CalVer**: `2026.10.12.9`
 - **Date**: 2026-10-12
 - **Language**: English / Swedish
 
@@ -371,6 +371,31 @@
   - **Testning & Verifiering**:
     - Verifierad i mobil viewport (390x844) via subagent-browser, med verifierad navigering mellan Dashboard, Alarms och Settings.
     - Alla 34 automatiserade tester passerar felfritt.
+
+### 30. Duplikathantering, CapCode DataTables Gruppering och Persistent Konsolfilter (v2026.10.12.9)
+- **Problem & Bakgrund**:
+  - Repetitioner som skickas med 60 sekunders mellanrum flaggades inte som duplikat eftersom det gamla tidsfönstret var strikt `< 60` sekunder.
+  - Användaren önskade möjlighet att alternativt kunna dölja eller kasta duplikat via Inställningar.
+  - Användaren efterfrågade stöd för DataTables gruppering per CapCode för att kunna samla alla händelser under respektive mottagare.
+  - Vid flikbyte nollställdes konsolens aktiva filter och visade tom vy eller föll tillbaka till standardläget.
+- **Åtgärder**:
+  - **Konfigurerbar Duplikathantering**:
+    - I [database.py](file:///d:/antigravity/pager-monitor/database.py) lades standardinställningarna `duplicate_handling` ('mark', 'hide', 'discard') och `duplicate_window` (standard 120 sekunder) till.
+    - I [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py) styrs duplikatfönstret dynamiskt från inställningen (`now - last_time <= dup_window`). Om `duplicate_handling == 'discard'` droppas meddelandet direkt med `[DROPPED] Cause: DUPLICATE` utan lagring i databas eller publicering via MQTT/SSE.
+    - I [app.py](file:///d:/antigravity/pager-monitor/app.py) exkluderar `/api/messages` duplikat om `duplicate_handling == 'hide'`, med möjlighet att åsidosätta via `include_duplicates=1`.
+    - I [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html) lades en dedikerad inställningspanel ("Duplikathantering & Larmrepetition") till under fliken Utseende & Filter med omedelbart autosparande.
+    - I [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html) och [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html) ignoreras inkommande SSE-duplikat i tabellen när `duplicate_handling === 'hide'`.
+  - **DataTables Radgruppering per CapCode**:
+    - Integrerade DataTables RowGroup 1.5.1 i [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html) och [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html).
+    - Lade till en knapp ("Gruppera CapCode") i headern bredvid sökfältet som växlar grupperingen i realtid (`dataTable.rowGroup().enable() / disable()`).
+    - Skapade stilrena grupperingsrader med ikon, CapCode/Alias och antal larm/händelser samt persistering i `localStorage`.
+    - Lagt till matchande glassmorphism/OLED stil i [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css).
+  - **Persistent Konsolfilter och Synkning mellan Flikar**:
+    - I [static/console.js](file:///d:/antigravity/pager-monitor/static/console.js) skapades `setActiveFilter` och `fetchFilteredHistory`.
+    - När ett filter aktiveras (t.ex. `DECODED`, `ERROR`) eller vid sidladdning skickas `level` med i `/api/logs/history?level=...` så att relevanta rader hämtas från ringbufferten i stället för att dränkas av rådata.
+    - Lyssnare på `storage` och `visibilitychange` synkroniserar konsolens filterläge i realtid mellan alla öppna webbläsarflikar.
+- **Testning**:
+  - Samtliga 36 tester i testsviten kördes och passerade felfritt.
 
 
 

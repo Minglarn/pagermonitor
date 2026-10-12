@@ -304,6 +304,13 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     logger.info(f"[{config['name']}] RAW: {line}")
 
                     # DUPLICATE DETECTION
+                    settings = get_settings()
+                    try:
+                        dup_window = int(settings.get('duplicate_window', '120'))
+                    except (ValueError, TypeError):
+                        dup_window = 120
+                    dup_handling = settings.get('duplicate_handling', 'mark')
+
                     now = time.time()
                     msg_key = (address, message)
                     is_duplicate = False
@@ -311,15 +318,22 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     with cache_lock:
                         if msg_key in recent_messages_cache:
                             last_time = recent_messages_cache[msg_key]
-                            if now - last_time < 60:
+                            if (now - last_time) <= dup_window:
                                 is_duplicate = True
                         recent_messages_cache[msg_key] = now
                         
                         # Prune cache occasionally
                         if len(recent_messages_cache) > 500:
-                            cutoff = now - 300 # Keep last 5 mins
+                            cutoff = now - max(300, dup_window * 2)
                             keys_to_del = [k for k, v in recent_messages_cache.items() if v < cutoff]
                             for k in keys_to_del: del recent_messages_cache[k]
+
+                    if is_duplicate and dup_handling == 'discard':
+                        logger.info(f"[{config['name']}] RAW: {line} [DROPPED] Cause: DUPLICATE")
+                        for cb in list(new_message_callbacks):
+                            try: cb({'type': 'ping'})
+                            except Exception: pass
+                        continue
                         
                     logger.info(f"[{config['name']}] DECODED -> Address: {address}, Alias: {alias}, Msg: {message} {'(DUPLICATE)' if is_duplicate else ''}")
                     

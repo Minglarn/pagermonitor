@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.9] - Duplikathantering, CapCode DataTables Gruppering och Persistent Konsolfilter
+
+### Added
+- **Konfigurerbar Duplikathantering**:
+  - Ny sektion under Inställningar ("Duplikathantering & Larmrepetition") med valbara åtgärder för dubblettmeddelanden:
+    - *Markera med badge (Standard)*: Sparar meddelandet med flaggan `is_duplicate=1` och visar gul "Duplicate"-badge i tabeller.
+    - *Dölj i tabeller*: Sparar i databasen för historik och statistik, men döljer automatiskt duplikat från Dashboard och Larmvyn.
+    - *Kasta helt*: Droppar dubbletten omedelbart i SDR-processorn utan att spara till databas eller sända via MQTT/SSE.
+  - Konfigurerbart tidsfönster (`duplicate_window`, standard 120 sekunder i stället för den tidigare fasta 60-sekundersgränsen) så att larmrepetition med 60 sekunders intervall fångas upp korrekt.
+- **CapCode Radgruppering i DataTables**:
+  - Integrerat DataTables RowGroup 1.5.1 i Dashboard (`/`) och Larm (`/larm`).
+  - Ny knapp i gränssnittet ("Gruppera CapCode") som samlar alla meddelanden under eleganta grupperingsrader med CapCode/Alias och antal händelser per grupp.
+  - Valet sparas i `localStorage` så att tabellens grupperingsläge bevaras mellan sidladdningar och sessioner.
+
+### Fixed
+- **Persistent Konsolfilter och Synkning mellan Flikar**:
+  - Åtgärdat felet där filtret i systemkonsolen (t.ex. `DECODED`) nollställdes eller visade tom vy när användaren navigerade eller bytte flik.
+  - Initiering och filterbyte anropar nu `/api/logs/history?level=...` för att hämta relevant logghistorik från serverns ringbuffer utan att drunkna i bakgrundsbrus från radion.
+  - Lagt till realtidssynkronisering via `storage` och `visibilitychange` så att filterläge hålls synkat mellan flera öppna webbläsarflikar.
+
 ## [2026.10.12.8] - Mobilvy och Fast Bottom Navigation Bar
 
 ### Added

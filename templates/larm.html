@@ -13,8 +13,10 @@
     
     <!-- DataTables 2 CSS & Dependencies -->
     <link rel="stylesheet" href="https://cdn.datatables.net/2.1.8/css/dataTables.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/rowgroup/1.5.1/css/rowGroup.dataTables.min.css">
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/rowgroup/1.5.1/js/dataTables.rowGroup.min.js"></script>
 
     <style>
         /* Custom OLED / Glassmorphism styling for DataTables */
@@ -390,15 +392,20 @@
                         <h1>Alarms</h1>
                         <p>Real-time feed of watchlist alert matches</p>
                     </div>
-                    <div class="search-container">
-                        <input type="text" id="searchInput" placeholder="Search alarms, CapCodes, aliases...">
-                        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                            stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="11" cy="11" r="8"></circle>
-                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                        </svg>
-                        <div id="rx-indicator" class="rx-status-dot" title="Receiving data"></div>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                        <button type="button" id="groupCapcodeBtn" class="header-action-btn" onclick="toggleCapcodeGrouping()" title="Gruppera larm efter CapCode">
+                            <i class="fas fa-layer-group"></i> <span>Gruppera CapCode</span>
+                        </button>
+                        <div class="search-container">
+                            <input type="text" id="searchInput" placeholder="Search alarms, CapCodes, aliases...">
+                            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                            <div id="rx-indicator" class="rx-status-dot" title="Receiving data"></div>
+                        </div>
                     </div>
                 </div>
             </header>
@@ -605,10 +612,12 @@
         }
 
         // Fetch font settings
+        let appSettings = {};
         async function fetchSettings() {
             try {
                 const res = await fetch('/api/settings');
                 const settings = await res.json();
+                appSettings = settings;
                 if (settings.message_font) {
                     document.documentElement.style.setProperty('--msg-font', `'${settings.message_font}', monospace`);
                 }
@@ -728,6 +737,24 @@
             document.body.removeChild(ta);
         }
 
+        function toggleCapcodeGrouping() {
+            if (!dataTable) return;
+            const isCurrentlyEnabled = dataTable.rowGroup().enabled();
+            const newState = !isCurrentlyEnabled;
+            localStorage.setItem('pagermonitor-group-capcode', newState);
+
+            const btn = document.getElementById('groupCapcodeBtn');
+            if (btn) btn.classList.toggle('active', newState);
+
+            if (newState) {
+                dataTable.rowGroup().enable();
+                dataTable.order([[3, 'asc'], [1, 'desc']]).draw();
+            } else {
+                dataTable.rowGroup().disable();
+                dataTable.order([[1, 'desc']]).draw();
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             const loading = document.getElementById('loading');
             const searchInput = document.getElementById('searchInput');
@@ -735,14 +762,40 @@
             await fetchSettings();
             await fetchAlertWords();
 
+            const isGrouped = localStorage.getItem('pagermonitor-group-capcode') === 'true';
+            const groupBtn = document.getElementById('groupCapcodeBtn');
+            if (groupBtn) groupBtn.classList.toggle('active', isGrouped);
+
             // Initialize DataTables
             dataTable = $('#alarmsTable').DataTable({
                 stateSave: true,
                 stateDuration: 60 * 60 * 24 * 365, // Persist table settings (page length, sort order, search) for 1 year
-                order: [[1, 'desc']], // Sort by timestamp descending
+                order: isGrouped ? [[3, 'asc'], [1, 'desc']] : [[1, 'desc']], // Sort by timestamp descending
                 pageLength: 50,
                 lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
                 autoWidth: false,
+                rowGroup: {
+                    enable: isGrouped,
+                    dataSrc: 3,
+                    startRender: function (rows, group) {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = group;
+                        const cleanGroup = tempDiv.textContent.trim() || group;
+                        const count = rows.count();
+                        return $(`
+                            <tr class="group-header-row">
+                                <td colspan="7">
+                                    <div class="group-header-content">
+                                        <span class="group-title">
+                                            <i class="fas fa-layer-group"></i> CapCode: <strong>${cleanGroup}</strong>
+                                        </span>
+                                        <span class="group-count">${count} larm</span>
+                                    </div>
+                                </td>
+                            </tr>
+                        `);
+                    }
+                },
                 language: {
                     search: "",
                     searchPlaceholder: "Quick filter...",
@@ -863,6 +916,11 @@
                 }
 
                 if (!data || data.type === 'ping' || !data.id) return;
+
+                // Hide duplicates in table if configured
+                if (data.is_duplicate && appSettings.duplicate_handling === 'hide') {
+                    return;
+                }
 
                 const match = findMatchingAlert(data.message || '');
                 const isAlertHit = Boolean(data.alert_word || match);

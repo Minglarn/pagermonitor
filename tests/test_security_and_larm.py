@@ -215,5 +215,38 @@ def test_alert_word_unicode_case_insensitive_matching(client):
     assert any("stöld" in t.lower() for t in texts)
     assert any("skada" in t.lower() for t in texts)
 
+def test_duplicate_handling_hide_in_api(client):
+    """Verifiera att /api/messages respekterar duplicate_handling='hide' och kan åsidosättas med include_duplicates=1."""
+    database.update_setting('duplicate_handling', 'hide')
+    database.save_message("1000001", "Unikt första meddelande", is_duplicate=False)
+    database.save_message("1000001", "Dubblett meddelande", is_duplicate=True)
+
+    # Standard ska dölja duplikat när 'hide' är aktivt
+    res = client.get('/api/messages')
+    assert res.status_code == 200
+    messages = res.get_json()
+    assert any(m['message'] == "Unikt första meddelande" for m in messages)
+    assert not any(m['message'] == "Dubblett meddelande" for m in messages)
+
+    # include_duplicates=1 ska inkludera samtliga
+    res_all = client.get('/api/messages?include_duplicates=1')
+    assert res_all.status_code == 200
+    texts = [m['message'] for m in res_all.get_json()]
+    assert "Unikt första meddelande" in texts
+    assert "Dubblett meddelande" in texts
+
+    # Återställ inställning
+    database.update_setting('duplicate_handling', 'mark')
+
+def test_capcode_grouping_and_rowgroup_in_templates(client):
+    """Verifiera att grupperingsknappen och DataTables RowGroup finns i index och larm templaten."""
+    for path in ['/', '/larm']:
+        res = client.get(path)
+        assert res.status_code == 200
+        html = res.data.decode('utf-8')
+        assert 'groupCapcodeBtn' in html
+        assert 'toggleCapcodeGrouping' in html
+        assert 'rowGroup' in html
+
 
 

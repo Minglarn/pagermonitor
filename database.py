@@ -35,6 +35,8 @@ def get_default_settings():
         'multimon_input_type': 'raw',
         'garbage_filter': 'true',
         'garbage_filter_sensitivity': '50',
+        'duplicate_handling': 'mark',
+        'duplicate_window': '120',
         'auto_prune_enabled': 'true',
         'auto_prune_days': '30'
     }
@@ -254,7 +256,7 @@ def reindex_messages(already_open_conn=None):
         conn.commit()
         conn.close()
 
-def get_recent_messages(limit=None, before_id=None, search=None, alerts_only=False):
+def get_recent_messages(limit=None, before_id=None, search=None, alerts_only=False, exclude_duplicates=False):
     conn = get_connection()
     c = conn.cursor()
     
@@ -273,6 +275,9 @@ def get_recent_messages(limit=None, before_id=None, search=None, alerts_only=Fal
     
     if has_hidden:
         where_clauses.append('(a.is_hidden IS NULL OR a.is_hidden = 0)')
+        
+    if exclude_duplicates:
+        where_clauses.append('(m.is_duplicate IS NULL OR m.is_duplicate = 0)')
         
     if alerts_only:
         where_clauses.append('''

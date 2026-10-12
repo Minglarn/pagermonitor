@@ -197,6 +197,41 @@
                                         </p>
                                     </div>
                                 </div>
+
+                                <div class="glass-panel" style="padding: 1.25rem; border-radius: 10px; border: 1px solid var(--panel-border); background: rgba(255, 255, 255, 0.02); margin-top: 1rem;">
+                                    <div style="margin-bottom: 0.75rem;">
+                                        <label style="font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.6rem; color: var(--text-primary); margin: 0 0 0.5rem 0;">
+                                            <i class="fas fa-copy" style="color: var(--accent);"></i>
+                                            Duplikathantering & Larmrepetition
+                                        </label>
+                                        <p style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.4; margin: 0 0 0.75rem 0;">
+                                            Styr hur systemet hanterar återkommande eller identiska meddelanden från samma CapCode.
+                                        </p>
+                                    </div>
+
+                                    <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                        <div style="flex: 1; min-width: 200px;">
+                                            <label for="duplicate_handling" style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 0.35rem;">
+                                                Åtgärd för duplikat
+                                            </label>
+                                            <select id="duplicate_handling" style="width: 100%;">
+                                                <option value="mark">Markera med badge (Standard)</option>
+                                                <option value="hide">Dölj i tabeller (Spara i databas)</option>
+                                                <option value="discard">Kasta helt (Spara och skicka ej)</option>
+                                            </select>
+                                        </div>
+
+                                        <div style="flex: 1; min-width: 160px;">
+                                            <label for="duplicate_window" style="font-size: 0.85rem; color: var(--text-secondary); display: block; margin-bottom: 0.35rem;">
+                                                Tidsfönster (sekunder)
+                                            </label>
+                                            <input type="number" id="duplicate_window" min="5" max="3600" step="5" value="120" style="width: 100%;">
+                                        </div>
+                                    </div>
+                                    <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.45; margin: 0.6rem 0 0 0;">
+                                        Identiska meddelanden från samma CapCode inom det angivna tidsfönstret (t.ex. repetitioner efter 60 sekunder) hanteras enligt vald åtgärd ovan.
+                                    </p>
+                                </div>
                             </div>
 
                             <!-- Live Preview Column -->
@@ -695,7 +730,9 @@
                 message_font: fontSelect.value,
                 message_font_size: fontSlider.value,
                 garbage_filter: garbageFilterCheckbox.checked ? 'true' : 'false',
-                garbage_filter_sensitivity: sensitivitySlider.value
+                garbage_filter_sensitivity: sensitivitySlider.value,
+                duplicate_handling: document.getElementById('duplicate_handling').value,
+                duplicate_window: document.getElementById('duplicate_window').value
             });
         }, 400);
 
@@ -712,6 +749,13 @@
                     const sens = data.garbage_filter_sensitivity || '50';
                     sensitivitySlider.value = sens;
                     sensitivityValLabel.innerText = sens;
+
+                    if (data.duplicate_handling) {
+                        document.getElementById('duplicate_handling').value = data.duplicate_handling;
+                    }
+                    if (data.duplicate_window) {
+                        document.getElementById('duplicate_window').value = data.duplicate_window;
+                    }
 
                     document.getElementById('filterSensitivityGroup').style.display =
                         (data.garbage_filter !== 'false') ? 'block' : 'none';
@@ -892,6 +936,15 @@
 
             sensitivitySlider.addEventListener('input', () => {
                 sensitivityValLabel.innerText = sensitivitySlider.value;
+                debouncedSaveAppearance();
+            });
+
+            // Duplicate handling auto-save
+            document.getElementById('duplicate_handling').addEventListener('change', () => {
+                debouncedSaveAppearance();
+            });
+
+            document.getElementById('duplicate_window').addEventListener('input', () => {
                 debouncedSaveAppearance();
             });
 

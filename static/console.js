@@ -251,12 +251,28 @@
         // Filter buttons
         filterBtns.forEach(btn => {
             btn.addEventListener('click', () => {
-                filterBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                state.activeFilter = btn.getAttribute('data-filter');
-                localStorage.setItem('pagermonitor-console-filter', state.activeFilter);
-                renderLogs();
+                const targetFilter = btn.getAttribute('data-filter');
+                setActiveFilter(targetFilter, true);
             });
+        });
+
+        // Sync filter across browser tabs & visibility changes
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'pagermonitor-console-filter') {
+                const newFilter = e.newValue || 'ALL';
+                if (state.activeFilter !== newFilter) {
+                    setActiveFilter(newFilter, true);
+                }
+            }
+        });
+
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                const savedFilter = localStorage.getItem('pagermonitor-console-filter') || 'ALL';
+                if (state.activeFilter !== savedFilter) {
+                    setActiveFilter(savedFilter, true);
+                }
+            }
         });
 
         // Drag to resize height
@@ -465,10 +481,57 @@
         scrollBottomIfEnabled();
     }
 
-    // Fetch initial history
+    // Set and persist active filter with smart history retrieval
+    async function setActiveFilter(filterName, fetchIfEmpty = true) {
+        state.activeFilter = filterName || 'ALL';
+        localStorage.setItem('pagermonitor-console-filter', state.activeFilter);
+
+        const filterBtns = document.querySelectorAll('.console-filter-btn');
+        filterBtns.forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-filter') === state.activeFilter);
+        });
+
+        if (fetchIfEmpty && state.activeFilter !== 'ALL') {
+            const currentMatches = state.logs.filter(logMatchesFilter);
+            if (currentMatches.length < 15) {
+                await fetchFilteredHistory(state.activeFilter);
+            }
+        }
+        renderLogs();
+    }
+
+    // Fetch history for specific filter from server ring buffer
+    async function fetchFilteredHistory(level) {
+        try {
+            const filterParam = (level && level !== 'ALL') ? `&level=${encodeURIComponent(level)}` : '';
+            const res = await fetch(`/api/logs/history?limit=400${filterParam}`);
+            if (!res.ok) return;
+            const data = await res.json();
+            if (data && data.logs && data.logs.length > 0) {
+                const existingKeys = new Set(state.logs.map(l => `${l.timestamp}_${l.raw || l.message}`));
+                data.logs.forEach(l => {
+                    const k = `${l.timestamp}_${l.raw || l.message}`;
+                    if (!existingKeys.has(k)) {
+                        state.logs.push(l);
+                        existingKeys.add(k);
+                    }
+                });
+                state.logs.sort((a, b) => (a.timestamp || '').localeCompare(b.timestamp || ''));
+                if (state.logs.length > state.maxLogsInMemory) {
+                    state.logs = state.logs.slice(-state.maxLogsInMemory);
+                }
+                renderLogs();
+            }
+        } catch (e) {
+            console.debug('Kunde inte läsa filtrerad historik:', e);
+        }
+    }
+
+    // Fetch initial history honoring saved activeFilter
     async function fetchInitialHistory() {
         try {
-            const res = await fetch('/api/logs/history?limit=400');
+            const filterParam = (state.activeFilter && state.activeFilter !== 'ALL') ? `&level=${encodeURIComponent(state.activeFilter)}` : '';
+            const res = await fetch(`/api/logs/history?limit=400${filterParam}`);
             if (!res.ok) throw new Error(`HTTP error ${res.status}`);
             const data = await res.json();
             if (data && data.logs) {

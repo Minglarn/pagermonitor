@@ -2101,4 +2101,81 @@ th:first-child,
     .database-actions-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* DataTables RowGroup & Header Action Buttons */
+.header-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.9rem;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+}
+
+.header-action-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    border-color: var(--accent);
+}
+
+.header-action-btn.active {
+    background: rgba(56, 189, 248, 0.15);
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+}
+
+/* DataTables RowGroup styling */
+tr.group-header-row td {
+    background: rgba(30, 41, 59, 0.85) !important;
+    border-top: 1px solid var(--border-color) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    padding: 0.65rem 1rem !important;
+}
+
+[data-theme="light"] tr.group-header-row td {
+    background: #e2e8f0 !important;
+}
+
+.group-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.group-title {
+    color: var(--accent);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+}
+
+.group-title strong {
+    color: var(--text-primary);
+}
+
+.group-count {
+    background: rgba(56, 189, 248, 0.15);
+    color: var(--accent);
+    padding: 0.2rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+[data-theme="light"] .group-count {
+    background: rgba(2, 132, 199, 0.15);
+    color: #0369a1;
+    border-color: rgba(2, 132, 199, 0.3);
 }

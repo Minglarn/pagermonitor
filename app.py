@@ -113,7 +113,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.12.8"
+APP_VERSION = "2026.10.12.9"
 
 @app.context_processor
 def inject_globals():
@@ -286,7 +286,12 @@ def get_messages():
     search_query = request.args.get('search', default=None, type=str)
     alerts_only = request.args.get('alerts_only', default='0').lower() in ('1', 'true')
     
-    messages = get_recent_messages(limit, before_id, search_query, alerts_only=alerts_only)
+    settings = database.get_settings()
+    dup_handling = settings.get('duplicate_handling', 'mark')
+    include_dups = request.args.get('include_duplicates', '0').lower() in ('1', 'true')
+    exclude_duplicates = (dup_handling == 'hide') and not include_dups
+
+    messages = get_recent_messages(limit, before_id, search_query, alerts_only=alerts_only, exclude_duplicates=exclude_duplicates)
     return jsonify(messages)
 
 @app.route('/api/messages/clear', methods=['POST'])
