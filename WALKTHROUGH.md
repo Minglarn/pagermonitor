@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.5`
+- **CalVer**: `2026.10.12.6`
 - **Date**: 2026-10-12
 - **Language**: English / Swedish
 
@@ -326,6 +326,18 @@
     - Lade till testet `test_filter_by_decoded` i [tests/test_log_console.py](file:///d:/antigravity/pager-monitor/tests/test_log_console.py) som verifierar att `level=DECODED` endast plockar ut de avkodade larmen.
   - **Versionsspårbarhet (CalVer)**:
     - Uppdaterade CalVer till `2026.10.12.5` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
+### 27. Korrigering av Textkontrast och Typografi för DECODED-Meddelanden i Ljust Tema (v2026.10.12.6)
+- **Problem**:
+  - Vid användning av ljust tema (`[data-theme="light"]`) blev avkodade larmrader (`.console-log-row.is-decoded`) svåra att läsa på grund av att ljus mintgrön text (`#a7f3d0`) visades mot en ljusgrön bakgrund.
+- **Åtgärd**:
+  - Införde dynamiska temavariabler i [static/console.css](file:///d:/antigravity/pager-monitor/static/console.css):
+    - **Ljust tema**: Texten visas nu i mörk skogsgrön färg (`#064e3b`) mot mjukt ljusgrön bakgrund (`#f0fdf4`) och med en skarp mörkgrön vänstermarginal (`#059669`), vilket ger hög kontrast (WCAG AAA) och utmärkt läsbarhet.
+    - **Mörkt tema**: Texten visas i krispigt vit färg (`#f1f5f9`) mot mörkgrön bakgrund (`rgba(16, 185, 129, 0.12)`).
+  - I [static/console.js](file:///d:/antigravity/pager-monitor/static/console.js) formateras `DECODED ->` nu som en distinkt grön badge `<span class="console-tag-decoded">DECODED &rarr;</span>` med vit text, vilket separerar statusetiketten från larmmeddelandet.
+  - Säkrad kontrast även för felrader och varningsrader i ljust tema via `--console-error-text` och `--console-warning-text`.
+  - Höjde CalVer till `2026.10.12.6` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
 
 
 

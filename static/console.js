@@ -379,7 +379,10 @@
         const time = escapeHtml(log.time || (log.timestamp ? log.timestamp.split(' ')[1] : ''));
         const levelBadge = `<span class="console-log-level ${getLevelClass(log.level)}">${escapeHtml(log.level || 'INFO')}</span>`;
         const nameBadge = `<span class="console-log-name">[${escapeHtml(log.name || 'app')}]</span>`;
-        const parsedMsg = parseAnsi(log.message || log.raw || '');
+        let parsedMsg = parseAnsi(log.message || log.raw || '');
+        if (isDecoded) {
+            parsedMsg = parsedMsg.replace('DECODED -&gt;', '<span class="console-tag-decoded">DECODED &rarr;</span>');
+        }
 
         row.innerHTML = `
             <span class="console-log-time">${time}</span>

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.12.6] - Fix Contrast and Typography for DECODED Messages in Light Theme
+
+### Fixed
+- **Färgkontrast i ljust tema (Light Theme Contrast Fix)**:
+  - Åtgärdade problemet där avkodade meddelanden (`.is-decoded`) hade ljus mintgrön text mot ljusgrön bakgrund i ljust tema, vilket gjorde texten oläslig.
+  - Införde dynamiska CSS-temavariabler (`--console-decoded-bg`, `--console-decoded-border`, `--console-decoded-text`) med WCAG AAA-kontrast:
+    - I ljust tema: Mörk skogsgrön text (`#064e3b`) mot mjukt tonad ljusgrön bakgrund (`#f0fdf4`) och distinkt mörkgrön vänstermarginal (`#059669`).
+    - I mörkt tema: Krispigt vit text (`#f1f5f9`) mot mörkgrön bakgrund (`rgba(16, 185, 129, 0.12)`).
+  - Lade till en tydlig grön badge `<span class="console-tag-decoded">DECODED &rarr;</span>` för att tydligt skilja larmetiketten från meddelandetexten.
+  - Säkrade även färgkontrast för fel- (`--console-error-text`) och varningsrader (`--console-warning-text`) i ljust tema.
+
 ## [2026.10.12.5] - Dedicated DECODED Filter in Console Dock
 
 ### Added
