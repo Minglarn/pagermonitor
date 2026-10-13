@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.35] - Strikt Begränsning till RDS-TMC Trafikmeddelanden & Eliminering av Låttextspam
+
+### Changed
+- **Strikt Begränsning till ALERT-C Trafikmeddelanden (`sdr_processor.py`, `rds_decoder.py`)**:
+  - Avlägsnat hantering av vanlig RDS-metadata (PS och RadioText) från att någonsin tolkas som larm eller sparas i databasen. Låttexter (t.ex. "Bäst musik just nu!"), artister och reklam från kommersiella FM-stationer filtreras bort till 100%.
+  - Endast faktiska ALERT-C / TMC trafikmeddelanden (`RDS-TMC:`) sparas i databasen, skickas till realtidsgränssnittet via SSE och publiceras via MQTT.
+- **Riktad Avsökning efter Sveriges Radio P4 (`rds_decoder.py`)**:
+  - Automatisk FM-stationssökning prioriterar nu specifikt Sveriges Radio P4 (P4 Stockholm 103.3M, P4 Sörmland 100.1M, P4 Uppland 102.5M m.fl.) som är den enda sändaren av ALERT-C TMC i Sverige.
+  - Kommersiella kanaler (som RIX FM, Mix Megapol) som saknar TMC hoppas över under skanning.
+- **Automatisk Rensning av Databas (`database.py`)**:
+  - Lagt till automatisk rensning vid uppstart av tidigare felaktigt sparade `RDS-PS` och `RDS-%` rader ur `messages`-tabellen.
+
 ## [2026.10.13.34] - Rensning av Testfiler från Git och Lokalt Bevarande
 
 ### Changed

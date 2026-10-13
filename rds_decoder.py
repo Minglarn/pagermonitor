@@ -277,15 +277,21 @@ def format_and_print_tmc(loc_code, road, name, lat, lon, extent, direction, urge
     print(out_line, flush=True)
     return out_line
 
-def format_and_print_rds(ps="", pi="", radiotext=""):
-    """Skriver ut standard RDS information."""
-    parts = ["RDS:"]
+_last_reported_station = ""
+
+def format_and_print_rds(ps="", pi=""):
+    """Skriver ut identifierad radiostation som telemetri (ej larm)."""
+    global _last_reported_station
+    cur = f"{ps}_{pi}"
+    if cur == _last_reported_station:
+        return None
+    _last_reported_station = cur
+
+    parts = ["RDS-INFO:"]
     if ps:
         parts.append(f"PS: {ps}")
     if pi:
         parts.append(f"PI: {pi}")
-    if radiotext:
-        parts.append(f"RT: {radiotext}")
     out_line = " ".join(parts)
     print(out_line, flush=True)
     return out_line
@@ -348,38 +354,99 @@ def parse_redsea_json_line(line_str):
                 msg=event_swedish
             )
 
-    # 2. Kontrollera vanlig RDS-metadata (PS / RadioText / Station)
+    # 2. Kontrollera vanlig RDS-metadata (PS / PI)
+    # OBS: RadioText (låttitlar/artister/reklam) ignoreras helt för att undvika spam.
+    # Endast stationsnamn (PS) och PI rapporteras en gång som stations-telemetri.
     ps = data.get("ps", "").strip()
-    rt = data.get("radiotext", "").strip()
     pi = data.get("pi", "")
 
-    if ps or rt:
-        return format_and_print_rds(ps=ps, pi=pi, radiotext=rt)
+    if ps or pi:
+        return format_and_print_rds(ps=ps, pi=pi)
 
     return None
 
 def find_best_fm_station(device="", gain="auto", ppm="0"):
     """
-    Söker automatiskt efter starkaste FM-radiostation på 87.5–108.0 MHz
-    genom att prova kända Teracom SR P4/P3 frekvenser.
+    Söker automatiskt efter aktiv Sveriges Radio P4-station på 87.5–108.0 MHz.
+    TMC sänds uteslutande via SR P4 (och delvis P3) i Sverige.
     """
-    format_and_print_scan("Avsöker FM-bandet (87.5–108.0 MHz) efter SR P4 / Trafikinformation...")
-    
-    # Kända primära P4/P3 frekvenser i Sverige
-    primary_fm_freqs = [
-        "100.5M", "103.3M", "101.9M", "99.4M", "98.3M",
-        "97.0M", "101.4M", "102.5M", "91.1M", "89.3M"
-    ]
-    
-    # Standardisera till 100.5M (riksfrekvens för demonstration och test)
-    best_freq = "100.5M"
-    return best_freq
+    format_and_print_scan("Avsöker FM-bandet efter Sveriges Radio P4 (TMC)...")
 
-def run_test_feed(freq="100.5M"):
+    # Primära P4 frekvenser i Sverige (Stockholm 103.3M, Sörmland 100.1M, Uppsala 102.5M, etc.)
+    p4_freqs = [
+        "103.3M",  # SR P4 Radio Stockholm / Västerbotten
+        "100.1M",  # SR P4 Sörmland
+        "102.5M",  # SR P4 Uppland
+        "101.9M",  # SR P4 Göteborg
+        "102.0M",  # SR P4 Malmöhus / Gävleborg
+        "99.8M",   # SR P4 Östergötland
+        "102.8M",  # SR P4 Örebro / Västernorrland
+        "100.8M",  # SR P4 Jönköping
+        "100.3M",  # SR P4 Skaraborg
+        "100.0M",  # SR P4 Värmland
+        "101.3M",  # SR P4 Dalarna / Halland
+        "101.4M",  # SR P4 Kristianstad
+        "100.2M",  # SR P4 Kalmar
+        "101.0M",  # SR P4 Kronoberg
+        "100.4M",  # SR P4 Blekinge / Jämtland
+        "100.5M",  # SR P4 Norrbotten / Västmanland (OBS: i Stockholm är 100.5M RIX FM!)
+        "99.4M",
+        "98.3M"
+    ]
+
+    import shutil
+    has_rtl_fm = bool(shutil.which("rtl_fm"))
+    has_redsea = bool(shutil.which("redsea"))
+
+    if has_rtl_fm and has_redsea:
+        for cand in p4_freqs:
+            try:
+                cmd_rtl = ["rtl_fm", "-M", "fm", "-s", "171k", "-r", "171k", "-f", cand]
+                if device: cmd_rtl.extend(["-d", device])
+                if gain and gain != "auto": cmd_rtl.extend(["-g", str(gain)])
+                if ppm and ppm != "0": cmd_rtl.extend(["-p", str(ppm)])
+                cmd_rtl.append("-")
+
+                cmd_red = ["redsea", "-r", "171k"]
+                p1 = subprocess.Popen(cmd_rtl, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                p2 = subprocess.Popen(cmd_red, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
+                p1.stdout.close()
+
+                start_t = time.time()
+                found = False
+                while time.time() - start_t < 1.5:
+                    line = p2.stdout.readline()
+                    if not line:
+                        break
+                    line = line.strip()
+                    if line.startswith("{") and line.endswith("}"):
+                        try:
+                            d = json.loads(line)
+                            ps_val = str(d.get("ps", "")).upper()
+                            pi_val = str(d.get("pi", "")).upper()
+                            if "P4" in ps_val or "SR" in ps_val or pi_val.startswith("0XE204") or pi_val.startswith("0XE4") or "tmc" in d:
+                                found = True
+                                break
+                        except Exception:
+                            pass
+
+                p2.kill()
+                p1.kill()
+
+                if found:
+                    format_and_print_scan(f"Hittade Sveriges Radio P4 med TMC på {cand}")
+                    return cand
+            except Exception:
+                pass
+
+    # Standardiserat val för P4 (103.3 MHz SR P4 Stockholm istället för 100.5 MHz som var RIX FM)
+    return "103.3M"
+
+def run_test_feed(freq="103.3M"):
     """Genererar syntetiska RDS och TMC-händelser för testning och demonstration."""
     print(f"RDS-TMC Decoder: Testflöde aktivt på {freq} (Genererar ALERT-C trafikmeddelanden)...", file=sys.stderr, flush=True)
     format_and_print_lock(freq, "Testflöde / Simulering aktiv")
-    format_and_print_rds(ps="SR P4", pi="E201", radiotext="Sveriges Radio P4 - Trafik och Musik")
+    format_and_print_rds(ps="SR P4", pi="0xE204")
     time.sleep(1.0)
 
     sample_events = [

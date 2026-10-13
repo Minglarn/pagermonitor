@@ -263,9 +263,18 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
             if int(config.get('multimon_verbosity', '1')) >= 2:
                 logger.debug(f"[{config['name']}] RAW_ALL: {line}")
 
+            if line.startswith("RDS:") or line.startswith("RDS-INFO:"):
+                # Vanlig RDS stationsinformation (t.ex. PS eller RadioText)
+                # Detta är INTE ett larm och skall ALDRIG sparas i databasen eller skickas i larmflödet!
+                logger.debug(f"[{config['name']}] RDS TELEMETRI: {line}")
+                ps_match = re.search(r'PS:\s*([^P\n\r]+?)(?=\s+(?:PI:|RT:|$))', line)
+                if ps_match:
+                    config['station_name'] = ps_match.group(1).strip()
+                continue
+
             is_pocsag_or_afsk = ("POCSAG" in line and "Alpha:" in line) or re.search(r'(AFSK|UFSK)\d*:', line)
             is_tetra = line.startswith("TETRA:")
-            is_rds = line.startswith("RDS-TMC:") or line.startswith("RDS:")
+            is_rds = line.startswith("RDS-TMC:")
 
             if is_pocsag_or_afsk or is_tetra or is_rds:
                 # Record activity time for watchdog telemetry
@@ -442,23 +451,6 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         'lon': lon_val,
                         'urgency': urgency_val
                     }
-                elif line.startswith('RDS:'):
-                    rest = line[len('RDS:'):].strip()
-                    ps_match = re.search(r'PS:\s*([^P\n\r]+?)(?=\s+(?:PI:|RT:|$))', rest)
-                    pi_match = re.search(r'PI:\s*([0-9a-fA-Fx]+)', rest)
-                    rt_match = re.search(r'RT:\s*(.+)$', rest)
-                    ps_val = ps_match.group(1).strip() if ps_match else "FM Radio"
-                    pi_val = pi_match.group(1).strip() if pi_match else "RDS"
-                    rt_val = rt_match.group(1).strip() if rt_match else rest
-                    parsed = {
-                        'address': f"RDS-{pi_val}",
-                        'message': rt_val,
-                        'alias': ps_val,
-                        'bitrate': 'RDS-PS',
-                        'protocol': 'RDS',
-                        'function': 0
-                    }
-                    metadata_extra = {'ps': ps_val, 'pi': pi_val}
                 else:
                     parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
                 

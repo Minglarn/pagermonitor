@@ -169,6 +169,11 @@ def init_db():
     for key, val in defaults.items():
         c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (key, val))
     c.execute("UPDATE settings SET value='true' WHERE key='log_tetra_basestations' AND value='false'")
+    # Rensa automatiskt bort eventuella vanliga RDS-meddelanden (t.ex. låttexter från kommersiella FM-stationer)
+    try:
+        c.execute("DELETE FROM messages WHERE bitrate = 'RDS-PS' OR address LIKE 'RDS-%'")
+    except Exception:
+        pass
 
     # Migration: If sdr_instances is empty, create the first instance from current settings
     c.execute('SELECT COUNT(*) FROM sdr_instances')

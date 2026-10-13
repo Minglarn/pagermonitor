@@ -1106,3 +1106,32 @@
     - Samtliga 5 testfiler och underkataloger finns kvar oförändrade på den lokala disken.
   - **Versionsspårbarhet**:
     - Versionsbump till CalVer `2026.10.13.34` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md) och [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md).
+
+---
+
+### 32. Strikt Begränsning till RDS-TMC Trafikmeddelanden & Eliminering av Låttextspam (v2026.10.13.35)
+- **Problembeskrivning**:
+  - Användaren rapporterade att loggen och databasen översvämmades av duplicerade meddelanden från kommersiell radio:
+    `[RDS] RAW: RDS: PS: RIX FM PI: 0xE241`
+    `[RDS] RAW: RDS: PI: 0xE241 RT: Bäst musik just nu! [MERGED] Repeat count 79x on ID 187985`
+  - Användaren klargjorde: *"Dessa är ju vanliga RDS ... Vi skulle ju bara visa TMC meddelanden... Nu blir vi spammade av en radiokanal som visar den aktuella spelade låten."*
+- **Identifierade Orsaker**:
+  1. I [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py) tolkades `RDS:` som ett giltigt larmmeddelande (`parsed = {'address': f'RDS-{pi_val}', 'message': rt_val, ...}`). Varje gång RadioText ändrades eller repeterades skapades en ny larmrad i databasen.
+  2. Kommersiella kanaler som RIX FM (100.5 MHz i Stockholm) sänder inte TMC (ALERT-C trafikmeddelanden), utan sänder enbart stationsnamn och aktuell låt/artist. I Sverige är det uteslutande Sveriges Radio P4 (och delvis P3) som sänder RDS-TMC.
+  3. Den automatiska frekvenssökningen i [rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py) hade en hårdkodad fallback till `100.5M`, vilket i Mälardalen/Stockholm råkar vara just RIX FM.
+- **Teknisk Implementering**:
+  - **Strikt Exkludering av Vanlig RDS ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Avlägsnat tolkningen av `RDS:` som meddelanden. Linjer som börjar med `RDS:` eller `RDS-INFO:` fångas direkt i loopen och loggas enbart som debug-telemetri (`RDS TELEMETRI:`). De når aldrig `on_new_message()`, sparas aldrig i databasen och skickas aldrig till SSE eller MQTT.
+    - Endast `RDS-TMC:` behandlas som giltiga larmmeddelanden.
+  - **Uteslutande av Låttexter ur Avkodaren ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Tagit bort utskrift av `RadioText` (låttitlar, artister och jinglar) ur [rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py).
+    - Stationsnamn (`PS`) rapporteras nu som ren telemetri (`RDS-INFO:`) och enbart en enda gång per stationsbyte.
+  - **Riktad P4-frekvenssökning ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Sökfunktionen `find_best_fm_station` kontrollerar aktivt Sveriges Radio P4:s frekvenser (P4 Stockholm 103.3M, P4 Sörmland 100.1M, P4 Uppland 102.5M, P4 Göteborg 101.9M m.fl.).
+    - Känner av stationer med PI `0xE204`/`0xE4xx` och låser enbart på P4-stationer med aktiv TMC-bärvåg.
+    - Ändrat standard fallback från 100.5M till 103.3M (SR P4 Stockholm).
+  - **Automatisk Rensning av Databas ([database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+    - I `init_db()` körs nu en automatisk rensning (`DELETE FROM messages WHERE bitrate = 'RDS-PS' OR address LIKE 'RDS-%'`) som raderar tidigare felaktigt sparade låttexter från kommersiella kanaler.
+- **Verifiering**:
+  - Samtliga 25 enhetstester inklusive nytt test `test_non_tmc_rds_telemetry_not_saved_as_message` passerar felfritt.
+  - Versionsbump till CalVer `2026.10.13.35`.
