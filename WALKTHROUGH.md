@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.13`
+- **CalVer**: `2026.10.13.14`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -788,6 +788,19 @@
   - **Tester och Verifiering**:
     - Samtliga 50 enhetstester i testsviten passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.13`.
+
+## 51. Återställt Standard Processpiping för POCSAG-mottagare (v2026.10.13.14)
+- **Bakgrund och Problem**:
+  - Efter införandet av `start_new_session=True` på processer i supervisorn upphörde RIKS 2 att ta emot meddelanden i takt med RIKS 1.
+  - Orsaken var att `setsid()` isolerade processerna från standard Unix-pipesignaler mellan `rtl_fm` och `multimon-ng`.
+- **Genomförda Åtgärder**:
+  - **Återställd Subprocesshantering ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Återställt `start_instance` och `stop_instance_procs` till ren `subprocess.Popen` och `p.kill()`.
+    - Detta eliminerar alla biverkningar på de befintliga POCSAG- och AFSK-mottagarna och återställer perfekt synkron parallelldrift för RIKS 1 och RIKS 2.
+  - **Tester och Verifiering**:
+    - Samtliga 50 enhetstester i testsviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.14`.
+
 
 
 

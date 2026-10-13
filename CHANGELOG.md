@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.14] - Återställt Standard Processpiping för POCSAG-mottagare (RIKS 1 / RIKS 2)
+
+### Fixed
+- **Återställt Standard Processpiping för Multi-SDR (`sdr_processor.py`)**:
+  - Återställt `rtl_fm | multimon-ng` till standard `subprocess.Popen` utan `setsid()` / `start_new_session=True`.
+  - Fixar problemet där `start_new_session=True` bröt standard Unix pipe-kommunikation mellan `rtl_fm` och `multimon-ng` och orsakade att RIKS 2 tystnade.
+  - Återställt ren `p.kill()`-hantering i supervisorn utan processgruppsintervention.
+
 ## [2026.10.13.13] - Optimerad Provtagning och Utökad Timeout för USB-skanning
 
 ### Added

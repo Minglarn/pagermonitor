@@ -469,38 +469,6 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
         if not stop_event.is_set():
             sync_event.set()
 
-def _spawn_proc(cmd, **kwargs):
-    """Spawns subprocess in a new session / process group on POSIX systems."""
-    if os.name != 'nt' and 'start_new_session' not in kwargs:
-        kwargs['start_new_session'] = True
-    return subprocess.Popen(cmd, **kwargs)
-
-def _kill_proc(p):
-    """Cleanly terminates a process and any child processes / process group."""
-    if not p:
-        return
-    try:
-        if p.poll() is None:
-            if os.name != 'nt':
-                try:
-                    pgid = os.getpgid(p.pid)
-                    os.killpg(pgid, signal.SIGTERM)
-                except Exception:
-                    pass
-            p.kill()
-            if os.name != 'nt':
-                try:
-                    pgid = os.getpgid(p.pid)
-                    os.killpg(pgid, signal.SIGKILL)
-                except Exception:
-                    pass
-            try:
-                p.wait(timeout=2)
-            except Exception:
-                pass
-    except Exception:
-        pass
-
 def start_instance(config):
     """Starts the subprocesses for a single SDR instance."""
     freq = config.get('frequency', '169.8M')
@@ -566,7 +534,7 @@ def start_instance(config):
             # Let tetra_decoder.py manage channel scanning and locking
             decoder_cmd.append('--scan')
             logger.info(f"Starting {config['name']} [TETRA SCAN]: {' '.join(decoder_cmd)}")
-            p2 = _spawn_proc(decoder_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+            p2 = subprocess.Popen(decoder_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
             return None, p2
 
         rtl_cmd = ['rtl_sdr', '-f', freq, '-s', str(tetra_sample_rate)]
@@ -577,13 +545,13 @@ def start_instance(config):
 
         logger.info(f"Starting {config['name']} [TETRA]: {' '.join(rtl_cmd)} | {' '.join(decoder_cmd)}")
         try:
-            p1 = _spawn_proc(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)
-            p2 = _spawn_proc(decoder_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+            p1 = subprocess.Popen(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)
+            p2 = subprocess.Popen(decoder_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
             p1.stdout.close()
             return p1, p2
         except (FileNotFoundError, OSError):
             logger.warning(f"[{config['name']}] 'rtl_sdr' binary not found on PATH. Running TETRA decoder in standalone mode.")
-            p2 = _spawn_proc(decoder_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+            p2 = subprocess.Popen(decoder_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
             return None, p2
     
     multimon_cmd = [
@@ -604,8 +572,8 @@ def start_instance(config):
     logger.info(f"Starting {config['name']}: {' '.join(rtl_cmd)} | {' '.join(multimon_cmd)}")
     
     try:
-        p1 = _spawn_proc(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)
-        p2 = _spawn_proc(multimon_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+        p1 = subprocess.Popen(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)
+        p2 = subprocess.Popen(multimon_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
         p1.stdout.close() # Allow p1 to receive SIGPIPE if p2 exits
         return p1, p2
     except Exception as e:
@@ -619,9 +587,14 @@ def stop_instance_procs(instance_id):
         logger.info(f"Stopping SDR instance: {inst['config']['name']}")
         inst['stop_event'].set()
         
-        # Kill processes and their process groups
-        for p in [inst['p2'], inst['p1']]:
-            _kill_proc(p)
+        # Kill processes
+        for p in [inst.get('p2'), inst.get('p1')]:
+            if p:
+                try:
+                    if p.poll() is None:
+                        p.kill()
+                        p.wait(timeout=2)
+                except Exception: pass
         
         del active_instances[instance_id]
 

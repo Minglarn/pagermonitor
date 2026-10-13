@@ -418,14 +418,17 @@ class TestSdrWatchdog(unittest.TestCase):
         """Testa att _kill_proc hanterar processavslutning och tetra_decoder signalhantering."""
         import tetra_decoder
         
-        # Testa _kill_proc i sdr_processor
+        # Testa processdödning i sdr_processor
         mock_p = MagicMock()
         mock_p.poll.return_value = None
-        mock_p.pid = 12345
-        
-        with patch('os.killpg', create=True) as mock_killpg, patch('os.getpgid', create=True, return_value=12345):
-            sdr_processor._kill_proc(mock_p)
-            mock_p.kill.assert_called_once()
+        sdr_processor.active_instances[999] = {
+            'p1': mock_p,
+            'p2': None,
+            'config': {'name': 'Test'},
+            'stop_event': MagicMock()
+        }
+        sdr_processor.stop_instance_procs(999)
+        mock_p.kill.assert_called_once()
 
         # Testa tetra_decoder._sig_handler
         mock_child = MagicMock()
