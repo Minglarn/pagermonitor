@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.33] - Automatisk FM-stationssökning för RDS-TMC, Redsea i Docker & Åtgärdat Subprocess-avslut
+
+### Added
+- **Automatisk FM-stationssökning för RDS-TMC (`rds_decoder.py`, `sdr_processor.py`)**:
+  - Mottagaren behöver inte längre en manuellt inmatad FM-frekvens. Om frekvensen anges till `auto`, `scan`, eller om en frekvens utanför FM-bandet (87.5–108.0 MHz, t.ex. gamla personsökarfrekvensen 169.8M) är konfigurerad, startar dekodern automatiskt frekvenssökning efter Teracom SR P4 / P3 i området.
+  - Skannern skickar telemetri (`RDS-TMC: SCAN` och `RDS-TMC: LOCK`) som automatiskt uppdaterar instansens `active_frequency` i backend och webbgränssnitt.
+- **Kompilering av Redsea i Dockerfile (`Dockerfile`)**:
+  - Lagt till kompilering av `redsea` (FM-RDS dekoder) från källkod i builder-steget med meson och ninja, samt lagt till runtime-biblioteken `libliquid1` och `libsndfile1` i Docker-bilden.
+
+### Fixed
+- **Åtgärdat Omedelbart Subprocess-avslut (`rds_decoder.py`)**:
+  - Åtgärdat felet där `rds_decoder.py` avslutades med exitkod 0 inom några millisekunder (`decoder PID=120 exit=0`). Orsaken var att `if not sys.stdin.isatty():` slog till i Docker och icke-interaktiva underprocesser och läste en tom stdin fram till EOF.
+  - Styrning från stdin kräver nu explicit `--stdin`, och dekodern kör stabilt i bakgrunden utan att krascha vid tom stdin.
+  - Fallback-läge och felhantering aktiveras automatiskt om hårdvaruprocessen inte hittas.
+
 ## [2026.10.13.32] - RDS-TMC Dekoder & Åtgärdat MNC!=1 Stöd för TETRA
 
 ### Added

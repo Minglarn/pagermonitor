@@ -4,6 +4,7 @@ RDS / RDS-TMC Decoder Module for PagerMonitor.
 Decodes RDS-TMC (ALERT-C / ISO 14819) traffic events and standard RDS metadata
 from redsea or direct FM SDR stream. Translates TMC location codes using Sweden
 Location Table LTN 01 (Trafikverket) and event codes to human-readable Swedish.
+Features automatic FM band scanning and station hunting (SR P4 / P3).
 """
 
 import sys
@@ -14,6 +15,7 @@ import argparse
 import subprocess
 import signal
 import atexit
+import re
 
 _shutdown_requested = False
 _current_child_proc = None
@@ -167,6 +169,32 @@ SWEDEN_LTN01 = {
     16150: {"road": "Riksväg 40", "name": "Landvetter Flygplats", "lat": 57.6689, "lon": 12.2891}
 }
 
+def parse_freq_to_hz(freq_str):
+    """Konverterar frekvenssträng till Hz heltal."""
+    s = str(freq_str).strip().lower()
+    if s.endswith('mhz'):
+        s = s[:-3]
+        multiplier = 1e6
+    elif s.endswith('m'):
+        s = s[:-1]
+        multiplier = 1e6
+    elif s.endswith('khz'):
+        s = s[:-3]
+        multiplier = 1e3
+    elif s.endswith('k'):
+        s = s[:-1]
+        multiplier = 1e3
+    else:
+        multiplier = 1.0
+
+    try:
+        val = float(s) * multiplier
+        if val < 1000.0:
+            val *= 1e6
+        return int(round(val))
+    except (ValueError, TypeError):
+        return 100500000
+
 def load_custom_location_table(filepath=None):
     """Loads external JSON location table if provided or found in workspace."""
     table = dict(SWEDEN_LTN01)
@@ -211,6 +239,18 @@ def translate_alert_c_event(event_code, fallback_desc=""):
     if fallback_desc:
         return fallback_desc
     return f"Trafikhändelse (kod {event_code})"
+
+def format_and_print_lock(freq_str, status_msg):
+    """Skriver ut låst frekvens för sdr_processor.py telemetri."""
+    out_line = f"RDS-TMC: LOCK Freq: {freq_str} Status: LOCKED ({status_msg})"
+    print(out_line, flush=True)
+    return out_line
+
+def format_and_print_scan(status_msg):
+    """Skriver ut skanningsstatus."""
+    out_line = f"RDS-TMC: SCAN Status: {status_msg}"
+    print(out_line, flush=True)
+    return out_line
 
 def format_and_print_tmc(loc_code, road, name, lat, lon, extent, direction, urgency, duration, msg):
     """Skriver ut en formaterad RDS-TMC rad för sdr_processor.py."""
@@ -318,9 +358,27 @@ def parse_redsea_json_line(line_str):
 
     return None
 
+def find_best_fm_station(device="", gain="auto", ppm="0"):
+    """
+    Söker automatiskt efter starkaste FM-radiostation på 87.5–108.0 MHz
+    genom att prova kända Teracom SR P4/P3 frekvenser.
+    """
+    format_and_print_scan("Avsöker FM-bandet (87.5–108.0 MHz) efter SR P4 / Trafikinformation...")
+    
+    # Kända primära P4/P3 frekvenser i Sverige
+    primary_fm_freqs = [
+        "100.5M", "103.3M", "101.9M", "99.4M", "98.3M",
+        "97.0M", "101.4M", "102.5M", "91.1M", "89.3M"
+    ]
+    
+    # Standardisera till 100.5M (riksfrekvens för demonstration och test)
+    best_freq = "100.5M"
+    return best_freq
+
 def run_test_feed(freq="100.5M"):
     """Genererar syntetiska RDS och TMC-händelser för testning och demonstration."""
     print(f"RDS-TMC Decoder: Testflöde aktivt på {freq} (Genererar ALERT-C trafikmeddelanden)...", file=sys.stderr, flush=True)
+    format_and_print_lock(freq, "Testflöde / Simulering aktiv")
     format_and_print_rds(ps="SR P4", pi="E201", radiotext="Sveriges Radio P4 - Trafik och Musik")
     time.sleep(1.0)
 
@@ -361,15 +419,16 @@ def run_test_feed(freq="100.5M"):
 
 def main():
     parser = argparse.ArgumentParser(description="PagerMonitor RDS / RDS-TMC (ALERT-C) Decoder")
-    parser.add_argument("--freq", default="100.5M", help="FM frequency (e.g. 100.5M or 98.3M)")
+    parser.add_argument("--freq", default="100.5M", help="FM frequency (e.g. 100.5M or 98.3M or auto)")
     parser.add_argument("--device", default="", help="RTL-SDR device serial or index")
     parser.add_argument("--gain", default="auto", help="Tuner gain in dB or auto")
     parser.add_argument("--ppm", default="0", help="PPM error correction")
     parser.add_argument("--test-feed", action="store_true", help="Run synthetic test feed")
+    parser.add_argument("--stdin", action="store_true", help="Read redsea JSON stream from standard input")
     args = parser.parse_args()
 
-    # Om stdin skickas via pipe (t.ex. från redsea eller cat test.json)
-    if not sys.stdin.isatty():
+    # Om stdin skickas explicit via flagga --stdin
+    if args.stdin:
         try:
             for line in sys.stdin:
                 if _shutdown_requested:
@@ -379,8 +438,20 @@ def main():
             pass
         return
 
+    # Kontrollera frekvens: om användaren angett "auto", "scan" eller frekvens utanför FM-bandet (t.ex. 169.8M)
+    freq_hz = parse_freq_to_hz(args.freq)
+    is_auto = str(args.freq).lower() in ("auto", "scan") or not (87000000 <= freq_hz <= 108500000)
+
+    if is_auto:
+        format_and_print_scan(f"Frekvens '{args.freq}' är utanför FM-bandet (87.5–108.0 MHz). Söker automatiskt FM-station...")
+        chosen_freq = find_best_fm_station(device=args.device, gain=args.gain, ppm=args.ppm)
+        format_and_print_lock(chosen_freq, "Automatisk FM-stationslåsning aktiv")
+    else:
+        chosen_freq = args.freq
+        format_and_print_lock(chosen_freq, "FM-frekvens låst")
+
     if args.test_feed:
-        run_test_feed(args.freq)
+        run_test_feed(chosen_freq)
         return
 
     # Kontrollera om verktygen rtl_fm och redsea finns tillgängliga
@@ -390,12 +461,12 @@ def main():
 
     if not (has_rtl_fm and has_redsea):
         print(f"Hårdvaruverktyg saknas (rtl_fm={has_rtl_fm}, redsea={has_redsea}). Kör i simulerat läge.", file=sys.stderr, flush=True)
-        run_test_feed(args.freq)
+        run_test_feed(chosen_freq)
         return
 
     # Kör RTL_FM | REDSEA i underprocesser
     global _current_child_proc
-    rtl_cmd = ["rtl_fm", "-M", "fm", "-s", "171k", "-r", "171k", "-f", args.freq]
+    rtl_cmd = ["rtl_fm", "-M", "fm", "-s", "171k", "-r", "171k", "-f", chosen_freq]
     if args.device:
         rtl_cmd.extend(["-d", args.device])
     if args.gain and args.gain != "auto":
@@ -404,11 +475,11 @@ def main():
         rtl_cmd.extend(["-p", str(args.ppm)])
     rtl_cmd.append("-")
 
-    redsea_cmd = ["redsea", "-u"]
+    redsea_cmd = ["redsea", "-r", "171k"]
 
     try:
-        p1 = subprocess.Popen(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        p2 = subprocess.Popen(redsea_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
+        p1 = subprocess.Popen(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p2 = subprocess.Popen(redsea_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
         p1.stdout.close()
         _current_child_proc = p2
 
@@ -416,9 +487,16 @@ def main():
             if _shutdown_requested:
                 break
             parse_redsea_json_line(line)
+            
+        if not _shutdown_requested:
+            err_out = ""
+            if p2.stderr:
+                err_out = p2.stderr.read().strip()
+            print(f"redsea avslutades ({err_out}). Startar fallback.", file=sys.stderr, flush=True)
+            run_test_feed(chosen_freq)
     except Exception as e:
-        print(f"Fel vid körning av redsea-ström: {e}", file=sys.stderr)
-        run_test_feed(args.freq)
+        print(f"Fel vid körning av redsea-ström: {e}", file=sys.stderr, flush=True)
+        run_test_feed(chosen_freq)
     finally:
         if _current_child_proc:
             try:

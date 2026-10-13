@@ -7,6 +7,11 @@ RUN apt-get update && apt-get install -y \
     libusb-1.0-0-dev \
     pkg-config \
     xxd \
+    meson \
+    ninja-build \
+    libsndfile1-dev \
+    libliquid-dev \
+    nlohmann-json3-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Build librtlsdr
@@ -27,11 +32,20 @@ RUN git clone https://github.com/EliasOenal/multimon-ng.git . \
     && cmake .. \
     && make -j$(nproc) && make install
 
+# Build redsea (FM-RDS / TMC decoder)
+WORKDIR /build/redsea
+RUN git clone https://github.com/windytan/redsea.git . \
+    && meson setup build \
+    && meson compile -C build \
+    && ninja -C build install
+
 # --- Runtime Stage ---
 FROM python:3.11-slim-bookworm
 
 RUN apt-get update && apt-get install -y \
     libusb-1.0-0 \
+    libsndfile1 \
+    libliquid1 \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
 
@@ -42,6 +56,7 @@ COPY --from=builder /usr/local/bin/rtl_fm /usr/local/bin/
 COPY --from=builder /usr/local/bin/rtl_tcp /usr/local/bin/
 COPY --from=builder /usr/local/bin/rtl_sdr /usr/local/bin/
 COPY --from=builder /usr/local/bin/multimon-ng /usr/local/bin/
+COPY --from=builder /usr/local/bin/redsea /usr/local/bin/
 COPY --from=builder /usr/local/lib/librtlsdr* /usr/local/lib/
 
 # Ensure ldconfig is run

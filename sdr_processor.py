@@ -387,6 +387,23 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         'protocol': protocol_type,
                         'function': function_code
                     }
+                elif line.startswith('RDS-TMC: SCAN'):
+                    rest = line[len('RDS-TMC: SCAN'):].strip()
+                    logger.info(f"[{config['name']}] RDS-TMC SCAN: {rest}")
+                    continue
+                elif line.startswith('RDS-TMC: LOCK'):
+                    rest = line[len('RDS-TMC: LOCK'):].strip()
+                    freq_match = re.search(r'Freq:\s*([0-9\.]+[kKMm]?)', rest)
+                    if freq_match:
+                        locked_f = freq_match.group(1)
+                        config['active_frequency'] = locked_f
+                        logger.info(f"[{config['name']}] RDS-TMC LOCK: Station låst på frekvens {locked_f} ({rest})")
+                        for cb in list(new_message_callbacks):
+                            try: cb({'type': 'telemetry', 'active_frequency': config.get('active_frequency'), 'sdr_name': config['name']})
+                            except Exception: pass
+                    else:
+                        logger.info(f"[{config['name']}] RDS-TMC LOCK: {rest}")
+                    continue
                 elif line.startswith('RDS-TMC:'):
                     rest = line[len('RDS-TMC:'):].strip()
                     loc_match = re.search(r'LOC:\s*(\d+)', rest)

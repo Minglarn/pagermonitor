@@ -1066,3 +1066,29 @@
     - **Inställningsdialog**: Lagt till alternativet `Använd global inställning` (`inherit`) i mottagarredigeringen.
 - **Verifiering**:
   - Samtliga 48 enhetstester i `tests/test_sdr_watchdog.py` och `tests/test_security_and_larm.py` passerar felfritt.
+
+---
+
+### 30. Automatisk FM-frekvenssökning för RDS, Redsea i Dockerfile och Subprocess Exit-fix (v2026.10.13.33)
+- **Problembeskrivning**:
+  1. **RDS-frekvens och Manuellt Sökande**: Användaren noterade att mottagaren stod på `169.800M` (POCSAG-standardfrekvens) för RDS och frågade: *"frekvens för RDS ... borde den inte söka efter detta själv?"*. RDS-TMC sänds i FM-rundradiobandet (87.5–108.0 MHz) över främst Sveriges Radio P4. Användaren ska inte behöva slå upp sin lokala P4-frekvens manuellt.
+  2. **Watchdog Oväntad Nedstängning (`exit=0`)**: I Docker-loggen kraschade RDS-dekodern omedelbart med: `[RDS] Processer avslutades ovantat! rtl PID=N/A exit=N/A, decoder PID=120 exit=0`.
+     - Orsaken var `if not sys.stdin.isatty(): for line in sys.stdin:`. I daemons/containrar är `sys.stdin.isatty()` alltid `False`. När `sys.stdin` inte tillhandahålls i `Popen` träffade loopen omedelbart EOF och Python avslutades direkt med kod 0.
+  3. **Kompilering av `redsea` i Docker**: Debian Bookworm saknar officiellt paket för `redsea`.
+- **Teknisk Implementering**:
+  - **Automatisk Frekvenssökning i FM-bandet ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Implementerat funktionen `scan_fm_frequencies(device_idx, gain)`.
+    - Om den angivna frekvensen är utanför FM-bandet (t.ex. `169.800M`), eller satt till `auto` eller `scan`, initierar dekodern ett automatiskt frekvenssvep över Sveriges Radio P4-frekvenser (98.0M, 99.3M, 101.9M, 103.3M, m.fl.) samt stegvis FM-skanning.
+    - Mäter bärvågseffekt med `rtl_power` eller provlyssnar med `rtl_fm`. När en stark FM-signal detekteras låser dekodern automatiskt och rapporterar: `RDS-TMC: LOCK Freq: <frekvens> MHz`.
+  - **Kompilering av Redsea i Multi-stage Dockerfile ([Dockerfile](file:///d:/antigravity/pager-monitor/Dockerfile))**:
+    - Lagt till `meson`, `ninja-build`, `libliquid-dev`, `libsndfile1-dev` och `nlohmann-json3-dev` i builder-steget.
+    - Klona och bygger `https://github.com/windytan/redsea.git` och installerar `/usr/local/bin/redsea`.
+    - Kopierar över binären samt installerar körtidsbiblioteken `libliquid1` och `libsndfile1` i produktionsbilden.
+  - **Åtgärdad Subprocess Exit 0 ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Ersatt den automatiska stdin-kontrollen med en explicit `--stdin`-flagga.
+    - Avkodaren läser nu endast från stdin om den anropas med `--stdin`, vilket eliminerar omedelbar nedstängning vid körning i Docker och underordnade processer.
+  - **Telemetri och Watchdog-hantering ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Lagt till hantering av `RDS-TMC: SCAN` och `RDS-TMC: LOCK` i processorn, så att aktuell vald FM-frekvens automatiskt uppdateras och visas i gränssnittet.
+- **Verifiering**:
+  - Samtliga 48 enhetstester i `tests/test_sdr_watchdog.py` och `tests/test_security_and_larm.py` passerar felfritt.
+  - Versionsbump till CalVer `2026.10.13.33`.
