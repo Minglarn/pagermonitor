@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.4`
+- **CalVer**: `2026.10.13.5`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -598,3 +598,33 @@
     - Skapade `test_clone_sdr_instance_api` i [tests/test_security_and_larm.py](file:///d:/antigravity/pager-monitor/tests/test_security_and_larm.py) som verifierar att alla filter, demoduleringsflaggor och hårdvaruparametrar dupliceras exakt och att modalen finns i gränssnittet.
     - Samtliga 43 enhetstester passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.4`.
+
+## 42. Modulärt Stöd för TETRA / RAKEL (Kontrollkanal & SDS) (v2026.10.13.5)
+- **Bakgrund och Problem**:
+  - Önskemål om stöd för avkodning av TETRA / RAKEL (390-470 MHz i Europa / Sverige).
+  - Skarp arkitektonisk riktlinje från användaren: implementationen ska göras så ren och modulär som möjligt så att stödet enkelt kan tas bort i framtiden om det inte längre önskas ("zero technical debt").
+  - Tekniska förutsättningar:
+    - POCSAG/AFSK använder FM-demodulering (`rtl_fm`) och multimon-ng.
+    - TETRA använder $\pi/4$-DQPSK-modulering på 25 kHz TDMA-kanaler. Multimon-ng saknar stöd för TETRA.
+    - RAKEL (svenska blåljusnätet) använder TEA2-hårdvarukryptering för tal och krypterad SDS, men nätverksmetadata (MCCH), talkgroups (GSSI), radio-ID (ISSI) och basstationsdata sänds öppet.
+    - Civila TETRA-nät (kollektivtrafik, flygplatser, industri, gruvor) kör ofta helt okrypterad talkommunikation och klartext-SDS.
+- **Genomförda Åtgärder**:
+  - **Modulär Dekoder ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Utvecklad som en helt fristående Python-modul utan externa biblioteksberoenden (enbart standardbiblioteket: `math`, `struct`, `sys`, `time`, etc.).
+    - Implementerar `TetraDemodulator` som tar emot I/Q-samplingar från `rtl_sdr`, utför $\pi/4$-DQPSK demodulering och söker efter TETRA Synchronization Training Sequence (STS, 38 bitar).
+    - Avkodar Kontrollkanal (MCCH/BSCH) nätverksmetadata (MCC, MNC, Cell ID), röstsamtalssignalering (Call Setup), enhetsstatusuppdateringar (t.ex. SOS, Tillgänglig, Framme) och korta datameddelanden (Short Data Service - SDS).
+    - Innehåller ett inbyggt simuleringsflöde (`run_test_feed()`) som aktiveras vid fristående körning eller saknad hårdvara, vilket möjliggör offline-testning.
+    - Formaterar händelser i ett standardiserat format: `TETRA: SDS GSSI: <gssi> ISSI: <issi> Msg: <text>`.
+  - **Pipelinestöd i [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py)**:
+    - I `start_instance(config)`: Om `protocol == 'TETRA'` startas `rtl_sdr` (som streamar rå I/Q till stdout) pipat direkt till `tetra_decoder.py`. Om `rtl_sdr` inte finns på PATH startas dekodern i fallback-läge.
+    - I `monitor_instance()`: Identifierar rader med prefix `TETRA:`. Mappar GSSI till `address` och SDS-text eller anrop till `message`. Sätter bitrate till `TETRA-SDS`, `TETRA-CALL` eller `TETRA-STAT`.
+    - Integreras sömlöst med befintliga system: CapCode-alias (namnge GSSI talgrupper), larmordsfiltrering, duplikathantering och realtidsvisning (SSE). Inga databasändringar krävs.
+  - **Gränssnitt ([templates/sdr_settings.html](file:///d:/antigravity/pager-monitor/templates/sdr_settings.html))**:
+    - Lagt till alternativet `<option value="TETRA">TETRA / RAKEL (Control & SDS)</option>` i protokolldropplistan.
+  - **Docker ([Dockerfile](file:///d:/antigravity/pager-monitor/Dockerfile))**:
+    - Kopierat binären `rtl_sdr` till produktionssteget i containern (`COPY --from=builder /usr/local/bin/rtl_sdr /usr/local/bin/`).
+  - **Tester och Verifiering**:
+    - Implementerade `test_tetra_start_instance` och `test_tetra_monitor_decodes_sds_and_call` i [tests/test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py).
+    - Alla 45 enhetstester i sviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.5`.
+

@@ -40,6 +40,7 @@ ENV TZ="Europe/Stockholm"
 # Copy binaries from builder
 COPY --from=builder /usr/local/bin/rtl_fm /usr/local/bin/
 COPY --from=builder /usr/local/bin/rtl_tcp /usr/local/bin/
+COPY --from=builder /usr/local/bin/rtl_sdr /usr/local/bin/
 COPY --from=builder /usr/local/bin/multimon-ng /usr/local/bin/
 COPY --from=builder /usr/local/lib/librtlsdr* /usr/local/lib/
 

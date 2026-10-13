@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.5] - Modulärt Stöd för TETRA / RAKEL (Kontrollkanal & SDS)
+
+### Added
+- **Modulär TETRA / RAKEL-avkodare (`tetra_decoder.py`)**:
+  - Helt fristående Python-modul som tar emot råa I/Q-samplingar från SDR (via `rtl_sdr`), utför $\pi/4$-DQPSK demodulering och söker efter TETRA Synchronization Training Sequence (STS).
+  - Avkodar Kontrollkanal (MCCH/BSCH) nätverksmetadata (MCC, MNC, Cell ID), röstsamtalssignalering (Call Setup), enhetsstatusuppdateringar (t.ex. SOS, Tillgänglig, Framme) och korta datameddelanden (Short Data Service - SDS).
+  - Fallback / simulerat testflöde vid fristående körning eller saknad hårdvara för enkel driftsverifiering.
+- **SDR Pipeline-integration i `sdr_processor.py`**:
+  - Nytt protokollalternativ: `TETRA` i inställningar för SDR-mottagare.
+  - När protokoll `TETRA` väljs startas `rtl_sdr` (pipad till `tetra_decoder.py`) istället för `rtl_fm | multimon-ng`.
+  - Normaliserad integration mot befintliga datatabeller och UI: GSSI (talgrupp) eller ISSI (radio-ID) mappas till `address`, anrops-/statustext eller SDS-meddelande mappas till `message`, med bitrate satt till `TETRA-SDS`, `TETRA-CALL` eller `TETRA-STAT`.
+  - Full kompatibilitet med befintliga CapCode-alias (namnge talgrupper/radio-ID), larmord, duplikathantering och realtidsvisning (SSE) utan ändringar i databasscheman.
+- **Docker & Byggstöd**:
+  - Säkerställt att binären `rtl_sdr` kopieras över till runtime-steget i Dockerfile.
+- **Enhetstester**:
+  - Nya automatiserade enhetstester i `tests/test_sdr_watchdog.py` för processuppstart och meddelandeavkodning vid TETRA-protokoll.
+
 ## [2026.10.13.4] - Möjlighet att Kopiera / Klona SDR-mottagare i Inställningar
 
 ### Added

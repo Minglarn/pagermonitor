@@ -187,3 +187,82 @@ class TestSdrWatchdog(unittest.TestCase):
         self.assertIn('-d', rtl_cmd)
         self.assertIn('10000002', rtl_cmd)
 
+    @patch('subprocess.Popen')
+    def test_tetra_start_instance(self, mock_popen):
+        """Verifiera att TETRA-protokoll startar rtl_sdr och tetra_decoder.py med rätt flaggor."""
+        mock_p1 = MagicMock()
+        mock_p2 = MagicMock()
+        mock_popen.side_effect = [mock_p1, mock_p2]
+
+        config = {
+            'id': 5,
+            'name': 'RAKEL TEST',
+            'frequency': '390.125M',
+            'gain': 'auto',
+            'ppm_error': '0',
+            'sample_rate': '1800000',
+            'protocol': 'TETRA',
+            'device_serial': '20000001'
+        }
+
+        p1, p2 = sdr_processor.start_instance(config)
+        self.assertEqual(mock_popen.call_count, 2)
+        rtl_cmd = mock_popen.call_args_list[0][0][0]
+        decoder_cmd = mock_popen.call_args_list[1][0][0]
+
+        # rtl_sdr parametrar
+        self.assertEqual(rtl_cmd[0], 'rtl_sdr')
+        self.assertIn('-f', rtl_cmd)
+        self.assertIn('390.125M', rtl_cmd)
+        self.assertIn('-s', rtl_cmd)
+        self.assertIn('1800000', rtl_cmd)
+        self.assertIn('-d', rtl_cmd)
+        self.assertIn('20000001', rtl_cmd)
+
+        # tetra_decoder.py parametrar
+        self.assertTrue(any('tetra_decoder.py' in part for part in decoder_cmd))
+        self.assertIn('--freq', decoder_cmd)
+        self.assertIn('390.125M', decoder_cmd)
+
+    @patch('sdr_processor.save_message')
+    @patch('sdr_processor.publish_message')
+    @patch('sdr_processor.get_alias_info')
+    def test_tetra_monitor_decodes_sds_and_call(self, mock_alias, mock_publish, mock_save):
+        """Verifiera att monitor_instance avkodar TETRA SDS och anrop till standard larmpipeline."""
+        mock_alias.return_value = {'alias': 'Polis Insats 1', 'is_hidden': False}
+        mock_save.return_value = (201, '2026-10-13 12:00:00')
+
+        received_events = []
+        callback = lambda data: received_events.append(data)
+        sdr_processor.on_new_message(callback)
+
+        mock_p1 = MagicMock()
+        mock_p1.stderr.readline.side_effect = [b'']
+        mock_p1.poll.return_value = 0
+
+        mock_p2 = MagicMock()
+        mock_p2.stdout.readline.side_effect = [
+            'TETRA: SDS GSSI: 10204 ISSI: 45012 Msg: Larm Prio 1 - Brand i byggnad Storgatan 14\n',
+            ''
+        ]
+        mock_p2.poll.return_value = 0
+
+        stop_event = MagicMock()
+        stop_event.is_set.side_effect = [False, False, True]
+
+        config = {'id': 5, 'name': 'RAKEL TEST', 'frequency': '390.125M', 'protocol': 'TETRA'}
+
+        try:
+            sdr_processor.monitor_instance(5, mock_p1, mock_p2, stop_event, config)
+            mock_save.assert_called_once()
+            args, kwargs = mock_save.call_args
+            self.assertEqual(args[0], '10204')  # GSSI som adress
+            self.assertEqual(args[1], 'Larm Prio 1 - Brand i byggnad Storgatan 14')
+            self.assertEqual(args[2], 'Polis Insats 1')  # Alias
+            self.assertIn('TETRA-SDS', args[4])  # Bitrate / typ
+            mock_publish.assert_called_once()
+        finally:
+            if callback in sdr_processor.new_message_callbacks:
+                sdr_processor.new_message_callbacks.remove(callback)
+
+

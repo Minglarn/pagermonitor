@@ -234,22 +234,23 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
         except Exception as e:
             logger.debug(f"[{config['name']}] rtl_fm stderr reader exception: {e}")
 
-    stderr_thread = threading.Thread(target=log_p1_stderr, args=(p1.stderr,), daemon=True)
-    stderr_thread.start()
+    if p1 and p1.stderr:
+        stderr_thread = threading.Thread(target=log_p1_stderr, args=(p1.stderr,), daemon=True)
+        stderr_thread.start()
 
     try:
         while not stop_event.is_set():
             line = p2.stdout.readline()
             if not line:
-                if p2.poll() is not None or p1.poll() is not None:
+                if p2.poll() is not None or (p1 and p1.poll() is not None):
                     p1_exit = p1.poll() if p1 else 'N/A'
                     p2_exit = p2.poll() if p2 else 'N/A'
                     last_errs = instance_errors.get(instance_id, [])
-                    err_txt = f" (Sista fel fran rtl_fm: '{last_errs[-1]}')" if last_errs else ""
+                    err_txt = f" (Sista fel fran rtl: '{last_errs[-1]}')" if last_errs else ""
                     logger.warning(
                         f"[{config['name']}] Processer avslutades ovantat! "
-                        f"rtl_fm PID={p1.pid if p1 else 'N/A'} exit={p1_exit}, "
-                        f"multimon-ng PID={p2.pid if p2 else 'N/A'} exit={p2_exit}.{err_txt}"
+                        f"rtl PID={p1.pid if p1 else 'N/A'} exit={p1_exit}, "
+                        f"decoder PID={p2.pid if p2 else 'N/A'} exit={p2_exit}.{err_txt}"
                     )
                     break
                 time.sleep(0.1)
@@ -262,12 +263,52 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
             if int(config.get('multimon_verbosity', '1')) >= 2:
                 logger.debug(f"[{config['name']}] RAW_ALL: {line}")
 
-            if ("POCSAG" in line and "Alpha:" in line) or re.search(r'(AFSK|UFSK)\d*:', line):
+            is_pocsag_or_afsk = ("POCSAG" in line and "Alpha:" in line) or re.search(r'(AFSK|UFSK)\d*:', line)
+            is_tetra = line.startswith("TETRA:")
+
+            if is_pocsag_or_afsk or is_tetra:
                 # Record activity time for watchdog telemetry
                 if instance_id in active_instances:
                     active_instances[instance_id]['last_message_time'] = time.time()
 
-                parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
+                if is_tetra:
+                    parts = line.split(" ", 2)
+                    tetra_type = parts[1] if len(parts) > 1 else "DATA"
+                    rest = parts[2] if len(parts) > 2 else ""
+
+                    gssi_match = re.search(r'GSSI:\s*(\d+)', rest)
+                    issi_match = re.search(r'ISSI:\s*(\d+)', rest)
+                    msg_match = re.search(r'Msg:\s*(.+)$', rest)
+
+                    address = gssi_match.group(1) if gssi_match else (issi_match.group(1) if issi_match else "TETRA")
+                    message = msg_match.group(1).strip() if msg_match else rest
+
+                    if tetra_type == "SDS":
+                        bitrate = "TETRA-SDS"
+                        function_code = 3
+                        protocol_type = "TETRA"
+                    elif tetra_type == "CALL":
+                        bitrate = "TETRA-CALL"
+                        function_code = 1
+                        protocol_type = "TETRA"
+                    elif tetra_type == "STATUS":
+                        bitrate = "TETRA-STAT"
+                        function_code = 2
+                        protocol_type = "TETRA"
+                    else:
+                        bitrate = f"TETRA-{tetra_type}"
+                        function_code = 0
+                        protocol_type = "TETRA"
+
+                    parsed = {
+                        'address': address,
+                        'message': message,
+                        'bitrate': bitrate,
+                        'protocol': protocol_type,
+                        'function': function_code
+                    }
+                else:
+                    parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
                 
                 if parsed:
                     address = parsed['address']
@@ -446,6 +487,39 @@ def start_instance(config):
     inp = config.get('multimon_input_type', 'raw')
     
     protocol = config.get('protocol', 'POCSAG')
+
+    if protocol == 'TETRA':
+        # TETRA / RAKEL architecture: rtl_sdr (stream IQ to stdout) | tetra_decoder.py
+        tetra_sample_rate = config.get('sample_rate', '1800000')
+        try:
+            if int(tetra_sample_rate) < 1000000:
+                tetra_sample_rate = '1800000'
+        except (ValueError, TypeError):
+            tetra_sample_rate = '1800000'
+
+        rtl_cmd = ['rtl_sdr', '-f', freq, '-s', str(tetra_sample_rate)]
+        if gain and gain != 'auto': rtl_cmd.extend(['-g', str(gain)])
+        if ppm and ppm != '0': rtl_cmd.extend(['-p', str(ppm)])
+        if serial: rtl_cmd.extend(['-d', serial])
+        rtl_cmd.append('-')
+
+        tetra_script = os.path.join(os.path.dirname(__file__), 'tetra_decoder.py')
+        decoder_cmd = [
+            sys.executable, tetra_script,
+            '--freq', freq,
+            '--sample-rate', str(tetra_sample_rate)
+        ]
+
+        logger.info(f"Starting {config['name']} [TETRA]: {' '.join(rtl_cmd)} | {' '.join(decoder_cmd)}")
+        try:
+            p1 = subprocess.Popen(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=False)
+            p2 = subprocess.Popen(decoder_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+            p1.stdout.close()
+            return p1, p2
+        except (FileNotFoundError, OSError):
+            logger.warning(f"[{config['name']}] 'rtl_sdr' binary not found on PATH. Running TETRA decoder in standalone mode.")
+            p2 = subprocess.Popen(decoder_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+            return None, p2
     
     multimon_cmd = [
         'multimon-ng', '-v', verbosity, '-C', charset, '-f', fmt, '-t', inp
