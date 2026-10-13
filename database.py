@@ -147,6 +147,7 @@ def init_db():
     defaults = get_default_settings()
     for key, val in defaults.items():
         c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (key, val))
+    c.execute("UPDATE settings SET value='true' WHERE key='log_tetra_basestations' AND value='false'")
 
     # Migration: If sdr_instances is empty, create the first instance from current settings
     c.execute('SELECT COUNT(*) FROM sdr_instances')

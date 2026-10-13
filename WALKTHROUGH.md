@@ -921,9 +921,23 @@
   - **Webbgränssnitt Uppdaterat ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
     - Standardläge för snabbknappen är nu `Basstationer: Visas` (`hideBasestations = false`).
     - Om användaren vill dölja dem från larmflödet klickar man på knappen, som då växlar till `Basstationer: Dolda`.
-  - **Verifiering**:
-    - Samtliga 54 enhetstester passerar felfritt.
-    - Versionsbump till CalVer `2026.10.13.24`.
+## 62. Automatisk Realtidsstatus för SDR-kort och Garanterat Flöde för TETRA-basstationer (v2026.10.13.25)
+- **Bakgrund och Problem**:
+  1. **SDR-kort visade "Stopped" tills sidan laddades om**: När användaren aktiverade en mottagare anropades `/api/sdr` inom några millisekunder innan processen och dess PID hunnit initieras i bakgrunden. Eftersom inställningssidan saknade polling förblev kortets badge i läget "Stopped" tills användaren manuellt uppdaterade sidan i webbläsaren.
+  2. **TETRA-basstationer syntes inte i tabellen trots "VISA"**: När skannern låste och synkroniserade en basstation (`TETRA BASSTATION SYNKRISERAD`) fanns en kontroll i backend som hoppade över meddelandet om `log_tetra_basestations != 'true'`. Eftersom inställningen i databasen var sparad som `false` från den tidigare versionen, skickades aldrig basstationshändelsen vidare till sparande eller SSE. Därmed fanns ingen data i frontend oavsett om användaren klickade på "Basstationer: VISA" eller "Basstationer: Dolda".
+- **Genomförda Åtgärder**:
+  - **SDR-kort med Direkt Respons och Bakgrundspolling ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+    - Lagt till ett gult/orange "Starting..."-läge som visas omedelbart när en mottagare aktiveras.
+    - Implementerat sekvenserad polling vid 400ms, 1000ms, 1800ms, 3000ms och 4500ms efter av/på-växling, nyskapande och kloning.
+    - Lagt till en stående bakgrundspolling (var 3.5:e sekund och vid flikväxling via `visibilitychange`) så att kortens status alltid speglar verkligheten utan att användaren behöver göra F5.
+    - Implementerat in-place uppdatering av badge, frekvens och switch i DOM utan att korten ritas om eller tappar fokus.
+  - **Garanterat Flöde för TETRA-basstationer ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py), [database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+    - Avlägsnat den tysta `continue`-blockeringen i `sdr_processor.py`. Basstationer parsas och sänds nu alltid ut till larmtabellen och SSE med fullständig metadata.
+    - Lagt till automatisk databasmigrering i `init_db()` som uppdaterar eventuella äldre `log_tetra_basestations: 'false'`-värden till `'true'`.
+    - Användaren kontrollerar nu filtreringen i realtid direkt via snabbknappen `Basstationer: Visas / Dolda` på huvudsidan och larmsidan.
+- **Verifiering**:
+  - Samtliga 54 enhetstester passerar felfritt.
+  - Versionsbump till CalVer `2026.10.13.25`.
 
 
 

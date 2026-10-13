@@ -296,13 +296,6 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                             config['active_frequency'] = freq_match.group(1)
                         logger.info(f"[{config['name']}] TETRA BASSTATION SYNKRISERAD: {rest}")
 
-                        settings = get_settings()
-                        if settings.get('log_tetra_basestations', 'true') != 'true':
-                            for cb in list(new_message_callbacks):
-                                try: cb({'type': 'ping'})
-                                except Exception: pass
-                            continue
-
                     gssi_match = re.search(r'GSSI:\s*(\d+)', rest)
                     issi_match = re.search(r'ISSI:\s*(\d+)', rest)
                     mcc_match = re.search(r'MCC:\s*(\d+)', rest)
@@ -959,6 +952,7 @@ def get_sdr_runtime_status():
         p2_running = p2 is not None and p2.poll() is None
         errs = instance_errors.get(inst_id, [])
         last_rec = inst.get('last_message_time')
+        
         status[inst_id] = {
             'is_running': p1_running and p2_running,
             'rtl_fm_pid': p1.pid if (p1 and p1.poll() is None) else None,

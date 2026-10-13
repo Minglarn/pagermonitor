@@ -360,10 +360,13 @@ class TestSdrWatchdog(unittest.TestCase):
 
     @patch('sdr_processor.save_message')
     @patch('sdr_processor.publish_message')
+    @patch('sdr_processor.get_alias_info')
     @patch('sdr_processor.get_settings')
-    def test_tetra_net_basestation_filtered_when_setting_false(self, mock_settings, mock_publish, mock_save):
-        """Verifiera att TETRA NET basstationssynk inte sparas nar log_tetra_basestations ar false."""
-        mock_settings.return_value = {'log_tetra_basestations': 'false'}
+    def test_tetra_net_basestation_always_dispatched(self, mock_settings, mock_alias, mock_publish, mock_save):
+        """Verifiera att TETRA NET basstationssynk alltid parsas och sparas sa att anvandaren kan styra visning i UI."""
+        mock_settings.return_value = {'garbage_filter': 'false', 'duplicate_handling': 'mark'}
+        mock_alias.return_value = None
+        mock_save.return_value = (402, '2026-10-13 14:00:00')
 
         mock_p1 = MagicMock()
         mock_p1.stderr.readline.side_effect = [b'']
@@ -384,8 +387,8 @@ class TestSdrWatchdog(unittest.TestCase):
         sdr_processor.monitor_instance(7, mock_p1, mock_p2, stop_event, config)
 
         self.assertEqual(config.get('active_frequency'), '461.675M')
-        mock_save.assert_not_called()
-        mock_publish.assert_not_called()
+        mock_save.assert_called_once()
+        mock_publish.assert_called_once()
 
     @patch('sdr_processor.save_message')
     @patch('sdr_processor.publish_message')

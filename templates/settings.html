@@ -618,24 +618,64 @@
             const activeContent = document.getElementById(`tab-${tabId}`);
             if (activeContent) activeContent.classList.add('active');
 
-            if (tabId === 'maintenance') {
+            if (tabId === 'radio') {
+                loadSDRs();
+            } else if (tabId === 'maintenance') {
                 loadDatabaseStats();
             }
         }
 
         // SDR Receivers Management
+        let currentSDRs = [];
+        let transitioningSdrs = {};
+
+        function getSdrBadgeHtml(sdr) {
+            if (!sdr.enabled) {
+                return '<span class="badge" style="opacity: 0.6;">Disabled</span>';
+            }
+            if (sdr.is_running) {
+                const pid = sdr.rtl_fm_pid || sdr.multimon_pid;
+                const pidInfo = pid ? ` (PID: ${pid})` : '';
+                return `<span class="badge success" title="Receiver running and decoding">Active${pidInfo}</span>`;
+            }
+            if (transitioningSdrs[sdr.id] || !sdr.last_error) {
+                return '<span class="badge warning" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">Starting...</span>';
+            }
+            const errTitle = sdr.last_error ? ` title="${sdr.last_error}"` : '';
+            return `<span class="badge danger"${errTitle}>Stopped</span>`;
+        }
+
         function loadSDRs() {
-            fetch('/api/sdr')
+            return fetch('/api/sdr')
                 .then(res => res.json())
                 .then(data => {
                     currentSDRs = data;
+                    // Clear transition state for SDRs that have reached the expected state
+                    currentSDRs.forEach(sdr => {
+                        if (transitioningSdrs[sdr.id]) {
+                            const expected = transitioningSdrs[sdr.id].expectedRunning;
+                            if (sdr.is_running === expected || !sdr.enabled) {
+                                delete transitioningSdrs[sdr.id];
+                            }
+                        }
+                    });
                     renderSDRList();
                 })
                 .catch(err => console.error('Could not load SDR receivers:', err));
         }
 
+        function scheduleSdrPollSequence() {
+            [400, 1000, 1800, 3000, 4500].forEach(delay => {
+                setTimeout(() => {
+                    loadSDRs();
+                }, delay);
+            });
+        }
+
         function renderSDRList() {
             const list = document.getElementById('sdrList');
+            if (!list) return;
+
             if (currentSDRs.length === 0) {
                 list.innerHTML = `
                     <div style="grid-column: 1/-1; text-align: center; padding: 3rem 1.5rem; border: 1px dashed var(--panel-border); border-radius: 12px; background: rgba(255,255,255,0.01);">
@@ -647,30 +687,50 @@
                 return;
             }
 
-            list.innerHTML = currentSDRs.map(sdr => {
-                let statusBadge = '';
-                if (!sdr.enabled) {
-                    statusBadge = '<span class="badge" style="opacity: 0.6;">Disabled</span>';
-                } else if (sdr.is_running) {
-                    const pidInfo = sdr.rtl_fm_pid ? ` (PID: ${sdr.rtl_fm_pid})` : '';
-                    statusBadge = `<span class="badge success" title="Receiver running and decoding">Active${pidInfo}</span>`;
-                } else {
-                    const errTitle = sdr.last_error ? ` title="${sdr.last_error}"` : '';
-                    statusBadge = `<span class="badge danger"${errTitle}>Stopped</span>`;
-                }
+            // In-place update if existing cards match current SDR IDs
+            const existingCards = list.querySelectorAll('.sdr-card[data-sdr-id]');
+            const existingIds = Array.from(existingCards).map(c => parseInt(c.dataset.sdrId)).filter(id => !isNaN(id));
+            const newIds = currentSDRs.map(s => s.id);
+            const canUpdateInPlace = existingIds.length === newIds.length && existingIds.every((id, idx) => id === newIds[idx]);
 
+            if (canUpdateInPlace) {
+                currentSDRs.forEach(sdr => {
+                    const card = document.getElementById(`sdr-card-${sdr.id}`);
+                    if (!card) return;
+                    if (sdr.enabled) {
+                        card.classList.remove('disabled');
+                    } else {
+                        card.classList.add('disabled');
+                    }
+                    const badgeEl = document.getElementById(`sdr-status-${sdr.id}`);
+                    if (badgeEl) badgeEl.innerHTML = getSdrBadgeHtml(sdr);
+
+                    const freqEl = document.getElementById(`sdr-freq-${sdr.id}`);
+                    if (freqEl) freqEl.textContent = sdr.frequency;
+
+                    const switchEl = document.getElementById(`sdr-switch-${sdr.id}`);
+                    if (switchEl && !transitioningSdrs[sdr.id]) {
+                        switchEl.checked = !!sdr.enabled;
+                    }
+                });
+                return;
+            }
+
+            // Full render
+            list.innerHTML = currentSDRs.map(sdr => {
+                const statusBadge = getSdrBadgeHtml(sdr);
                 return `
-                <div class="sdr-card ${sdr.enabled ? '' : 'disabled'}">
+                <div class="sdr-card ${sdr.enabled ? '' : 'disabled'}" id="sdr-card-${sdr.id}" data-sdr-id="${sdr.id}">
                     <div class="sdr-card-header">
                         <h3>${sdr.name}</h3>
                         <label class="switch" title="Enable / Disable receiver">
-                            <input type="checkbox" ${sdr.enabled ? 'checked' : ''} onchange="toggleSDR(${sdr.id}, this.checked)">
+                            <input type="checkbox" id="sdr-switch-${sdr.id}" ${sdr.enabled ? 'checked' : ''} onchange="toggleSDR(${sdr.id}, this.checked)">
                             <span class="slider round"></span>
                         </label>
                     </div>
                     <div class="sdr-card-body">
-                        <div class="sdr-info"><span>Status:</span> <strong>${statusBadge}</strong></div>
-                        <div class="sdr-info"><span>Frequency:</span> <strong>${sdr.frequency}</strong></div>
+                        <div class="sdr-info"><span>Status:</span> <strong id="sdr-status-${sdr.id}">${statusBadge}</strong></div>
+                        <div class="sdr-info"><span>Frequency:</span> <strong id="sdr-freq-${sdr.id}">${sdr.frequency}</strong></div>
                         <div class="sdr-info"><span>Device ID / Serial:</span> <strong>${sdr.device_serial || 'Default'}</strong></div>
                     </div>
                     <div class="sdr-card-actions">
@@ -720,7 +780,7 @@
             .then(() => {
                 closeAddSdrModal();
                 showStatus('New receiver created successfully!', 'success');
-                loadSDRs();
+                scheduleSdrPollSequence();
             })
             .catch(err => {
                 console.error('Could not create receiver:', err);
@@ -771,7 +831,7 @@
                 if (data.status === 'success') {
                     closeCopySdrModal();
                     showStatus('Receiver copied successfully with all settings!', 'success');
-                    loadSDRs();
+                    scheduleSdrPollSequence();
                 } else {
                     showStatus(data.message || 'Could not copy receiver', 'error');
                 }
@@ -787,6 +847,13 @@
         }
 
         function toggleSDR(id, enabled) {
+            transitioningSdrs[id] = { expectedRunning: enabled, since: Date.now() };
+            const badgeEl = document.getElementById(`sdr-status-${id}`);
+            if (badgeEl) {
+                badgeEl.innerHTML = enabled
+                    ? '<span class="badge warning" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3);">Starting...</span>'
+                    : '<span class="badge" style="opacity: 0.6;">Stopping...</span>';
+            }
             setSaveStatus('saving');
             fetch(`/api/sdr/${id}/toggle`, {
                 method: 'POST',
@@ -796,11 +863,13 @@
             .then(() => {
                 setSaveStatus('synced');
                 showStatus('Receiver ' + (enabled ? 'enabled' : 'disabled'), 'success');
-                loadSDRs();
+                scheduleSdrPollSequence();
             })
             .catch(err => {
+                delete transitioningSdrs[id];
                 setSaveStatus('error');
                 console.error(err);
+                loadSDRs();
             });
         }
 
@@ -1086,6 +1155,19 @@
 
             document.getElementById('auto_prune_days').addEventListener('input', () => {
                 debouncedSaveRetention();
+            });
+
+            // Live periodic background polling for SDR runtime status (every 3.5s)
+            setInterval(() => {
+                if (!document.hidden) {
+                    loadSDRs();
+                }
+            }, 3500);
+
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    loadSDRs();
+                }
             });
         });
     </script>

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.25] - Automatisk Realtidsstatus och Polling för SDR-mottagarkort
+
+### Fixed
+- **Automatisk Realtidsuppdatering av Mottagarstatus (`templates/settings.html`)**:
+  - Åtgärdat problem där mottagarkort fastnade i status "Stopped" trots att mottagaren faktiskt startat och blivit aktiv. När en mottagare aktiverades i gränssnittet anropades `/api/sdr` omedelbart innan processen och dess PID hunnit initieras i bakgrunden. Eftersom inställningssidan saknade polling förblev kortet statiskt tills användaren manuellt uppdaterade sidan i webbläsaren.
+  - Implementerat bakgrundspolling (var 3.5:e sekund och vid flikväxling via `visibilitychange`) samt snabbsekvenserad polling (vid 400ms, 1000ms, 1800ms, 3000ms, 4500ms) vid av/på-växling, kloning och nyskapande.
+  - Förbättrat statusbadgen med mellanläget "Starting..." under uppstart för att ge direkt visuell återkoppling innan processen är bekräftat aktiv.
+  - Implementerat in-place DOM-uppdatering av status, frekvens och switchar så att korten uppdateras mjukt utan att skrivas om i DOM.
+
 ## [2026.10.13.24] - Återställt Standardvisning och Samplingslängd för TETRA-basstationer
 
 ### Fixed
