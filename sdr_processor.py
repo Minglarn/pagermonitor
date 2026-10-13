@@ -276,6 +276,10 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     tetra_type = parts[1] if len(parts) > 1 else "DATA"
                     rest = parts[2] if len(parts) > 2 else ""
 
+                    if tetra_type == "DEBUG":
+                        logger.debug(f"[{config['name']}] TETRA BURST: {rest}")
+                        continue
+
                     if tetra_type == "SCAN":
                         logger.info(f"[{config['name']}] TETRA SCAN: {rest}")
                         continue
@@ -298,7 +302,11 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         for cb in list(new_message_callbacks):
                             try: cb({'type': 'telemetry', 'active_frequency': config.get('active_frequency'), 'sdr_name': config['name']})
                             except Exception: pass
-                        continue
+                        
+                        # Avbryt endast om användaren stängt av loggning av basstationer i inställningarna
+                        current_settings = get_settings()
+                        if current_settings.get('log_tetra_basestations') == 'false':
+                            continue
 
                     gssi_match = re.search(r'GSSI:\s*(\d+)', rest)
                     issi_match = re.search(r'ISSI:\s*(\d+)', rest)
@@ -404,7 +412,10 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                                     except Exception: pass
                                 continue
 
-                    logger.info(f"[{config['name']}] RAW: {line}")
+                    if is_tetra and tetra_type == "NET":
+                        logger.info(f"[{config['name']}] TETRA BASSTATION IDENTIFIERAD: [{address}] {alias} | {message}")
+                    else:
+                        logger.info(f"[{config['name']}] RAW: {line}")
 
                     # DUPLICATE DETECTION
                     settings = get_settings()

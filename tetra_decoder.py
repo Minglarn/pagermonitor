@@ -677,6 +677,7 @@ class TetraScanner:
                                 )
                                 net_msg = (
                                     f"Aktiv TETRA Basstation på {cand_str} | "
+                                    f"Nät: Sverige / Rakel (MSB) | "
                                     f"Status: LÅST | "
                                     f"Signal: SNR +{snr_db:.1f} dB | "
                                     f"Modulation: pi/4-DQPSK ({int(score*100)}%) | "
@@ -728,6 +729,8 @@ class TetraScanner:
             # Initiera last_sync_time med grace period så mottagaren hinner starta och fånga första synkramarna
             last_sync_time = time.time()
             sync_loss_timeout = 10.0
+            last_debug_log = time.time()
+            accumulated_iq = bytearray()
 
             while not _shutdown_requested:
                 chunk = p.stdout.read(buffer_size)
@@ -739,27 +742,50 @@ class TetraScanner:
                             format_and_print_event("SCAN", msg=f"rtl_sdr kontinuerlig ström avbröts: {last_err}")
                     break
 
-                bits = demod.demodulate_iq_chunk(chunk)
-                events = demod.process_bits(bits)
+                accumulated_iq.extend(chunk)
+
+                # Samla upp ca 40 ms I/Q-data för tillförlitlig burst- och ramdetektering
+                if len(accumulated_iq) >= 65536:
+                    iq_bytes = bytes(accumulated_iq)
+                    accumulated_iq = bytearray(accumulated_iq[-16384:])  # behåll överlapp
+
+                    bits = demod.demodulate_iq_chunk(iq_bytes)
+                    events = demod.process_bits(bits)
+
+                    # Kontrollera bärvåg och pi/4-DQPSK synksekvenser med frekvensdrift-kompensation
+                    is_tetra, score, drift_hz = check_channel_dqpsk_modulation(
+                        iq_bytes,
+                        self.sample_rate,
+                        f_hz,
+                        f_hz
+                    )
+
+                    now = time.time()
+                    # 1. Se till att last_sync_time förnyas vid varje mottagen burst eller bekräftad synk
+                    valid_burst = is_tetra or (score >= 0.35) or (demod.last_sync_time > 0) or (len(events) > 0)
+                    if valid_burst:
+                        last_sync_time = now
+                        if (now - last_debug_log) >= 5.0:
+                            last_debug_log = now
+                            format_and_print_event(
+                                "DEBUG",
+                                msg=f"Mottog burst på {f_str} (Score: {int(score*100)}%, Drift: {int(drift_hz):+d} Hz), uppdaterar sync-timer"
+                            )
+
+                    for ev in events:
+                        last_sync_time = now
+                        ev_type = ev.get('type', 'NET')
+                        if ev_type == 'NET':
+                            mcc_str = str(ev.get('mcc', '240'))
+                            mnc_str = str(ev.get('mnc', '01'))
+                            cc_str = str(ev.get('color_code', '0'))
+                            net_label = "Rakel (MSB)" if (mcc_str == "240" and mnc_str in ("01", "1")) else f"TETRA {mcc_str}-{mnc_str}"
+                            msg_str = f"Aktiv Basstation på {f_str} | Nät: {net_label} (MCC: {mcc_str}, MNC: {mnc_str}) | Färgkod (ColorCode): {cc_str}"
+                            format_and_print_event('NET', mcc=mcc_str, mnc=mnc_str, cell=cc_str, msg=msg_str)
+                        elif ev_type in ('CALL', 'STATUS', 'SDS'):
+                            format_and_print_event(ev_type, gssi=ev.get('gssi'), issi=ev.get('issi'), msg=ev.get('text', ''))
 
                 now = time.time()
-                # Uppdatera last_sync_time varje gång avkodaren tar emot en giltig TETRA MAC-ram, synksekvens eller sysinfo-burst
-                if demod.last_sync_time > 0:
-                    last_sync_time = max(last_sync_time, demod.last_sync_time)
-
-                for ev in events:
-                    last_sync_time = now
-                    ev_type = ev.get('type', 'NET')
-                    if ev_type == 'NET':
-                        mcc_str = str(ev.get('mcc', '240'))
-                        mnc_str = str(ev.get('mnc', '01'))
-                        cc_str = str(ev.get('color_code', '0'))
-                        net_label = "Rakel (MSB)" if (mcc_str == "240" and mnc_str in ("01", "1")) else f"TETRA {mcc_str}-{mnc_str}"
-                        msg_str = f"Aktiv Basstation på {f_str} | Nät: {net_label} (MCC: {mcc_str}, MNC: {mnc_str}) | Färgkod (ColorCode): {cc_str}"
-                        format_and_print_event('NET', mcc=mcc_str, mnc=mnc_str, cell=cc_str, msg=msg_str)
-                    elif ev_type in ('CALL', 'STATUS', 'SDS'):
-                        format_and_print_event(ev_type, gssi=ev.get('gssi'), issi=ev.get('issi'), msg=ev.get('text', ''))
-
                 # Om skannern bevakar flera kanaler (skanningsläge):
                 if len(self.hz_list) > 1:
                     # 2. Sätt en timeout för faktisk signalförlust:

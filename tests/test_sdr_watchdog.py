@@ -362,8 +362,8 @@ class TestSdrWatchdog(unittest.TestCase):
     @patch('sdr_processor.publish_message')
     @patch('sdr_processor.get_settings')
     def test_tetra_net_basestation_handled_as_telemetry(self, mock_settings, mock_publish, mock_save):
-        """Verifiera att TETRA NET basstationer uppdaterar aktiv frekvens men inte skapar felaktiga meddelanderader eller RF-hits."""
-        mock_settings.return_value = {}
+        """Verifiera att TETRA NET basstationer uppdaterar aktiv frekvens men inte skapar felaktiga meddelanderader när log_tetra_basestations är false."""
+        mock_settings.return_value = {'log_tetra_basestations': 'false'}
 
         mock_p1 = MagicMock()
         mock_p1.stderr.readline.side_effect = [b'']

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.30] - Kontinuerlig Synkförnyelse i TETRA-ström och Förbättrad Basstationsidentifiering
+
+### Fixed
+- **Kontinuerlig Förnyelse av Synktimer i TETRA-ström (`tetra_decoder.py`)**:
+  - Åtgärdat felet där mottagaren felaktigt släppte låsningen mot basstationen efter exakt 10 sekunder trots stark signal (+31 dB SNR).
+  - I `stream_continuous` ackumuleras och analyseras I/Q-strömmen kontinuerligt (~40 ms block) med frekvensdrift-kompensation (`check_channel_dqpsk_modulation` och `process_bits`). Vid varje bekräftad burst eller synksekvens förnyas `last_sync_time = time.time()`, vilket håller mottagaren kvar permanent i `monitor`-läge.
+  - Eliminerat oavsiktliga kanalraster-hopp (t.ex. mellan 392.250 MHz och grannkanalen 392.225 MHz) som orsakades av att skannern trodde att synk förlorats och svartlistade frekvensen.
+  - Lagt till periodisk burst-telemetri (`DEBUG`) var 5:e sekund för spårbarhet av frekvensdrift och DQPSK-kvalitet under pågående låsning.
+- **Tydlig Loggning och Återställning av Basstationsnamn och Nätdata (`sdr_processor.py`, `tetra_decoder.py`)**:
+  - `sdr_processor.py` loggar nu tydligt `TETRA BASSTATION IDENTIFIERAD: [RAKEL-240-01] Rakel Basstation | ...` med fullständig nätinformation (`Nät: Sverige / Rakel (MSB)`).
+  - Basstationshändelser visas korrekt i webbgränssnittet och sparas med alias och adress när `log_tetra_basestations` är aktiverat.
+
+## [2026.10.13.29] - Återställt Fullständig Basstationsavkodning med Alias och Nätinformation
+
+### Fixed
+- **Återställt Visning av Basstationer med Adress, Alias och Nätdata (`sdr_processor.py`)**:
+  - Åtgärdat felet där basstationer enbart loggades som kort telemetri (`TETRA BASSTATION SYNKRISERAD`) och inte dök upp i larmflödet med namn och nätverksinformation.
+  - Orsaken var en för tidig `continue`-sats i `sdr_processor.py` som avbröt pipelinen innan adress (`RAKEL-240-01`), alias (`Rakel Basstation`) och meddelandetext med fullständig nät- och signalinformation (`Nät: Sverige / Rakel (MSB)`) hann genereras och skickas till gränssnittet.
+  - Logiken respekterar nu inställningen `log_tetra_basestations`: när den är påslagen (`true`) körs hela avkodningspipelinen och visar basstationen med fullständig information i larmflödet, samtidigt som `waterfall.js` förhindrar att den genererar falska hits i RF ACTIVITY.
+
 ## [2026.10.13.28] - Protokollspecifika Inställningar, Sparning av Driftläge och Rensning av Basstationer
 
 ### Fixed

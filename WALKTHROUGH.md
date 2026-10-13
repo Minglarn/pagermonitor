@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.28`
+- **CalVer**: `2026.10.13.30`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -998,8 +998,30 @@
   - **Robust Rensning av Basstationer ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
     - Definierat `get_db_connection()` och [clear_basestation_messages()](file:///d:/antigravity/pager-monitor/database.py) i `database.py`. Raderar alla oskyddade rader för basstationer och nätverksannonser och returnerar antalet rader som togs bort.
     - Uppdaterat `/api/messages/basestations` med try/catch felhantering och giltigt JSON-svar.
+---
+
+### 26. Återställt Fullständig Basstationsavkodning med Alias och Nätdata (v2026.10.13.29)
+- **Problembeskrivning**:
+  - Basstationer loggades enbart som kort telemetri (`TETRA BASSTATION SYNKRISERAD: ...`) och dök inte upp i larmflödet eller databasen. Användaren saknade basstationsnamn (`Rakel Basstation`), nätverkstillhörighet (`Sverige / Rakel (MSB)`) och adress (`RAKEL-240-01`).
+- **Teknisk Implementering**:
+  - Orsaken var en för tidig `continue`-sats i `sdr_processor.py` direkt efter telemetri-anropet som avbröt avkodningspipelinen innan meddelandetext, aliasuppslagning och `save_message()` hann anropas.
+  - Villkoret justerades så att `continue` enbart körs om användaren valt att stänga av basstationsloggning (`log_tetra_basestations == 'false'`). När loggning är aktiv fortsätter pipelinen ner till adressering och formatering.
+
+---
+
+### 27. Kontinuerlig Synkförnyelse i TETRA-ström och Eliminering av 10-sekunders Timeout (v2026.10.13.30)
+- **Problembeskrivning**:
+  - Mottagaren låste framgångsrikt på TETRA-basstationen (t.ex. 392.250 MHz eller 392.225 MHz med stark signal +31 dB SNR), men efter exakt 10 sekunder bröts låsningen och mottagaren återupptog frekvenssvepet.
+  - Orsaken var att `last_sync_time` sattes enbart vid den initiala bärvågslåsningen och inte förnyades under den efterföljande I/Q-strömningen i `stream_continuous`.
+  - När timeouten slog till svartlistades frekvensen tillfälligt, vilket ledde till att skannern hoppade 25 kHz till en sidlob av samma fysiska mast.
+- **Teknisk Implementering**:
+  - I `stream_continuous` ackumuleras I/Q-datachunkar i buffertar på ca 40 ms.
+  - Vid varje block körs `check_channel_dqpsk_modulation` och `process_bits` med frekvensdrift-kompensation (CFO) mot den låsta kanalen.
+  - Om en giltig TETRA-burst, pi/4-DQPSK-signal (score >= 0.35) eller MAC-synksekvens bekräftas, förnyas `last_sync_time = time.time()` kontinuerligt.
+  - Skannern stannar därmed kvar permanent på masten i `monitor`-läge och avbryter endast om signalen faktiskt försvinner helt i över 10 sekunder.
+  - Infört periodisk `DEBUG`-bursttelemetri var 5:e sekund och tydlig konsolloggning av basstationer (`TETRA BASSTATION IDENTIFIERAD: [RAKEL-240-01] Rakel Basstation | ...`).
 - **Verifiering**:
-  - Samtliga 56 enhetstester i testsviten (inklusive två nya dedikerade tester) passerar felfritt.
+  - Samtliga 56 enhetstester passerar felfritt.
 
 
 
