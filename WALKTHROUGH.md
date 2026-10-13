@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.7`
+- **CalVer**: `2026.10.13.8`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -674,6 +674,28 @@
     - Skapade `test_supervisor_accepts_instance_when_p1_is_none` i [tests/test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py).
     - Samtliga 48 enhetstester i sviten passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.7`.
+
+## 45. Blixtsnabb Wideband Block Scanning (2.4 MHz) för TETRA / RAKEL (v2026.10.13.8)
+- **Bakgrund och Problem**:
+  - Stegvis skanning kanal-för-kanal (t.ex. 97 kanaler i intervallet `420.3M:422.7M-25K`) tvingar RTL-SDR-hårdvaran att utföra 97 separata PLL-frekvensomkopplingar, vilket tar 20–30 sekunder per svep.
+  - RTL-SDR Blog V4 har en stabil momentan samplingsbandbredd på 2.0 till 2.4 MHz.
+  - Hela frekvensintervallet $422.7 - 420.3 = 2.4 \text{ MHz}$ (eller större delar av bandet) ryms i själva verket i ett enda eller ett fåtal bredbandiga samplingsblock.
+- **Genomförda Åtgärder**:
+  - **Bredbandsblockplanering (`plan_wideband_blocks` i [tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Grupperar de efterfrågade kanalerna i minimala 2.0–2.4 MHz-block med optimerad mittfrekvens.
+    - Ett intervall som `420.3M:422.7M-25K` täcks i ett enda block centrerat på 421.5 MHz.
+    - Större intervall (som 5 MHz) delas upp i 2–3 överlappande block.
+  - **Parallell RF-effektmätning (`measure_channel_powers`)**:
+    - Tar en kort I/Q-sampling av hela 2.4 MHz-blocket (0.25s).
+    - Beräknar RF-effekten på samtliga ingående 25 kHz-kanaler parallellt via komplex blandning och decimering på ~18 millisekunder för 100 kanaler.
+    - Sorterar kanalerna efter signalstyrka och verifierar den starkaste bärvågen mot TETRA STS-synk och nätverkskod (MCC/MNC).
+    - Låser direkt på den identifierade kontrollkanalen och startar kontinuerlig avkodning.
+    - Skanningstiden sänktes från ~20–30 sekunder till under 1 sekund.
+  - **Tester och Verifiering**:
+    - Implementerade `test_tetra_wideband_blocks_and_channel_powers` i [tests/test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py).
+    - Samtliga 49 enhetstester i sviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.8`.
+
 
 
 

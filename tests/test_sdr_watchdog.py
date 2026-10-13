@@ -374,6 +374,36 @@ class TestSdrWatchdog(unittest.TestCase):
         self.assertIsNone(status[10]['rtl_fm_pid'])
         self.assertEqual(status[10]['multimon_pid'], 9999)
 
+    def test_tetra_wideband_blocks_and_channel_powers(self):
+        """Verifiera att Wideband Block Scanning delar in frekvenser i 2.4 MHz block och mäter kanaleffekt."""
+        import tetra_decoder
+
+        # Användarens frekvensintervall 420.3M:422.7M-25K (97 kanaler) ska bli exakt 1 block
+        hz_list, str_list = tetra_decoder.parse_frequency_targets('420.3M:422.7M-25K')
+        self.assertEqual(len(hz_list), 97)
+
+        blocks = tetra_decoder.plan_wideband_blocks(hz_list, max_block_bw=2400000)
+        self.assertEqual(len(blocks), 1)
+        self.assertEqual(blocks[0]['center_hz'], 421500000)
+        self.assertEqual(len(blocks[0]['channels_hz']), 97)
+
+        # Stort frekvensspann 390M-395M (5 MHz) ska delas upp i 3 block
+        wide_hz, _ = tetra_decoder.parse_frequency_targets('390M-395M')
+        wide_blocks = tetra_decoder.plan_wideband_blocks(wide_hz, max_block_bw=2400000)
+        self.assertGreaterEqual(len(wide_blocks), 2)
+        self.assertLessEqual(len(wide_blocks), 4)
+
+        # Testa spektral effektmätning på IQ-data
+        dummy_iq = bytes([128] * 4000)
+        powers = tetra_decoder.measure_channel_powers(
+            raw_iq=dummy_iq,
+            sample_rate=2400000,
+            center_hz=421500000,
+            channels_hz=blocks[0]['channels_hz'][:5]
+        )
+        self.assertEqual(len(powers), 5)
+
+
 
 
 

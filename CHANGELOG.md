@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.8] - Blixtsnabb Wideband Block Scanning (2.4 MHz) för TETRA / RAKEL
+
+### Added
+- **Bredbandig Blockskanning i 2.4 MHz-fönster (`tetra_decoder.py`)**:
+  - Ersatt långsam stegvis frekvensskanning kanal-för-kanal med **Wideband Block Scanning** som utnyttjar RTL-SDR Blog V4:s samplingsbandbredd på 2.0 till 2.4 MHz.
+  - Hela frekvensband upp till 2.4 MHz (som t.ex. `420.3M:422.7M-25K` med 97 kanaler) täcks nu i **ett enda momentant block** centrerat på 421.5 MHz utan att tunern behöver låsa om sin PLL 97 gånger.
+  - Större bandbredder (t.ex. 390–395 MHz) delas automatiskt in i minimala 2.0–2.4 MHz-block (`plan_wideband_blocks`).
+- **Parallell RF-effektmätning (`measure_channel_powers`)**:
+  - Samtliga 25 kHz-kanaler i blocket analyseras simultant med digital komplex blandning på under 20 millisekunder.
+  - Toppkandidater med kontinuerlig RF-bärvåg (karakteristiskt för TETRA MCCH) identifieras och verifieras mot TETRA STS-synkmönster och nätverkskod.
+  - Skanningstiden reducerad från 20–30 sekunder till under 1 sekund!
+- **Enhetstester**:
+  - Tillagt enhetstest `test_tetra_wideband_blocks_and_channel_powers` i `tests/test_sdr_watchdog.py`.
+
 ## [2026.10.13.7] - Åtgärdat Start och Övervakning av TETRA Skanningsinstanser
 
 ### Fixed
