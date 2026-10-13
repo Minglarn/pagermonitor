@@ -265,4 +265,73 @@ class TestSdrWatchdog(unittest.TestCase):
             if callback in sdr_processor.new_message_callbacks:
                 sdr_processor.new_message_callbacks.remove(callback)
 
+    @patch('subprocess.Popen')
+    def test_tetra_scanning_start_instance(self, mock_popen):
+        """Verifiera att TETRA-mottagare med skanningsintervall (t.ex. 390M-395M) startar med --scan flagga."""
+        mock_p2 = MagicMock()
+        mock_popen.return_value = mock_p2
+
+        config = {
+            'id': 6,
+            'name': 'RAKEL SCANNER',
+            'frequency': '390M-395M',
+            'gain': '28',
+            'ppm_error': '2',
+            'sample_rate': '1800000',
+            'protocol': 'TETRA',
+            'device_serial': '00000002'
+        }
+
+        p1, p2 = sdr_processor.start_instance(config)
+        self.assertIsNone(p1)
+        self.assertEqual(p2, mock_p2)
+        self.assertEqual(mock_popen.call_count, 1)
+
+        decoder_cmd = mock_popen.call_args[0][0]
+        self.assertIn('--scan', decoder_cmd)
+        self.assertIn('--freq', decoder_cmd)
+        self.assertIn('390M-395M', decoder_cmd)
+        self.assertIn('--gain', decoder_cmd)
+        self.assertIn('28', decoder_cmd)
+        self.assertIn('--ppm', decoder_cmd)
+        self.assertIn('2', decoder_cmd)
+        self.assertIn('--device', decoder_cmd)
+        self.assertIn('00000002', decoder_cmd)
+
+    @patch('sdr_processor.save_message')
+    @patch('sdr_processor.publish_message')
+    @patch('sdr_processor.get_alias_info')
+    def test_tetra_monitor_handles_scan_and_lock_frequency(self, mock_alias, mock_publish, mock_save):
+        """Verifiera att monitor_instance fångar TETRA SCAN, låser på frekvens (LOCK) och sparar larm med låst frekvens."""
+        mock_alias.return_value = None
+        mock_save.return_value = (301, '2026-10-13 13:00:00')
+
+        mock_p1 = MagicMock()
+        mock_p1.stderr.readline.side_effect = [b'']
+        mock_p1.poll.return_value = 0
+
+        mock_p2 = MagicMock()
+        mock_p2.stdout.readline.side_effect = [
+            'TETRA: SCAN Freq: 390.000M Status: Avsoker barvag...\n',
+            'TETRA: LOCK Freq: 390.125M Status: LOCKED (Rakel Basstation Synk MCC: 240 MNC: 01 Cell: 104)\n',
+            'TETRA: SDS GSSI: 10204 ISSI: 45012 Msg: Prio 1 Larm pa last frekvens\n',
+            ''
+        ]
+        mock_p2.poll.return_value = 0
+
+        stop_event = MagicMock()
+        stop_event.is_set.side_effect = [False, False, False, False, True]
+
+        config = {'id': 6, 'name': 'RAKEL SCANNER', 'frequency': '390M-395M', 'protocol': 'TETRA'}
+
+        sdr_processor.monitor_instance(6, mock_p1, mock_p2, stop_event, config)
+
+        self.assertEqual(config.get('active_frequency'), '390.125M')
+        mock_save.assert_called_once()
+        args, kwargs = mock_save.call_args
+        self.assertEqual(args[0], '10204')
+        self.assertEqual(args[1], 'Prio 1 Larm pa last frekvens')
+        self.assertEqual(kwargs.get('frequency'), '390.125M')
+
+
 

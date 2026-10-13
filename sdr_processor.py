@@ -276,6 +276,20 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     tetra_type = parts[1] if len(parts) > 1 else "DATA"
                     rest = parts[2] if len(parts) > 2 else ""
 
+                    if tetra_type == "SCAN":
+                        logger.info(f"[{config['name']}] TETRA SCAN: {rest}")
+                        continue
+
+                    if tetra_type == "LOCK":
+                        freq_match = re.search(r'Freq:\s*([0-9\.]+[kKMm]?)', rest)
+                        if freq_match:
+                            locked_f = freq_match.group(1)
+                            config['active_frequency'] = locked_f
+                            logger.info(f"[{config['name']}] TETRA LOCK: Basstation låst på frekvens {locked_f} ({rest})")
+                        else:
+                            logger.info(f"[{config['name']}] TETRA LOCK: {rest}")
+                        continue
+
                     gssi_match = re.search(r'GSSI:\s*(\d+)', rest)
                     issi_match = re.search(r'ISSI:\s*(\d+)', rest)
                     msg_match = re.search(r'Msg:\s*(.+)$', rest)
@@ -316,7 +330,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     bitrate = parsed['bitrate']
                     protocol_type = parsed['protocol']
                     function_code = parsed['function']
-                    freq = config.get('frequency', 'Unknown')
+                    freq = config.get('active_frequency', config.get('frequency', 'Unknown'))
 
                     # ALIAS LOOKUP & MUTING CHECK
                     alias_info = get_alias_info(address)
@@ -490,6 +504,7 @@ def start_instance(config):
 
     if protocol == 'TETRA':
         # TETRA / RAKEL architecture: rtl_sdr (stream IQ to stdout) | tetra_decoder.py
+        # Or standalone scanning mode if frequency range/list is provided
         tetra_sample_rate = config.get('sample_rate', '1800000')
         try:
             if int(tetra_sample_rate) < 1000000:
@@ -497,18 +512,29 @@ def start_instance(config):
         except (ValueError, TypeError):
             tetra_sample_rate = '1800000'
 
-        rtl_cmd = ['rtl_sdr', '-f', freq, '-s', str(tetra_sample_rate)]
-        if gain and gain != 'auto': rtl_cmd.extend(['-g', str(gain)])
-        if ppm and ppm != '0': rtl_cmd.extend(['-p', str(ppm)])
-        if serial: rtl_cmd.extend(['-d', serial])
-        rtl_cmd.append('-')
-
         tetra_script = os.path.join(os.path.dirname(__file__), 'tetra_decoder.py')
         decoder_cmd = [
             sys.executable, tetra_script,
             '--freq', freq,
             '--sample-rate', str(tetra_sample_rate)
         ]
+        if gain and gain != 'auto': decoder_cmd.extend(['--gain', str(gain)])
+        if ppm and ppm != '0': decoder_cmd.extend(['--ppm', str(ppm)])
+        if serial: decoder_cmd.extend(['--device', serial])
+
+        is_scan = any(sep in freq for sep in [',', '-', ':'])
+        if is_scan:
+            # Let tetra_decoder.py manage channel scanning and locking
+            decoder_cmd.append('--scan')
+            logger.info(f"Starting {config['name']} [TETRA SCAN]: {' '.join(decoder_cmd)}")
+            p2 = subprocess.Popen(decoder_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+            return None, p2
+
+        rtl_cmd = ['rtl_sdr', '-f', freq, '-s', str(tetra_sample_rate)]
+        if gain and gain != 'auto': rtl_cmd.extend(['-g', str(gain)])
+        if ppm and ppm != '0': rtl_cmd.extend(['-p', str(ppm)])
+        if serial: rtl_cmd.extend(['-d', serial])
+        rtl_cmd.append('-')
 
         logger.info(f"Starting {config['name']} [TETRA]: {' '.join(rtl_cmd)} | {' '.join(decoder_cmd)}")
         try:

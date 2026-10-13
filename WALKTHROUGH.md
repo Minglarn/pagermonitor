@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.5`
+- **CalVer**: `2026.10.13.6`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -627,4 +627,35 @@
     - Implementerade `test_tetra_start_instance` och `test_tetra_monitor_decodes_sds_and_call` i [tests/test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py).
     - Alla 45 enhetstester i sviten passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.5`.
+
+## 43. Frekvensskanning och Kontrollkanaljakt (MCCH Hunt) för TETRA / RAKEL (v2026.10.13.6)
+- **Bakgrund och Problem**:
+  - Till skillnad från personsökare på fasta frekvenser (t.ex. 169.800 MHz) använder TETRA trunkade basstationer där kontrollkanalen (MCCH) ligger på en av flera möjliga bärvågor i 25 kHz-raster inom frekvensbandet (t.ex. 390.000–395.000 MHz).
+  - En fast frekvensinställning träffar sällan rätt om användaren inte i förväg vet den lokala mastens exakta kontrollkanal.
+  - Behov av automatisk kanalskanning (Control Channel Hunt) som sveper över ett angivet frekvensintervall eller en lista av kontrollkanaler, hittar en aktiv basstation, och låser mottagningen på den aktiva kanalen.
+- **Genomförda Åtgärder**:
+  - **Frekvensparsning och Målanalys i [tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py)**:
+    - Implementerade `parse_frequency_targets(freq_arg)` som medger tre format:
+      1. Intervall med steg: `390M-395M` (eller `390.000M:395.000M:25k`), vilket automatiskt genererar kanalerna i 25 kHz-raster.
+      2. Kanallista: `390.125M, 390.250M, 391.025M`.
+      3. Enskild fast frekvens: `390.125M`.
+    - Hjälpfunktioner `parse_freq_val` och `format_freq_mhz` för att omvandla Hz, kHz, MHz och strängar fram och tillbaka.
+  - **Skanningsmotor (`TetraScanner`)**:
+    - Skannar igenom målfrekvenserna i följd.
+    - Gör korta provtagningar via `rtl_sdr` (eller i simulerat läge om hårdvara saknas) och skickar realtidsstatus `TETRA: SCAN Freq: <freq> Status: Avsöker...`.
+    - När en basstation med giltigt TETRA STS-synkmönster och nätverkskod (MCC/MNC) detekteras, avbryts svepet och mottagaren låses:
+      `TETRA: LOCK Freq: <freq> Status: LOCKED (Rakel Basstation Synk MCC: 240 MNC: 01 Cell: 104)`.
+    - Startar därefter kontinuerlig avkodning av talgruppsanrop, status och SDS-meddelanden.
+    - Om signalen upphör återupptas skanningen automatiskt.
+  - **Integrerad Frekvensspårning i [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py)**:
+    - I `start_instance`: Om frekvensfältet innehåller ett intervall eller kanallista startas `tetra_decoder.py` med `--scan`.
+    - I `monitor_instance`: Fångar `TETRA: SCAN` (loggas utan att belasta larmtabeller) samt `TETRA: LOCK` (uppdaterar instansens `active_frequency`).
+    - Larmmeddelanden och händelser som sparas i databasen får den specifika låsta frekvensen (t.ex. `390.125M`) istället för hela intervallet (`390M-395M`).
+  - **Gränssnitt ([templates/sdr_settings.html](file:///d:/antigravity/pager-monitor/templates/sdr_settings.html))**:
+    - Uppdaterad hjälptext under frekvensfältet: `Standard: 169.8M (POCSAG). För TETRA stöds direkt kanal (t.ex. 390.125M), skanningsintervall (t.ex. 390M-395M) eller frekvenslista (t.ex. 390.125M, 390.250M).`
+  - **Tester och Verifiering**:
+    - Skapade `test_tetra_scanning_start_instance` och `test_tetra_monitor_handles_scan_and_lock_frequency` i [tests/test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py).
+    - Samtliga 47 enhetstester i sviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.6`.
+
 

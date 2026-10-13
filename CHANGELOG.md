@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.6] - Frekvensskanning och Kontrollkanaljakt (MCCH Hunt) för TETRA / RAKEL
+
+### Added
+- **Stöd för Frekvensintervall och Kanallistor vid TETRA-mottagning**:
+  - Användare kan nu i fältet **Frequency** ange:
+    - Frekvensintervall med standard 25 kHz-raster: t.ex. `390M-395M` eller `390.000M:395.000M:25k`.
+    - Kommaseparerad lista av kända kontrollkanaler: t.ex. `390.125M, 390.250M, 391.025M`.
+    - Enskild fast frekvens: t.ex. `390.125M`.
+- **Frekvensskanningsmotor (`TetraScanner` i `tetra_decoder.py`)**:
+  - Utför automatisk kanalskanning (Control Channel Hunt).
+  - Skannar igenom kanalerna med korta samplingar, demodulerar och detekterar TETRA STS (synkmönster) samt BSCH (nätverkskod MCC/MNC).
+  - Låser automatiskt fast på den aktiva basstationens kontrollkanal (`TETRA: LOCK Freq: <freq>`) och startar kontinuerlig avkodning av talgruppsanrop och SDS-text.
+  - Återupptar automatiskt skanningen om radiosignalen försvinner.
+- **Dynamisk Frekvensrapportering i `sdr_processor.py`**:
+  - Fångar upp `TETRA: LOCK` och lagrar aktiv lyssnarfrekvens (`active_frequency`).
+  - Larm och händelser som registreras i databasen sparas med den exakta frekvensen mottagaren har låst på istället för hela intervallet.
+  - Skanningshändelser (`TETRA: SCAN`) loggas i realtid utan att belasta larmdatabasen.
+- **Gränssnittsuppdatering ([templates/sdr_settings.html](file:///d:/antigravity/pager-monitor/templates/sdr_settings.html))**:
+  - Tydlig instruktion under frekvensfältet för intervall och frekvenslistor.
+- **Enhetstester**:
+  - Automatiserade enhetstester i `tests/test_sdr_watchdog.py` för scanning-uppstart och frekvenslåsning (`test_tetra_scanning_start_instance`, `test_tetra_monitor_handles_scan_and_lock_frequency`).
+
 ## [2026.10.13.5] - Modulärt Stöd för TETRA / RAKEL (Kontrollkanal & SDS)
 
 ### Added

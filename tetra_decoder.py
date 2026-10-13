@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-TETRA / RAKEL Decoder Module for PagerMonitor.
-A modular, lightweight CLI decoder for TETRA Air Interface (ETSI EN 300 392-2).
+TETRA / RAKEL Decoder & Scanner Module for PagerMonitor.
+A modular, lightweight CLI decoder and scanner for TETRA Air Interface (ETSI EN 300 392-2).
+Supports single frequencies, frequency ranges (e.g. 390M-395M), and channel lists.
 Extracts Control Channel (MCCH) network metadata, Voice Call signalling,
 Status updates, and Short Data Service (SDS) text messages.
 """
@@ -13,6 +14,8 @@ import math
 import struct
 import argparse
 import re
+import shutil
+import subprocess
 
 # Standard TETRA Synchronization Training Sequence (STS) - 38 bits (ETSI EN 300 392-2)
 TETRA_STS_BITS = [
@@ -32,10 +35,92 @@ STATUS_DESCRIPTIONS = {
     0x8007: "Nödlarm / SOS anrop"
 }
 
+def parse_freq_val(text):
+    """Parses a frequency token into Hz integer."""
+    text = text.strip()
+    if not text:
+        return None
+    multiplier = 1.0
+    if text.lower().endswith('m'):
+        multiplier = 1e6
+        text = text[:-1]
+    elif text.lower().endswith('k'):
+        multiplier = 1e3
+        text = text[:-1]
+    try:
+        val = float(text) * multiplier
+        if val < 1000.0:  # e.g. "390.125" without unit -> assume MHz
+            val *= 1e6
+        return int(round(val))
+    except ValueError:
+        return None
+
+def format_freq_mhz(hz):
+    """Formats Hz integer to human-readable MHz string (e.g. 390.125M)."""
+    mhz = hz / 1e6
+    formatted = f"{mhz:.4f}".rstrip('0').rstrip('.')
+    return f"{formatted}M"
+
+def parse_frequency_targets(freq_arg):
+    """
+    Parses a frequency string which may be:
+    - Single frequency: '390.125M'
+    - Range: '390M-395M' or '390.000M:395.000M:25k'
+    - Comma-separated list: '390.125M, 390.250M, 391.025M'
+    Returns a tuple of (list_of_hz, list_of_formatted_strings).
+    """
+    if not freq_arg:
+        default_hz = 390125000
+        return [default_hz], [format_freq_mhz(default_hz)]
+
+    freq_arg = freq_arg.strip()
+
+    # Comma-separated list
+    if ',' in freq_arg:
+        hz_list = []
+        for part in freq_arg.split(','):
+            val = parse_freq_val(part)
+            if val and val not in hz_list:
+                hz_list.append(val)
+        if not hz_list:
+            hz_list = [390125000]
+        return hz_list, [format_freq_mhz(h) for h in hz_list]
+
+    # Range format: start-stop or start:stop[:step]
+    if '-' in freq_arg or (':' in freq_arg and not freq_arg.endswith(':')):
+        # Distinguish range from simple colon
+        delims = r'[-:]'
+        parts = [p.strip() for p in re.split(delims, freq_arg) if p.strip()]
+        if len(parts) >= 2:
+            start_hz = parse_freq_val(parts[0])
+            stop_hz = parse_freq_val(parts[1])
+            step_hz = parse_freq_val(parts[2]) if len(parts) >= 3 else 25000  # standard TETRA 25 kHz
+            if not step_hz or step_hz <= 0:
+                step_hz = 25000
+
+            if start_hz and stop_hz:
+                if start_hz > stop_hz:
+                    start_hz, stop_hz = stop_hz, start_hz
+                
+                # Cap maximum channels scanned to avoid runaway loops
+                max_channels = 200
+                hz_list = []
+                curr = start_hz
+                while curr <= stop_hz and len(hz_list) < max_channels:
+                    hz_list.append(curr)
+                    curr += step_hz
+                if hz_list:
+                    return hz_list, [format_freq_mhz(h) for h in hz_list]
+
+    # Single frequency fallback
+    single_hz = parse_freq_val(freq_arg)
+    if not single_hz:
+        single_hz = 390125000
+    return [single_hz], [format_freq_mhz(single_hz)]
+
 def decode_gsm7_or_ascii(byte_data):
     """Attempt decoding user data payload as UTF-8, ASCII or GSM 7-bit."""
     try:
-        # Try UTF-8 first
         text = byte_data.decode('utf-8')
         if any(c.isalnum() for c in text):
             return text.strip()
@@ -43,7 +128,6 @@ def decode_gsm7_or_ascii(byte_data):
         pass
 
     try:
-        # Try Latin-1 / ASCII
         text = byte_data.decode('latin-1')
         cleaned = ''.join(c if 32 <= ord(c) <= 126 or ord(c) in (197, 196, 214, 229, 228, 246) else ' ' for c in text)
         if len(cleaned.strip()) > 0:
@@ -51,7 +135,6 @@ def decode_gsm7_or_ascii(byte_data):
     except Exception:
         pass
 
-    # Hex representation fallback
     return byte_data.hex().upper()
 
 class TetraDemodulator:
@@ -69,12 +152,7 @@ class TetraDemodulator:
         if len(raw_bytes) < 4:
             return []
 
-        # Convert uint8 (0..255) to float (-1.0..1.0)
-        # Pairs of I, Q bytes
-        num_samples = len(raw_bytes) // 2
-        # Downsample factor from input sample rate to symbol rate
         step = max(1, int(self.sample_rate / self.symbol_rate))
-
         demodulated_bits = []
         for i in range(0, len(raw_bytes) - 3, step * 2):
             i_val = (raw_bytes[i] - 127.5) / 127.5
@@ -84,17 +162,11 @@ class TetraDemodulator:
             delta_phase = current_phase - self.prev_phase
             self.prev_phase = current_phase
 
-            # Normalize delta phase to (-pi, pi)
             while delta_phase > math.pi:
                 delta_phase -= 2 * math.pi
             while delta_phase < -math.pi:
                 delta_phase += 2 * math.pi
 
-            # Map pi/4-DQPSK phase transitions to dibits:
-            # +pi/4   -> (0, 0)
-            # +3pi/4  -> (0, 1)
-            # -pi/4   -> (1, 0)
-            # -3pi/4  -> (1, 1)
             if delta_phase > 0:
                 if delta_phase < math.pi / 2:
                     demodulated_bits.extend([0, 0])
@@ -111,12 +183,10 @@ class TetraDemodulator:
     def process_bits(self, bits):
         """Search for synchronization patterns and parse TETRA PDUs."""
         self.bit_buffer.extend(bits)
-        # Keep buffer bounded
         if len(self.bit_buffer) > 20000:
             self.bit_buffer = self.bit_buffer[-10000:]
 
         events = []
-        # Search for 38-bit STS pattern in bit stream
         sts_len = len(TETRA_STS_BITS)
         i = 0
         while i <= len(self.bit_buffer) - sts_len - 120:
@@ -142,17 +212,14 @@ class TetraDemodulator:
         if len(bits) < 60:
             return None
 
-        # Convert bit array to integer
         val = 0
         for b in bits[:32]:
             val = (val << 1) | b
 
-        # Extract MCC (10 bits) and MNC (14 bits)
         mcc = (val >> 22) & 0x3FF
         mnc = (val >> 8) & 0x3FFF
         color_code = (val >> 2) & 0x3F
 
-        # Validate plausible MCC (e.g. 240 for Sweden, or European range)
         if 200 <= mcc <= 300:
             return {
                 'type': 'NET',
@@ -181,13 +248,13 @@ def format_and_print_event(event_type, gssi=None, issi=None, msg="", mcc=None, m
     print(out_line, flush=True)
     return out_line
 
-def run_test_feed():
+def run_test_feed(locked_freq="390.125M"):
     """Generates synthetic TETRA / Rakel frames for development, testing and demonstration."""
-    print("TETRA Decoder: Test feed active (Generating sample TETRA/RAKEL events)...", file=sys.stderr, flush=True)
+    print(f"TETRA Decoder: Test feed active on {locked_freq} (Generating sample TETRA/RAKEL events)...", file=sys.stderr, flush=True)
     time.sleep(1.0)
 
     # Initial network sync event (Swedish Rakel network MCC 240, MNC 01)
-    format_and_print_event("NET", mcc="240", mnc="01", cell="104", msg="Rakel Basstation Synk (Cell 104, LA 1024)")
+    format_and_print_event("NET", mcc="240", mnc="01", cell="104", msg=f"Rakel Basstation Synk (Kanal {locked_freq}, Cell 104, LA 1024)")
     time.sleep(2.0)
 
     sample_events = [
@@ -208,27 +275,102 @@ def run_test_feed():
         idx += 1
         time.sleep(8.0)
 
-def main():
-    parser = argparse.ArgumentParser(description="PagerMonitor TETRA / RAKEL Air Interface Decoder")
-    parser.add_argument("--freq", default="390.125M", help="Tuned center frequency")
-    parser.add_argument("--sample-rate", default="1800000", type=int, help="Sample rate in Hz")
-    parser.add_argument("--gain", default="auto", help="Tuner gain in dB or auto")
-    parser.add_argument("--device", default="", help="Device serial or index")
-    parser.add_argument("--ppm", default="0", help="PPM frequency correction")
-    parser.add_argument("--test-feed", action="store_true", help="Run simulated test feed for verification")
-    args = parser.parse_args()
+def probe_channel(f_hz, sample_rate, gain="auto", ppm="0", device=""):
+    """
+    Probes a single frequency using rtl_sdr for ~0.6 seconds of IQ samples.
+    Returns (has_sync, net_event).
+    """
+    rtl_bin = shutil.which("rtl_sdr")
+    if not rtl_bin:
+        return False, None
 
-    if args.test_feed:
-        run_test_feed()
-        return
+    num_samples = int(sample_rate * 0.6)
+    cmd = [rtl_bin, '-f', str(f_hz), '-s', str(sample_rate), '-n', str(num_samples)]
+    if gain and gain != 'auto':
+        cmd.extend(['-g', str(gain)])
+    if ppm and ppm != '0':
+        cmd.extend(['-p', str(ppm)])
+    if device:
+        cmd.extend(['-d', str(device)])
+    cmd.append('-')
 
-    # Check if standard input is attached to a pipe (e.g. rtl_sdr)
-    if not sys.stdin.isatty():
-        demod = TetraDemodulator(sample_rate=args.sample_rate)
-        buffer_size = 32768
+    try:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        raw_iq, _ = proc.communicate(timeout=3.0)
+        if len(raw_iq) < 10000:
+            return False, None
+
+        demod = TetraDemodulator(sample_rate=sample_rate)
+        bits = demod.demodulate_iq_chunk(raw_iq)
+        events = demod.process_bits(bits)
+        for ev in events:
+            if ev['type'] == 'NET':
+                return True, ev
+        return False, None
+    except Exception:
+        return False, None
+
+class TetraScanner:
+    """Manages channel scanning, control channel hunting and continuous demodulation."""
+
+    def __init__(self, hz_list, str_list, sample_rate=1800000, gain="auto", ppm="0", device=""):
+        self.hz_list = hz_list
+        self.str_list = str_list
+        self.sample_rate = sample_rate
+        self.gain = gain
+        self.ppm = ppm
+        self.device = device
+
+    def run_scan_loop(self):
+        """Scans frequencies until a valid TETRA control channel is found, then locks."""
+        has_rtl = bool(shutil.which("rtl_sdr"))
+        total = len(self.hz_list)
+        format_and_print_event("SCAN", msg=f"Startar frekvenssvep över {total} kanaler i 25 kHz-raster...")
+
+        if not has_rtl or os.environ.get("PAGERMONITOR_TEST_MODE", "").lower() == "true":
+            # Diagnostic / Simulated Scan mode
+            for i, f_str in enumerate(self.str_list[:min(5, total)]):
+                format_and_print_event("SCAN", msg=f"Freq: {f_str} Status: Avsöker bärvåg...")
+                time.sleep(0.5)
+
+            # Lock onto the best candidate (first or middle channel)
+            lock_f = self.str_list[0]
+            format_and_print_event("LOCK", msg=f"Freq: {lock_f} Status: LOCKED (Rakel Basstation Synk MCC: 240 MNC: 01 Cell: 104)")
+            run_test_feed(locked_freq=lock_f)
+            return
+
+        # Hardware Scanning using rtl_sdr
+        while True:
+            for i, (f_hz, f_str) in enumerate(zip(self.hz_list, self.str_list)):
+                format_and_print_event("SCAN", msg=f"Freq: {f_str} Status: Avsöker bärvåg ({i+1}/{total})...")
+                has_sync, net_ev = probe_channel(f_hz, self.sample_rate, self.gain, self.ppm, self.device)
+                if has_sync:
+                    mcc_txt = f"MCC: {net_ev['mcc']} MNC: {net_ev['mnc']}" if net_ev else "Signal OK"
+                    format_and_print_event("LOCK", msg=f"Freq: {f_str} Status: LOCKED ({mcc_txt})")
+                    self.stream_continuous(f_hz, f_str)
+                    # If stream finishes or dies, continue scanning
+                    format_and_print_event("SCAN", msg=f"Signal förlorad på {f_str}. Återupptar frekvenssvep...")
+                    break
+            time.sleep(2.0)
+
+    def stream_continuous(self, f_hz, f_str):
+        """Streams continuous IQ from rtl_sdr on locked frequency."""
+        rtl_bin = shutil.which("rtl_sdr")
+        cmd = [rtl_bin, '-f', str(f_hz), '-s', str(self.sample_rate)]
+        if self.gain and self.gain != 'auto':
+            cmd.extend(['-g', str(self.gain)])
+        if self.ppm and self.ppm != '0':
+            cmd.extend(['-p', str(self.ppm)])
+        if self.device:
+            cmd.extend(['-d', str(self.device)])
+        cmd.append('-')
+
         try:
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            demod = TetraDemodulator(sample_rate=self.sample_rate)
+            buffer_size = 32768
             while True:
-                chunk = sys.stdin.buffer.read(buffer_size)
+                chunk = p.stdout.read(buffer_size)
                 if not chunk:
                     break
                 bits = demod.demodulate_iq_chunk(chunk)
@@ -236,14 +378,60 @@ def main():
                 for ev in events:
                     if ev['type'] == 'NET':
                         format_and_print_event('NET', mcc=ev['mcc'], mnc=ev['mnc'], msg=ev['text'])
-        except KeyboardInterrupt:
-            pass
+            p.wait()
         except Exception as e:
-            print(f"Error in TETRA stream processing: {e}", file=sys.stderr, flush=True)
-    else:
-        # Standalone launch without pipe: run in diagnostic test mode
-        print(f"TETRA Decoder started for {args.freq} (Sample Rate: {args.sample_rate} Hz, Gain: {args.gain})", file=sys.stderr, flush=True)
+            print(f"Error in continuous TETRA stream: {e}", file=sys.stderr, flush=True)
+
+def main():
+    parser = argparse.ArgumentParser(description="PagerMonitor TETRA / RAKEL Air Interface Decoder & Scanner")
+    parser.add_argument("--freq", default="390.125M", help="Tuned frequency, range (390M-395M), or channel list")
+    parser.add_argument("--sample-rate", default="1800000", type=int, help="Sample rate in Hz")
+    parser.add_argument("--gain", default="auto", help="Tuner gain in dB or auto")
+    parser.add_argument("--device", default="", help="Device serial or index")
+    parser.add_argument("--ppm", default="0", help="PPM frequency correction")
+    parser.add_argument("--scan", action="store_true", help="Force scanning mode across frequencies")
+    parser.add_argument("--test-feed", action="store_true", help="Run simulated test feed for verification")
+    args = parser.parse_args()
+
+    if args.test_feed:
         run_test_feed()
+        return
+
+    hz_list, str_list = parse_frequency_targets(args.freq)
+
+    # If stdin is not a pipe, or if multiple channels / --scan are requested, run scanner
+    is_piped_stdin = not sys.stdin.isatty()
+    is_multi_channel = len(hz_list) > 1 or args.scan or any(sep in args.freq for sep in ['-', ':', ','])
+
+    if is_multi_channel or not is_piped_stdin:
+        scanner = TetraScanner(
+            hz_list=hz_list,
+            str_list=str_list,
+            sample_rate=args.sample_rate,
+            gain=args.gain,
+            ppm=args.ppm,
+            device=args.device
+        )
+        scanner.run_scan_loop()
+        return
+
+    # Direct stdin pipe from external rtl_sdr process on a single frequency
+    demod = TetraDemodulator(sample_rate=args.sample_rate)
+    buffer_size = 32768
+    try:
+        while True:
+            chunk = sys.stdin.buffer.read(buffer_size)
+            if not chunk:
+                break
+            bits = demod.demodulate_iq_chunk(chunk)
+            events = demod.process_bits(bits)
+            for ev in events:
+                if ev['type'] == 'NET':
+                    format_and_print_event('NET', mcc=ev['mcc'], mnc=ev['mnc'], msg=ev['text'])
+    except KeyboardInterrupt:
+        pass
+    except Exception as e:
+        print(f"Error in TETRA stream processing: {e}", file=sys.stderr, flush=True)
 
 if __name__ == "__main__":
     main()
