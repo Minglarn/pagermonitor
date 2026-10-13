@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.10`
+- **CalVer**: `2026.10.13.11`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -735,6 +735,29 @@
   - **Tester och Verifiering**:
     - Samtliga 49 enhetstester i testsviten passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.10`.
+
+## 48. Robust Processhantering, Tvåstegsdetektering med CFO-kompensation och Lax-test (v2026.10.13.11)
+- **Bakgrund och Problem**:
+  - Vid försök att terminera eller ändra inställningar för en TETRA-mottagare kunde inte TETRA PID dödas rent, eller så lämnades underordnade hårdvaruprocesser (`rtl_sdr`) kvar som blockerade RTL-SDR USB-dongeln vid omstart.
+  - Frekvensoffset (PPM-drift) från USB-dongeln orsakar konstant fasvridning mellan symboler, vilket ledde till att $\Delta\theta$ missade de exakta målfaserna $\pm 45^\circ$ och $\pm 135^\circ$.
+  - Svep över 40 MHz utan bekräftad kontrollkanal resulterade i 0 träffar utan möjlighet att enkelt verifiera modulationen på en känd referensfrekvens.
+- **Genomförda Åtgärder**:
+  - **Processgruppshantering och Ren Dödning ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - `_spawn_proc`: Startar underprocesser med `start_new_session=True` på POSIX, vilket etablerar en dedikerad processgrupp (PGID).
+    - `_kill_proc`: Avslutar processträdet med `os.killpg(pgid, signal.SIGTERM)` och `os.killpg(pgid, signal.SIGKILL)`, vilket garanterar att varken Python-avkodaren eller underordnade `rtl_sdr`-processer blir hängande.
+  - **Graceful Shutdown & Subprocess Lifecycle ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Implementerat signalhanterare för `SIGTERM` och `SIGINT` som sätter `_shutdown_requested = True` och direkt dödar aktiv barnprocess (`_current_child_proc.kill()`).
+    - Både `probe_block` och `stream_continuous` har kapslats med `try ... finally:` som säkrar att underordnade `rtl_sdr`-instanser alltid städas och släpper USB-resursen.
+  - **Carrier Frequency Offset (CFO)-kompensation & Tvåstegsdetektering**:
+    - Beräknar genomsnittlig fasdrift per symbol och subtraherar bort den, vilket eliminerar effekten av PPM-avvikelser och frekvensfel.
+    - Ökat toleransen till $\pm 25^\circ$ runt målvinklarna och infört tvåstegsdetektering: energimätning och bandbreddsanalys (Steg 1) följt av modulationskontroll (Steg 2), med direkt låsning vid SNR $\ge 9$ dB.
+  - **Lax-test / Enkanalsläge**:
+    - Om användaren anger en enskild frekvens (t.ex. `390.125M`) låser mottagaren omedelbart på frekvensen utan att behöva vinna ett helt block- eller frekvenssvep.
+  - **Tester och Verifiering**:
+    - Utökat testsviten med `test_kill_proc_and_sig_handler` och CFO-validering i [tests/test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py).
+    - Samtliga 50 enhetstester i testsviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.11`.
+
 
 
 

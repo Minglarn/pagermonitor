@@ -403,7 +403,36 @@ class TestSdrWatchdog(unittest.TestCase):
         )
         self.assertEqual(len(powers), 5)
 
+        # Testa modulationsdetektering med CFO-kompensation
+        is_tetra, score, drift = tetra_decoder.check_channel_dqpsk_modulation(
+            raw_iq=dummy_iq,
+            sample_rate=2400000,
+            center_hz=421500000,
+            candidate_hz=421500000
+        )
+        self.assertIsInstance(is_tetra, bool)
+        self.assertIsInstance(score, float)
+        self.assertIsInstance(drift, float)
 
+    def test_kill_proc_and_sig_handler(self):
+        """Testa att _kill_proc hanterar processavslutning och tetra_decoder signalhantering."""
+        import tetra_decoder
+        
+        # Testa _kill_proc i sdr_processor
+        mock_p = MagicMock()
+        mock_p.poll.return_value = None
+        mock_p.pid = 12345
+        
+        with patch('os.killpg', create=True) as mock_killpg, patch('os.getpgid', create=True, return_value=12345):
+            sdr_processor._kill_proc(mock_p)
+            mock_p.kill.assert_called_once()
 
-
-
+        # Testa tetra_decoder._sig_handler
+        mock_child = MagicMock()
+        tetra_decoder._current_child_proc = mock_child
+        with self.assertRaises(SystemExit):
+            tetra_decoder._sig_handler(15, None)
+        
+        self.assertTrue(tetra_decoder._shutdown_requested)
+        mock_child.kill.assert_called_once()
+        tetra_decoder._shutdown_requested = False

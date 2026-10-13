@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.11] - Robust Processhantering, Tvåstegsdetektering med CFO-kompensation och Lax-test för TETRA
+
+### Added
+- **Robust Processhantering och Processgruppsdödning (`sdr_processor.py`)**:
+  - `sdr_processor` startar nu underprocesser i separata processgrupper (`start_new_session=True` på POSIX/Linux).
+  - `stop_instance_procs` dödar nu hela processträdet med `os.killpg(pgid, signal.SIGTERM / SIGKILL)`. Detta garanterar att eventuella underordnade hårdvaruprocesser (`rtl_sdr`) avslutas omedelbart och inte blir föräldralösa zombier som blockerar USB-enheten vid omstart.
+- **Graceful Shutdown och Barnprocesshantering (`tetra_decoder.py`)**:
+  - Implementerat `signal`-hanterare för `SIGTERM` och `SIGINT` i `tetra_decoder.py`.
+  - Spårar aktivt underordnade `rtl_sdr`-processer (`_current_child_proc`) och terminerar dem omedelbart vid mottagen signal eller oväntat undantag, vilket möjliggör ren och direkt `kill` av TETRA PID.
+- **Tvåstegsdetektering för TETRA-bärvågor**:
+  - Steg 1: Spektral energimätning och bandbreddsanalys mot bakgrundsbrus (SNR-krav).
+  - Steg 2: pi/4-DQPSK fasmodulationskontroll med automatisk Carrier Frequency Offset (CFO)-kompensation för att absorbera PPM-drift från USB-tuners.
+- **Lax-test / Enkanalsläge**:
+  - När användaren anger en enskild känd frekvens (t.ex. `390.125M`) låser mottagaren omedelbart på kanalen utan att kräva att den måste vinna en sveptävling över frekvensbandet.
+
 ## [2026.10.13.10] - pi/4-DQPSK Fasmodulationskorrelation och Breddat Frekvensstöd (390-430 MHz)
 
 ### Added
