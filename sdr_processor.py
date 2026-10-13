@@ -665,6 +665,11 @@ def start_instance(config):
         if ppm and ppm != '0': decoder_cmd.extend(['--ppm', str(ppm)])
         if serial: decoder_cmd.extend(['--device', serial])
 
+        current_settings = get_settings()
+        tetra_mode = config.get('tetra_mode') or current_settings.get('tetra_scan_mode', 'monitor')
+        dwell_time = config.get('tetra_dwell_time') or current_settings.get('tetra_dwell_time', '60')
+        decoder_cmd.extend(['--mode', str(tetra_mode), '--dwell-time', str(dwell_time)])
+
         is_scan = any(sep in freq for sep in [',', '-', ':'])
         if is_scan:
             # Let tetra_decoder.py manage channel scanning and locking

@@ -272,6 +272,27 @@
                                                 <i class="fas fa-trash-alt"></i> Rensa tidigare basstationsloggar ur databasen
                                             </button>
                                         </div>
+
+                                        <div style="margin-top: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+                                            <div style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; color: var(--text-primary); margin-bottom: 0.25rem;">
+                                                <i class="fas fa-satellite-dish" style="color: var(--accent); font-size: 0.8rem;"></i>
+                                                TETRA Skanningsläge & Bärvågsbevakning
+                                            </div>
+                                            <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.35; margin: 0 0 0.5rem 0;">
+                                                Styr hur skannern agerar när den låst på en basstation under frekvenssvep.
+                                            </p>
+                                            <div class="form-group" style="margin-bottom: 0.5rem;">
+                                                <label for="tetra_scan_mode" style="font-size: 0.8rem; font-weight: 600;">Driftläge</label>
+                                                <select id="tetra_scan_mode" class="form-control" style="font-size: 0.8rem; padding: 0.35rem 0.5rem;">
+                                                    <option value="monitor">Dedikerad Trafiklyssning (Stanna kvar så länge styrsignal/synk finns)</option>
+                                                    <option value="explorer">Explorer / Kartläggning (Svep vidare efter fördröjningstid)</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group" id="tetraDwellGroup" style="margin-bottom: 0.5rem; display: none;">
+                                                <label for="tetra_dwell_time" style="font-size: 0.8rem; font-weight: 600;">Fördröjning per basstation (sekunder)</label>
+                                                <input type="number" id="tetra_dwell_time" class="form-control" min="15" max="600" value="60" style="font-size: 0.8rem; padding: 0.35rem 0.5rem; max-width: 140px;">
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -915,6 +936,8 @@
 
         const debouncedSaveAppearance = debounce(() => {
             const logTetraEl = document.getElementById('log_tetra_basestations');
+            const tetraScanModeEl = document.getElementById('tetra_scan_mode');
+            const tetraDwellEl = document.getElementById('tetra_dwell_time');
             saveSettings({
                 message_font: fontSelect.value,
                 message_font_size: fontSlider.value,
@@ -922,7 +945,9 @@
                 garbage_filter_sensitivity: sensitivitySlider.value,
                 duplicate_handling: document.getElementById('duplicate_handling').value,
                 duplicate_window: document.getElementById('duplicate_window').value,
-                log_tetra_basestations: (logTetraEl && logTetraEl.checked) ? 'true' : 'false'
+                log_tetra_basestations: (logTetraEl && logTetraEl.checked) ? 'true' : 'false',
+                tetra_scan_mode: tetraScanModeEl ? tetraScanModeEl.value : 'monitor',
+                tetra_dwell_time: tetraDwellEl ? tetraDwellEl.value : '60'
             });
         }, 400);
 
@@ -950,6 +975,19 @@
                     const logTetraEl = document.getElementById('log_tetra_basestations');
                     if (logTetraEl) {
                         logTetraEl.checked = (data.log_tetra_basestations === 'true');
+                    }
+
+                    const tetraScanModeEl = document.getElementById('tetra_scan_mode');
+                    const tetraDwellEl = document.getElementById('tetra_dwell_time');
+                    const tetraDwellGroup = document.getElementById('tetraDwellGroup');
+                    if (tetraScanModeEl && data.tetra_scan_mode) {
+                        tetraScanModeEl.value = data.tetra_scan_mode;
+                    }
+                    if (tetraDwellEl && data.tetra_dwell_time) {
+                        tetraDwellEl.value = data.tetra_dwell_time;
+                    }
+                    if (tetraDwellGroup && tetraScanModeEl) {
+                        tetraDwellGroup.style.display = (tetraScanModeEl.value === 'explorer') ? 'block' : 'none';
                     }
 
                     document.getElementById('filterSensitivityGroup').style.display =
@@ -1143,6 +1181,24 @@
             const logTetraEl = document.getElementById('log_tetra_basestations');
             if (logTetraEl) {
                 logTetraEl.addEventListener('change', () => {
+                    debouncedSaveAppearance();
+                });
+            }
+
+            // TETRA scan mode & dwell time auto-save
+            const tetraScanModeEl = document.getElementById('tetra_scan_mode');
+            const tetraDwellEl = document.getElementById('tetra_dwell_time');
+            const tetraDwellGroup = document.getElementById('tetraDwellGroup');
+            if (tetraScanModeEl) {
+                tetraScanModeEl.addEventListener('change', () => {
+                    if (tetraDwellGroup) {
+                        tetraDwellGroup.style.display = (tetraScanModeEl.value === 'explorer') ? 'block' : 'none';
+                    }
+                    debouncedSaveAppearance();
+                });
+            }
+            if (tetraDwellEl) {
+                tetraDwellEl.addEventListener('input', () => {
                     debouncedSaveAppearance();
                 });
             }

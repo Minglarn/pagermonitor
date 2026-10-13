@@ -326,6 +326,8 @@ class TetraDemodulator:
         self.symbol_rate = 18000
         self.prev_phase = 0.0
         self.bit_buffer = []
+        self.last_sync_time = 0.0
+        self.sync_count = 0
 
     def demodulate_iq_chunk(self, raw_bytes):
         """Demodulate raw uint8 IQ samples into bit sequence."""
@@ -380,6 +382,9 @@ class TetraDemodulator:
                         break
             
             if bit_errors <= 2:
+                # Giltig TETRA STS (Synchronization Training Sequence) / styrsignal detekterad
+                self.last_sync_time = time.time()
+                self.sync_count += 1
                 payload_bits = self.bit_buffer[i + sts_len : i + sts_len + 120]
                 ev = self.parse_tetra_burst(payload_bits)
                 if ev:
@@ -549,13 +554,15 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
 class TetraScanner:
     """Manages wideband block scanning (2.0-2.4 MHz blocks), pi/4-DQPSK carrier detection and demodulation."""
 
-    def __init__(self, hz_list, str_list, sample_rate=1800000, gain="auto", ppm="0", device=""):
+    def __init__(self, hz_list, str_list, sample_rate=1800000, gain="auto", ppm="0", device="", mode="monitor", dwell_time=60.0):
         self.hz_list = hz_list
         self.str_list = str_list
         self.sample_rate = sample_rate
         self.gain = gain
         self.ppm = ppm
         self.device = device
+        self.mode = mode
+        self.dwell_time = dwell_time
         self.block_bw = 2400000
         self.blacklist_until = {}
 
@@ -571,7 +578,9 @@ class TetraScanner:
             if not has_rtl or os.environ.get("PAGERMONITOR_TEST_MODE", "").lower() == "true":
                 run_test_feed(locked_freq=lock_f)
             else:
-                self.stream_continuous(self.hz_list[0], lock_f)
+                while not _shutdown_requested:
+                    self.stream_continuous(self.hz_list[0], lock_f)
+                    time.sleep(1.0)
             return
 
         blocks = plan_wideband_blocks(self.hz_list, max_block_bw=self.block_bw)
@@ -681,7 +690,7 @@ class TetraScanner:
                                 )
                                 self.stream_continuous(cand_hz, cand_str)
                                 self.blacklist_until[cand_hz] = time.time() + 60.0
-                                format_and_print_event("SCAN", msg=f"Signal tystnade på {cand_str}. Återupptar svep...")
+                                format_and_print_event("SCAN", msg=f"Signal tystnade eller kartläggning avslutad på {cand_str}. Återupptar svep...")
                                 break
                             else:
                                 self.blacklist_until[cand_hz] = time.time() + 45.0
@@ -713,7 +722,12 @@ class TetraScanner:
             _current_child_proc = p
             demod = TetraDemodulator(sample_rate=self.sample_rate)
             buffer_size = 32768
-            last_activity = time.time()
+            
+            lock_start_time = time.time()
+            # 1. Basera aktivitet på ram-synk:
+            # Initiera last_sync_time med grace period så mottagaren hinner starta och fånga första synkramarna
+            last_sync_time = time.time()
+            sync_loss_timeout = 10.0
 
             while not _shutdown_requested:
                 chunk = p.stdout.read(buffer_size)
@@ -729,8 +743,12 @@ class TetraScanner:
                 events = demod.process_bits(bits)
 
                 now = time.time()
+                # Uppdatera last_sync_time varje gång avkodaren tar emot en giltig TETRA MAC-ram, synksekvens eller sysinfo-burst
+                if demod.last_sync_time > 0:
+                    last_sync_time = max(last_sync_time, demod.last_sync_time)
+
                 for ev in events:
-                    last_activity = now
+                    last_sync_time = now
                     ev_type = ev.get('type', 'NET')
                     if ev_type == 'NET':
                         mcc_str = str(ev.get('mcc', '240'))
@@ -742,7 +760,24 @@ class TetraScanner:
                     elif ev_type in ('CALL', 'STATUS', 'SDS'):
                         format_and_print_event(ev_type, gssi=ev.get('gssi'), issi=ev.get('issi'), msg=ev.get('text', ''))
 
-                # Continue streaming and decoding while SDR process is active
+                # Om skannern bevakar flera kanaler (skanningsläge):
+                if len(self.hz_list) > 1:
+                    # 2. Sätt en timeout för faktisk signalförlust:
+                    # Avbryt endast om mastens styrsignal helt tappats bort (inga godkända ramar på 10 sek)
+                    if (now - last_sync_time) > sync_loss_timeout:
+                        format_and_print_event(
+                            "SCAN", 
+                            msg=f"Förlorade synk mot basstationen på {f_str} (ingen styrsignal på {int(sync_loss_timeout)} sek) – återupptar skanning"
+                        )
+                        break
+
+                    # 3. Explorer-läge: Om användaren valt att kartlägga master i området
+                    if self.mode == "explorer" and (now - lock_start_time) > self.dwell_time:
+                        format_and_print_event(
+                            "SCAN", 
+                            msg=f"Explorer-läge: Kartläggning av mast {f_str} slutförd ({int(self.dwell_time)} sek). Söker vidare efter nästa mast..."
+                        )
+                        break
 
             return False
         except Exception as e:
@@ -765,6 +800,8 @@ def main():
     parser.add_argument("--gain", default="auto", help="Tuner gain in dB or auto")
     parser.add_argument("--device", default="", help="Device serial or index")
     parser.add_argument("--ppm", default="0", help="PPM frequency correction")
+    parser.add_argument("--mode", default="monitor", choices=["monitor", "explorer"], help="Scanning mode: 'monitor' stays on carrier while sync exists; 'explorer' maps cells and steps every dwell-time")
+    parser.add_argument("--dwell-time", default=60.0, type=float, help="Seconds to dwell on each carrier in explorer mode before stepping")
     parser.add_argument("--scan", action="store_true", help="Force wideband block scanning mode across frequencies")
     parser.add_argument("--test-feed", action="store_true", help="Run simulated test feed for verification")
     args = parser.parse_args()
@@ -785,7 +822,9 @@ def main():
             sample_rate=args.sample_rate,
             gain=args.gain,
             ppm=args.ppm,
-            device=args.device
+            device=args.device,
+            mode=args.mode,
+            dwell_time=args.dwell_time
         )
         scanner.run_scan_loop()
         return
@@ -800,8 +839,11 @@ def main():
             bits = demod.demodulate_iq_chunk(chunk)
             events = demod.process_bits(bits)
             for ev in events:
-                if ev['type'] == 'NET':
-                    format_and_print_event('NET', mcc=ev['mcc'], mnc=ev['mnc'], msg=ev['text'])
+                ev_type = ev.get('type', 'NET')
+                if ev_type == 'NET':
+                    format_and_print_event('NET', mcc=ev.get('mcc'), mnc=ev.get('mnc'), msg=ev.get('text'))
+                elif ev_type in ('CALL', 'STATUS', 'SDS'):
+                    format_and_print_event(ev_type, gssi=ev.get('gssi'), issi=ev.get('issi'), msg=ev.get('text', ''))
     except KeyboardInterrupt:
         pass
     except Exception as e:

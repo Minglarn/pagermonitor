@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.27] - Synkbaserad Bärvågsbevakning och Driftlägen för TETRA
+
+### Added
+- **Stöd för Driftlägen i TETRA-skannern (`tetra_decoder.py`, `database.py`, `templates/settings.html`)**:
+  - **Dedikerad Trafiklyssning (`monitor`)**: Standardläge. Mottagaren låser på starkaste kontrollkanalen och stannar obegränsad tid så länge basstationens styrsignal och synksekvenser faktiskt hörs – även nattetid när ingen användartrafik pågår.
+  - **Explorer / Kartläggning (`explorer`)**: Nytt kartläggningsläge som stannar på varje detekterad basstation i en konfigurerbar tid (standard 60 sekunder) för att registrera nätverksdata, färgkod och Cell ID, varpå skannern automatiskt sveper vidare till nästa mast i området.
+  - Webbgränssnitt för att välja mellan Dedikerad Trafiklyssning och Explorer samt ställa in fördröjningstid direkt under Inställningar -> TETRA / Rakel Basstationsloggning.
+
+### Fixed
+- **Synk- och Styrsignalsbaserad Aktivitetshantering (`tetra_decoder.py`)**:
+  - Aktivitet baseras nu på mottagna Synchronization Training Sequences (STS) och styrsignaler istället för användaranrop. I [tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py) uppdaterar `TetraDemodulator.process_bits` nu `last_sync_time` varje gång en godkänd TETRA STS eller MAC-ram detekteras (vilket en aktiv mast sänder flera gånger per sekund).
+  - Infört en 10-sekunders timeout för faktisk signalförlust: Skannern bryter endast låsningen och återupptar frekvenssvepet om basstationens styrsignal helt tappas bort (mer än 10 sekunder utan synk).
+  - Lagt till fullständig avkodning och utskrift av `CALL`, `STATUS` och `SDS` även i stdin-strömningsloopen.
+
 ## [2026.10.13.26] - Fix för Mottagarlista i Inställningar, TETRA-låsning och Versionssynk
 
 ### Fixed

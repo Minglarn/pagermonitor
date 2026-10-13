@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.26`
+- **CalVer**: `2026.10.13.27`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -960,6 +960,26 @@
     - Lagt till en framträdande loggbanner vid Docker-start i konsolen.
 - **Verifiering**:
   - Samtliga 54 enhetstester i testsviten passerar felfritt.
+
+---
+
+### 24. Synkbaserad Bärvågsbevakning och Driftlägen för TETRA (v2026.10.13.27)
+- **Problembeskrivning**:
+  1. Den tidigare logiken i `stream_continuous` baserade aktivitet på användartrafik (samtal/SDS), vilket gjorde att skannern riskerade att överge en aktiv mast nattetid när ingen talade.
+  2. Omvänt, att aldrig svepa vidare gjorde att systemet inte kunde återhämta sig om antennen kopplades ur eller en mast släcktes ner.
+  3. Behov av att välja mellan permanent trafiklyssning och aktiv kartläggning av basstationer i närområdet.
+- **Teknisk Implementering**:
+  - **Synk- och Styrsignalsbaserad Aktivitet ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - [TetraDemodulator](file:///d:/antigravity/pager-monitor/tetra_decoder.py) räknar nu alla mottagna TETRA Synchronization Training Sequences (STS) och MAC-ramar. Så länge basstationens styrsignal tas emot (upp till 17 gånger per sekund) nollställs `last_sync_time`.
+    - Mottagaren förblir låst i oändlighet även mitt i natten så länge bärvågen sänder.
+  - **10-sekunders Timeout för Faktisk Signalförlust ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Om antennen kopplas ur eller mastens styrsignal helt tappas bort i mer än 10 sekunder loggas: `Förlorade synk mot basstationen på <frekvens> (ingen styrsignal på 10 sek) – återupptar skanning`, loopen bryts och skannern söker automatiskt upp nästa frekvens.
+  - **Driftlägen: Dedikerad Monitor vs. Explorer ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py), [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py), [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+    - **Dedikerad Monitor (`monitor`)**: Standard. Stannar på starkaste kontrollkanalen så länge synk finns.
+    - **Explorer (`explorer`)**: Kartläggningsläge. Stannar på varje detekterad mast under konfigurerad fördröjningstid (standard 60s), registrerar nätverksdata, färgkod och Cell ID, och sveper därefter vidare.
+    - Användaren kan konfigurera driftläge och fördröjningstid direkt via Inställningar.
+- **Verifiering**:
+  - Samtliga 54 enhetstester passerar felfritt.
 
 
 

@@ -40,7 +40,9 @@ def get_default_settings():
         'duplicate_window': '120',
         'auto_prune_enabled': 'true',
         'auto_prune_days': '30',
-        'log_tetra_basestations': 'true'
+        'log_tetra_basestations': 'true',
+        'tetra_scan_mode': 'monitor',
+        'tetra_dwell_time': '60'
     }
 
 def init_db():
