@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.4] - Möjlighet att Kopiera / Klona SDR-mottagare i Inställningar
+
+### Added
+- **Kopiering av SDR-mottagare (`clone_sdr_instance`)**:
+  - Infört en "Copy"-knapp på varje SDR-kort under **Settings -> SDR Receivers**.
+  - Modal som tillåter att ange nytt mottagarnamn och frekvens med alla ursprungliga hårdvaru- och avkodarinställningar förifyllda.
+  - Samtliga filter (`sample_rate`, `resample_rate`, `gain`, `ppm_error`, `enable_dc_removal`, `enable_deemp`, `enable_high_quality_fir`, `atan_math`, `oversampling`, `multimon_verbosity`, `multimon_charset`, `protocol`) dupliceras exakt till den nya mottagaren.
+  - Den klonade mottagaren skapas som inaktiv (`disabled`) för att förhindra USB-portkonflikter innan användaren har konfigurerat eventuellt dongel-serienummer.
+  - Nytt API-slutpunkt: `POST /api/sdr/<id>/clone`.
+
 ## [2026.10.13.3] - Åtgärdat Sparning av Duplikathantering och Duplikatfönster i Inställningar
 
 ### Fixed

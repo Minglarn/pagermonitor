@@ -15,6 +15,7 @@ from database import (
     delete_alias, get_alert_words, save_alert_word, 
     delete_alert_word, get_default_settings,
     get_sdr_instances, save_sdr_instance, delete_sdr_instance, toggle_sdr_instance,
+    clone_sdr_instance,
     delete_message, toggle_message_lock, clear_messages, prune_messages,
     get_database_stats, auto_prune_if_enabled
 )
@@ -113,7 +114,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.13.3"
+APP_VERSION = "2026.10.13.4"
 
 @app.context_processor
 def inject_globals():
@@ -406,6 +407,17 @@ def toggle_sdr(instance_id):
     toggle_sdr_instance(instance_id, enabled)
     restart_sdr()
     return jsonify({"status": "success"})
+
+@app.route('/api/sdr/<int:instance_id>/clone', methods=['POST'])
+def clone_sdr(instance_id):
+    data = request.get_json(silent=True) or {}
+    new_name = data.get('name')
+    new_frequency = data.get('frequency')
+    new_id = clone_sdr_instance(instance_id, new_name, new_frequency, enabled=0)
+    if new_id is None:
+        return jsonify({"status": "error", "message": "Receiver not found"}), 404
+    restart_sdr()
+    return jsonify({"status": "success", "id": new_id})
 
 @app.route('/api/aliases', methods=['GET', 'POST', 'DELETE'])
 def handle_aliases():

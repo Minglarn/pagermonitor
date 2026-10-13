@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.3`
+- **CalVer**: `2026.10.13.4`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -580,3 +580,21 @@
     - Utökat `test_settings_autosave_api` i [tests/test_security_and_larm.py](file:///d:/antigravity/pager-monitor/tests/test_security_and_larm.py) med validering av att `duplicate_handling` och `duplicate_window` sparas och returneras vid `GET /api/settings`.
     - Samtliga 42 tester i testsviten passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.3`.
+
+## 41. Möjlighet att Kopiera / Klona SDR-mottagare i Inställningar (v2026.10.13.4)
+- **Bakgrund och Problem**:
+  - Vid skapande av en ny SDR-mottagare behövde användaren tidigare fylla i alla ~18 avancerade hårdvaru-, filter- och avkodarinställningar (`sample_rate`, `resample_rate`, filter, `gain`, `ppm`, `oversampling`, `protocol`, `charset`) från början.
+  - Önskemål om en smidig "Copy"-funktion i **Settings -> SDR** för att duplicera en befintlig mottagare med alla dess finjusterade inställningar intakta.
+- **Genomförda Åtgärder**:
+  - **Databas & Backend**:
+    - Implementerade `clone_sdr_instance(source_id, new_name, new_frequency)` i [database.py](file:///d:/antigravity/pager-monitor/database.py).
+    - Kopierar samtliga 18 inställningsparametrar. Sätter `enabled = 0` så att den klonade mottagaren skapas som inaktiv för att förhindra omedelbar USB-portkonflikt innan användaren hunnit konfigurera eventuellt enhets-ID/dongel.
+    - Lade till API-slutpunkt `POST /api/sdr/<int:instance_id>/clone` i [app.py](file:///d:/antigravity/pager-monitor/app.py).
+  - **Gränssnitt**:
+    - Lade till en "Copy"-knapp på varje SDR-kort i [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html).
+    - Implementerade en dedikerad modal (`#copySdrModal`) där användaren ges möjlighet att direkt välja namn och frekvens för den nya mottagaren med förvalda värden.
+    - Optimerade `.sdr-card-actions` i [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css) med `flex-wrap: wrap;` och anpassade marginaler för en ren layout med tre knappar (`Hardware`, `Copy`, `Delete`).
+  - **Tester och Verifiering**:
+    - Skapade `test_clone_sdr_instance_api` i [tests/test_security_and_larm.py](file:///d:/antigravity/pager-monitor/tests/test_security_and_larm.py) som verifierar att alla filter, demoduleringsflaggor och hårdvaruparametrar dupliceras exakt och att modalen finns i gränssnittet.
+    - Samtliga 43 enhetstester passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.4`.

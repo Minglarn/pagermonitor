@@ -644,6 +644,54 @@ def toggle_sdr_instance(instance_id, enabled):
     conn.commit()
     conn.close()
 
+def clone_sdr_instance(source_id, new_name=None, new_frequency=None, enabled=0):
+    """Clone an existing SDR hardware profile with all settings preserved."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    c = conn.cursor()
+    c.execute('SELECT * FROM sdr_instances WHERE id = ?', (source_id,))
+    row = c.fetchone()
+    if not row:
+        conn.close()
+        return None
+    
+    source = dict(row)
+    name = (new_name or f"{source.get('name', 'Receiver')} (Copy)").strip()
+    frequency = (new_frequency or source.get('frequency', '169.8M')).strip()
+    
+    c.execute('''
+        INSERT INTO sdr_instances (
+            name, frequency, gain, device_serial, ppm_error,
+            sample_rate, resample_rate, enable_dc_removal, enable_deemp,
+            enable_high_quality_fir, atan_math, oversampling,
+            multimon_verbosity, multimon_charset, multimon_format,
+            multimon_input_type, protocol, enabled
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (
+        name,
+        frequency,
+        source.get('gain', 'auto'),
+        source.get('device_serial', ''),
+        source.get('ppm_error', '0'),
+        source.get('sample_rate', '250000'),
+        source.get('resample_rate', '22050'),
+        source.get('enable_dc_removal', 'true'),
+        source.get('enable_deemp', 'true'),
+        source.get('enable_high_quality_fir', 'false'),
+        source.get('atan_math', 'std'),
+        source.get('oversampling', '4'),
+        source.get('multimon_verbosity', '2'),
+        source.get('multimon_charset', 'SE'),
+        source.get('multimon_format', 'auto'),
+        source.get('multimon_input_type', 'raw'),
+        source.get('protocol', 'POCSAG'),
+        1 if enabled else 0
+    ))
+    new_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return new_id
+
 def clear_messages():
     """Delete all messages from the database."""
     conn = sqlite3.connect(DB_PATH)

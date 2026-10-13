@@ -491,6 +491,45 @@
         </div>
     </div>
 
+    <!-- Modal: Copy SDR Receiver -->
+    <div id="copySdrModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 480px; padding: 2rem; border-radius: 16px;">
+            <div class="modal-header" style="margin-bottom: 1.5rem;">
+                <h3 style="margin: 0; color: var(--accent); font-size: 1.25rem;">
+                    <i class="fas fa-copy" style="margin-right: 8px;"></i> Copy SDR Receiver
+                </h3>
+                <p style="margin: 0.4rem 0 0 0; font-size: 0.82rem; color: var(--text-secondary);">
+                    Duplicates all hardware, filter, and decoder settings from <strong id="copy_source_name" style="color: var(--text-primary);"></strong> into a new receiver.
+                </p>
+            </div>
+            <form id="copySdrForm" onsubmit="submitCopySDR(event)">
+                <input type="hidden" id="copy_source_id">
+                <div class="form-group" style="margin-bottom: 1.25rem;">
+                    <label for="copy_sdr_name" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">
+                        New Receiver Name *
+                    </label>
+                    <input type="text" id="copy_sdr_name" required placeholder="e.g. RIKS 2" class="form-input"
+                        style="width: 100%; padding: 0.7rem 0.9rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary); box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="copy_sdr_freq" style="font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 0.35rem; color: var(--text-primary);">
+                        Frequency *
+                    </label>
+                    <input type="text" id="copy_sdr_freq" required placeholder="e.g. 169.8M or 161.4375M" class="form-input"
+                        style="width: 100%; padding: 0.7rem 0.9rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text-primary); box-sizing: border-box;">
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+                    <button type="button" class="secondary-btn" onclick="closeCopySdrModal()" style="margin: 0; padding: 0.55rem 1.2rem;">
+                        Cancel
+                    </button>
+                    <button type="submit" id="copySdrSubmitBtn" class="primary-btn" style="margin: 0; padding: 0.55rem 1.2rem;">
+                        Copy Receiver
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
 
 
     <script>
@@ -613,7 +652,10 @@
                         <a href="/settings/sdr/${sdr.id}" class="secondary-btn" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
                             <i class="fas fa-sliders-h"></i> Hardware
                         </a>
-                        <button type="button" class="secondary-btn" onclick="confirmDeleteSDR(${sdr.id}, '${sdr.name}')" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+                        <button type="button" class="secondary-btn" onclick="openCopySdrModal(${sdr.id})" style="display: flex; align-items: center; justify-content: center; gap: 0.4rem;" title="Copy all settings to a new receiver">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        <button type="button" class="secondary-btn" onclick="confirmDeleteSDR(${sdr.id}, '${sdr.name.replace(/'/g, "\\'")}')" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3); display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
                             <i class="fas fa-trash-alt"></i> Delete
                         </button>
                     </div>
@@ -662,6 +704,60 @@
             .finally(() => {
                 btn.disabled = false;
                 btn.innerText = 'Create Receiver';
+            });
+        }
+
+        function openCopySdrModal(id) {
+            const sdr = currentSDRs.find(s => s.id === id);
+            if (!sdr) return;
+            document.getElementById('copy_source_id').value = sdr.id;
+            document.getElementById('copy_source_name').innerText = sdr.name;
+            document.getElementById('copy_sdr_name').value = `${sdr.name} (Copy)`;
+            document.getElementById('copy_sdr_freq').value = sdr.frequency || '169.8M';
+            document.getElementById('copySdrModal').classList.add('show');
+            const nameInput = document.getElementById('copy_sdr_name');
+            nameInput.focus();
+            nameInput.select();
+        }
+
+        function closeCopySdrModal() {
+            document.getElementById('copySdrModal').classList.remove('show');
+        }
+
+        function submitCopySDR(e) {
+            e.preventDefault();
+            const sourceId = document.getElementById('copy_source_id').value;
+            const btn = document.getElementById('copySdrSubmitBtn');
+            btn.disabled = true;
+            btn.innerText = 'Copying...';
+
+            const payload = {
+                name: document.getElementById('copy_sdr_name').value.trim(),
+                frequency: document.getElementById('copy_sdr_freq').value.trim()
+            };
+
+            fetch(`/api/sdr/${sourceId}/clone`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    closeCopySdrModal();
+                    showStatus('Receiver copied successfully with all settings!', 'success');
+                    loadSDRs();
+                } else {
+                    showStatus(data.message || 'Could not copy receiver', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Could not copy receiver:', err);
+                showStatus('Could not copy receiver', 'error');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerText = 'Copy Receiver';
             });
         }
 

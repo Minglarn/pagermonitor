@@ -324,6 +324,71 @@ def test_universal_confirm_dialog_and_static_asset(client):
         html = res.data.decode('utf-8')
         assert 'src="/static/confirm.js' in html
 
+def test_clone_sdr_instance_api(client):
+    """Verifiera att kloning av SDR kopierar alla hårdvaru- och avkodningsinställningar."""
+    # Skapa ursprunglig mottagare med anpassade värden
+    initial_config = {
+        'name': 'Primary Pager Station',
+        'frequency': '169.8M',
+        'gain': '35',
+        'device_serial': '10000001',
+        'ppm_error': '2',
+        'sample_rate': '250000',
+        'resample_rate': '22050',
+        'enable_dc_removal': 'true',
+        'enable_deemp': 'true',
+        'enable_high_quality_fir': 'false',
+        'atan_math': 'fast',
+        'oversampling': '4',
+        'multimon_verbosity': '2',
+        'multimon_charset': 'SE',
+        'multimon_format': 'auto',
+        'multimon_input_type': 'raw',
+        'protocol': 'POCSAG',
+        'enabled': 1
+    }
+    database.save_sdr_instance(initial_config)
+    instances = database.get_sdr_instances()
+    source = next(i for i in instances if i['name'] == 'Primary Pager Station')
+    source_id = source['id']
+
+    # Klona via API med nytt namn och ny frekvens
+    clone_res = client.post(f'/api/sdr/{source_id}/clone', json={
+        'name': 'Secondary Backup Station',
+        'frequency': '161.4375M'
+    })
+    assert clone_res.status_code == 200
+    res_data = clone_res.get_json()
+    assert res_data['status'] == 'success'
+    new_id = res_data['id']
+
+    # Verifiera att alla hårdvaruvärden och filterinställningar kopierades exakt
+    get_res = client.get(f'/api/sdr/{new_id}')
+    assert get_res.status_code == 200
+    cloned = get_res.get_json()
+
+    assert cloned['name'] == 'Secondary Backup Station'
+    assert cloned['frequency'] == '161.4375M'
+    assert cloned['gain'] == '35'
+    assert cloned['device_serial'] == '10000001'
+    assert cloned['ppm_error'] == '2'
+    assert cloned['sample_rate'] == '250000'
+    assert cloned['resample_rate'] == '22050'
+    assert cloned['enable_dc_removal'] == 'true'
+    assert cloned['enable_deemp'] == 'true'
+    assert cloned['atan_math'] == 'fast'
+    assert cloned['oversampling'] == '4'
+    assert cloned['multimon_charset'] == 'SE'
+    assert cloned['protocol'] == 'POCSAG'
+    assert cloned['enabled'] == 0  # Skapas avaktiverad för att förhindra portkrock
+
+    # Verifiera att Copy-knappen och Copy-modalen finns i settings-HTML
+    settings_page = client.get('/settings')
+    assert settings_page.status_code == 200
+    settings_html = settings_page.data.decode('utf-8')
+    assert 'openCopySdrModal' in settings_html
+    assert 'id="copySdrModal"' in settings_html
+
 
 
 
