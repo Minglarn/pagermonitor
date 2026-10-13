@@ -530,7 +530,7 @@ def normalize_rate_hz(rate_val, default='22050'):
     return s.lower()
 
 def kill_orphaned_rtl_for_device(device_serial):
-    """Kills any orphaned rtl_sdr or rtl_fm process in the container using this device serial."""
+    """Kills any orphaned rtl_sdr, rtl_fm, rtl_test or tetra_decoder process in the container using this device serial."""
     if not device_serial or os.name != 'posix' or not os.path.exists('/proc'):
         return
     dev_str = str(device_serial).strip()
@@ -543,15 +543,28 @@ def kill_orphaned_rtl_for_device(device_serial):
                 cmdline_path = os.path.join('/proc', pid_dir, 'cmdline')
                 try:
                     with open(cmdline_path, 'rb') as f:
-                        cmdline = f.read().decode('latin-1', errors='ignore')
+                        raw = f.read()
+                    cmdline = raw.decode('latin-1', errors='ignore')
                     args = cmdline.split('\x00')
-                    is_rtl = any(bin_name in (args[0] if args else '') for bin_name in ['rtl_sdr', 'rtl_fm', 'rtl_test'])
-                    if is_rtl:
+
+                    # Matches rtl_fm, rtl_sdr, rtl_test, or python scripts running tetra_decoder
+                    is_target = any(bin_name in cmdline for bin_name in ['rtl_sdr', 'rtl_fm', 'rtl_test', 'tetra_decoder'])
+                    if is_target:
+                        matches_dev = False
                         for i, arg in enumerate(args):
-                            if arg == '-d' and i + 1 < len(args) and args[i + 1] == dev_str:
-                                logger.warning(f"Dödar föräldralös RTL-process PID {pid_dir} ({args[0]}) som låste enhet {dev_str}")
-                                os.kill(int(pid_dir), signal.SIGKILL)
+                            if arg in ('-d', '--device') and i + 1 < len(args) and args[i + 1] == dev_str:
+                                matches_dev = True
                                 break
+                            elif arg.startswith(f"--device={dev_str}") or arg.startswith(f"-d{dev_str}"):
+                                matches_dev = True
+                                break
+
+                        if matches_dev:
+                            logger.warning(f"Dödar föräldralös SDR-process PID {pid_dir} ({args[0] if args else 'proc'}) som låste enhet {dev_str}")
+                            try:
+                                os.kill(int(pid_dir), signal.SIGKILL)
+                            except Exception:
+                                pass
                 except Exception:
                     pass
     except Exception as e:
@@ -608,6 +621,7 @@ def start_instance(config):
     
     if serial:
         kill_orphaned_rtl_for_device(serial)
+        time.sleep(0.2)
 
     rtl_cmd = ['rtl_fm', '-f', freq, '-M', 'fm', '-s', sample_rate, '-r', resample_rate]
     if gain and gain != 'auto': rtl_cmd.extend(['-g', str(gain)])
@@ -741,6 +755,7 @@ def stop_instance_procs(instance_id):
             kill_orphaned_rtl_for_device(serial)
         
         del active_instances[instance_id]
+        time.sleep(0.4)
 
 def run_sdr_process():
     """Supervisor loop that synchronizes active processes with DB config."""

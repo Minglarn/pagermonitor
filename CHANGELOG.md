@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.23] - Garanterad Terminering av Bakgrundsprocesser för TETRA och USB Återhämtningspauser
+
+### Fixed
+- **Terminering av Föräldralösa Python/TETRA-processer (`kill_orphaned_rtl_for_device` i `sdr_processor.py`)**:
+  - `kill_orphaned_rtl_for_device` kontrollerade tidigare enbart om processens binärnamn matchade `rtl_sdr`, `rtl_fm` eller `rtl_test`. När en instans kördes med `TETRA` var huvudprocessen `python tetra_decoder.py`, vilket gjorde att den aldrig terminerades när användaren stoppade mottagaren eller bytte protokoll till POCSAG.
+  - Den kvardröjande bakgrundsprocessen fortsatte anropa `rtl_sdr` i loopar på samma USB-enhet, vilket orsakade USB-kollision och `Device error detected, async read returned: -1` för nya instanser (t.ex. `RIKS 2`).
+  - Uppdaterat processökningen så att den identifierar alla processer och python-skript som använder enheten via `-d`, `--device` eller `--device=<enhet>` och garanterat dödar dem med `SIGKILL`.
+- **Automatisk Process-avregistrering (`atexit` i `tetra_decoder.py`)**:
+  - Registrerat `atexit`- och `signal`-hanterare som automatiskt terminerar aktiva underprocesser (`rtl_sdr`) vid avslut, så att inga barnprocesser lämnas kvar.
+- **USB-återhämtningspauser och Skydd mot Snabbkrasch i Blockskanning (`tetra_decoder.py`)**:
+  - Implementerat 120 ms fördröjning efter varje `rtl_sdr`-körning så att Linux USB-kärna hinner frigöra ändpunkter och URB-buffertar innan nästa block anropas.
+  - Vid felaktig eller ofullständig dataläsning (`< 10 000` byte) pausas processen i 350 ms och provtagningen gör automatiskt ett andra försök innan felet rapporteras. Detta eliminerar den kaskad av `Library error -1` som uppstod när flera block anropades inom loppet av millisekunder.
+- **Hårdvarupaus vid Instansbyte (`stop_instance_procs` & `start_instance` i `sdr_processor.py`)**:
+  - Lagt till 400 ms hårdvarupaus efter att processer terminerats innan en ny mottagare startas, vilket garanterar att USB-dongeln har släppt alla lås innan `rtl_fm` eller `rtl_sdr` initieras.
+
 ## [2026.10.13.22] - RF Activity Rullningslist och Styrning av TETRA-basstationsloggning
 
 ### Added

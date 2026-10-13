@@ -17,9 +17,20 @@ import re
 import shutil
 import subprocess
 import signal
+import atexit
 
 _shutdown_requested = False
 _current_child_proc = None
+
+def _cleanup_on_exit():
+    global _current_child_proc
+    if _current_child_proc:
+        try:
+            _current_child_proc.kill()
+        except Exception:
+            pass
+
+atexit.register(_cleanup_on_exit)
 
 def _sig_handler(signum, frame):
     """Graceful termination handler that terminates spawned rtl_sdr processes."""
@@ -28,6 +39,7 @@ def _sig_handler(signum, frame):
     if _current_child_proc:
         try:
             _current_child_proc.kill()
+            _current_child_proc.wait(timeout=0.5)
         except Exception:
             pass
     sys.exit(0)
@@ -459,81 +471,79 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
         format_and_print_event("SCAN", msg="Kunde inte hitta 'rtl_sdr' binär i miljön.")
         return b""
 
-    num_samples = min(int(sample_rate * duration_sec), 163840)
-    import tempfile
-    tmp_fd, tmp_path = tempfile.mkstemp(prefix="pm_tetra_", suffix=".raw")
-    os.close(tmp_fd)
+    # Round samples to a multiple of 16384 (standard libusb buffer size)
+    target_samples = max(32768, int(round((sample_rate * duration_sec) / 16384.0)) * 16384)
+    num_samples = min(target_samples, 131072)
 
-    cmd = [rtl_bin, '-f', str(center_hz), '-s', str(sample_rate), '-n', str(num_samples)]
-    if gain and gain != 'auto':
-        cmd.extend(['-g', str(gain)])
-    if ppm and ppm != '0':
-        cmd.extend(['-p', str(ppm)])
-    if device:
-        cmd.extend(['-d', str(device)])
-    cmd.append(tmp_path)
+    def _execute_capture():
+        global _current_child_proc
+        import tempfile
+        tmp_fd, tmp_path = tempfile.mkstemp(prefix="pm_tetra_", suffix=".raw")
+        os.close(tmp_fd)
 
-    proc = None
-    try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
-        _current_child_proc = proc
-        _, err_bytes = proc.communicate(timeout=6.0)
+        cmd = [rtl_bin, '-f', str(center_hz), '-s', str(sample_rate), '-n', str(num_samples)]
+        if gain and gain != 'auto':
+            cmd.extend(['-g', str(gain)])
+        if ppm and ppm != '0':
+            cmd.extend(['-p', str(ppm)])
+        if device:
+            cmd.extend(['-d', str(device)])
+        cmd.append(tmp_path)
 
+        proc = None
         raw_iq = b""
-        if os.path.exists(tmp_path):
-            try:
-                with open(tmp_path, 'rb') as f:
-                    raw_iq = f.read()
-                os.remove(tmp_path)
-            except Exception:
-                pass
+        err_bytes = b""
+        try:
+            proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
+            _current_child_proc = proc
+            _, err_bytes = proc.communicate(timeout=5.0)
 
-        if len(raw_iq) < 10000:
-            err_text = err_bytes.decode('latin-1', errors='replace').strip() if err_bytes else ""
-            if err_text:
-                lines = [l.strip() for l in err_text.splitlines() if l.strip()]
-                diag = " | ".join(lines[-2:]) if lines else "Inga data från rtl_sdr"
-                format_and_print_event("SCAN", msg=f"rtl_sdr hårdvaruvarning (enhet {device or '0'}): {diag}")
-        return raw_iq
-    except subprocess.TimeoutExpired as te:
-        if proc:
-            try:
-                proc.kill()
-                proc.wait(timeout=1.0)
-            except Exception:
-                pass
-        if os.path.exists(tmp_path):
-            try: os.remove(tmp_path)
-            except Exception: pass
-        err_msg = ""
-        if te.stderr:
-            err_msg = te.stderr.decode('latin-1', errors='replace').strip()
-        last_line = err_msg.splitlines()[-1] if err_msg else "Inget svar från dongeln (kontrollera enhetsindex)"
-        format_and_print_event("SCAN", msg=f"rtl_sdr timeout för enhet {device or '0'}: {last_line}")
-        time.sleep(0.5)
-        return b""
-    except Exception as e:
-        if proc:
-            try:
-                proc.kill()
-                proc.wait(timeout=0.5)
-            except Exception:
-                pass
-        if os.path.exists(tmp_path):
-            try: os.remove(tmp_path)
-            except Exception: pass
-        format_and_print_event("SCAN", msg=f"Fel vid anrop av rtl_sdr: {e}")
-        return b""
-    finally:
-        if proc:
-            try:
-                if proc.poll() is None:
-                    proc.kill()
-                    proc.wait(timeout=0.5)
-            except Exception:
-                pass
-        if _current_child_proc == proc:
+            if os.path.exists(tmp_path):
+                try:
+                    with open(tmp_path, 'rb') as f:
+                        raw_iq = f.read()
+                except Exception:
+                    pass
+        except subprocess.TimeoutExpired:
+            if proc:
+                try: proc.kill(); proc.wait(timeout=0.5)
+                except Exception: pass
+        except Exception:
+            if proc:
+                try: proc.kill(); proc.wait(timeout=0.5)
+                except Exception: pass
+        finally:
+            if os.path.exists(tmp_path):
+                try: os.remove(tmp_path)
+                except Exception: pass
+            if proc:
+                try:
+                    if proc.poll() is None:
+                        proc.kill()
+                        proc.wait(timeout=0.5)
+                except Exception:
+                    pass
             _current_child_proc = None
+            time.sleep(0.12)
+
+        return raw_iq, err_bytes
+
+    raw_iq, err_bytes = _execute_capture()
+
+    # If first attempt returned incomplete data due to USB contention or bus reset, pause and retry once
+    if len(raw_iq) < 10000 and not _shutdown_requested:
+        time.sleep(0.35)
+        raw_iq, err_bytes = _execute_capture()
+
+    if len(raw_iq) < 10000 and not _shutdown_requested:
+        err_text = err_bytes.decode('latin-1', errors='replace').strip() if err_bytes else ""
+        if err_text:
+            lines = [l.strip() for l in err_text.splitlines() if l.strip()]
+            diag = " | ".join(lines[-2:]) if lines else "Inga data från rtl_sdr"
+            format_and_print_event("SCAN", msg=f"rtl_sdr hårdvaruvarning (enhet {device or '0'}): {diag}")
+        time.sleep(0.25)
+
+    return raw_iq
 
 class TetraScanner:
     """Manages wideband block scanning (2.0-2.4 MHz blocks), pi/4-DQPSK carrier detection and demodulation."""

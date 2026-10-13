@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.22`
+- **CalVer**: `2026.10.13.23`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -890,6 +890,26 @@
     - Nya tester `test_tetra_net_basestation_filtered_by_default` och `test_tetra_net_basestation_saved_when_setting_enabled` i `tests/test_sdr_watchdog.py`.
     - Samtliga 54 tester passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.22`.
+
+## 60. Garanterad Terminering av Bakgrundsprocesser för TETRA och USB Återhämtningspauser (v2026.10.13.23)
+- **Bakgrund och Problem**:
+  - Vid byte av protokoll (t.ex. från TETRA till POCSAG på RIKS 2) eller snabb frekvensskanning kraschade `rtl_fm` med: `Device error detected, async read returned: -1` och `rtl_sdr` med: `cb transfer status: 1, canceling... | Library error -1, exiting...`.
+  - Orsaken var tvådelad:
+    1. `kill_orphaned_rtl_for_device` kontrollerade enbart om processens första argument matchade binärerna `rtl_fm`, `rtl_sdr` eller `rtl_test`. När TETRA kördes var huvudprocessen `python3 tetra_decoder.py`, vilket gjorde att den aldrig terminerades när instansen stoppades eller bytte protokoll. Den kvardröjande bakgrundsprocessen fortsatte i loopar att anropa `rtl_sdr` på samma dongel och stal hårdvarulåset från `rtl_fm`.
+    2. Det saknades hårdvarupauser mellan `rtl_sdr`-block under bredbandsskanning. När 10 block anropades inom 3 sekunder hann inte kärnans USB-drivrutin frigöra URB-ändpunkter mellan körningarna, vilket ledde till en kaskad av `Library error -1`.
+- **Genomförda Åtgärder**:
+  - **Förbättrad Process-rensning ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Uppdaterade `kill_orphaned_rtl_for_device` till att matcha alla processer och skript (`tetra_decoder`, `rtl_fm`, `rtl_sdr`, `rtl_test`) och enhetsargument (`-d`, `--device`, `--device=`) och döda dem med `SIGKILL`.
+    - Lagt till `time.sleep(0.4)` vid stopp och `time.sleep(0.2)` vid start för att garantera att Linux USB-drivrutin har frigjort hårdvaruändpunkterna innan nästa process ansluter.
+  - **Säkrare Blockskanning och Automatisk Återhämtning ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Registrerat `atexit`-rensning så att eventuella aktiva `rtl_sdr`-underprocesser alltid dödas om `tetra_decoder.py` avslutas.
+    - Satt `num_samples` till jämna multipler av libusb-buffertar (max 131 072 samples / 8 buffertar).
+    - Lagt till 120 ms återhämtningspaus efter varje capture i `finally`.
+    - Om provtagningen returnerar ofullständig data pausas processen i 350 ms och provtagningen gör automatiskt ett andra försök innan ett felmeddelande genereras.
+  - **Tester och Verifiering**:
+    - Samtliga 54 enhetstester passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.23`.
+
 
 
 
