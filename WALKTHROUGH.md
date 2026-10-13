@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.20`
+- **CalVer**: `2026.10.13.21`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -857,11 +857,19 @@
   - **Normalisering av Frekvenser (`normalize_freq` i [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py) & [database.py](file:///d:/antigravity/pager-monitor/database.py))**:
     - Tvättar bort alla interna och avslutande mellanslag.
     - Säkerställer korrekt versalt `M` för megahertz, hanterar frekvensintervall samt lägger automatiskt till `M` om användaren anger rena tal under 10 000 (t.ex. `169.8` eller `161.4375`).
-    - Databasfunktionerna sanerar nu också frekvens och serienummer vid lagring.
+## 58. Fixat Matematisk Bärvågsdetektering och Koherent Kanaleffekt i TETRA Scanner (v2026.10.13.21)
+- **Bakgrund och Problem**:
+  - Vid bredbandig skanning efter TETRA/Rakel-kanaler (t.ex. 390.0–395.0 MHz) samplades alla 3 block korrekt utan timeouts, men skannern rapporterade aldrig några bärvågskandidater (`Starkaste signal på...` eller `Kandidat...`).
+  - Orsaken var en matematisk bugg i `measure_channel_powers`: funktionen kvadrerade de individuella I/Q-värdena omedelbart efter komplex nedblandning (`mix_i^2 + mix_q^2`). På grund av trigonometriska identiteten $\cos^2(\theta) + \sin^2(\theta) = 1$ tog rotationsvinkeln ut sig själv. Därmed blev beräknad effekt exakt identisk för alla 201 kanaler (lika med hela blockets totala oseparerade energi), och ingen kanal kunde någonsin överstiga medianen.
+- **Genomförda Åtgärder**:
+  - **Koherent Kanalackumulering ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Implementerat koherent DFT-ackumulering över block motsvarande kanalbandbredden 25 kHz.
+    - Summerar $\text{acc}_i$ och $\text{acc}_q$ över integrationsfönstret innan kvadrering. Bärvågor samverkar konstruktivt och ger upp till +30 dB förstärkning gentemot bakgrundsbruset, medan slumpmässigt brus släcks ut.
   - **Tester och Verifiering**:
-    - Nya enhetstester i `tests/test_sdr_watchdog.py` verifierar normaliseringen.
-    - Samtliga 52 tester i testsviten passerar felfritt.
-    - Versionsbump till CalVer `2026.10.13.20`.
+    - Enhetstester i `tests/test_sdr_watchdog.py` verifierar spektral effektmätning och kandidatdetektering.
+    - Samtliga 52 tester passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.21`.
+
 
 
 

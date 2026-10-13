@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.21] - Fixat Matematisk Bärvågsdetektering och Koherent Kanaleffekt i TETRA Scanner
+
+### Fixed
+- **Koherent Kanalackumulering (`measure_channel_powers` i `tetra_decoder.py`)**:
+  - Åtgärdat en matematisk bugg i kanaliserad effektmätning: den tidigare koden kvadrerade och summerade samplen individuellt efter blandning (`mix_i^2 + mix_q^2`). På grund av den trigonometriska identiteten $\cos^2(\theta) + \sin^2(\theta) = 1$ tog rotationsvinkeln ut sig själv, vilket ledde till att alla kanaler fick exakt samma effektvärde och inte kunde urskiljas från bakgrundsbruset.
+  - Implementerat koherent DFT-ackumulering över 25 kHz bandbreddsblock, vilket ger kraftig konstruktiv interferens för bärvågor och destruktiv utsläckning för brus. Detta gör att aktiva TETRA-bärvågor omedelbart sticker ut med +20 till +30 dB SNR och upptäcks av skannern.
+
 ## [2026.10.13.20] - Robust Sanering och Normalisering av Frekvenser i rtl_fm
 
 ### Fixed

@@ -171,10 +171,10 @@ def plan_wideband_blocks(hz_list, max_block_bw=2400000):
 
 def measure_channel_powers(raw_iq, sample_rate, center_hz, channels_hz, num_samples=3000):
     """
-    Measures relative RF power across 25 kHz bins inside raw IQ chunk.
-    Skips initial cold-start samples to avoid USB/tuner power-up artifacts.
+    Performs coherent DFT channel filter accumulation across raw IQ chunk.
+    Accurately isolates RF power per 25 kHz TETRA raster channel relative to noise floor.
     """
-    skip_bytes = min(40000, len(raw_iq) // 4)
+    skip_bytes = min(10000, len(raw_iq) // 8)
     data = raw_iq[skip_bytes:]
 
     if len(data) < num_samples * 2:
@@ -190,23 +190,32 @@ def measure_channel_powers(raw_iq, sample_rate, center_hz, channels_hz, num_samp
 
     powers = []
     two_pi = 2.0 * math.pi
-    step_n = 4
+    # Integrate over 25 kHz bandwidth blocks (at 2.4 MHz sample rate, 96 samples = 25 kHz)
+    block_len = max(32, int(sample_rate / 25000))
+    num_blocks = max(1, num_samples // block_len)
 
     for f_chan in channels_hz:
         df = f_chan - center_hz
         phase_step = two_pi * (df / sample_rate)
-        p_sum = 0.0
+        total_chan_pwr = 0.0
 
-        for n in range(0, num_samples, step_n):
-            i, q = iq_window[n]
-            angle = phase_step * n
-            cos_val = math.cos(angle)
-            sin_val = math.sin(angle)
-            mix_i = i * cos_val + q * sin_val
-            mix_q = q * cos_val - i * sin_val
-            p_sum += (mix_i * mix_i + mix_q * mix_q)
+        for b in range(num_blocks):
+            acc_i = 0.0
+            acc_q = 0.0
+            offset = b * block_len
+            for n in range(block_len):
+                idx = offset + n
+                if idx >= len(iq_window):
+                    break
+                i, q = iq_window[idx]
+                angle = -phase_step * idx
+                cos_val = math.cos(angle)
+                sin_val = math.sin(angle)
+                acc_i += i * cos_val - q * sin_val
+                acc_q += i * sin_val + q * cos_val
+            total_chan_pwr += (acc_i * acc_i + acc_q * acc_q)
 
-        powers.append((f_chan, p_sum))
+        powers.append((f_chan, total_chan_pwr))
 
     powers.sort(key=lambda x: x[1], reverse=True)
     return powers
