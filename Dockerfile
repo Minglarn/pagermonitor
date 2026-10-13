@@ -9,9 +9,9 @@ RUN apt-get update && apt-get install -y \
     xxd \
     && rm -rf /var/lib/apt/lists/*
 
-# Build librtlsdr
+# Build librtlsdr with RTL-SDR Blog V4 (R828D) driver support
 WORKDIR /build/librtlsdr
-RUN git clone https://github.com/steve-m/librtlsdr.git . \
+RUN git clone https://github.com/rtlsdrblog/rtl-sdr-blog.git . \
     && mkdir build && cd build \
     && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DINSTALL_UDEV_RULES=ON .. \
     && make -j$(nproc) && make install

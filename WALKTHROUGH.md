@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.11`
+- **CalVer**: `2026.10.13.12`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -757,6 +757,22 @@
     - Utökat testsviten med `test_kill_proc_and_sig_handler` och CFO-validering i [tests/test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py).
     - Samtliga 50 enhetstester i testsviten passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.11`.
+
+## 49. Officiellt RTL-SDR Blog V4 Drivrutinsstöd och Hårdvarudiagnostik (v2026.10.13.12)
+- **Bakgrund och Problem**:
+  - RTL-SDR Blog V4 använder en Rafael Micro R828D-tuner. I den tidigare `Dockerfile` byggdes `steve-m/librtlsdr`, som saknar drivrutinstöd för R828D. Följden blev att `rtl_sdr` inuti Docker inte kunde initiera eller öppna Blog V4-enheten.
+  - Dessutom skickades `stderr` från `rtl_sdr` till `DEVNULL` i `probe_block`, vilket dolde maskinvarufel och fick skannern att cykla igenom blocken på 0 millisekunder utan att ta emot prover.
+- **Genomförda Åtgärder**:
+  - **Officiell RTL-SDR Blog V4 Driver ([Dockerfile](file:///d:/antigravity/pager-monitor/Dockerfile))**:
+    - Bytt bibliotekskälla från `steve-m/librtlsdr` till `https://github.com/rtlsdrblog/rtl-sdr-blog.git`.
+    - Detta tillhandahåller fullständigt stöd för R828D-tunern i RTL-SDR Blog V4 och förblir helt bakåtkompatibelt med alla äldre V3/RTL2832U-enheter.
+  - **Tydlig Hårdvarufelrapportering ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - `probe_block` fångar nu `stderr` från `rtl_sdr` och loggar eventuella felmeddelanden direkt i konsolen (`rtl_sdr hårdvaruvarning`).
+    - `stream_continuous` loggar också orsaken om I/Q-strömmen oväntat avbryts.
+  - **Tester och Verifiering**:
+    - Samtliga 50 enhetstester i testsviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.12`.
+
 
 
 

@@ -447,6 +447,7 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
 
     rtl_bin = shutil.which("rtl_sdr")
     if not rtl_bin:
+        format_and_print_event("SCAN", msg="Kunde inte hitta 'rtl_sdr' binär i miljön.")
         return b""
 
     num_samples = int(sample_rate * duration_sec)
@@ -461,17 +462,24 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
 
     proc = None
     try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         _current_child_proc = proc
-        raw_iq, _ = proc.communicate(timeout=3.5)
+        raw_iq, err_bytes = proc.communicate(timeout=3.5)
+        if len(raw_iq) < 10000:
+            err_text = err_bytes.decode('latin-1', errors='replace').strip() if err_bytes else ""
+            if err_text:
+                lines = [l.strip() for l in err_text.splitlines() if l.strip()]
+                diag = " | ".join(lines[-2:]) if lines else "Inga data från rtl_sdr"
+                format_and_print_event("SCAN", msg=f"rtl_sdr hårdvaruvarning (enhet {device or '0'}): {diag}")
         return raw_iq
-    except Exception:
+    except Exception as e:
         if proc:
             try:
                 proc.kill()
                 proc.wait(timeout=0.5)
             except Exception:
                 pass
+        format_and_print_event("SCAN", msg=f"Fel vid anrop av rtl_sdr: {e}")
         return b""
     finally:
         if _current_child_proc == proc:
@@ -632,7 +640,7 @@ class TetraScanner:
 
         p = None
         try:
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             _current_child_proc = p
             demod = TetraDemodulator(sample_rate=self.sample_rate)
             buffer_size = 32768
@@ -641,6 +649,11 @@ class TetraScanner:
             while not _shutdown_requested:
                 chunk = p.stdout.read(buffer_size)
                 if not chunk:
+                    if p.poll() is not None and p.stderr:
+                        err_out = p.stderr.read().decode('latin-1', errors='replace').strip()
+                        if err_out:
+                            last_err = err_out.splitlines()[-1]
+                            format_and_print_event("SCAN", msg=f"rtl_sdr kontinuerlig ström avbröts: {last_err}")
                     break
 
                 bits = demod.demodulate_iq_chunk(chunk)

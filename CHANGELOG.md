@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.12] - Officiellt RTL-SDR Blog V4 Drivrutinsstöd (rtlsdr-blog R828D) och Diagnostik
+
+### Added
+- **Officiellt RTL-SDR Blog V4 Drivrutinsstöd (`Dockerfile`)**:
+  - Ersatt generisk `steve-m/librtlsdr` med det officiella `rtlsdrblog/rtl-sdr-blog`-repot som kompileras i Docker-bygget.
+  - Åtgärdar felet där RTL-SDR Blog V4 med Rafael Micro R828D-tuner inte kunde initieras eller kännas igen inuti Docker-containern.
+  - 100% bakåtkompatibelt med alla befintliga standard RTL2832U / V3-donglar.
+- **Tydlig Hårdvarudiagnostik och Stderr-fångst (`tetra_decoder.py`)**:
+  - `probe_block` och `stream_continuous` fångar nu felmeddelanden direkt från `rtl_sdr` (istället för att kassera dem i `DEVNULL`).
+  - Om tunern misslyckas att öppna en USB-enhet eller om enheten är upptagen skrivs en tydlig `SCAN`-varning ut i loggkonsolen med exakt orsak och felkod.
+
 ## [2026.10.13.11] - Robust Processhantering, Tvåstegsdetektering med CFO-kompensation och Lax-test för TETRA
 
 ### Added
