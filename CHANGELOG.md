@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.1] - Universell Tema-anpassad Bekräftelsedialog (confirm.js), Identisk Knappgeometri och Avlägsnad Oskärpa
+
+### Added
+- **Universell Bekräftelsemodul (`static/confirm.js`)**:
+  - Infört en global, standardiserad bekräftelsedialog (`window.showConfirmDialog` och `window.showConfirm`) för samtliga åtgärder och borttagningar i hela applikationen.
+  - Eliminerat webbläsarens inbyggda, gråa standard-`confirm()` över samtliga vyer ([statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [sdr_settings.html](file:///d:/antigravity/pager-monitor/templates/sdr_settings.html), [alerts.html](file:///d:/antigravity/pager-monitor/templates/alerts.html), [aliases.html](file:///d:/antigravity/pager-monitor/templates/aliases.html), [rules.html](file:///d:/antigravity/pager-monitor/templates/rules.html)).
+  - Dialogen skapas dynamiskt och stöder stängning via Escape-tangent eller klick utanför dialogen.
+
+### Fixed
+- **Knappgeometri och Inbördes Skevhet**:
+  - Samtliga knappar i dialogernas footer har nu exakt samma dimensioner (`height: 38px`, `padding: 0 1.25rem`, samma fontstorlek, `margin: 0 !important`).
+  - Åtgärdat tidigare problem där `.secondary-btn` (Cancel) hade `margin-top: 1rem;` och annan padding än primärknappen, vilket orsakade ojämna höjder och vertikal förskjutning.
+- **Avlägsnad Smearing, Suddighet och Smutsig Gråfärg**:
+  - Tagit bort `backdrop-filter: blur(...)` från `.modal-content` som tidigare orsakade textutsmetning och GPU-renderingsoskärpa.
+  - Fullständig temaintegration:
+    - **Mörkt tema**: Djupt solid OLED-bakgrund (`#0d1117`), skarp `#1f2937` ram och distinkt textfärg.
+    - **Ljust tema**: Krispigt ren snövit bakgrund (`#ffffff !important`), mjuk `#e2e8f0` ram och djup kontrastrik text (`#0f172a`), utan någon grådaskig ton.
+  - Tillämpat GPU-stabilisering med `-webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; transform: translateZ(0); backface-visibility: hidden;`.
+
 ## [2026.10.12.16] - Ändrat Kolumnnamn till RF / META och Optimerad Kolumnbredd (115px)
 
 ### Changed

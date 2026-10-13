@@ -930,7 +930,8 @@
         }
 
         window.deleteMessage = async (msgId, btn) => {
-            if (!confirm('Are you sure you want to delete this message?')) return;
+            const confirmed = await window.showConfirm('Delete Message', 'Are you sure you want to permanently delete this message?');
+            if (!confirmed) return;
 
             try {
                 const response = await fetch(`/api/messages/${msgId}`, { method: 'DELETE' });
@@ -1101,6 +1102,7 @@
             }
         });
     </script>
+    <script src="/static/confirm.js?v={{ app_version }}"></script>
     <script src="/static/console.js?v={{ app_version }}"></script>
 </body>
 

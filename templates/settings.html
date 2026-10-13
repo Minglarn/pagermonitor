@@ -491,25 +491,7 @@
         </div>
     </div>
 
-    <!-- Confirmation Modal -->
-    <div id="confirmModal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 420px; padding: 2rem; border-radius: 16px;">
-            <div class="modal-header">
-                <h3 id="confirmTitle" style="color: var(--accent); margin: 0; font-size: 1.2rem;">Confirm Action</h3>
-                <p id="confirmMessage" style="margin-top: 0.6rem; color: var(--text-secondary); font-size: 0.88rem; line-height: 1.45;">
-                    Are you sure you want to proceed?
-                </p>
-            </div>
-            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 2rem;">
-                <button type="button" class="secondary-btn" style="margin: 0; padding: 0.55rem 1.2rem;" onclick="closeConfirm(false)">
-                    Cancel
-                </button>
-                <button type="button" id="confirmActionBtn" class="primary-btn" style="margin: 0; padding: 0.55rem 1.2rem; background: #ef4444; border-color: #ef4444;">
-                    Proceed
-                </button>
-            </div>
-        </div>
-    </div>
+
 
     <script>
         let currentSDRs = [];
@@ -828,35 +810,7 @@
             });
         }, 400);
 
-        let confirmResolve = null;
-        function showConfirm(title, message, actionLabel = 'Proceed', danger = false) {
-            document.getElementById('confirmTitle').innerText = title;
-            document.getElementById('confirmMessage').innerText = message;
-            const actionBtn = document.getElementById('confirmActionBtn');
-            actionBtn.innerText = actionLabel;
 
-            if (danger) {
-                actionBtn.style.background = '#ef4444';
-                actionBtn.style.borderColor = '#ef4444';
-            } else {
-                actionBtn.style.background = 'var(--accent)';
-                actionBtn.style.borderColor = 'var(--accent)';
-            }
-
-            document.getElementById('confirmModal').classList.add('show');
-            return new Promise(resolve => {
-                confirmResolve = resolve;
-                actionBtn.onclick = () => {
-                    document.getElementById('confirmModal').classList.remove('show');
-                    resolve(true);
-                };
-            });
-        }
-
-        function closeConfirm(val) {
-            document.getElementById('confirmModal').classList.remove('show');
-            if (confirmResolve) confirmResolve(val);
-        }
 
         async function emptyDatabase() {
             const confirmed = await showConfirm(
@@ -975,6 +929,7 @@
             });
         });
     </script>
+    <script src="/static/confirm.js?v={{ app_version }}"></script>
     <script src="/static/console.js?v={{ app_version }}"></script>
 </body>
 

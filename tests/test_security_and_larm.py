@@ -304,6 +304,23 @@ def test_activity_ribbon_collapsed_and_table_layout_fixed(client):
     assert 'table-layout: fixed !important;' in html
     assert 'overflow-wrap: anywhere' in html
 
+def test_universal_confirm_dialog_and_static_asset(client):
+    """Verifiera att confirm.js serveras och att scriptet inkluderas på alla vyer."""
+    # Testa att confirm.js serveras
+    res_asset = client.get('/static/confirm.js')
+    assert res_asset.status_code == 200
+    js_content = res_asset.data.decode('utf-8')
+    assert 'window.showConfirmDialog' in js_content
+    assert 'window.showConfirm' in js_content
+
+    # Testa att confirm.js inkluderas i vyerna
+    for path in ['/', '/larm', '/statistics', '/settings']:
+        res = client.get(path)
+        assert res.status_code == 200
+        html = res.data.decode('utf-8')
+        assert 'src="/static/confirm.js' in html
+
+
 
 
 

@@ -519,19 +519,7 @@
         </div>
     </div>
 
-    <!-- Confirmation Modal -->
-    <div id="confirmModal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 400px; padding: 2rem; border-radius: 20px;">
-            <div class="modal-header">
-                <h2 id="confirmTitle" style="color: var(--accent);">Confirm Action</h2>
-                <p id="confirmMessage" style="margin-top: 0.5rem; color: var(--text-secondary);">Are you sure you want to proceed?</p>
-            </div>
-            <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
-                <button type="button" class="secondary-btn" onclick="closeConfirm(false)">Cancel</button>
-                <button type="button" id="confirmActionBtn" class="primary-btn danger-btn" style="background: #ef4444; border-color: #ef4444;">Delete</button>
-            </div>
-        </div>
-    </div>
+
 
     <script>
         let dataTable = null;
@@ -1115,6 +1103,7 @@
             });
         });
     </script>
+    <script src="/static/confirm.js?v={{ app_version }}"></script>
     <script src="/static/console.js?v={{ app_version }}"></script>
 </body>
 

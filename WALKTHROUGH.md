@@ -1,8 +1,8 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.12.16`
-- **Date**: 2026-10-12
+- **CalVer**: `2026.10.13.1`
+- **Date**: 2026-10-13
 - **Language**: English / Swedish
 
 ---
@@ -535,6 +535,26 @@
   - Ändrade kolumnrubriken från `Frequency / Meta` till `RF / Meta` i [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html) och [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html).
   - Minskat kolumnens bredd från 170px till **115px** (`min-width: 105px; max-width: 130px;`), vilket sparar 55px och ger mer plats åt meddelandet.
   - Versionsbump till CalVer `2026.10.12.16`.
+
+## 38. Standardiserad Tema-anpassad Bekräftelsedialog (confirm.js), Enhetliga Knappar och Skärpa (v2026.10.13.1)
+- **Bakgrund och Problem**:
+  - Bekräftelsedialoger var inkonsekventa; vissa vyer använde webbläsarens inbyggda gråa `confirm()`, medan andra hade modaler med olikstora knappar där Cancel-knappen hade `margin-top: 1rem` och felaktig padding som gjorde knapparna skeva och fula.
+  - Dialogerna hade `backdrop-filter: blur(16px)` och halvtransparent bakgrund vilket skapade smearing, utsmetad text och en grådaskig ton i ljust läge.
+- **Genomförda Åtgärder**:
+  - **Universell Modul (`static/confirm.js`)**:
+    - Implementerade `window.showConfirmDialog` och `window.showConfirm` som returnerar ett Promise.
+    - Ersatte webbläsarens inbyggda `confirm()` på samtliga sidor ([statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [sdr_settings.html](file:///d:/antigravity/pager-monitor/templates/sdr_settings.html), [alerts.html](file:///d:/antigravity/pager-monitor/templates/alerts.html), [aliases.html](file:///d:/antigravity/pager-monitor/templates/aliases.html), [rules.html](file:///d:/antigravity/pager-monitor/templates/rules.html)).
+  - **Enhetlig Knappgeometri**:
+    - Standardiserat `.modal-btn`, `.modal-btn-cancel` och `.modal-btn-danger` till identisk höjd (`height: 38px`), identisk padding (`0 1.25rem`), samma fontstorlek (`0.875rem`) och `margin: 0 !important`. Båda knapparna linjerar perfekt.
+  - **Eliminerad Smearing och Full Temaintegration**:
+    - Tagit bort `backdrop-filter` från `.modal-content` för att eliminera rendering blur och textsmearing.
+    - I **ljust tema**: Ren snövit bakgrund (`#ffffff !important`), mjuk border (`#e2e8f0`) och mörk skarp text (`#0f172a`), utan grå smutsighet.
+    - I **mörkt tema**: Solid djup OLED-svart (`#0d1117`), skarp border (`#1f2937`) och ljus krispig text (`#f1f5f9`).
+  - **Testning och Spårbarhet**:
+    - Tillagt `test_universal_confirm_dialog_and_static_asset` i [tests/test_security_and_larm.py](file:///d:/antigravity/pager-monitor/tests/test_security_and_larm.py).
+    - Samtliga 41 enhetstester passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.1`.
+
 
 
 

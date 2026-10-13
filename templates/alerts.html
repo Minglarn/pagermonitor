@@ -233,7 +233,8 @@
         window.deleteAlertWord = async function (id) {
             const alert = currentAlerts.find(a => a.id === id);
             const wordName = alert ? alert.word : '';
-            if (!confirm(`Are you sure you want to delete the alert word "${wordName}"?`)) return;
+            const confirmed = await window.showConfirm('Delete Alert Word', `Are you sure you want to delete the alert word "${wordName}"?`);
+            if (!confirmed) return;
 
             try {
                 const res = await fetch('/api/alerts', {
@@ -308,6 +309,7 @@
 
         document.addEventListener('DOMContentLoaded', loadWords);
     </script>
+    <script src="/static/confirm.js?v={{ app_version }}"></script>
     <script src="/static/console.js?v={{ app_version }}"></script>
 </body>
 
