@@ -157,3 +157,33 @@ class TestSdrWatchdog(unittest.TestCase):
         self.assertTrue(sdr_processor.is_garbage_message("~~~|||$$$@@@", sensitivity=50))
         self.assertTrue(sdr_processor.is_garbage_message("   bT(d", sensitivity=50))
 
+    @patch('subprocess.Popen')
+    def test_start_instance_command_flags(self, mock_popen):
+        """Verifiera att gain (-g) och ppm (-p) skickas med i anropet till rtl_fm."""
+        mock_p1 = MagicMock()
+        mock_p2 = MagicMock()
+        mock_popen.side_effect = [mock_p1, mock_p2]
+
+        config = {
+            'id': 4,
+            'name': 'AFSK1200',
+            'frequency': '144.800M',
+            'gain': '28',
+            'ppm_error': '5',
+            'sample_rate': '250000',
+            'resample_rate': '22050',
+            'protocol': 'AFSK1200',
+            'device_serial': '10000002'
+        }
+
+        p1, p2 = sdr_processor.start_instance(config)
+        self.assertEqual(mock_popen.call_count, 2)
+        rtl_cmd = mock_popen.call_args_list[0][0][0]
+
+        self.assertIn('-g', rtl_cmd)
+        self.assertIn('28', rtl_cmd)
+        self.assertIn('-p', rtl_cmd)
+        self.assertIn('5', rtl_cmd)
+        self.assertIn('-d', rtl_cmd)
+        self.assertIn('10000002', rtl_cmd)
+

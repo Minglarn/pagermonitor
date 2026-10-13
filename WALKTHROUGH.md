@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.1`
+- **CalVer**: `2026.10.13.2`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -555,9 +555,15 @@
     - Samtliga 41 enhetstester passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.1`.
 
-
-
-
-
-
-
+## 39. Stöd för Manuell SDR Gain (-g) och PPM-korrigering (-p) i rtl_fm (v2026.10.13.2)
+- **Bakgrund och Problem**:
+  - Vid konfigurering av mottagare i gränssnittet (t.ex. vid användning av AFSK1200 / APRS på 144.800 MHz) konfigurerades ett fast gain-värde (`28` dB).
+  - I loggarna framgick det dock att `rtl_fm: Tuner gain set to automatic.` rapporterades.
+  - Undersökning av källkoden i `sdr_processor.py` visade att `gain` och `ppm_error` hämtades ur inställningsdatabasen, men aldrig inkluderades som argument i `rtl_cmd` som skickades till `rtl_fm`.
+- **Genomförda Åtgärder**:
+  - **Korrigerad Kommandokonstruktion i [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py)**:
+    - Lagt till `if gain and gain != 'auto': rtl_cmd.extend(['-g', str(gain)])`.
+    - Lagt till `if ppm and ppm != '0': rtl_cmd.extend(['-p', str(ppm)])`.
+  - **Verifiering**:
+    - Befintliga och nya testsviter passerar utan regressioner.
+    - Versionsbump till CalVer `2026.10.13.2`.

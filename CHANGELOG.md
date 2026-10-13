@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.2] - Stöd för Manuell SDR Gain (-g) och PPM-korrigering (-p) i rtl_fm
+
+### Fixed
+- **Stöd för Manuell Gain och PPM i SDR Processor**:
+  - Åtgärdat brist i `sdr_processor.py` där konfigurerat `gain` (t.ex. 28 dB) och `ppm_error` hämtades från inställningsdatabasen men inte bifogades till kommandoradsanropet för `rtl_fm`.
+  - Mottagare tilldelas nu korrekt flaggorna `-g <gain>` och `-p <ppm>`, vilket eliminerar oönskad fallback till "automatic tuner gain" vid manuellt inställt gain.
+
 ## [2026.10.13.1] - Universell Tema-anpassad Bekräftelsedialog (confirm.js), Identisk Knappgeometri och Avlägsnad Oskärpa
 
 ### Added

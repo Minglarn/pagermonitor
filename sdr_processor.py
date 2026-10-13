@@ -422,6 +422,8 @@ def start_instance(config):
     oversampling = config.get('oversampling', '4')
     
     rtl_cmd = ['rtl_fm', '-f', freq, '-M', 'fm', '-s', sample_rate, '-r', resample_rate]
+    if gain and gain != 'auto': rtl_cmd.extend(['-g', str(gain)])
+    if ppm and ppm != '0': rtl_cmd.extend(['-p', str(ppm)])
     if enable_dc: rtl_cmd.extend(['-E', 'dc'])
     if enable_deemp: rtl_cmd.extend(['-E', 'deemp'])
     if enable_hq_fir: rtl_cmd.append('-F')
