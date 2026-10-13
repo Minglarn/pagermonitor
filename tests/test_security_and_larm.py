@@ -418,7 +418,8 @@ def test_tetra_settings_save_and_sdr_instance_fields(client):
     # Testa globala inställningar
     post_data = {
         'tetra_scan_mode': 'explorer',
-        'tetra_dwell_time': '45'
+        'tetra_dwell_time': '45',
+        'tetra_skip_encrypted': 'true'
     }
     resp = client.post('/api/settings', json=post_data)
     assert resp.status_code == 200
@@ -427,14 +428,16 @@ def test_tetra_settings_save_and_sdr_instance_fields(client):
     settings = database.get_settings()
     assert settings.get('tetra_scan_mode') == 'explorer'
     assert settings.get('tetra_dwell_time') == '45'
+    assert settings.get('tetra_skip_encrypted') == 'true'
 
-    # Testa att sdr_instances sparar tetra_mode och tetra_dwell_time
+    # Testa att sdr_instances sparar tetra_mode, tetra_dwell_time och tetra_skip_encrypted
     sdr_config = {
         'name': 'TETRA Scan Station',
         'frequency': '420M-430M',
         'protocol': 'TETRA',
         'tetra_mode': 'explorer',
-        'tetra_dwell_time': '75'
+        'tetra_dwell_time': '75',
+        'tetra_skip_encrypted': 'true'
     }
     database.save_sdr_instance(sdr_config)
     instances = database.get_sdr_instances()
@@ -442,6 +445,7 @@ def test_tetra_settings_save_and_sdr_instance_fields(client):
     assert tetra_inst is not None
     assert tetra_inst.get('tetra_mode') == 'explorer'
     assert tetra_inst.get('tetra_dwell_time') == '75'
+    assert tetra_inst.get('tetra_skip_encrypted') == 'true'
 
 
 

@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.30`
+- **CalVer**: `2026.10.13.31`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -1020,6 +1020,26 @@
   - Om en giltig TETRA-burst, pi/4-DQPSK-signal (score >= 0.35) eller MAC-synksekvens bekräftas, förnyas `last_sync_time = time.time()` kontinuerligt.
   - Skannern stannar därmed kvar permanent på masten i `monitor`-läge och avbryter endast om signalen faktiskt försvinner helt i över 10 sekunder.
   - Infört periodisk `DEBUG`-bursttelemetri var 5:e sekund och tydlig konsolloggning av basstationer (`TETRA BASSTATION IDENTIFIERAD: [RAKEL-240-01] Rakel Basstation | ...`).
+- **Verifiering**:
+  - Samtliga 56 enhetstester passerar felfritt.
+
+---
+
+### 28. Filtrering av Krypterade Master (Gå vidare om MNC=1 / Rakel) (v2026.10.13.31)
+- **Problembeskrivning**:
+  - I TETRA-bandet är MSB:s Rakel (MCC 240, MNC 01) krypterat med TEA2, medan civila TETRA-nätverk (t.ex. industri, kollektivtrafik, flygplatser med MNC != 1) ofta kör i okrypterat öppet läge (Clear Mode).
+  - Användaren önskade ett val både i globala inställningar och per individuell mottagare för att automatiskt gå vidare om basstationen är MNC=1 (krypterad Rakel) och istället fokusera på att finna och avkoda civila och öppna TETRA-nät.
+- **Teknisk Implementering**:
+  - **Inställning och Databas ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+    - Lade till `tetra_skip_encrypted` i `get_default_settings()`, tabellen `sdr_instances` och i `allowed_keys`/`sdr_restart_keys` i `/api/settings`.
+  - **Gränssnittsstöd ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [templates/sdr_settings.html](file:///d:/antigravity/pager-monitor/templates/sdr_settings.html))**:
+    - Under TETRA Skanningsläge i Inställningar finns nu kryssrutan *"Gå vidare om MNC=1 (Hoppa över krypterad Rakel, sök civila/öppna nät)"* med autosparning.
+    - I formuläret för att redigera en SDR-mottagare finns ett val per mottagare *"Hoppa över krypterade master (MNC=1)"*.
+  - **Dekoderlogik ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py), [tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py) skickar flaggan `--skip-encrypted` till [tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py) när inställningen är aktiverad.
+    - Vid frekvenssvep hoppar `tetra_decoder.py` omedelbart över det statliga Rakel-blåljusbandet (380–385 MHz och 390–395 MHz) utan att slösa tid.
+    - Vid låsning på övriga frekvenser kontrollerar `stream_continuous` de mottagna basstationsdata: om `MNC == 1` avbryts strömningen direkt, frekvensen svartlistas och skannern söker vidare.
+    - Avkodade nätverk märks tydligt med `[ÖPPET / CIVIL]` respektive `[KRYPTERAT]`.
 - **Verifiering**:
   - Samtliga 56 enhetstester passerar felfritt.
 

@@ -292,6 +292,15 @@
                                                 <label for="tetra_dwell_time" style="font-size: 0.8rem; font-weight: 600;">Fördröjning per basstation (sekunder)</label>
                                                 <input type="number" id="tetra_dwell_time" class="form-control" min="15" max="600" value="60" style="font-size: 0.8rem; padding: 0.35rem 0.5rem; max-width: 140px;">
                                             </div>
+                                            <div class="form-group checkbox-group" style="margin-top: 0.65rem; margin-bottom: 0.5rem;">
+                                                <label style="font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+                                                    <input type="checkbox" id="tetra_skip_encrypted">
+                                                    Gå vidare om MNC=1 (Hoppa över krypterad Rakel, sök civila/öppna nät)
+                                                </label>
+                                                <p style="color: var(--text-secondary); font-size: 0.72rem; line-height: 1.35; margin: 0.2rem 0 0 1.6rem;">
+                                                    Om en basstation sänder MNC=1 (MSB Rakel) avbryter skannern omedelbart och söker vidare efter civila och öppna nätverk.
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -938,6 +947,7 @@
             const logTetraEl = document.getElementById('log_tetra_basestations');
             const tetraScanModeEl = document.getElementById('tetra_scan_mode');
             const tetraDwellEl = document.getElementById('tetra_dwell_time');
+            const tetraSkipEncEl = document.getElementById('tetra_skip_encrypted');
             saveSettings({
                 message_font: fontSelect.value,
                 message_font_size: fontSlider.value,
@@ -947,7 +957,8 @@
                 duplicate_window: document.getElementById('duplicate_window').value,
                 log_tetra_basestations: (logTetraEl && logTetraEl.checked) ? 'true' : 'false',
                 tetra_scan_mode: tetraScanModeEl ? tetraScanModeEl.value : 'monitor',
-                tetra_dwell_time: tetraDwellEl ? tetraDwellEl.value : '60'
+                tetra_dwell_time: tetraDwellEl ? tetraDwellEl.value : '60',
+                tetra_skip_encrypted: (tetraSkipEncEl && tetraSkipEncEl.checked) ? 'true' : 'false'
             });
         }, 400);
 
@@ -988,6 +999,11 @@
                     }
                     if (tetraDwellGroup && tetraScanModeEl) {
                         tetraDwellGroup.style.display = (tetraScanModeEl.value === 'explorer') ? 'block' : 'none';
+                    }
+
+                    const tetraSkipEncEl = document.getElementById('tetra_skip_encrypted');
+                    if (tetraSkipEncEl) {
+                        tetraSkipEncEl.checked = (data.tetra_skip_encrypted === 'true');
                     }
 
                     document.getElementById('filterSensitivityGroup').style.display =
@@ -1199,6 +1215,13 @@
             }
             if (tetraDwellEl) {
                 tetraDwellEl.addEventListener('input', () => {
+                    debouncedSaveAppearance();
+                });
+            }
+
+            const tetraSkipEncEl = document.getElementById('tetra_skip_encrypted');
+            if (tetraSkipEncEl) {
+                tetraSkipEncEl.addEventListener('change', () => {
                     debouncedSaveAppearance();
                 });
             }

@@ -681,6 +681,10 @@ def start_instance(config):
         dwell_time = config.get('tetra_dwell_time') or current_settings.get('tetra_dwell_time', '60')
         decoder_cmd.extend(['--mode', str(tetra_mode), '--dwell-time', str(dwell_time)])
 
+        skip_encrypted = str(config.get('tetra_skip_encrypted') or current_settings.get('tetra_skip_encrypted', 'false')).lower() == 'true'
+        if skip_encrypted:
+            decoder_cmd.append('--skip-encrypted')
+
         is_scan = any(sep in freq for sep in [',', '-', ':'])
         if is_scan:
             # Let tetra_decoder.py manage channel scanning and locking

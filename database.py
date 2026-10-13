@@ -42,7 +42,8 @@ def get_default_settings():
         'auto_prune_days': '30',
         'log_tetra_basestations': 'true',
         'tetra_scan_mode': 'monitor',
-        'tetra_dwell_time': '60'
+        'tetra_dwell_time': '60',
+        'tetra_skip_encrypted': 'false'
     }
 
 def init_db():
@@ -143,6 +144,7 @@ def init_db():
             protocol TEXT DEFAULT 'POCSAG',
             tetra_mode TEXT DEFAULT 'monitor',
             tetra_dwell_time TEXT DEFAULT '60',
+            tetra_skip_encrypted TEXT DEFAULT 'false',
             enabled INTEGER DEFAULT 1
         )
     ''')
@@ -154,7 +156,8 @@ def init_db():
         ('oversampling', 'TEXT DEFAULT "4"'),
         ('protocol', 'TEXT DEFAULT "POCSAG"'),
         ('tetra_mode', 'TEXT DEFAULT "monitor"'),
-        ('tetra_dwell_time', 'TEXT DEFAULT "60"')
+        ('tetra_dwell_time', 'TEXT DEFAULT "60"'),
+        ('tetra_skip_encrypted', 'TEXT DEFAULT "false"')
     ]:
         try:
             c.execute(f'ALTER TABLE sdr_instances ADD COLUMN {col} {type_info}')
@@ -581,7 +584,8 @@ def get_sdr_instances():
         ('oversampling', 'TEXT DEFAULT "4"'),
         ('protocol', 'TEXT DEFAULT "POCSAG"'),
         ('tetra_mode', 'TEXT DEFAULT "monitor"'),
-        ('tetra_dwell_time', 'TEXT DEFAULT "60"')
+        ('tetra_dwell_time', 'TEXT DEFAULT "60"'),
+        ('tetra_skip_encrypted', 'TEXT DEFAULT "false"')
     ]:
         try:
             c.execute(f'ALTER TABLE sdr_instances ADD COLUMN {col} {type_info}')
@@ -628,6 +632,7 @@ def save_sdr_instance(data):
     protocol = data.get('protocol', 'POCSAG')
     tetra_mode = str(data.get('tetra_mode', 'monitor')).strip()
     tetra_dwell_time = str(data.get('tetra_dwell_time', '60')).strip()
+    tetra_skip_encrypted = str(data.get('tetra_skip_encrypted', 'false')).strip()
     enabled = data.get('enabled', 1)
 
     if instance_id:
@@ -637,9 +642,9 @@ def save_sdr_instance(data):
                 sample_rate=?, resample_rate=?, enable_dc_removal=?, enable_deemp=?,
                 enable_high_quality_fir=?, atan_math=?, oversampling=?,
                 multimon_verbosity=?, multimon_charset=?, multimon_format=?,
-                multimon_input_type=?, protocol=?, tetra_mode=?, tetra_dwell_time=?, enabled=?
+                multimon_input_type=?, protocol=?, tetra_mode=?, tetra_dwell_time=?, tetra_skip_encrypted=?, enabled=?
             WHERE id=?
-        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, protocol, tetra_mode, tetra_dwell_time, enabled, instance_id))
+        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, protocol, tetra_mode, tetra_dwell_time, tetra_skip_encrypted, enabled, instance_id))
     else:
         c.execute('''
             INSERT INTO sdr_instances (
@@ -647,9 +652,9 @@ def save_sdr_instance(data):
                 sample_rate, resample_rate, enable_dc_removal, enable_deemp,
                 enable_high_quality_fir, atan_math, oversampling,
                 multimon_verbosity, multimon_charset, multimon_format,
-                multimon_input_type, protocol, tetra_mode, tetra_dwell_time, enabled
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, protocol, tetra_mode, tetra_dwell_time, 1))
+                multimon_input_type, protocol, tetra_mode, tetra_dwell_time, tetra_skip_encrypted, enabled
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, protocol, tetra_mode, tetra_dwell_time, tetra_skip_encrypted, 1))
         
     conn.commit()
     conn.close()
@@ -691,8 +696,8 @@ def clone_sdr_instance(source_id, new_name=None, new_frequency=None, enabled=0):
             sample_rate, resample_rate, enable_dc_removal, enable_deemp,
             enable_high_quality_fir, atan_math, oversampling,
             multimon_verbosity, multimon_charset, multimon_format,
-            multimon_input_type, protocol, tetra_mode, tetra_dwell_time, enabled
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            multimon_input_type, protocol, tetra_mode, tetra_dwell_time, tetra_skip_encrypted, enabled
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         name,
         frequency,
@@ -713,6 +718,7 @@ def clone_sdr_instance(source_id, new_name=None, new_frequency=None, enabled=0):
         source.get('protocol', 'POCSAG'),
         source.get('tetra_mode', 'monitor'),
         source.get('tetra_dwell_time', '60'),
+        source.get('tetra_skip_encrypted', 'false'),
         1 if enabled else 0
     ))
     new_id = c.lastrowid

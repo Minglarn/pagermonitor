@@ -114,7 +114,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.13.30"
+APP_VERSION = "2026.10.13.31"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
@@ -347,14 +347,14 @@ def handle_settings():
             'multimon_input_type', 'garbage_filter', 'garbage_filter_sensitivity',
             'duplicate_handling', 'duplicate_window',
             'auto_prune_enabled', 'auto_prune_days', 'log_tetra_basestations',
-            'tetra_scan_mode', 'tetra_dwell_time'
+            'tetra_scan_mode', 'tetra_dwell_time', 'tetra_skip_encrypted'
         ]
         sdr_restart_keys = {
             'frequency', 'gain', 'device_serial', 'multimon_verbosity', 
             'multimon_charset', 'multimon_format', 'sample_rate', 'resample_rate', 
             'enable_dc_removal', 'ppm_error', 'enable_deemp', 'enable_high_quality_fir',
             'atan_math', 'oversampling', 'multimon_input_type',
-            'tetra_scan_mode', 'tetra_dwell_time'
+            'tetra_scan_mode', 'tetra_dwell_time', 'tetra_skip_encrypted'
         }
         sdr_restart_needed = False
         for key in allowed_keys:

@@ -187,6 +187,16 @@
                                         <small>Bredbandig I/Q-samplingshastighet till rtl_sdr för TETRA bärvågssynkronisering.</small>
                                     </div>
                                 </div>
+                                <div class="col" style="flex: 1;">
+                                    <div class="form-group">
+                                        <label for="tetra_skip_encrypted">Hoppa över krypterade master (MNC=1)</label>
+                                        <select id="tetra_skip_encrypted" name="tetra_skip_encrypted">
+                                            <option value="false">Lyssna på alla master (inklusive Rakel MNC=1)</option>
+                                            <option value="true">Gå vidare om MNC=1 (Sök enbart civila / öppna nät)</option>
+                                        </select>
+                                        <small>Hoppar automatiskt vidare till nästa mast om basstationen identifieras som MNC=1 (MSB Rakel krypterat).</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

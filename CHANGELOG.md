@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.31] - Filtrering av Krypterade Master (Gå vidare om MNC=1 / Rakel)
+
+### Added
+- **Konfigurerbar Filtrering av Krypterade Master (`tetra_decoder.py`, `sdr_processor.py`, `database.py`)**:
+  - Infört ett nytt val: **Hoppa över krypterade master (MNC=1)** både i globala inställningar och per individuell TETRA SDR-mottagare.
+  - Söker och låser nu specifikt på civila och öppna TETRA-nät (t.ex. MNC != 1, flygplatser, industri, kollektivtrafik) och hoppar automatiskt över MSB Rakel (MNC=1 krypterat läge).
+  - Skannern i `tetra_decoder.py` hoppar automatiskt förbi det statliga Rakel-blåljusbandet (380–385 MHz och 390–395 MHz) och avbryter omedelbart om en låst mast i andra frekvensband annonserar MNC=1.
+  - Tydlig märkning i händelser och loggar: `[ÖPPET / CIVIL]` för civila basstationer respektive `[KRYPTERAT]` för Rakel.
+- **Gränssnittsstöd i Inställningar och Mottagarvy (`templates/settings.html`, `templates/sdr_settings.html`)**:
+  - Lagt till toggle under TETRA Skanningsläge i inställningarna samt dropdown för `tetra_skip_encrypted` i mottagarredigeringen med omedelbar autosparning.
+
 ## [2026.10.13.30] - Kontinuerlig Synkförnyelse i TETRA-ström och Förbättrad Basstationsidentifiering
 
 ### Fixed

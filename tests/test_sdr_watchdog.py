@@ -304,6 +304,7 @@ class TestSdrWatchdog(unittest.TestCase):
             'ppm_error': '2',
             'sample_rate': '1800000',
             'protocol': 'TETRA',
+            'tetra_skip_encrypted': 'true',
             'device_serial': '00000002'
         }
 
@@ -314,6 +315,7 @@ class TestSdrWatchdog(unittest.TestCase):
 
         decoder_cmd = mock_popen.call_args[0][0]
         self.assertIn('--scan', decoder_cmd)
+        self.assertIn('--skip-encrypted', decoder_cmd)
         self.assertIn('--freq', decoder_cmd)
         self.assertIn('390M-395M', decoder_cmd)
         self.assertIn('--gain', decoder_cmd)

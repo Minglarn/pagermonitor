@@ -554,7 +554,7 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
 class TetraScanner:
     """Manages wideband block scanning (2.0-2.4 MHz blocks), pi/4-DQPSK carrier detection and demodulation."""
 
-    def __init__(self, hz_list, str_list, sample_rate=1800000, gain="auto", ppm="0", device="", mode="monitor", dwell_time=60.0):
+    def __init__(self, hz_list, str_list, sample_rate=1800000, gain="auto", ppm="0", device="", mode="monitor", dwell_time=60.0, skip_encrypted=False):
         self.hz_list = hz_list
         self.str_list = str_list
         self.sample_rate = sample_rate
@@ -563,6 +563,7 @@ class TetraScanner:
         self.device = device
         self.mode = mode
         self.dwell_time = dwell_time
+        self.skip_encrypted = skip_encrypted
         self.block_bw = 2400000
         self.blacklist_until = {}
 
@@ -654,6 +655,16 @@ class TetraScanner:
 
                         for cand_hz, cand_pwr in candidates:
                             cand_str = format_freq_mhz(cand_hz)
+
+                            # Om användaren valt att hoppa över krypterade nät (MNC=1) och frekvensen ligger i Rakel blåljusband (380-385 / 390-395 MHz)
+                            if self.skip_encrypted and (380000000 <= cand_hz <= 385000000 or 390000000 <= cand_hz <= 395000000):
+                                format_and_print_event(
+                                    "SCAN", 
+                                    msg=f"Hoppar över {cand_str}: Frekvensen tillhör Rakel blåljusband (MNC=1 krypterat). Söker vidare efter civila nät..."
+                                )
+                                self.blacklist_until[cand_hz] = time.time() + 600.0
+                                continue
+
                             snr_db = 10 * math.log10(max(1.0, cand_pwr / max(1.0, median_power)))
                             
                             is_tetra, score, drift_hz = check_channel_dqpsk_modulation(
@@ -779,8 +790,20 @@ class TetraScanner:
                             mcc_str = str(ev.get('mcc', '240'))
                             mnc_str = str(ev.get('mnc', '01'))
                             cc_str = str(ev.get('color_code', '0'))
-                            net_label = "Rakel (MSB)" if (mcc_str == "240" and mnc_str in ("01", "1")) else f"TETRA {mcc_str}-{mnc_str}"
-                            msg_str = f"Aktiv Basstation på {f_str} | Nät: {net_label} (MCC: {mcc_str}, MNC: {mnc_str}) | Färgkod (ColorCode): {cc_str}"
+
+                            # Om kryptering/MNC=1 ska filtreras bort
+                            if self.skip_encrypted and (mnc_str in ("01", "1") or (mcc_str == "240" and mnc_str in ("01", "1"))):
+                                format_and_print_event(
+                                    "SCAN",
+                                    msg=f"Hoppar över {f_str}: Krypterat nätverk identifierat (MCC: {mcc_str}, MNC: {mnc_str} Rakel). Söker vidare efter öppna/civila nät..."
+                                )
+                                self.blacklist_until[f_hz] = time.time() + 300.0
+                                return False
+
+                            is_rakel = (mcc_str == "240" and mnc_str in ("01", "1"))
+                            net_label = "Rakel (MSB)" if is_rakel else f"Civilt TETRA {mcc_str}-{mnc_str}"
+                            mode_suffix = " [KRYPTERAT]" if is_rakel else " [ÖPPET / CIVIL]"
+                            msg_str = f"Aktiv Basstation på {f_str} | Nät: {net_label} (MCC: {mcc_str}, MNC: {mnc_str}) | Färgkod: {cc_str}{mode_suffix}"
                             format_and_print_event('NET', mcc=mcc_str, mnc=mnc_str, cell=cc_str, msg=msg_str)
                         elif ev_type in ('CALL', 'STATUS', 'SDS'):
                             format_and_print_event(ev_type, gssi=ev.get('gssi'), issi=ev.get('issi'), msg=ev.get('text', ''))
@@ -828,6 +851,7 @@ def main():
     parser.add_argument("--ppm", default="0", help="PPM frequency correction")
     parser.add_argument("--mode", default="monitor", choices=["monitor", "explorer"], help="Scanning mode: 'monitor' stays on carrier while sync exists; 'explorer' maps cells and steps every dwell-time")
     parser.add_argument("--dwell-time", default=60.0, type=float, help="Seconds to dwell on each carrier in explorer mode before stepping")
+    parser.add_argument("--skip-encrypted", action="store_true", help="Skip encrypted / Rakel base stations (MNC=1) and continue scanning for clear / civil networks")
     parser.add_argument("--scan", action="store_true", help="Force wideband block scanning mode across frequencies")
     parser.add_argument("--test-feed", action="store_true", help="Run simulated test feed for verification")
     args = parser.parse_args()
@@ -850,7 +874,8 @@ def main():
             ppm=args.ppm,
             device=args.device,
             mode=args.mode,
-            dwell_time=args.dwell_time
+            dwell_time=args.dwell_time,
+            skip_encrypted=args.skip_encrypted
         )
         scanner.run_scan_loop()
         return
