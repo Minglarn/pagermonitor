@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.8`
+- **CalVer**: `2026.10.13.9`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -695,6 +695,28 @@
     - Implementerade `test_tetra_wideband_blocks_and_channel_powers` i [tests/test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py).
     - Samtliga 49 enhetstester i sviten passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.8`.
+
+## 46. Aktiv Kanalvalidering, Metadata-Watchdog och Automatisk Kanalbyte för TETRA (v2026.10.13.9)
+- **Bakgrund och Problem**:
+  - Vid skanning över 420–422 MHz kan starka RF-bärvågor upptäckas som i själva verket är analoga bärvågor, DMR eller radiobrus utan äkta TETRA-sändningar.
+  - Tidigare låste mottagaren på en stark bärvåg och stannade kvar i all evighet utan att ta emot äkta basstationsmetadata (MCC, MNC, Cell ID eller samtal).
+  - Användarfråga: Om ingen metadata eller synk syns inom kort tid, hur vet systemet att det ska gå vidare och låsa på nästa kanal?
+- **Genomförda Åtgärder**:
+  - **Mjuk STS Synkkorrelation ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Tillåter upp till 2 bitfel (Hamming-avstånd) i det 38 bitar långa TETRA STS-synkmönstret för pålitlig detektering i verkliga radiomiljöer med brus.
+  - **Strikt Kanalvalidering (`verify_channel_sync`)**:
+    - Kräver att äkta BSCH-nätverksmetadata (MCC/MNC) bekräftas innan en kanal klassas som giltig basstation.
+  - **Metadata Watchdog och Automatisk Kanalbyte (`stream_continuous`)**:
+    - Vid låsning på en kandidatkanal startas en timer (6.0 sekunder).
+    - Om ingen verifierad TETRA-metadata (`NET`, `CALL`, `STATUS`, `SDS`) tas emot inom 6 sekunder, avbryts mottagningen omedelbart.
+    - Frekvensen placeras i en 90-sekunders cooldown (`blacklist_until`) och skannern hoppar automatiskt vidare till nästa starka kandidatkanal i blocket.
+    - Om basstationen tystnar i mer än 25 sekunder under pågående drift återupptas skanningen automatiskt.
+  - **TETRA Basstationsspårning ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Mappar `TETRA: NET` till `TETRA-NET` och loggar nätverkssynk med MCC/MNC och Cell ID tydligt i konsolen och webbgränssnittet.
+  - **Tester och Verifiering**:
+    - Samtliga 49 enhetstester i sviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.9`.
+
 
 
 

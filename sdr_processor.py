@@ -290,6 +290,9 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                             logger.info(f"[{config['name']}] TETRA LOCK: {rest}")
                         continue
 
+                    if tetra_type == "NET":
+                        logger.info(f"[{config['name']}] TETRA BASSTATION SYNKRISERAD: {rest}")
+
                     gssi_match = re.search(r'GSSI:\s*(\d+)', rest)
                     issi_match = re.search(r'ISSI:\s*(\d+)', rest)
                     msg_match = re.search(r'Msg:\s*(.+)$', rest)
@@ -308,6 +311,10 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     elif tetra_type == "STATUS":
                         bitrate = "TETRA-STAT"
                         function_code = 2
+                        protocol_type = "TETRA"
+                    elif tetra_type == "NET":
+                        bitrate = "TETRA-NET"
+                        function_code = 0
                         protocol_type = "TETRA"
                     else:
                         bitrate = f"TETRA-{tetra_type}"

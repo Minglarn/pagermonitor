@@ -2,8 +2,9 @@
 """
 TETRA / RAKEL Decoder & Wideband Block Scanner Module for PagerMonitor.
 A modular, lightweight CLI decoder and wideband scanner for TETRA Air Interface (ETSI EN 300 392-2).
-Leverages RTL-SDR 2.0-2.4 MHz wideband sampling to scan blocks of up to ~100 channels simultaneously
-and lock onto active Control Channels (MCCH) within seconds without slow channel-by-channel stepping.
+Leverages RTL-SDR 2.0-2.4 MHz wideband sampling to scan blocks of up to ~100 channels simultaneously,
+ranks channels by RF power, verifies authentic TETRA STS sync/BSCH, and rejects false positives
+(analog carrier/noise/DMR) with automatic fallback and channel hopping.
 """
 
 import sys
@@ -48,7 +49,7 @@ def parse_freq_val(text):
         text = text[:-1]
     try:
         val = float(text) * multiplier
-        if val < 1000.0:  # e.g. "390.125" without unit -> assume MHz
+        if val < 1000.0:
             val *= 1e6
         return int(round(val))
     except ValueError:
@@ -166,7 +167,7 @@ def measure_channel_powers(raw_iq, sample_rate, center_hz, channels_hz, num_samp
 
     powers = []
     two_pi = 2.0 * math.pi
-    step_n = 4  # Decimate window evaluations for maximum throughput
+    step_n = 4
 
     for f_chan in channels_hz:
         df = f_chan - center_hz
@@ -250,7 +251,7 @@ class TetraDemodulator:
         return demodulated_bits
 
     def process_bits(self, bits):
-        """Search for synchronization patterns and parse TETRA PDUs."""
+        """Search for synchronization patterns with error tolerance and parse TETRA PDUs."""
         self.bit_buffer.extend(bits)
         if len(self.bit_buffer) > 20000:
             self.bit_buffer = self.bit_buffer[-10000:]
@@ -258,14 +259,18 @@ class TetraDemodulator:
         events = []
         sts_len = len(TETRA_STS_BITS)
         i = 0
-        while i <= len(self.bit_buffer) - sts_len - 120:
-            match = True
+        buf_len = len(self.bit_buffer)
+
+        while i <= buf_len - sts_len - 120:
+            # Allow up to 2 bit errors in the 38-bit sync pattern (BER tolerance)
+            bit_errors = 0
             for k in range(sts_len):
                 if self.bit_buffer[i + k] != TETRA_STS_BITS[k]:
-                    match = False
-                    break
+                    bit_errors += 1
+                    if bit_errors > 2:
+                        break
             
-            if match:
+            if bit_errors <= 2:
                 payload_bits = self.bit_buffer[i + sts_len : i + sts_len + 120]
                 ev = self.parse_tetra_burst(payload_bits)
                 if ev:
@@ -289,6 +294,7 @@ class TetraDemodulator:
         mnc = (val >> 8) & 0x3FFF
         color_code = (val >> 2) & 0x3F
 
+        # Validate plausible MCC (European / Nordic range, e.g. 240 for Sweden)
         if 200 <= mcc <= 300:
             return {
                 'type': 'NET',
@@ -371,14 +377,14 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
 
 def verify_channel_sync(f_hz, sample_rate=1800000, gain="auto", ppm="0", device=""):
     """
-    Quickly verifies TETRA STS sync and BSCH on a specific candidate channel.
-    Returns (has_sync, net_event).
+    Quickly verifies authentic TETRA STS sync and BSCH on a specific candidate channel.
+    Returns (has_sync, net_event). Requires genuine BSCH metadata.
     """
     rtl_bin = shutil.which("rtl_sdr")
     if not rtl_bin:
         return False, None
 
-    num_samples = int(sample_rate * 0.4)
+    num_samples = int(sample_rate * 0.5)
     cmd = [rtl_bin, '-f', str(f_hz), '-s', str(sample_rate), '-n', str(num_samples)]
     if gain and gain != 'auto':
         cmd.extend(['-g', str(gain)])
@@ -390,7 +396,7 @@ def verify_channel_sync(f_hz, sample_rate=1800000, gain="auto", ppm="0", device=
 
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        raw_iq, _ = proc.communicate(timeout=2.5)
+        raw_iq, _ = proc.communicate(timeout=3.0)
         if len(raw_iq) < 10000:
             return False, None
 
@@ -398,11 +404,8 @@ def verify_channel_sync(f_hz, sample_rate=1800000, gain="auto", ppm="0", device=
         bits = demod.demodulate_iq_chunk(raw_iq)
         events = demod.process_bits(bits)
         for ev in events:
-            if ev['type'] == 'NET':
+            if ev.get('type') == 'NET':
                 return True, ev
-        # If demodulated valid bits with training sequence found
-        if len(bits) > 500:
-            return True, None
         return False, None
     except Exception:
         return False, None
@@ -418,9 +421,10 @@ class TetraScanner:
         self.ppm = ppm
         self.device = device
         self.block_bw = 2400000  # 2.4 MHz wideband sampling for RTL-SDR Blog V4
+        self.blacklist_until = {}  # hz -> timestamp (cooldown for channels without verified metadata)
 
     def run_scan_loop(self):
-        """Scans wideband blocks, ranks 25 kHz channels by power, and locks onto active MCCH."""
+        """Scans wideband blocks, ranks channels, verifies TETRA metadata, and rejects silent carriers."""
         has_rtl = bool(shutil.which("rtl_sdr"))
         blocks = plan_wideband_blocks(self.hz_list, max_block_bw=self.block_bw)
         total_channels = len(self.hz_list)
@@ -436,22 +440,31 @@ class TetraScanner:
                 format_and_print_event("SCAN", msg=f"Block {blk_idx+1}/{total_blocks} ({center_str}): Analyserar {chan_count} kanaler simultant...")
                 time.sleep(0.4)
 
-            # Instantly lock onto candidate
             lock_f = self.str_list[0]
             format_and_print_event("LOCK", msg=f"Freq: {lock_f} Status: LOCKED (Rakel Basstation Synk MCC: 240 MNC: 01 Cell: 104)")
             run_test_feed(locked_freq=lock_f)
             return
 
-        # Hardware Wideband Block Scanning
+        # Hardware Wideband Block Scanning Loop
         while True:
+            now = time.time()
             for blk_idx, block in enumerate(blocks):
                 center_hz = block['center_hz']
                 center_str = format_freq_mhz(center_hz)
-                chan_count = len(block['channels_hz'])
+
+                # Filter out blacklisted channels currently in cooldown
+                active_channels = [
+                    f for f in block['channels_hz'] 
+                    if self.blacklist_until.get(f, 0) < now
+                ]
+                chan_count = len(active_channels)
+
+                if chan_count == 0:
+                    continue
 
                 format_and_print_event(
                     "SCAN", 
-                    msg=f"Block {blk_idx+1}/{total_blocks} ({center_str}): Tar bredbandssampling (2.4 MHz) för {chan_count} kanaler..."
+                    msg=f"Block {blk_idx+1}/{total_blocks} ({center_str}): Analyserar {chan_count} aktiva kanaler..."
                 )
 
                 raw_iq = probe_block(
@@ -464,19 +477,17 @@ class TetraScanner:
                 )
 
                 if len(raw_iq) >= 10000:
-                    ranked = measure_channel_powers(raw_iq, self.block_bw, center_hz, block['channels_hz'])
-                    top_candidates = ranked[:min(4, len(ranked))]
+                    ranked = measure_channel_powers(raw_iq, self.block_bw, center_hz, active_channels)
+                    top_candidates = ranked[:min(5, len(ranked))]
                     
                     if top_candidates:
-                        best_hz, best_pwr = top_candidates[0]
-                        best_str = format_freq_mhz(best_hz)
-                        format_and_print_event(
-                            "SCAN", 
-                            msg=f"Block {center_str}: Starkast bärvåg på {best_str}. Verifierar basstationssynk..."
-                        )
-
-                        for cand_hz, _ in top_candidates:
+                        for cand_hz, cand_pwr in top_candidates:
                             cand_str = format_freq_mhz(cand_hz)
+                            format_and_print_event(
+                                "SCAN", 
+                                msg=f"Testar bärvåg på {cand_str} (Effekt: {int(cand_pwr)})..."
+                            )
+
                             has_sync, net_ev = verify_channel_sync(
                                 cand_hz, 
                                 sample_rate=self.sample_rate, 
@@ -484,17 +495,37 @@ class TetraScanner:
                                 ppm=self.ppm, 
                                 device=self.device
                             )
-                            if has_sync:
-                                mcc_txt = f"MCC: {net_ev['mcc']} MNC: {net_ev['mnc']}" if net_ev else "Signal OK"
-                                format_and_print_event("LOCK", msg=f"Freq: {cand_str} Status: LOCKED ({mcc_txt})")
-                                self.stream_continuous(cand_hz, cand_str)
-                                format_and_print_event("SCAN", msg=f"Signal förlorad på {cand_str}. Återupptar bredbandigt svep...")
-                                break
-                time.sleep(1.0)
-            time.sleep(2.0)
 
-    def stream_continuous(self, f_hz, f_str):
-        """Streams continuous IQ from rtl_sdr on locked frequency."""
+                            if has_sync and net_ev:
+                                mcc_txt = f"MCC: {net_ev['mcc']} MNC: {net_ev['mnc']}"
+                                format_and_print_event("LOCK", msg=f"Freq: {cand_str} Status: LOCKED ({mcc_txt})")
+                                format_and_print_event(
+                                    "NET", 
+                                    mcc=net_ev['mcc'], 
+                                    mnc=net_ev['mnc'], 
+                                    msg=f"Verifierad TETRA Basstation (Kanal: {cand_str})"
+                                )
+                                # Start continuous streaming with active metadata watchdog
+                                success = self.stream_continuous(cand_hz, cand_str)
+                                if not success:
+                                    # Channel stopped broadcasting metadata or was false positive
+                                    self.blacklist_until[cand_hz] = time.time() + 90.0
+                                    format_and_print_event("SCAN", msg=f"Ingen metadata på {cand_str}. Förkastar kanal och söker vidare...")
+                                    break
+                            else:
+                                # Channel had RF power but no genuine TETRA sync (analog carrier/noise/DMR)
+                                self.blacklist_until[cand_hz] = time.time() + 90.0
+                                format_and_print_event("SCAN", msg=f"Kanal {cand_str}: Saknar TETRA-synk (Falsk bärvåg/brus). Provar nästa...")
+
+                time.sleep(0.5)
+            time.sleep(1.5)
+
+    def stream_continuous(self, f_hz, f_str, initial_sync_timeout=6.0, idle_timeout=25.0):
+        """
+        Streams continuous IQ from rtl_sdr on locked frequency with a live metadata watchdog.
+        If no verified TETRA metadata (NET, CALL, STATUS, SDS) is decoded within initial_sync_timeout,
+        aborts and returns False so the scanner can instantly hop to the next candidate channel.
+        """
         rtl_bin = shutil.which("rtl_sdr")
         cmd = [rtl_bin, '-f', str(f_hz), '-s', str(self.sample_rate)]
         if self.gain and self.gain != 'auto':
@@ -509,18 +540,43 @@ class TetraScanner:
             p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
             demod = TetraDemodulator(sample_rate=self.sample_rate)
             buffer_size = 32768
+            start_time = time.time()
+            last_metadata_time = None
+
             while True:
                 chunk = p.stdout.read(buffer_size)
                 if not chunk:
                     break
+
                 bits = demod.demodulate_iq_chunk(chunk)
                 events = demod.process_bits(bits)
+
+                now = time.time()
                 for ev in events:
-                    if ev['type'] == 'NET':
+                    last_metadata_time = now
+                    ev_type = ev.get('type', 'NET')
+                    if ev_type == 'NET':
                         format_and_print_event('NET', mcc=ev['mcc'], mnc=ev['mnc'], msg=ev['text'])
+                    elif ev_type in ('CALL', 'STATUS', 'SDS'):
+                        format_and_print_event(ev_type, gssi=ev.get('gssi'), issi=ev.get('issi'), msg=ev.get('text', ''))
+
+                # Liveness watchdog: verify genuine TETRA traffic is active
+                if last_metadata_time is None:
+                    if (now - start_time) > initial_sync_timeout:
+                        p.kill()
+                        p.wait(timeout=1.0)
+                        return False
+                else:
+                    if (now - last_metadata_time) > idle_timeout:
+                        p.kill()
+                        p.wait(timeout=1.0)
+                        return False
+
             p.wait()
+            return False
         except Exception as e:
             print(f"Error in continuous TETRA stream: {e}", file=sys.stderr, flush=True)
+            return False
 
 def main():
     parser = argparse.ArgumentParser(description="PagerMonitor TETRA / RAKEL Air Interface Decoder & Wideband Scanner")

@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.9] - Aktiv Kanalvalidering, Metadata-Watchdog och Automatisk Kanalbyte för TETRA
+
+### Added
+- **Aktiv Kanalvalidering och Falsk Positiv-skydd (`tetra_decoder.py`)**:
+  - Infört strikt verifiering av äkta TETRA BSCH/synk innan en kanal låses. Analoga bärvågor, DMR eller radiobrus utan äkta nätverksdata accepteras inte längre.
+  - Tillåter upp till 2 bitfel (BER) i 38-bitars STS-synkmönstret för robust detektering i verkliga radiomiljöer.
+- **Metadata-Watchdog i Realtidsströmning**:
+  - Om en kanal låses men inte sänder bekräftad TETRA-metadata (t.ex. `NET` med MCC/MNC, anrop eller SDS) inom 6 sekunder, avbryts mottagningen omedelbart.
+  - Frekvensen placeras i en 90-sekunders cooldown (`blacklist_until`) och skannern hoppar automatiskt vidare till nästa starka kandidatkanal i blocket.
+  - Om en aktiv basstation tystnar i mer än 25 sekunder återupptas skanningen automatiskt.
+- **TETRA Basstationsspårning (`sdr_processor.py`)**:
+  - Dedikerad loggning och hantering av `TETRA: NET`-händelser som `TETRA-NET` så att basstationssynkronisering och cellmetadata syns direkt i Dashboard och loggkonsol.
+
 ## [2026.10.13.8] - Blixtsnabb Wideband Block Scanning (2.4 MHz) för TETRA / RAKEL
 
 ### Added
