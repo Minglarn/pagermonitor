@@ -295,6 +295,10 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         if freq_match:
                             config['active_frequency'] = freq_match.group(1)
                         logger.info(f"[{config['name']}] TETRA BASSTATION SYNKRISERAD: {rest}")
+                        for cb in list(new_message_callbacks):
+                            try: cb({'type': 'telemetry', 'active_frequency': config.get('active_frequency'), 'sdr_name': config['name']})
+                            except Exception: pass
+                        continue
 
                     gssi_match = re.search(r'GSSI:\s*(\d+)', rest)
                     issi_match = re.search(r'ISSI:\s*(\d+)', rest)

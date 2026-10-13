@@ -306,6 +306,11 @@ window.WaterfallManager = (function () {
     function recordMessage(msg, isRealtime = false) {
         if (!msg || !msg.timestamp) return;
 
+        // Skip TETRA basestation sync announcements from creating RF Activity channels and hit counts
+        if (msg.bitrate === 'TETRA-NET' || (msg.message && (msg.message.includes('Aktiv TETRA Basstation') || msg.message.includes('Aktiv Basstation')))) {
+            return;
+        }
+
         const freq = msg.frequency || 'Unknown';
         if (freq === 'RESTART' || freq === 'Unknown') return;
         const sdrName = msg.sdr_name || (msg.frequency ? `Freq ${msg.frequency}` : 'Receiver');

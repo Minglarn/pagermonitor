@@ -360,13 +360,10 @@ class TestSdrWatchdog(unittest.TestCase):
 
     @patch('sdr_processor.save_message')
     @patch('sdr_processor.publish_message')
-    @patch('sdr_processor.get_alias_info')
     @patch('sdr_processor.get_settings')
-    def test_tetra_net_basestation_always_dispatched(self, mock_settings, mock_alias, mock_publish, mock_save):
-        """Verifiera att TETRA NET basstationssynk alltid parsas och sparas sa att anvandaren kan styra visning i UI."""
-        mock_settings.return_value = {'garbage_filter': 'false', 'duplicate_handling': 'mark'}
-        mock_alias.return_value = None
-        mock_save.return_value = (402, '2026-10-13 14:00:00')
+    def test_tetra_net_basestation_handled_as_telemetry(self, mock_settings, mock_publish, mock_save):
+        """Verifiera att TETRA NET basstationer uppdaterar aktiv frekvens men inte skapar felaktiga meddelanderader eller RF-hits."""
+        mock_settings.return_value = {}
 
         mock_p1 = MagicMock()
         mock_p1.stderr.readline.side_effect = [b'']
@@ -387,16 +384,16 @@ class TestSdrWatchdog(unittest.TestCase):
         sdr_processor.monitor_instance(7, mock_p1, mock_p2, stop_event, config)
 
         self.assertEqual(config.get('active_frequency'), '461.675M')
-        mock_save.assert_called_once()
-        mock_publish.assert_called_once()
+        mock_save.assert_not_called()
+        mock_publish.assert_not_called()
 
     @patch('sdr_processor.save_message')
     @patch('sdr_processor.publish_message')
     @patch('sdr_processor.get_alias_info')
     @patch('sdr_processor.get_settings')
-    def test_tetra_net_basestation_saved_when_setting_enabled(self, mock_settings, mock_alias, mock_publish, mock_save):
-        """Verifiera att TETRA NET basstationssynk sparas med komplett metadata nar log_tetra_basestations ar true."""
-        mock_settings.return_value = {'log_tetra_basestations': 'true', 'garbage_filter': 'false', 'duplicate_handling': 'mark'}
+    def test_tetra_sds_message_saved_as_message(self, mock_settings, mock_alias, mock_publish, mock_save):
+        """Verifiera att verkliga TETRA SDS meddelanden sparas och skickas ut med komplett metadata."""
+        mock_settings.return_value = {'garbage_filter': 'false', 'duplicate_handling': 'mark'}
         mock_alias.return_value = None
         mock_save.return_value = (401, '2026-10-13 14:00:00')
 
@@ -406,7 +403,7 @@ class TestSdrWatchdog(unittest.TestCase):
 
         mock_p2 = MagicMock()
         mock_p2.stdout.readline.side_effect = [
-            'TETRA: NET MCC: 240 MNC: 01 Msg: Aktiv TETRA Basstation på 461.675M | Status: LÅST | Signal: SNR +9.5 dB | Modulation: pi/4-DQPSK (56%) | Frekvensdrift: +229 Hz\n',
+            'TETRA: SDS GSSI: 12345 ISSI: 67890 Msg: Brand i byggnad Storgatan 1\n',
             ''
         ]
         mock_p2.poll.return_value = 0
@@ -414,18 +411,20 @@ class TestSdrWatchdog(unittest.TestCase):
         stop_event = MagicMock()
         stop_event.is_set.side_effect = [False, False, True]
 
-        config = {'id': 8, 'name': 'RAKEL TEST', 'frequency': '460M-470M', 'protocol': 'TETRA'}
+        config = {'id': 8, 'name': 'RAKEL TEST', 'frequency': '460M-470M', 'active_frequency': '461.675M', 'protocol': 'TETRA'}
 
         sdr_processor.monitor_instance(8, mock_p1, mock_p2, stop_event, config)
 
-        self.assertEqual(config.get('active_frequency'), '461.675M')
         mock_save.assert_called_once()
         args, kwargs = mock_save.call_args
-        self.assertEqual(args[0], 'RAKEL-240-01')
-        self.assertIn('Aktiv TETRA Basstation', args[1])
-        self.assertIn('SNR +9.5 dB', args[1])
-        self.assertEqual(args[2], 'Rakel Basstation')
+        self.assertEqual(args[0], '12345')
+        self.assertEqual(args[1], 'Brand i byggnad Storgatan 1')
         self.assertEqual(kwargs.get('frequency'), '461.675M')
+        self.assertEqual(args[4], 'TETRA TETRA-SDS')
+        mock_publish.assert_called_once()
+        pub_args, pub_kwargs = mock_publish.call_args
+        self.assertEqual(pub_args[0], '12345')
+        self.assertEqual(pub_kwargs.get('metadata', {}).get('bitrate'), 'TETRA-SDS')
 
 
     @patch('sdr_processor.get_sdr_instances')

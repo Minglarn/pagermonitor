@@ -114,7 +114,8 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.13.21"
+APP_VERSION = "2026.10.13.26"
+logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
 def inject_globals():
@@ -625,7 +626,9 @@ if __name__ == '__main__':
 ║              \___/'                                                       ║
 ╚═══════════════════════════════════════════════════════════════════════════╝
 """)
-    logger.info("Starting PagerMonitor...")
+    logger.info("=================================================================")
+    logger.info(f" PagerMonitor v{APP_VERSION} (CalVer) - Starting container service...")
+    logger.info("=================================================================")
     
     # Initialize components
     init_db()

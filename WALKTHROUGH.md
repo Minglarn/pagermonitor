@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.23`
+- **CalVer**: `2026.10.13.26`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -938,6 +938,28 @@
 - **Verifiering**:
   - Samtliga 54 enhetstester passerar felfritt.
   - Versionsbump till CalVer `2026.10.13.25`.
+
+---
+
+### 23. Fix för Mottagarlista i Inställningar, TETRA-bärvågslåsning och Versionsspårbarhet (v2026.10.13.26)
+- **Problembeskrivning**:
+  1. Inställningssidan renderade inga mottagare och webbläsarkonsolen loggade `settings:629 Uncaught SyntaxError: Identifier 'currentSDRs' has already been declared`.
+  2. TETRA-basstationer registrerades som "HIT" i RF ACTIVITY och skapade nya kanaler för varje detekterad frekvens vid svep.
+  3. TETRA-skannern låste på en basstation men övergav frekvensen efter 30 sekunder och sökte vidare trots godtagbar signal.
+  4. Sidopanelen visade äldre CalVer-version (`v2026.10.13.21`) och Docker-uppstarten saknade tydlig versionsbanner.
+- **Teknisk Implementering**:
+  - **Syntaxfix i Mottagarinställningar ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+    - Avlägsnat den duplicerade variabeldeklarationen `let currentSDRs = [];` på rad 629. JavaScript-exekveringen fungerar nu felfritt och alla SDR-mottagarkort renderas omedelbart vid sidladdning.
+  - **TETRA Basstationer som Telemetri ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py), [static/waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js))**:
+    - Basstationer identifieras nu och behandlas som ren bärvågstelemetri: uppdaterar `active_frequency`, loggar i backend, och skickar SSE-ping utan att sparas som larm i databasen.
+    - I `waterfall.js` exkluderas basstationsannonser från att skapa pills i RF ACTIVITY eller öka HIT-räknaren.
+  - **Permanent Bärvågslåsning för TETRA ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Den hårda 30-sekunders inaktivitetstimern i `stream_continuous` har tagits bort så att skannern stannar kvar på den låsta basstationen och kontinuerligt avkodar anrop och SDS.
+  - **Versionsspårbarhet och Docker-startbanner ([app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+    - `APP_VERSION` uppdaterat till `2026.10.13.26`.
+    - Lagt till en framträdande loggbanner vid Docker-start i konsolen.
+- **Verifiering**:
+  - Samtliga 54 enhetstester i testsviten passerar felfritt.
 
 
 

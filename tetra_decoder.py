@@ -742,9 +742,7 @@ class TetraScanner:
                     elif ev_type in ('CALL', 'STATUS', 'SDS'):
                         format_and_print_event(ev_type, gssi=ev.get('gssi'), issi=ev.get('issi'), msg=ev.get('text', ''))
 
-                # If no packets decoded for 30s, check carrier drop
-                if (now - last_activity) > 30.0:
-                    break
+                # Continue streaming and decoding while SDR process is active
 
             return False
         except Exception as e:

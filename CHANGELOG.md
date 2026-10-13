@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.26] - Fix för Mottagarlista i Inställningar, TETRA-låsning och Versionssynk
+
+### Fixed
+- **JavaScript SyntaxError i Mottagarinställningar (`templates/settings.html`)**:
+  - Åtgärdat felet `Uncaught SyntaxError: Identifier 'currentSDRs' has already been declared` (rad 629) där variabeln `currentSDRs` råkat deklareras två gånger. Syntaxfelet stoppade JavaScript-exekveringen och orsakade att mottagarlistan i Inställningar inte renderades alls.
+- **TETRA Basstationshantering och RF Activity Telemetri (`sdr_processor.py`, `static/waterfall.js`)**:
+  - Basstationer (typ `NET` och `Aktiv TETRA Basstation`) hanteras nu som ren bärvågstelemetri istället för larmmeddelanden. De sparas inte längre som rader i meddelandedatabasen och skapar inte falska "HIT"s eller fyller "RF ACTIVITY"-bandet med nya kanaler.
+  - Skickar fortfarande SSE-telemetriping så att användargränssnittet vet att skannern är aktiv och synkroniserad på aktuell frekvens.
+- **Permanent Bärvågslåsning för TETRA (`stream_continuous` i `tetra_decoder.py`)**:
+  - Åtgärdat beteendet där TETRA-skannern övergav en låst basstation efter 30 sekunder och svepte vidare. Den felaktiga 30-sekunders inaktivitetstimern är borttagen, vilket gör att mottagaren nu förblir låst på den synkroniserade basstationen och kontinuerligt avkodar inkommande anrop och SDS-meddelanden.
+- **Synkroniserad CalVer-versionshantering och Docker-startbanner (`app.py`, `templates/base.html`)**:
+  - Uppdaterat `APP_VERSION` till `2026.10.13.26` i [app.py](file:///d:/antigravity/pager-monitor/app.py) så att sidopanelen och footer alltid visar korrekt aktuell version.
+  - Implementerat en tydlig startbanner i konsolen vid uppstart av Docker-containern (`Pager Monitor v2026.10.13.26 startar...`).
+
 ## [2026.10.13.25] - Automatisk Realtidsstatus och Polling för SDR-mottagarkort
 
 ### Fixed
