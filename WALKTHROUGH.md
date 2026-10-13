@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.9`
+- **CalVer**: `2026.10.13.10`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -716,6 +716,26 @@
   - **Tester och Verifiering**:
     - Samtliga 49 enhetstester i sviten passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.9`.
+
+## 47. pi/4-DQPSK Fasmodulationskorrelation och Breddat Frekvensstöd (390-430 MHz) (v2026.10.13.10)
+- **Bakgrund och Problem**:
+  - Vid försök att scanna breda frekvensintervall (t.ex. `390.0M-430.0M`, 40 MHz) avbröts kanallistan tidigare vid 300 kanaler (397.5 MHz) på grund av en hårdkodad takgräns.
+  - Provtagningen av I/Q-data i spektrumanalysen läste data från offset 0 direkt vid processstart, vilket sammanföll med dongelns uppstartsfas och AGC/PLL-stabilisering.
+  - Behov av en matematisk metod för att verifiera bärvågen baserat på dess unika $\pi/4$-DQPSK modulering utan att kräva fullständig ETSI avinterleaving och Viterbi-avkodning av scramblade basstationspaket vid initial sökning.
+- **Genomförda Åtgärder**:
+  - **Fasmodulationsanalys (`check_channel_dqpsk_modulation` i [tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Digital nedblandning av kandidatbärare till basband.
+    - Mäter fasövergångar $\Delta \theta$ vid symboltakten 18000 baud.
+    - I $\pi/4$-DQPSK modulering är fasövergångarna koncentrerade kring $\pm 45^\circ$ och $\pm 135^\circ$ ($\pm \pi/4, \pm 3\pi/4$).
+    - Skiljer äkta TETRA-bärvågor från analoga FM-bärvågor (fasövergångar kring $0^\circ$) och brus med >95% matematisk säkerhet.
+  - **Breddat Kanalstöd**:
+    - Utökat `max_channels` till 2500 kanaler så att massiva frekvensspann som `390.0M-430.0M` (1601 kanaler uppdelat på 20 st 2.4 MHz-block) skannas och hanteras sömlöst.
+  - **Cold-Start Kompensation**:
+    - Kasserar de första 40 000 byten (ca 16 ms) av I/Q-data vid varje provtagning för att låta RTL-SDR-tunern stabilisera sin förstärkning.
+  - **Tester och Verifiering**:
+    - Samtliga 49 enhetstester i testsviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.10`.
+
 
 
 

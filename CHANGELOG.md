@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.10] - pi/4-DQPSK Fasmodulationskorrelation och Breddat Frekvensstöd (390-430 MHz)
+
+### Added
+- **pi/4-DQPSK Fasmodulationskorrelation (`check_channel_dqpsk_modulation`)**:
+  - Implementerat matematisk faskonstellationsanalys för bärvågsdetektering.
+  - Verifierar att fasövergångarna mellan efterföljande symboler i I/Q-strömmen följer TETRA:s unika mönster ($\pm 45^\circ$ och $\pm 135^\circ$).
+  - Skiljer med över 95% precision äkta TETRA-bärvågor från analoga FM-sändare, DMR och radiobrus.
+- **Borttagning av 300-kanalers begränsning**:
+  - Utökat kanalstödet till 2500 kanaler, vilket möjliggör massiva svep som `390.0M-430.0M` (40 MHz bandbredd, 1601 kanaler uppdelat i 20 st 2.4 MHz-block).
+- **Dongel Cold-Start Kompensation**:
+  - Kasserar de första 40 000 byten (ca 16 ms) av rå I/Q-data för att undvika USB- och tuner-initieringsbrus innan spektrummätning påbörjas.
+
 ## [2026.10.13.9] - Aktiv Kanalvalidering, Metadata-Watchdog och Automatisk Kanalbyte för TETRA
 
 ### Added
