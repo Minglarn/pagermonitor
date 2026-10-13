@@ -535,3 +535,108 @@ class TestSdrWatchdog(unittest.TestCase):
         self.assertTrue(tetra_decoder._shutdown_requested)
         mock_child.kill.assert_called_once()
         tetra_decoder._shutdown_requested = False
+
+    @patch('sdr_processor.save_message')
+    @patch('sdr_processor.publish_message')
+    @patch('sdr_processor.get_settings')
+    def test_tetra_skip_encrypted_drops_rakel_net_mnc_01(self, mock_settings, mock_publish, mock_save):
+        """Verifiera att basstationer med MNC=1 (Rakel) ignoreras och kastas när skip_encrypted är aktivt."""
+        mock_settings.return_value = {'tetra_skip_encrypted': 'true', 'log_tetra_basestations': 'true'}
+        mock_save.return_value = (501, '2026-10-13 15:00:00')
+
+        mock_p1 = MagicMock()
+        mock_p1.stderr.readline.side_effect = [b'']
+        mock_p1.poll.return_value = 0
+
+        mock_p2 = MagicMock()
+        mock_p2.stdout.readline.side_effect = [
+            'TETRA: NET MCC: 240 MNC: 01 Msg: Aktiv TETRA Basstation på 390.125M | Nät: Sverige / Rakel (MSB)\n',
+            'TETRA: NET MCC: 240 MNC: 10 Cell: 42 Msg: Aktiv Basstation på 421.225M | Nät: Civilt TETRA 240-10 [ÖPPET / CIVIL]\n',
+            ''
+        ]
+        mock_p2.poll.return_value = 0
+
+        stop_event = MagicMock()
+        stop_event.is_set.side_effect = [False, False, False, True]
+
+        config = {'id': 15, 'name': 'TETRA TEST', 'frequency': '420M-430M', 'protocol': 'TETRA', 'tetra_skip_encrypted': 'true'}
+
+        sdr_processor.monitor_instance(15, mock_p1, mock_p2, stop_event, config)
+
+        # Endast det civila nätverket (MNC: 10) ska ha sparats, Rakel (MNC: 01) ska ha ignorerats
+        self.assertEqual(mock_save.call_count, 1)
+        args, kwargs = mock_save.call_args
+        self.assertEqual(args[0], 'TETRA-C42')
+        self.assertIn('Civilt TETRA 240-10', args[1])
+
+    @patch('sdr_processor.subprocess.Popen')
+    def test_rds_tmc_start_instance(self, mock_popen):
+        """Verifiera att en SDR-instans med protokoll RDS-TMC startar rds_decoder.py med rätt flaggor."""
+        mock_p2 = MagicMock()
+        mock_p2.poll.return_value = None
+        mock_popen.return_value = mock_p2
+
+        config = {
+            'id': 20,
+            'name': 'P4 RADIO TMC',
+            'frequency': '100.5M',
+            'gain': '25',
+            'ppm_error': '1',
+            'device_serial': '00000005',
+            'protocol': 'RDS-TMC'
+        }
+
+        p1, p2 = sdr_processor.start_instance(config)
+        self.assertIsNone(p1)
+        self.assertEqual(p2, mock_p2)
+
+        cmd = mock_popen.call_args[0][0]
+        self.assertIn('rds_decoder.py', cmd[1])
+        self.assertIn('--freq', cmd)
+        self.assertIn('100.5M', cmd)
+        self.assertIn('--device', cmd)
+        self.assertIn('00000005', cmd)
+        self.assertIn('--gain', cmd)
+        self.assertIn('25', cmd)
+
+    @patch('sdr_processor.save_message')
+    @patch('sdr_processor.publish_message')
+    @patch('sdr_processor.get_alias_info')
+    def test_rds_tmc_monitor_decodes_location_and_coordinates(self, mock_alias, mock_publish, mock_save):
+        """Verifiera att monitor_instance parsar RDS-TMC meddelanden och skickar med koordinater och metadata."""
+        mock_alias.return_value = None
+        mock_save.return_value = (601, '2026-10-13 16:00:00')
+
+        mock_p1 = MagicMock()
+        mock_p1.stderr.readline.side_effect = [b'']
+        mock_p1.poll.return_value = 0
+
+        mock_p2 = MagicMock()
+        mock_p2.stdout.readline.side_effect = [
+            'RDS-TMC: LOC: 14210 ROAD: E4 NAME: Trafikplats Vagnhärad / Trosa (Avfart 137) LAT: 58.9567 LON: 17.4891 EXTENT: 1 DIR: + URGENCY: urgent MSG: Trafikolycka\n',
+            ''
+        ]
+        mock_p2.poll.return_value = 0
+
+        stop_event = MagicMock()
+        stop_event.is_set.side_effect = [False, False, True]
+
+        config = {'id': 20, 'name': 'P4 RDS TMC', 'frequency': '100.5M', 'protocol': 'RDS-TMC'}
+
+        sdr_processor.monitor_instance(20, mock_p1, mock_p2, stop_event, config)
+
+        mock_save.assert_called_once()
+        args, kwargs = mock_save.call_args
+        self.assertEqual(args[0], 'E4:14210') # Address
+        self.assertIn('Trafikolycka', args[1]) # Message text
+        self.assertIn('58.9567', args[1])     # Lat in text
+        self.assertEqual(args[2], 'Trafikplats Vagnhärad / Trosa (Avfart 137)') # Alias
+        self.assertEqual(args[4], 'RDS-TMC RDS-TMC') # Protocol & bitrate
+        self.assertEqual(args[3], 3) # Function code (urgent = 3)
+
+        mock_publish.assert_called_once()
+        pub_meta = mock_publish.call_args[1].get('metadata', {})
+        self.assertEqual(pub_meta.get('road'), 'E4')
+        self.assertEqual(pub_meta.get('lat'), 58.9567)
+        self.assertEqual(pub_meta.get('lon'), 17.4891)
+        self.assertEqual(pub_meta.get('urgency'), 'urgent')

@@ -436,24 +436,35 @@ def format_and_print_event(event_type, gssi=None, issi=None, msg="", mcc=None, m
     print(out_line, flush=True)
     return out_line
 
-def run_test_feed(locked_freq="390.125M"):
+def run_test_feed(locked_freq="390.125M", civil_mode=False):
     """Generates synthetic TETRA / Rakel frames for development, testing and demonstration."""
-    print(f"TETRA Decoder: Test feed active on {locked_freq} (Generating sample TETRA/RAKEL events)...", file=sys.stderr, flush=True)
+    mode_desc = "Öppna/civila TETRA-nät (MNC!=1)" if civil_mode else "TETRA/RAKEL"
+    print(f"TETRA Decoder: Test feed active on {locked_freq} (Genererar {mode_desc})...", file=sys.stderr, flush=True)
     time.sleep(1.0)
 
-    format_and_print_event("NET", mcc="240", mnc="01", cell="104", msg=f"Rakel Basstation Synk (Kanal {locked_freq}, Cell 104, LA 1024)")
-    time.sleep(2.0)
-
-    sample_events = [
-        ("CALL", "10204", "45012", "Anrop Talgrupp 10204 (Polis / Ordningsvakt)"),
-        ("STATUS", "10204", "45012", "Status 0x8002 (På väg till uppdrag)"),
-        ("SDS", "10204", "45012", "Larm Prio 1 - Brand i byggnad Storgatan 14"),
-        ("CALL", "20401", "32104", "Anrop Talgrupp 20401 (Räddningstjänst C-Kanal)"),
-        ("STATUS", "20401", "32104", "Status 0x8003 (Framme på larmadress)"),
-        ("SDS", "20401", "32104", "Kvitterat: Vattenpost kontrollerad och säkrad"),
-        ("CALL", "10550", "88019", "Anrop Talgrupp 10550 (Ambulansdirigering)"),
-        ("SDS", "10550", "88019", "Patienttransport Prio 2 - Hämta vårdavdelning 4B")
-    ]
+    if civil_mode:
+        format_and_print_event("NET", mcc="240", mnc="10", cell="42", msg=f"Aktiv Basstation på {locked_freq} | Nät: Civilt TETRA 240-10 | Färgkod: 42 [ÖPPET / CIVIL]")
+        sample_events = [
+            ("CALL", "30101", "70012", "Anrop Talgrupp 30101 (Kollektivtrafik Trafikledning)"),
+            ("STATUS", "30101", "70012", "Status 0x8004 (Tillgänglig på radio)"),
+            ("SDS", "30101", "70012", "Trafikmeddelande: Förseningar linje 4 pga vägarbete"),
+            ("CALL", "30205", "70045", "Anrop Talgrupp 30205 (Spårväg Drift/Bana)"),
+            ("SDS", "30205", "70045", "Spårväxel 12 kontrollerad och klar för trafik"),
+            ("CALL", "30510", "71002", "Anrop Talgrupp 30510 (Flygplats Markservice)"),
+            ("SDS", "30510", "71002", "Gate 18 klar för ombordstigning")
+        ]
+    else:
+        format_and_print_event("NET", mcc="240", mnc="01", cell="104", msg=f"Rakel Basstation Synk (Kanal {locked_freq}, Cell 104, LA 1024)")
+        sample_events = [
+            ("CALL", "10204", "45012", "Anrop Talgrupp 10204 (Polis / Ordningsvakt)"),
+            ("STATUS", "10204", "45012", "Status 0x8002 (På väg till uppdrag)"),
+            ("SDS", "10204", "45012", "Larm Prio 1 - Brand i byggnad Storgatan 14"),
+            ("CALL", "20401", "32104", "Anrop Talgrupp 20401 (Räddningstjänst C-Kanal)"),
+            ("STATUS", "20401", "32104", "Status 0x8003 (Framme på larmadress)"),
+            ("SDS", "20401", "32104", "Kvitterat: Vattenpost kontrollerad och säkrad"),
+            ("CALL", "10550", "88019", "Anrop Talgrupp 10550 (Ambulansdirigering)"),
+            ("SDS", "10550", "88019", "Patienttransport Prio 2 - Hämta vårdavdelning 4B")
+        ]
 
     idx = 0
     while True:
@@ -575,9 +586,10 @@ class TetraScanner:
         if len(self.hz_list) == 1:
             lock_f = self.str_list[0]
             format_and_print_event("LOCK", msg=f"Freq: {lock_f} Status: LOCKED (Manuell frekvens låst för avkodning)")
-            format_and_print_event("NET", mcc="240", mnc="01", msg=f"Manuell lyssning aktiv på {lock_f}")
+            if not self.skip_encrypted:
+                format_and_print_event("NET", mcc="240", mnc="01", msg=f"Manuell lyssning aktiv på {lock_f}")
             if not has_rtl or os.environ.get("PAGERMONITOR_TEST_MODE", "").lower() == "true":
-                run_test_feed(locked_freq=lock_f)
+                run_test_feed(locked_freq=lock_f, civil_mode=self.skip_encrypted)
             else:
                 while not _shutdown_requested:
                     self.stream_continuous(self.hz_list[0], lock_f)
@@ -599,8 +611,13 @@ class TetraScanner:
                 time.sleep(0.4)
 
             lock_f = self.str_list[0]
-            format_and_print_event("LOCK", msg=f"Freq: {lock_f} Status: LOCKED (TETRA pi/4-DQPSK bärvåg identifierad, MCC: 240 MNC: 01)")
-            run_test_feed(locked_freq=lock_f)
+            if self.skip_encrypted:
+                format_and_print_event("LOCK", msg=f"Freq: {lock_f} Status: LOCKED (Civilt TETRA öppet nätverk identifierat, MCC: 240 MNC: 10)")
+                format_and_print_event("NET", mcc="240", mnc="10", cell="42", msg=f"Aktiv Basstation på {lock_f} | Nät: Civilt TETRA 240-10 | Färgkod: 42 [ÖPPET / CIVIL]")
+            else:
+                format_and_print_event("LOCK", msg=f"Freq: {lock_f} Status: LOCKED (TETRA pi/4-DQPSK bärvåg identifierad, MCC: 240 MNC: 01)")
+                format_and_print_event("NET", mcc="240", mnc="01", cell="104", msg=f"Rakel Basstation Synk (Kanal {lock_f}, Cell 104, LA 1024)")
+            run_test_feed(locked_freq=lock_f, civil_mode=self.skip_encrypted)
             return
 
         # Hardware Wideband Block Scanning Loop
@@ -686,20 +703,23 @@ class TetraScanner:
                                     "LOCK", 
                                     msg=lock_msg
                                 )
-                                net_msg = (
-                                    f"Aktiv TETRA Basstation på {cand_str} | "
-                                    f"Nät: Sverige / Rakel (MSB) | "
-                                    f"Status: LÅST | "
-                                    f"Signal: SNR +{snr_db:.1f} dB | "
-                                    f"Modulation: pi/4-DQPSK ({int(score*100)}%) | "
-                                    f"Frekvensdrift: {int(drift_hz):+d} Hz"
-                                )
-                                format_and_print_event(
-                                    "NET", 
-                                    mcc="240", 
-                                    mnc="01", 
-                                    msg=net_msg
-                                )
+                                # Om skip_encrypted är aktivt skickar vi INTE fejkad Rakel NET-händelse här.
+                                # Istället låter vi stream_continuous läsa ut den äkta basstationsidentiteten från styrsignalen.
+                                if not self.skip_encrypted:
+                                    net_msg = (
+                                        f"Aktiv TETRA Basstation på {cand_str} | "
+                                        f"Nät: Sverige / Rakel (MSB) | "
+                                        f"Status: LÅST | "
+                                        f"Signal: SNR +{snr_db:.1f} dB | "
+                                        f"Modulation: pi/4-DQPSK ({int(score*100)}%) | "
+                                        f"Frekvensdrift: {int(drift_hz):+d} Hz"
+                                    )
+                                    format_and_print_event(
+                                        "NET", 
+                                        mcc="240", 
+                                        mnc="01", 
+                                        msg=net_msg
+                                    )
                                 self.stream_continuous(cand_hz, cand_str)
                                 self.blacklist_until[cand_hz] = time.time() + 60.0
                                 format_and_print_event("SCAN", msg=f"Signal tystnade eller kartläggning avslutad på {cand_str}. Återupptar svep...")
@@ -892,6 +912,11 @@ def main():
             for ev in events:
                 ev_type = ev.get('type', 'NET')
                 if ev_type == 'NET':
+                    mcc_str = str(ev.get('mcc', '240'))
+                    mnc_str = str(ev.get('mnc', '01'))
+                    if args.skip_encrypted and (mnc_str in ("01", "1") or (mcc_str == "240" and mnc_str in ("01", "1"))):
+                        format_and_print_event("SCAN", msg=f"Hoppar över: Krypterat nätverk identifierat (MCC: {mcc_str}, MNC: {mnc_str} Rakel).")
+                        continue
                     format_and_print_event('NET', mcc=ev.get('mcc'), mnc=ev.get('mnc'), msg=ev.get('text'))
                 elif ev_type in ('CALL', 'STATUS', 'SDS'):
                     format_and_print_event(ev_type, gssi=ev.get('gssi'), issi=ev.get('issi'), msg=ev.get('text', ''))

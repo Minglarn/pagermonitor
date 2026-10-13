@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.32] - RDS-TMC Dekoder & Åtgärdat MNC!=1 Stöd för TETRA
+
+### Added
+- **RDS-TMC Dekoder (ALERT-C / ISO 14819) (`rds_decoder.py`, `sdr_processor.py`)**:
+  - Implementerat modulär dekoder för RDS och RDS-TMC trafikmeddelanden.
+  - Inbyggd översättningstabell för ALERT-C händelsekoder (ISO 14819-2) till svenska (t.ex. trafikolyckor, köbildning, vägarbeten, halka).
+  - Sveriges officiella platstabell (Location Table LTN 01 från Trafikverket) med WGS84-koordinater och trafikplatsnamn för E4, E20, E18, E6, E22, Riksväg 73, Riksväg 40 m.fl.
+  - Stöd för att köra via `redsea` eller direkt testflöde.
+  - Protokollval `RDS-TMC (ALERT-C Trafikinformation)` tillgängligt i SDR-inställningarna med automatisk frekvensvägledning.
+  - Koordinater och trafikmetadata skickas med i realtidsflödet över SSE och sparas i databasen för kartvisualisering.
+
+### Fixed
+- **Strikt Respektering av MNC!=1 och Filtrering av Krypterad Rakel (`tetra_decoder.py`, `sdr_processor.py`, `templates/sdr_settings.html`)**:
+  - Åtgärdat fel där mottagaren inte respekterade inställningen att hoppa över MNC=1:
+    1. Åtgärdat ett boolean-strängfel i `sdr_processor.py` där databasens standardvärde `'false'` på instansen blockerade globala inställningar via Python-uttrycket `'false' or current_settings...`.
+    2. Avlägsnat hårdkodad generering av `TETRA: NET MCC: 240 MNC: 01` i `run_scan_loop()` och manuellt läge innan styrsignalens (BSCH) faktiska nätverkskod hunnit avkodas.
+    3. Lagt till strikt kontroll i `monitor_instance()` som kastar basstationer och anrop från Rakel (MNC=1) när `skip_encrypted` är aktiverat.
+    4. Lagt till valet `Använd global inställning` (`inherit`) i inställningsdialogen för SDR-mottagare.
+    5. Säkerställt att skannern omedelbart söker vidare och svartlistar bärvågen om basstationen identifieras som MNC=1.
+
 ## [2026.10.13.31] - Filtrering av Krypterade Master (Gå vidare om MNC=1 / Rakel)
 
 ### Added

@@ -265,8 +265,9 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
 
             is_pocsag_or_afsk = ("POCSAG" in line and "Alpha:" in line) or re.search(r'(AFSK|UFSK)\d*:', line)
             is_tetra = line.startswith("TETRA:")
+            is_rds = line.startswith("RDS-TMC:") or line.startswith("RDS:")
 
-            if is_pocsag_or_afsk or is_tetra:
+            if is_pocsag_or_afsk or is_tetra or is_rds:
                 # Record activity time for watchdog telemetry
                 if instance_id in active_instances:
                     active_instances[instance_id]['last_message_time'] = time.time()
@@ -342,6 +343,22 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     else:
                         message = message_text
 
+                    current_settings = get_settings()
+                    inst_skip = str(config.get('tetra_skip_encrypted', '')).strip().lower()
+                    glob_skip = str(current_settings.get('tetra_skip_encrypted', 'false')).strip().lower() == 'true'
+                    skip_encrypted = (inst_skip == 'true') or glob_skip
+
+                    if skip_encrypted:
+                        mcc_val_tmp = mcc_match.group(1) if mcc_match else ""
+                        mnc_val_tmp = mnc_match.group(1) if mnc_match else ""
+                        is_rakel_enc = (mnc_val_tmp in ("01", "1") or (mcc_val_tmp == "240" and mnc_val_tmp in ("01", "1")))
+                        if is_rakel_enc and (tetra_type == "NET" or "RAKEL" in rest or "Rakel" in rest):
+                            logger.info(f"[{config['name']}] RAW: {line} [DROPPED] Cause: KRYPTERAD RAKEL MAST (MNC={mnc_val_tmp})")
+                            for cb in list(new_message_callbacks):
+                                try: cb({'type': 'ping'})
+                                except Exception: pass
+                            continue
+
                     if tetra_type == "SDS":
                         bitrate = "TETRA-SDS"
                         function_code = 3
@@ -370,6 +387,61 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         'protocol': protocol_type,
                         'function': function_code
                     }
+                elif line.startswith('RDS-TMC:'):
+                    rest = line[len('RDS-TMC:'):].strip()
+                    loc_match = re.search(r'LOC:\s*(\d+)', rest)
+                    road_match = re.search(r'ROAD:\s*([^\s]+)', rest)
+                    name_match = re.search(r'NAME:\s*([^\n\r]+?)(?=\s+(?:LAT:|LON:|EXTENT:|DIR:|URGENCY:|DURATION:|MSG:|$))', rest)
+                    lat_match = re.search(r'LAT:\s*([0-9\.\-]+)', rest)
+                    lon_match = re.search(r'LON:\s*([0-9\.\-]+)', rest)
+                    msg_match = re.search(r'MSG:\s*(.+)$', rest)
+                    urgency_match = re.search(r'URGENCY:\s*([^\s]+)', rest)
+
+                    loc_val = loc_match.group(1) if loc_match else "0"
+                    road_val = road_match.group(1) if road_match else "TMC"
+                    name_val = name_match.group(1).strip() if name_match else f"Plats {loc_val}"
+                    msg_val = msg_match.group(1).strip() if msg_match else rest
+                    lat_val = float(lat_match.group(1)) if lat_match else None
+                    lon_val = float(lon_match.group(1)) if lon_match else None
+                    urgency_val = urgency_match.group(1) if urgency_match else "normal"
+
+                    address = f"{road_val}:{loc_val}" if road_val != "TMC" else f"TMC-{loc_val}"
+                    alias = name_val if name_val != f"Plats {loc_val}" else f"RDS-TMC {road_val}"
+                    coord_str = f" | Lat: {lat_val:.4f}, Lon: {lon_val:.4f}" if (lat_val is not None and lon_val is not None) else ""
+                    message = f"{msg_val} ({name_val}){coord_str}"
+
+                    parsed = {
+                        'address': address,
+                        'message': message,
+                        'alias': alias,
+                        'bitrate': 'RDS-TMC',
+                        'protocol': 'RDS-TMC',
+                        'function': 3 if urgency_val.lower() == 'urgent' else 1
+                    }
+                    metadata_extra = {
+                        'road': road_val,
+                        'location': loc_val,
+                        'lat': lat_val,
+                        'lon': lon_val,
+                        'urgency': urgency_val
+                    }
+                elif line.startswith('RDS:'):
+                    rest = line[len('RDS:'):].strip()
+                    ps_match = re.search(r'PS:\s*([^P\n\r]+?)(?=\s+(?:PI:|RT:|$))', rest)
+                    pi_match = re.search(r'PI:\s*([0-9a-fA-Fx]+)', rest)
+                    rt_match = re.search(r'RT:\s*(.+)$', rest)
+                    ps_val = ps_match.group(1).strip() if ps_match else "FM Radio"
+                    pi_val = pi_match.group(1).strip() if pi_match else "RDS"
+                    rt_val = rt_match.group(1).strip() if rt_match else rest
+                    parsed = {
+                        'address': f"RDS-{pi_val}",
+                        'message': rt_val,
+                        'alias': ps_val,
+                        'bitrate': 'RDS-PS',
+                        'protocol': 'RDS',
+                        'function': 0
+                    }
+                    metadata_extra = {'ps': ps_val, 'pi': pi_val}
                 else:
                     parsed = parse_multimon_line(line, config.get('multimon_charset', 'SE'))
                 
@@ -391,6 +463,8 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                             alias = "Rakel Basstation" if tetra_type == "NET" else "Rakel"
                         elif address.startswith("TETRA"):
                             alias = "TETRA Basstation" if tetra_type == "NET" else "TETRA"
+                    elif not alias and is_rds:
+                        alias = parsed.get('alias', 'RDS-TMC')
                     
                     if is_hidden:
                         logger.info(f"[{config['name']}] RAW: {line} [DROPPED] Cause: MUTED")
@@ -400,7 +474,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         continue
 
                     # GARBAGE FILTER - only filter un-aliased messages (configured aliases are never dropped)
-                    has_active_alias = bool(alias_info and not is_hidden)
+                    has_active_alias = bool((alias_info or is_rds) and not is_hidden)
                     if not has_active_alias:
                         settings = get_settings()
                         if settings.get('garbage_filter', 'true') == 'true':
@@ -496,6 +570,8 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         'repeat_count': 1,
                         'last_timestamp': timestamp
                     }
+                    if 'metadata_extra' in locals() and metadata_extra:
+                        metadata.update(metadata_extra)
                     
                     publish_message(address, message, timestamp, alias, metadata=metadata)
                     
@@ -555,8 +631,8 @@ def kill_orphaned_rtl_for_device(device_serial):
                     cmdline = raw.decode('latin-1', errors='ignore')
                     args = cmdline.split('\x00')
 
-                    # Matches rtl_fm, rtl_sdr, rtl_test, or python scripts running tetra_decoder
-                    is_target = any(bin_name in cmdline for bin_name in ['rtl_sdr', 'rtl_fm', 'rtl_test', 'tetra_decoder'])
+                    # Matches rtl_fm, rtl_sdr, rtl_test, or python scripts running tetra_decoder or rds_decoder / redsea
+                    is_target = any(bin_name in cmdline for bin_name in ['rtl_sdr', 'rtl_fm', 'rtl_test', 'tetra_decoder', 'redsea', 'rds_decoder'])
                     if is_target:
                         matches_dev = False
                         for i, arg in enumerate(args):
@@ -681,7 +757,9 @@ def start_instance(config):
         dwell_time = config.get('tetra_dwell_time') or current_settings.get('tetra_dwell_time', '60')
         decoder_cmd.extend(['--mode', str(tetra_mode), '--dwell-time', str(dwell_time)])
 
-        skip_encrypted = str(config.get('tetra_skip_encrypted') or current_settings.get('tetra_skip_encrypted', 'false')).lower() == 'true'
+        inst_skip = str(config.get('tetra_skip_encrypted', '')).strip().lower()
+        glob_skip = str(current_settings.get('tetra_skip_encrypted', 'false')).strip().lower() == 'true'
+        skip_encrypted = (inst_skip == 'true') or glob_skip
         if skip_encrypted:
             decoder_cmd.append('--skip-encrypted')
 
@@ -709,6 +787,24 @@ def start_instance(config):
             logger.warning(f"[{config['name']}] 'rtl_sdr' binary not found on PATH. Running TETRA decoder in standalone mode.")
             p2 = subprocess.Popen(decoder_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
             return None, p2
+    
+    elif protocol == 'RDS-TMC':
+        rds_script = os.path.join(os.path.dirname(__file__), 'rds_decoder.py')
+        decoder_cmd = [
+            sys.executable, rds_script,
+            '--freq', freq
+        ]
+        if serial: decoder_cmd.extend(['--device', serial])
+        if gain and gain != 'auto': decoder_cmd.extend(['--gain', str(gain)])
+        if ppm and ppm != '0': decoder_cmd.extend(['--ppm', str(ppm)])
+
+        logger.info(f"Starting {config['name']} [RDS-TMC]: {' '.join(decoder_cmd)}")
+        try:
+            p2 = subprocess.Popen(decoder_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+            return None, p2
+        except Exception as e:
+            logger.error(f"Failed to start RDS-TMC instance {config['name']}: {e}")
+            return None, None
     
     multimon_cmd = [
         'multimon-ng', '-v', verbosity, '-C', charset, '-f', fmt, '-t', inp

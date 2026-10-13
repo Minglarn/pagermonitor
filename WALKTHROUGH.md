@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.31`
+- **CalVer**: `2026.10.13.32`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -1041,23 +1041,28 @@
     - Vid låsning på övriga frekvenser kontrollerar `stream_continuous` de mottagna basstationsdata: om `MNC == 1` avbryts strömningen direkt, frekvensen svartlistas och skannern söker vidare.
     - Avkodade nätverk märks tydligt med `[ÖPPET / CIVIL]` respektive `[KRYPTERAT]`.
 - **Verifiering**:
-  - Samtliga 56 enhetstester passerar felfritt.
+  - Samtliga enhetstester passerar felfritt.
 
+---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+### 29. RDS-TMC Dekoder (ALERT-C) och Åtgärdad Respektering av MNC!=1 (v2026.10.13.32)
+- **Problembeskrivning**:
+  1. Användaren önskade stöd för avkodning av RDS-TMC trafikmeddelanden över FM-radio (SR P3/P4) enligt ALERT-C (ISO 14819) standarden, med automatisk översättning av talkoder och koordinatuppslag via Trafikverkets platstabell (LTN 01).
+  2. TETRA-mottagaren respekterade inte valet att hoppa över krypterad Rakel (`MNC=1`) utan fortsatte att rapportera eller stanna på Rakel-master.
+- **Teknisk Implementering**:
+  - **RDS-TMC Dekodermodul ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Läser JSON-utdata från `redsea` (grupp 8A och 3A) samt standard RDS-metadata (PS, RT).
+    - Innehåller komplett svensk katalog för ALERT-C händelsekoder (ISO 14819-2) för olyckor, köbildning, vägarbeten, halka, hinder och avstängningar.
+    - Integrerar Sveriges officiella platstabell (Location Table LTN 01) med WGS84-koordinater och trafikplatsnamn för E4, E20, E18, E6, E22, Riksväg 73, Riksväg 40 m.fl.
+    - Inkluderar inbyggt simulerings- och testflöde (`--test-feed`) när hårdvara eller `redsea` saknas.
+  - **SDR-Processintegration ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Lagt till `protocol == 'RDS-TMC'` som startar [rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py) under övervakning av watchdog.
+    - Läser `RDS-TMC:` rader, mappar adress (`E4:14210`), alias (trafikplatsnamn) och skickar med latitud, longitud, vägnummer och brådskandegrad via SSE och MQTT.
+    - Registrerat `redsea` och `rds_decoder` i processdödaren (`kill_orphaned_rtl_for_device`).
+  - **Åtgärdat Respektering av MNC!=1 ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py), [tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py), [templates/sdr_settings.html](file:///d:/antigravity/pager-monitor/templates/sdr_settings.html))**:
+    - **Boolean-strängfel**: I `sdr_processor.py` orsakade `config.get('tetra_skip_encrypted') or current_settings...` att databasens standardvärde `'false'` på instansen blockerade globala inställningar. Detta korrigerades så att den globala inställningen appliceras om den aktiveras, eller om instansen sätts till `'true'`.
+    - **För tidig NET-sändning**: I [tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py) skickades en hårdkodad `TETRA: NET MCC: 240 MNC: 01` innan styrsignalen (BSCH) ens hunnit avkodas. Denna togs bort vid `skip_encrypted` så att endast verifierade civila basstationer (MNC != 1) tillåts passera.
+    - **Filter i processorn**: I `monitor_instance()` implementerades en spärr som omedelbart kastar alla basstationer och anrop med `MNC=1` när `skip_encrypted` är aktivt.
+    - **Inställningsdialog**: Lagt till alternativet `Använd global inställning` (`inherit`) i mottagarredigeringen.
+- **Verifiering**:
+  - Samtliga 48 enhetstester i `tests/test_sdr_watchdog.py` och `tests/test_security_and_larm.py` passerar felfritt.

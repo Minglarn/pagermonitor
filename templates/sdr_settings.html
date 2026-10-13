@@ -139,9 +139,9 @@
                                 <option value="POCSAG">POCSAG (512 / 1200 / 2400)</option>
                                 <option value="AFSK1200">AFSK / AX.25 / APRS (Multi-mode)</option>
                                 <option value="TETRA">TETRA / RAKEL (Control & SDS)</option>
+                                <option value="RDS-TMC">RDS-TMC (ALERT-C Trafikinformation)</option>
                             </select>
-                            <small>Choose which protocol to listen for. POCSAG is standard for pagers. <b>AFSK/APRS</b>
-                                decodes packet modes at 1200/2400 baud. <b>TETRA/RAKEL</b> monitors talkgroups, calls, and SDS text messages.</small>
+                            <small>Välj protokoll för mottagaren. POCSAG för personsökare, AFSK för paketradio, TETRA för talkanaler/SDS, eller RDS-TMC för trafikstörningar från FM-radio.</small>
                         </div>
 
                         <!-- TETRA Specific Settings -->
@@ -191,12 +191,25 @@
                                     <div class="form-group">
                                         <label for="tetra_skip_encrypted">Hoppa över krypterade master (MNC=1)</label>
                                         <select id="tetra_skip_encrypted" name="tetra_skip_encrypted">
+                                            <option value="inherit">Använd global inställning</option>
                                             <option value="false">Lyssna på alla master (inklusive Rakel MNC=1)</option>
                                             <option value="true">Gå vidare om MNC=1 (Sök enbart civila / öppna nät)</option>
                                         </select>
                                         <small>Hoppar automatiskt vidare till nästa mast om basstationen identifieras som MNC=1 (MSB Rakel krypterat).</small>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- RDS-TMC Specific Settings -->
+                        <div id="rdsSettingsSection" style="display: none;">
+                            <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.25); border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 1.25rem;">
+                                <div style="font-weight: 600; color: #10b981; font-size: 0.88rem; display: flex; align-items: center; gap: 0.45rem;">
+                                    <i class="fas fa-broadcast-tower"></i> RDS-TMC Trafikinformation (ALERT-C)
+                                </div>
+                                <p style="font-size: 0.78rem; color: var(--text-secondary); margin: 0.35rem 0 0 0; line-height: 1.4;">
+                                    Avkodar trafikmeddelanden, olyckor, vägarbeten och köer från FM-radio (t.ex. SR P3/P4 98–104 MHz) enligt europeiska ALERT-C standarden (ISO 14819). Platser översätts automatiskt till svenska vägar och koordinater via Location Table LTN 01.
+                                </p>
                             </div>
                         </div>
 
@@ -369,12 +382,14 @@
             const protoEl = document.getElementById('protocol');
             const proto = protoEl ? protoEl.value : 'POCSAG';
             const tetraSection = document.getElementById('tetraSettingsSection');
+            const rdsSection = document.getElementById('rdsSettingsSection');
             const pocsagSection = document.getElementById('pocsagMultimonSection');
             const freqHelp = document.getElementById('freqHelpText');
             const formatGroup = document.getElementById('formatGroup');
 
             if (proto === 'TETRA') {
                 if (tetraSection) tetraSection.style.display = 'block';
+                if (rdsSection) rdsSection.style.display = 'none';
                 if (pocsagSection) pocsagSection.style.display = 'none';
                 if (freqHelp) {
                     freqHelp.innerHTML = '<b>TETRA Frekvensformat:</b> Direkt kanal (t.ex. <code>427.3M</code>), svepintervall (t.ex. <code>420M-430M</code>) eller frekvenslista (t.ex. <code>421.225M, 422.45M, 427.3M</code>).';
@@ -399,8 +414,17 @@
                         if (srEl) srEl.value = '1800000';
                     }
                 }
+            } else if (proto === 'RDS-TMC') {
+                if (tetraSection) tetraSection.style.display = 'none';
+                if (rdsSection) rdsSection.style.display = 'block';
+                if (pocsagSection) pocsagSection.style.display = 'none';
+                if (formatGroup) formatGroup.style.display = 'none';
+                if (freqHelp) {
+                    freqHelp.innerHTML = '<b>RDS-TMC Frekvens:</b> Standard <code>100.5M</code> (Sveriges Radio P4) eller valfri FM-kanal som sänder RDS/TMC (87.5–108.0 MHz).';
+                }
             } else {
                 if (tetraSection) tetraSection.style.display = 'none';
+                if (rdsSection) rdsSection.style.display = 'none';
                 if (pocsagSection) pocsagSection.style.display = 'block';
 
                 if (proto === 'AFSK1200') {
