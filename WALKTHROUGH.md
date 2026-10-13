@@ -1092,3 +1092,17 @@
 - **Verifiering**:
   - Samtliga 48 enhetstester i `tests/test_sdr_watchdog.py` och `tests/test_security_and_larm.py` passerar felfritt.
   - Versionsbump till CalVer `2026.10.13.33`.
+
+---
+
+### 31. Rensning av Testfiler från Git-index och Bevarande Lokalt (v2026.10.13.34)
+- **Problembeskrivning**:
+  - Användaren begärde att ta bort alla testfiler och utvecklingsskräp från GitHub, men bevara dem lokalt på maskinen för fortsatt lokal verifiering.
+- **Genomförda Åtgärder**:
+  - **Git Ignore ([.gitignore](file:///d:/antigravity/pager-monitor/.gitignore))**:
+    - Lagt till `tests/` under sektionen för enhetstester och täckningsrapporter.
+  - **Avregistrering från Git Tracking**:
+    - Kört `git rm -r --cached tests/` vilket tar bort `tests/test_imports.py`, `tests/test_log_console.py`, `tests/test_sdr_watchdog.py`, `tests/test_security_and_larm.py` och `tests/test_stats_api.py` från versionskontrollen och framtida commits till GitHub.
+    - Samtliga 5 testfiler och underkataloger finns kvar oförändrade på den lokala disken.
+  - **Versionsspårbarhet**:
+    - Versionsbump till CalVer `2026.10.13.34` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md) och [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md).

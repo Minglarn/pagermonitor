@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.34] - Rensning av Testfiler från Git och Lokalt Bevarande
+
+### Changed
+- **Exkluderat Testfiler från Git och GitHub (`.gitignore`, `tests/`)**:
+  - Testsviten i katalogen `tests/` (`test_imports.py`, `test_log_console.py`, `test_sdr_watchdog.py`, `test_security_and_larm.py`, `test_stats_api.py`) har avlägsnats från GitHub och Git-indexet (`git rm --cached`).
+  - Filerna bevaras lokalt i utvecklingsmiljön för framtida verifiering men hålls borta från produktionsrepot på GitHub för att hålla repot rent och fokuserat på produktionskod.
+  - Lagt till `tests/` i `.gitignore`.
+
 ## [2026.10.13.33] - Automatisk FM-stationssökning för RDS-TMC, Redsea i Docker & Åtgärdat Subprocess-avslut
 
 ### Added

@@ -54,7 +54,8 @@ old_*.py
 scratch/
 test_scratch*.py
 
-# Unit test / coverage reports
+# Unit test / coverage reports / local tests
+tests/
 .pytest_cache/
 .coverage
 htmlcov/
