@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.15`
+- **CalVer**: `2026.10.13.16`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -811,6 +811,20 @@
   - **Tester och Verifiering**:
     - Samtliga 50 enhetstester i testsviten passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.15`.
+
+## 53. Filbaserad Provtagning för RTL-SDR Blockskanning (v2026.10.13.16)
+- **Bakgrund och Problem**:
+  - `rtl_sdr` claimade enheten i containern med framgång (bekräftat av `usb_claim_interface error -6` vid extern test), men hängde och timeade ut vid försök att skriva samples via stdout-pipe (`-`).
+  - Orsaken var att `rtl_sdr` i asynkront läge hanterar asynkrona libusb-transfers som inte stänger stdout på ett sätt som synkroniserar med Pythons `proc.communicate()`.
+- **Genomförda Åtgärder**:
+  - **Filbaserad Provtagning ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Ändrat `probe_block` att använda en temporär fil (`tempfile.mkstemp`) som utdatafil istället för stdout-pipe.
+    - `rtl_sdr` skriver direkt till disk/tmpfs och avslutas rent omedelbart när begärda prover är insamlade.
+    - Python läser in I/Q-datan och tar bort temporärfilen direkt, vilket eliminerar alla pipe-deadlocks.
+  - **Tester och Verifiering**:
+    - Samtliga 50 enhetstester i testsviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.16`.
+
 
 
 

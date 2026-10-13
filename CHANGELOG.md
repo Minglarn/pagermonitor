@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.16] - Filbaserad Provtagning för RTL-SDR Blockskanning
+
+### Fixed
+- **Filbaserad Provtagning (`probe_block` i `tetra_decoder.py`)**:
+  - Ersatt osäker stdout-piping (`-`) i `probe_block` med en temporär fil (`mkstemp`).
+  - Åtgärdar pipe-deadlock och buffringsproblem i `rtl_sdr` som orsakade att processen hängde trots att hårdvaran var framgångsrikt claimad av containern.
+  - Provtagningen slutförs nu blixtsnabbt och städar automatiskt upp temporärfilen direkt efter inläsning.
+
 ## [2026.10.13.15] - Detaljerad Timeout-felanalys för RTL-SDR Hårdvaruenheter
 
 ### Added

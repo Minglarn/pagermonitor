@@ -438,8 +438,8 @@ def run_test_feed(locked_freq="390.125M"):
 
 def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="", duration_sec=0.08):
     """
-    Captures a wideband block of raw IQ samples from rtl_sdr.
-    Returns raw bytes.
+    Captures a wideband block of raw IQ samples from rtl_sdr using a temporary file.
+    Eliminates pipe buffering deadlocks and ensures clean process termination.
     """
     global _current_child_proc
     if _shutdown_requested:
@@ -450,7 +450,11 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
         format_and_print_event("SCAN", msg="Kunde inte hitta 'rtl_sdr' binär i miljön.")
         return b""
 
-    num_samples = min(int(sample_rate * duration_sec), 180000)
+    num_samples = min(int(sample_rate * duration_sec), 163840)
+    import tempfile
+    tmp_fd, tmp_path = tempfile.mkstemp(prefix="pm_tetra_", suffix=".raw")
+    os.close(tmp_fd)
+
     cmd = [rtl_bin, '-f', str(center_hz), '-s', str(sample_rate), '-n', str(num_samples)]
     if gain and gain != 'auto':
         cmd.extend(['-g', str(gain)])
@@ -458,13 +462,23 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
         cmd.extend(['-p', str(ppm)])
     if device:
         cmd.extend(['-d', str(device)])
-    cmd.append('-')
+    cmd.append(tmp_path)
 
     proc = None
     try:
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE)
         _current_child_proc = proc
-        raw_iq, err_bytes = proc.communicate(timeout=8.0)
+        _, err_bytes = proc.communicate(timeout=6.0)
+
+        raw_iq = b""
+        if os.path.exists(tmp_path):
+            try:
+                with open(tmp_path, 'rb') as f:
+                    raw_iq = f.read()
+                os.remove(tmp_path)
+            except Exception:
+                pass
+
         if len(raw_iq) < 10000:
             err_text = err_bytes.decode('latin-1', errors='replace').strip() if err_bytes else ""
             if err_text:
@@ -479,6 +493,9 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
                 proc.wait(timeout=1.0)
             except Exception:
                 pass
+        if os.path.exists(tmp_path):
+            try: os.remove(tmp_path)
+            except Exception: pass
         err_msg = ""
         if te.stderr:
             err_msg = te.stderr.decode('latin-1', errors='replace').strip()
@@ -493,6 +510,9 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
                 proc.wait(timeout=0.5)
             except Exception:
                 pass
+        if os.path.exists(tmp_path):
+            try: os.remove(tmp_path)
+            except Exception: pass
         format_and_print_event("SCAN", msg=f"Fel vid anrop av rtl_sdr: {e}")
         return b""
     finally:
