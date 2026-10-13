@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.28] - Protokollspecifika Inställningar, Sparning av Driftläge och Rensning av Basstationer
+
+### Fixed
+- **Dynamisk Anpassning av Signal & Decoding per Protokoll (`templates/sdr_settings.html`)**:
+  - Vid val av protokoll **TETRA** döljs nu alla irrelevanta `multimon-ng`- och `rtl_fm`-inställningar (Log Level, Charset, Output Format, Input Type, Resample, FM De-emphasis, FIR-filter, Atan-math och Oversampling).
+  - Istället visas enbart relevanta kontroller för TETRA: Driftläge (`monitor` vs `explorer`), Fördröjning per basstation (vid explorer) samt I/Q Samplingshastighet (1.8 MS/s, 2.0 MS/s, 2.4 MS/s) tillsammans med en informativ guide.
+  - Dynamisk anpassning av frekvenshjälptext beroende på om POCSAG (169.8M), AFSK (144.8M) eller TETRA (direkt kanal/intervall) är valt.
+- **Sparning av TETRA Driftläge och Fördröjningstid (`app.py`, `database.py`)**:
+  - Åtgärdat felet där ändring av TETRA Driftläge (`tetra_scan_mode`) och Fördröjningstid (`tetra_dwell_time`) i Inställningar inte sparades. Nycklarna saknades i `allowed_keys` i `/api/settings` i [app.py](file:///d:/antigravity/pager-monitor/app.py) och filtrerades därför bort.
+  - Lagt till fälten `tetra_mode` och `tetra_dwell_time` i `sdr_instances`-tabellen i databasen samt i klonings- och uppdateringsfunktionerna.
+- **HTTP 500-fel vid Rensning av Basstationer (`app.py`, `database.py`)**:
+  - Åtgärdat felet `Exception on /api/messages/basestations [DELETE] 500 Internal Server Error` orsakat av ett anrop till en odefinierad funktion `database.get_db_connection()`.
+  - Skapat [clear_basestation_messages()](file:///d:/antigravity/pager-monitor/database.py) och [get_db_connection()](file:///d:/antigravity/pager-monitor/database.py) i `database.py` med skydd mot borttagning av låsta meddelanden och felhantering i API:et.
+
 ## [2026.10.13.27] - Synkbaserad Bärvågsbevakning och Driftlägen för TETRA
 
 ### Added

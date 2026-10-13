@@ -101,7 +101,7 @@
                                 <div class="form-group">
                                     <label for="frequency">Frequency (MHz)</label>
                                     <input type="text" id="frequency" name="frequency" placeholder="169.800M" required>
-                                    <small>Standard: 169.8M (POCSAG). För TETRA stöds direkt kanal (t.ex. 390.125M), skanningsintervall (t.ex. 390M-395M) eller frekvenslista (t.ex. 390.125M, 390.250M).</small>
+                                    <small id="freqHelpText">Standard: 169.8M (POCSAG). För TETRA stöds direkt kanal (t.ex. 390.125M), skanningsintervall (t.ex. 390M-395M) eller frekvenslista (t.ex. 390.125M, 390.250M).</small>
                                 </div>
                             </div>
                             <div class="col">
@@ -144,139 +144,188 @@
                                 decodes packet modes at 1200/2400 baud. <b>TETRA/RAKEL</b> monitors talkgroups, calls, and SDS text messages.</small>
                         </div>
 
-                        <div class="row-group">
-                            <div class="col">
-                                <div class="form-group">
-                                    <label for="multimon_verbosity">Log Level (-v)</label>
-                                    <select id="multimon_verbosity" name="multimon_verbosity">
-                                        <option value="0">Level 0 (No info)</option>
-                                        <option value="1">Level 1 (Stats - Default)</option>
-                                        <option value="2">Level 2</option>
-                                        <option value="10">Level 10 (Max debug)</option>
-                                    </select>
-                                    <small>Controls how much detail multimon-ng logs. Higher = more verbose.</small>
+                        <!-- TETRA Specific Settings -->
+                        <div id="tetraSettingsSection" style="display: none;">
+                            <div style="background: rgba(14, 165, 233, 0.08); border: 1px solid rgba(14, 165, 233, 0.25); border-radius: 8px; padding: 0.85rem 1rem; margin-bottom: 1.25rem;">
+                                <div style="font-weight: 600; color: var(--accent); font-size: 0.88rem; display: flex; align-items: center; gap: 0.45rem;">
+                                    <i class="fas fa-satellite-dish"></i> TETRA / Rakel Avkodning
+                                </div>
+                                <p style="font-size: 0.78rem; color: var(--text-secondary); margin: 0.35rem 0 0 0; line-height: 1.4;">
+                                    TETRA avkodas med direkt bredbandig I/Q-strömning och inbyggd pi/4-DQPSK-demodulator. Inställningar för multimon-ng och FM-ljudfilter är inaktiverade för detta protokoll.
+                                </p>
+                            </div>
+
+                            <div class="row-group">
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="tetra_mode">Driftläge (TETRA Scan Mode)</label>
+                                        <select id="tetra_mode" name="tetra_mode">
+                                            <option value="monitor">Dedikerad Trafiklyssning (Stanna kvar så länge styrsignal/synk finns)</option>
+                                            <option value="explorer">Explorer / Kartläggning (Svep vidare efter fördröjningstid)</option>
+                                        </select>
+                                        <small><b>Monitor:</b> Låser på starkaste kontrollkanalen och stannar permanent så länge masten hörs. <b>Explorer:</b> Registrerar basstationsdata och sveper därefter vidare.</small>
+                                    </div>
+                                </div>
+                                <div class="col" id="tetraDwellCol" style="display: none;">
+                                    <div class="form-group">
+                                        <label for="tetra_dwell_time">Fördröjning per basstation (sekunder)</label>
+                                        <input type="number" id="tetra_dwell_time" name="tetra_dwell_time" min="15" max="600" value="60">
+                                        <small>Tid skannern stannar på varje basstation innan den söker vidare i Explorer-läge.</small>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col">
-                                <div class="form-group">
-                                    <label for="multimon_charset">Charset (-C)</label>
-                                    <select id="multimon_charset" name="multimon_charset">
-                                        <option value="SE">SE (Svenska)</option>
-                                        <option value="ISO8859-15">ISO8859-15</option>
-                                        <option value="UTF-8">UTF-8</option>
-                                    </select>
-                                    <small>Character encoding for decoded messages. SE maps []\{|} to ÄÖÅäöå.</small>
+
+                            <div class="row-group">
+                                <div class="col" style="flex: 0 0 48%;">
+                                    <div class="form-group">
+                                        <label for="tetra_sample_rate">I/Q Samplingsfrekvens</label>
+                                        <select id="tetra_sample_rate" onchange="syncTetraSampleRate(this.value)">
+                                            <option value="1800000">1.8 MS/s (1 800 000 Hz - Standard / Rekommenderad)</option>
+                                            <option value="2000000">2.0 MS/s (2 000 000 Hz)</option>
+                                            <option value="2400000">2.4 MS/s (2 400 000 Hz - Bredbandigt)</option>
+                                        </select>
+                                        <small>Bredbandig I/Q-samplingshastighet till rtl_sdr för TETRA bärvågssynkronisering.</small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="row-group">
-                            <div class="col">
-                                <div class="form-group">
-                                    <label for="multimon_format">Output Format (-f)</label>
-                                    <select id="multimon_format" name="multimon_format">
-                                        <option value="auto">Auto-detect (auto)</option>
-                                        <option value="alpha">Alphanumeric (alpha)</option>
-                                        <option value="numeric">Numeric (numeric)</option>
-                                        <option value="skyper">Skyper (skyper)</option>
-                                    </select>
-                                    <small>POCSAG message format. Auto-detect works for most pager networks.</small>
+                        <!-- POCSAG / AFSK Multimon-ng and FM Settings -->
+                        <div id="pocsagMultimonSection">
+                            <div class="row-group">
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="multimon_verbosity">Log Level (-v)</label>
+                                        <select id="multimon_verbosity" name="multimon_verbosity">
+                                            <option value="0">Level 0 (No info)</option>
+                                            <option value="1">Level 1 (Stats - Default)</option>
+                                            <option value="2">Level 2</option>
+                                            <option value="10">Level 10 (Max debug)</option>
+                                        </select>
+                                        <small>Controls how much detail multimon-ng logs. Higher = more verbose.</small>
+                                    </div>
+                                </div>
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="multimon_charset">Charset (-C)</label>
+                                        <select id="multimon_charset" name="multimon_charset">
+                                            <option value="SE">SE (Svenska)</option>
+                                            <option value="ISO8859-15">ISO8859-15</option>
+                                            <option value="UTF-8">UTF-8</option>
+                                        </select>
+                                        <small>Character encoding for decoded messages. SE maps []\{|} to ÄÖÅäöå.</small>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col">
-                                <div class="form-group">
-                                    <label for="multimon_input_type">Input Type (-t)</label>
-                                    <input type="text" id="multimon_input_type" name="multimon_input_type" value="raw">
-                                    <small>Audio input format. Use "raw" for piped rtl_fm output.</small>
-                                </div>
-                            </div>
-                        </div>
 
-                        <details>
-                            <summary>More Advanced Settings</summary>
-                            <div class="accordion-content">
-                                <div class="row-group">
-                                    <div class="col">
-                                        <div class="form-group">
-                                            <label for="sample_rate">Sample Rate (-s)</label>
-                                            <input type="text" id="sample_rate" name="sample_rate" value="250000">
-                                            <small>rtl_fm sample rate in Hz. 250000 (250k) recommended for
-                                                POCSAG.</small>
-                                        </div>
-                                    </div>
-                                    <div class="col">
-                                        <div class="form-group">
-                                            <label for="resample_rate">Resample (-r)</label>
-                                            <input type="text" id="resample_rate" name="resample_rate" value="22050">
-                                            <small>Output sample rate to multimon-ng. 22050 Hz is standard.</small>
-                                        </div>
+                            <div class="row-group">
+                                <div class="col" id="formatGroup">
+                                    <div class="form-group">
+                                        <label for="multimon_format">Output Format (-f)</label>
+                                        <select id="multimon_format" name="multimon_format">
+                                            <option value="auto">Auto-detect (auto)</option>
+                                            <option value="alpha">Alphanumeric (alpha)</option>
+                                            <option value="numeric">Numeric (numeric)</option>
+                                            <option value="skyper">Skyper (skyper)</option>
+                                        </select>
+                                        <small>POCSAG message format. Auto-detect works for most pager networks.</small>
                                     </div>
                                 </div>
-                                <div class="row-group">
-                                    <div class="col">
-                                        <div class="form-group">
-                                            <label for="enable_dc_removal">DC Removal</label>
-                                            <select id="enable_dc_removal" name="enable_dc_removal">
-                                                <option value="true">Yes</option>
-                                                <option value="false">No</option>
-                                            </select>
-                                            <small>Removes DC offset from the signal (-E dc). Improves decoding
-                                                accuracy. Recommended: Yes.</small>
-                                        </div>
-                                    </div>
-                                    <div class="col">
-                                        <div class="form-group">
-                                            <label for="enable_deemp">De-emphasis</label>
-                                            <select id="enable_deemp" name="enable_deemp">
-                                                <option value="true">Yes</option>
-                                                <option value="false">No</option>
-                                            </select>
-                                            <small>Applies FM de-emphasis filter (-E deemp). Can reduce noise on some
-                                                signals. Recommended: Yes.</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row-group">
-                                    <div class="col">
-                                        <div class="form-group">
-                                            <label for="enable_high_quality_fir">High Quality FIR Filter</label>
-                                            <select id="enable_high_quality_fir" name="enable_high_quality_fir">
-                                                <option value="false">No (Box Filter - Recommended)</option>
-                                                <option value="true">Yes (High-Fidelity - NOT for POCSAG)</option>
-                                            </select>
-                                            <small>Uses a sharper FIR filter (-F). <b>Warning:</b> This cuts off wide
-                                                frequency deviation (FSK) used by POCSAG, breaking the decoder. Keep
-                                                this <b>No</b> for POCSAG.</small>
-                                        </div>
-                                    </div>
-                                    <div class="col">
-                                        <div class="form-group">
-                                            <label for="atan_math">Atan Math</label>
-                                            <select id="atan_math" name="atan_math">
-                                                <option value="std">Standard (std)</option>
-                                                <option value="fast">Fast (fast)</option>
-                                            </select>
-                                            <small>FM demodulation math (-A). Standard is most precise. Recommended:
-                                                Standard.</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="row-group">
-                                    <div class="col" style="flex: 0 0 48%;">
-                                        <div class="form-group">
-                                            <label for="oversampling">Internal Oversampling</label>
-                                            <select id="oversampling" name="oversampling">
-                                                <option value="4">4x (High-Fidelity)</option>
-                                                <option value="2">2x</option>
-                                                <option value="1">Off</option>
-                                            </select>
-                                            <small>Forces stick to work at higher internal resolution (-o), reducing
-                                                quantization noise. Recommended: 4x.</small>
-                                        </div>
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="multimon_input_type">Input Type (-t)</label>
+                                        <input type="text" id="multimon_input_type" name="multimon_input_type" value="raw">
+                                        <small>Audio input format. Use "raw" for piped rtl_fm output.</small>
                                     </div>
                                 </div>
                             </div>
-                        </details>
+
+                            <details id="pocsagAdvancedDetails">
+                                <summary>More Advanced Settings</summary>
+                                <div class="accordion-content">
+                                    <div class="row-group">
+                                        <div class="col">
+                                            <div class="form-group">
+                                                <label for="sample_rate">Sample Rate (-s)</label>
+                                                <input type="text" id="sample_rate" name="sample_rate" value="250000">
+                                                <small>rtl_fm sample rate in Hz. 250000 (250k) recommended for
+                                                    POCSAG.</small>
+                                            </div>
+                                        </div>
+                                        <div class="col">
+                                            <div class="form-group">
+                                                <label for="resample_rate">Resample (-r)</label>
+                                                <input type="text" id="resample_rate" name="resample_rate" value="22050">
+                                                <small>Output sample rate to multimon-ng. 22050 Hz is standard.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row-group">
+                                        <div class="col">
+                                            <div class="form-group">
+                                                <label for="enable_dc_removal">DC Removal</label>
+                                                <select id="enable_dc_removal" name="enable_dc_removal">
+                                                    <option value="true">Yes</option>
+                                                    <option value="false">No</option>
+                                                </select>
+                                                <small>Removes DC offset from the signal (-E dc). Improves decoding
+                                                    accuracy. Recommended: Yes.</small>
+                                            </div>
+                                        </div>
+                                        <div class="col">
+                                            <div class="form-group">
+                                                <label for="enable_deemp">De-emphasis</label>
+                                                <select id="enable_deemp" name="enable_deemp">
+                                                    <option value="true">Yes</option>
+                                                    <option value="false">No</option>
+                                                </select>
+                                                <small>Applies FM de-emphasis filter (-E deemp). Can reduce noise on some
+                                                    signals. Recommended: Yes.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row-group">
+                                        <div class="col">
+                                            <div class="form-group">
+                                                <label for="enable_high_quality_fir">High Quality FIR Filter</label>
+                                                <select id="enable_high_quality_fir" name="enable_high_quality_fir">
+                                                    <option value="false">No (Box Filter - Recommended)</option>
+                                                    <option value="true">Yes (High-Fidelity - NOT for POCSAG)</option>
+                                                </select>
+                                                <small>Uses a sharper FIR filter (-F). <b>Warning:</b> This cuts off wide
+                                                    frequency deviation (FSK) used by POCSAG, breaking the decoder. Keep
+                                                    this <b>No</b> for POCSAG.</small>
+                                            </div>
+                                        </div>
+                                        <div class="col">
+                                            <div class="form-group">
+                                                <label for="atan_math">Atan Math</label>
+                                                <select id="atan_math" name="atan_math">
+                                                    <option value="std">Standard (std)</option>
+                                                    <option value="fast">Fast (fast)</option>
+                                                </select>
+                                                <small>FM demodulation math (-A). Standard is most precise. Recommended:
+                                                    Standard.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row-group">
+                                        <div class="col" style="flex: 0 0 48%;">
+                                            <div class="form-group">
+                                                <label for="oversampling">Internal Oversampling</label>
+                                                <select id="oversampling" name="oversampling">
+                                                    <option value="4">4x (High-Fidelity)</option>
+                                                    <option value="2">2x</option>
+                                                    <option value="1">Off</option>
+                                                </select>
+                                                <small>Forces stick to work at higher internal resolution (-o), reducing
+                                                    quantization noise. Recommended: 4x.</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </details>
+                        </div>
 
                         <div class="form-actions" style="margin-top: 2rem;">
                             <button type="submit" class="primary-btn">Save Settings</button>
@@ -301,6 +350,63 @@
             setTimeout(() => { statusMsg.classList.remove('show'); }, 5000);
         }
 
+        function syncTetraSampleRate(val) {
+            const srEl = document.getElementById('sample_rate');
+            if (srEl) srEl.value = val;
+        }
+
+        function updateProtocolUI() {
+            const protoEl = document.getElementById('protocol');
+            const proto = protoEl ? protoEl.value : 'POCSAG';
+            const tetraSection = document.getElementById('tetraSettingsSection');
+            const pocsagSection = document.getElementById('pocsagMultimonSection');
+            const freqHelp = document.getElementById('freqHelpText');
+            const formatGroup = document.getElementById('formatGroup');
+
+            if (proto === 'TETRA') {
+                if (tetraSection) tetraSection.style.display = 'block';
+                if (pocsagSection) pocsagSection.style.display = 'none';
+                if (freqHelp) {
+                    freqHelp.innerHTML = '<b>TETRA Frekvensformat:</b> Direkt kanal (t.ex. <code>427.3M</code>), svepintervall (t.ex. <code>420M-430M</code>) eller frekvenslista (t.ex. <code>421.225M, 422.45M, 427.3M</code>).';
+                }
+
+                // Synka tetra_mode och dwell time
+                const modeEl = document.getElementById('tetra_mode');
+                const dwellCol = document.getElementById('tetraDwellCol');
+                if (modeEl && dwellCol) {
+                    dwellCol.style.display = (modeEl.value === 'explorer') ? 'block' : 'none';
+                }
+
+                // Synka sample_rate select
+                const srEl = document.getElementById('sample_rate');
+                const curSampleRate = srEl ? srEl.value : '1800000';
+                const tetraSr = document.getElementById('tetra_sample_rate');
+                if (tetraSr) {
+                    if (['1800000', '2000000', '2400000'].includes(curSampleRate)) {
+                        tetraSr.value = curSampleRate;
+                    } else {
+                        tetraSr.value = '1800000';
+                        if (srEl) srEl.value = '1800000';
+                    }
+                }
+            } else {
+                if (tetraSection) tetraSection.style.display = 'none';
+                if (pocsagSection) pocsagSection.style.display = 'block';
+
+                if (proto === 'AFSK1200') {
+                    if (formatGroup) formatGroup.style.display = 'none';
+                    if (freqHelp) {
+                        freqHelp.innerHTML = '<b>AFSK / APRS:</b> Standard <code>144.800M</code> (VHF) eller andra amatörradiofrekvenser.';
+                    }
+                } else {
+                    if (formatGroup) formatGroup.style.display = 'block';
+                    if (freqHelp) {
+                        freqHelp.innerHTML = 'Standard: <code>169.8M</code> (POCSAG). Även kommaseparerad frekvenslista stöds (t.ex. <code>169.8M, 173.2M</code>).';
+                    }
+                }
+            }
+        }
+
         function loadSDR() {
             fetch(`/api/sdr/${sdrId}`)
                 .then(res => res.json())
@@ -322,7 +428,15 @@
                             }
                         }
                     }
+
+                    updateProtocolUI();
                 });
+        }
+
+        document.getElementById('protocol').addEventListener('change', updateProtocolUI);
+        const tetraModeSelect = document.getElementById('tetra_mode');
+        if (tetraModeSelect) {
+            tetraModeSelect.addEventListener('change', updateProtocolUI);
         }
 
         form.addEventListener('submit', (e) => {

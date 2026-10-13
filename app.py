@@ -17,7 +17,7 @@ from database import (
     get_sdr_instances, save_sdr_instance, delete_sdr_instance, toggle_sdr_instance,
     clone_sdr_instance,
     delete_message, toggle_message_lock, clear_messages, prune_messages,
-    get_database_stats, auto_prune_if_enabled
+    get_database_stats, auto_prune_if_enabled, clear_basestation_messages
 )
 
 try:
@@ -114,7 +114,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.13.27"
+APP_VERSION = "2026.10.13.28"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
@@ -317,22 +317,17 @@ def prune_old_messages():
     })
 
 @app.route('/api/messages/basestations', methods=['DELETE', 'POST'])
-def clear_basestation_messages():
-    conn = database.get_db_connection()
-    c = conn.cursor()
-    c.execute("""
-        DELETE FROM messages 
-        WHERE (bitrate LIKE '%TETRA-NET%' OR message LIKE '%Aktiv TETRA Basstation%' OR message LIKE '%Aktiv Basstation på%') 
-        AND is_protected = 0
-    """)
-    deleted_count = c.rowcount
-    conn.commit()
-    conn.close()
-    return jsonify({
-        "status": "success", 
-        "message": f"Tog bort {deleted_count} basstationsloggar ur databasen.",
-        "deleted_count": deleted_count
-    })
+def handle_clear_basestations():
+    try:
+        deleted_count = clear_basestation_messages()
+        return jsonify({
+            "status": "success", 
+            "message": f"Tog bort {deleted_count} basstationsloggar ur databasen.",
+            "deleted_count": deleted_count
+        })
+    except Exception as e:
+        logger.error(f"Error clearing basestation messages: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/settings/defaults')
 def settings_defaults():
@@ -351,13 +346,15 @@ def handle_settings():
             'enable_high_quality_fir', 'atan_math', 'oversampling',
             'multimon_input_type', 'garbage_filter', 'garbage_filter_sensitivity',
             'duplicate_handling', 'duplicate_window',
-            'auto_prune_enabled', 'auto_prune_days', 'log_tetra_basestations'
+            'auto_prune_enabled', 'auto_prune_days', 'log_tetra_basestations',
+            'tetra_scan_mode', 'tetra_dwell_time'
         ]
         sdr_restart_keys = {
             'frequency', 'gain', 'device_serial', 'multimon_verbosity', 
             'multimon_charset', 'multimon_format', 'sample_rate', 'resample_rate', 
             'enable_dc_removal', 'ppm_error', 'enable_deemp', 'enable_high_quality_fir',
-            'atan_math', 'oversampling', 'multimon_input_type'
+            'atan_math', 'oversampling', 'multimon_input_type',
+            'tetra_scan_mode', 'tetra_dwell_time'
         }
         sdr_restart_needed = False
         for key in allowed_keys:

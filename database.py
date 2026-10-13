@@ -141,9 +141,25 @@ def init_db():
             multimon_format TEXT DEFAULT 'auto',
             multimon_input_type TEXT DEFAULT 'raw',
             protocol TEXT DEFAULT 'POCSAG',
+            tetra_mode TEXT DEFAULT 'monitor',
+            tetra_dwell_time TEXT DEFAULT '60',
             enabled INTEGER DEFAULT 1
         )
     ''')
+
+    # Run migrations for sdr_instances columns if they don't exist
+    for col, type_info in [
+        ('enable_high_quality_fir', 'TEXT DEFAULT "false"'),
+        ('atan_math', 'TEXT DEFAULT "std"'),
+        ('oversampling', 'TEXT DEFAULT "4"'),
+        ('protocol', 'TEXT DEFAULT "POCSAG"'),
+        ('tetra_mode', 'TEXT DEFAULT "monitor"'),
+        ('tetra_dwell_time', 'TEXT DEFAULT "60"')
+    ]:
+        try:
+            c.execute(f'ALTER TABLE sdr_instances ADD COLUMN {col} {type_info}')
+        except sqlite3.OperationalError:
+            pass # Column already exists
     
     # Initialize default settings if they don't exist
     defaults = get_default_settings()
@@ -558,12 +574,14 @@ def get_sdr_instances():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     
-    # Run migrations for high-fidelity settings if they don't exist
+    # Run migrations for settings if they don't exist
     for col, type_info in [
         ('enable_high_quality_fir', 'TEXT DEFAULT "false"'),
         ('atan_math', 'TEXT DEFAULT "std"'),
         ('oversampling', 'TEXT DEFAULT "4"'),
-        ('protocol', 'TEXT DEFAULT "POCSAG"')
+        ('protocol', 'TEXT DEFAULT "POCSAG"'),
+        ('tetra_mode', 'TEXT DEFAULT "monitor"'),
+        ('tetra_dwell_time', 'TEXT DEFAULT "60"')
     ]:
         try:
             c.execute(f'ALTER TABLE sdr_instances ADD COLUMN {col} {type_info}')
@@ -608,6 +626,8 @@ def save_sdr_instance(data):
     fmt = data.get('multimon_format', 'auto')
     inp = data.get('multimon_input_type', 'raw')
     protocol = data.get('protocol', 'POCSAG')
+    tetra_mode = str(data.get('tetra_mode', 'monitor')).strip()
+    tetra_dwell_time = str(data.get('tetra_dwell_time', '60')).strip()
     enabled = data.get('enabled', 1)
 
     if instance_id:
@@ -617,9 +637,9 @@ def save_sdr_instance(data):
                 sample_rate=?, resample_rate=?, enable_dc_removal=?, enable_deemp=?,
                 enable_high_quality_fir=?, atan_math=?, oversampling=?,
                 multimon_verbosity=?, multimon_charset=?, multimon_format=?,
-                multimon_input_type=?, protocol=?, enabled=?
+                multimon_input_type=?, protocol=?, tetra_mode=?, tetra_dwell_time=?, enabled=?
             WHERE id=?
-        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, protocol, enabled, instance_id))
+        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, protocol, tetra_mode, tetra_dwell_time, enabled, instance_id))
     else:
         c.execute('''
             INSERT INTO sdr_instances (
@@ -627,9 +647,9 @@ def save_sdr_instance(data):
                 sample_rate, resample_rate, enable_dc_removal, enable_deemp,
                 enable_high_quality_fir, atan_math, oversampling,
                 multimon_verbosity, multimon_charset, multimon_format,
-                multimon_input_type, protocol, enabled
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, protocol, 1))
+                multimon_input_type, protocol, tetra_mode, tetra_dwell_time, enabled
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (name, freq, gain, serial, ppm, sample_rate, resample_rate, dc, deemp, hq_fir, atan, oversamp, verb, charset, fmt, inp, protocol, tetra_mode, tetra_dwell_time, 1))
         
     conn.commit()
     conn.close()
@@ -671,8 +691,8 @@ def clone_sdr_instance(source_id, new_name=None, new_frequency=None, enabled=0):
             sample_rate, resample_rate, enable_dc_removal, enable_deemp,
             enable_high_quality_fir, atan_math, oversampling,
             multimon_verbosity, multimon_charset, multimon_format,
-            multimon_input_type, protocol, enabled
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            multimon_input_type, protocol, tetra_mode, tetra_dwell_time, enabled
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ''', (
         name,
         frequency,
@@ -691,12 +711,34 @@ def clone_sdr_instance(source_id, new_name=None, new_frequency=None, enabled=0):
         source.get('multimon_format', 'auto'),
         source.get('multimon_input_type', 'raw'),
         source.get('protocol', 'POCSAG'),
+        source.get('tetra_mode', 'monitor'),
+        source.get('tetra_dwell_time', '60'),
         1 if enabled else 0
     ))
     new_id = c.lastrowid
     conn.commit()
     conn.close()
     return new_id
+
+def get_db_connection():
+    """Returns a new sqlite3 connection to DB_PATH."""
+    return sqlite3.connect(DB_PATH)
+
+def clear_basestation_messages():
+    """Delete all non-protected TETRA base station announcement rows."""
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        c = conn.cursor()
+        c.execute("""
+            DELETE FROM messages 
+            WHERE (bitrate LIKE '%TETRA-NET%' OR message LIKE '%Aktiv TETRA Basstation%' OR message LIKE '%Aktiv Basstation på%' OR address LIKE 'RAKEL-%') 
+            AND (is_protected IS NULL OR is_protected = 0)
+        """)
+        deleted_count = c.rowcount
+        conn.commit()
+        return deleted_count
+    finally:
+        conn.close()
 
 def clear_messages():
     """Delete all messages from the database."""

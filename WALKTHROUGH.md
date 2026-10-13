@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.27`
+- **CalVer**: `2026.10.13.28`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -980,6 +980,26 @@
     - Användaren kan konfigurera driftläge och fördröjningstid direkt via Inställningar.
 - **Verifiering**:
   - Samtliga 54 enhetstester passerar felfritt.
+
+---
+
+### 25. Protokollspecifika Inställningar, Sparning av Driftläge och Fix för Rensning av Basstationer (v2026.10.13.28)
+- **Problembeskrivning**:
+  1. I formuläret för SDR-mottagarinställningar ([templates/sdr_settings.html](file:///d:/antigravity/pager-monitor/templates/sdr_settings.html)) visades multimon-ng och rtl_fm FM-demoduleringsinställningar (t.ex. Log Level, Charset, Output Format, De-emphasis, Atan math) även när protokollet ändrades till TETRA, trots att TETRA använder ren I/Q-strömning via `rtl_sdr` och inbyggd pi/4-DQPSK-demodulering.
+  2. Valet av TETRA Driftläge och Fördröjningstid under Inställningar i webbläsaren sparades inte utan återställdes vid omladdning.
+  3. Klick på knappen "Rensa tidigare basstationsloggar ur databasen" genererade ett HTTP 500-fel (`Exception on /api/messages/basestations [DELETE]`) och felmeddelande i JavaScript.
+- **Teknisk Implementering**:
+  - **Dynamiska Protokollvyer ([templates/sdr_settings.html](file:///d:/antigravity/pager-monitor/templates/sdr_settings.html))**:
+    - Skapat separata dynamiska sektioner för TETRA och POCSAG/AFSK.
+    - När TETRA väljs döljs alla multimon-ng- och FM-ljudfilter automatiskt. Istället visas kontroller för TETRA Driftläge (`monitor` vs `explorer`), fördröjningstid och I/Q Samplingshastighet (1.8 - 2.4 MS/s) samt anpassad hjälptext för frekvensformatet.
+  - **Tillåtna Nycklar och Databaskolumner ([app.py](file:///d:/antigravity/pager-monitor/app.py), [database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+    - Lagt till `tetra_scan_mode` och `tetra_dwell_time` i `allowed_keys` och `sdr_restart_keys` i `/api/settings` i [app.py](file:///d:/antigravity/pager-monitor/app.py).
+    - Lagt till kolumnerna `tetra_mode` och `tetra_dwell_time` i `sdr_instances`-tabellen i databasen samt i uppdaterings- och kloningsfunktionerna.
+  - **Robust Rensning av Basstationer ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+    - Definierat `get_db_connection()` och [clear_basestation_messages()](file:///d:/antigravity/pager-monitor/database.py) i `database.py`. Raderar alla oskyddade rader för basstationer och nätverksannonser och returnerar antalet rader som togs bort.
+    - Uppdaterat `/api/messages/basestations` med try/catch felhantering och giltigt JSON-svar.
+- **Verifiering**:
+  - Samtliga 56 enhetstester i testsviten (inklusive två nya dedikerade tester) passerar felfritt.
 
 
 

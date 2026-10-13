@@ -390,6 +390,60 @@ def test_clone_sdr_instance_api(client):
     assert 'id="copySdrModal"' in settings_html
 
 
+def test_clear_basestation_messages_api(client):
+    """Verifiera att /api/messages/basestations raderar basstationsloggar och sparar skyddade meddelanden."""
+    # Spara några basstationer och vanliga meddelanden
+    database.save_message('RAKEL-240-01', 'Aktiv TETRA Basstation på 427.3M', 'Rakel', 0, 'TETRA-NET', frequency='427.3M')
+    database.save_message('12345', 'Brand i byggnad', 'Räddningstjänst', 0, 'POCSAG 1200', frequency='169.8M')
+    # Spara en skyddad basstationsrad
+    msg_id, _ = database.save_message('RAKEL-240-02', 'Aktiv Basstation på 421.225M', 'Rakel', 0, 'TETRA-NET', frequency='421.225M')
+    database.toggle_message_lock(msg_id, True)
+
+    resp = client.delete('/api/messages/basestations')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['status'] == 'success'
+    assert data['deleted_count'] >= 1
+
+    # Verifiera att vanliga meddelanden och låsta basstationer finns kvar
+    remaining = database.get_recent_messages(limit=10)
+    messages_text = [m['message'] for m in remaining]
+    assert 'Brand i byggnad' in messages_text
+    assert 'Aktiv Basstation på 421.225M' in messages_text
+    assert 'Aktiv TETRA Basstation på 427.3M' not in messages_text
+
+
+def test_tetra_settings_save_and_sdr_instance_fields(client):
+    """Verifiera att tetra_scan_mode och tetra_dwell_time kan sparas via /api/settings och i sdr_instances."""
+    # Testa globala inställningar
+    post_data = {
+        'tetra_scan_mode': 'explorer',
+        'tetra_dwell_time': '45'
+    }
+    resp = client.post('/api/settings', json=post_data)
+    assert resp.status_code == 200
+    assert resp.get_json()['status'] == 'success'
+
+    settings = database.get_settings()
+    assert settings.get('tetra_scan_mode') == 'explorer'
+    assert settings.get('tetra_dwell_time') == '45'
+
+    # Testa att sdr_instances sparar tetra_mode och tetra_dwell_time
+    sdr_config = {
+        'name': 'TETRA Scan Station',
+        'frequency': '420M-430M',
+        'protocol': 'TETRA',
+        'tetra_mode': 'explorer',
+        'tetra_dwell_time': '75'
+    }
+    database.save_sdr_instance(sdr_config)
+    instances = database.get_sdr_instances()
+    tetra_inst = next((i for i in instances if i['name'] == 'TETRA Scan Station'), None)
+    assert tetra_inst is not None
+    assert tetra_inst.get('tetra_mode') == 'explorer'
+    assert tetra_inst.get('tetra_dwell_time') == '75'
+
+
 
 
 
