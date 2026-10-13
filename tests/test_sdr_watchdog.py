@@ -361,8 +361,8 @@ class TestSdrWatchdog(unittest.TestCase):
     @patch('sdr_processor.save_message')
     @patch('sdr_processor.publish_message')
     @patch('sdr_processor.get_settings')
-    def test_tetra_net_basestation_filtered_by_default(self, mock_settings, mock_publish, mock_save):
-        """Verifiera att TETRA NET basstationssynk inte sparas som larm i databasen nar log_tetra_basestations ar false."""
+    def test_tetra_net_basestation_filtered_when_setting_false(self, mock_settings, mock_publish, mock_save):
+        """Verifiera att TETRA NET basstationssynk inte sparas nar log_tetra_basestations ar false."""
         mock_settings.return_value = {'log_tetra_basestations': 'false'}
 
         mock_p1 = MagicMock()

@@ -428,7 +428,7 @@
                     <div class="header-right-tools">
                         <button id="toggleBasestationsBtn" class="header-filter-btn" onclick="toggleHideBasestations()" title="Dölj eller visa TETRA-basstationer i tabellen">
                             <i class="fas fa-broadcast-tower" id="basestationIcon"></i>
-                            <span id="basestationText">Dölj Basstationer</span>
+                            <span id="basestationText">Basstationer: Visas</span>
                         </button>
                         <button id="livePauseBtn" class="live-pause-btn" onclick="toggleLivePause()" title="Pause alarm feed">
                             <span class="live-pause-dot"></span>
@@ -531,7 +531,7 @@
         let allAlarms = [];
         let isLivePaused = false;
         let pausedQueue = [];
-        let hideBasestations = localStorage.getItem('hide_tetra_basestations') !== 'false'; // default: true
+        let hideBasestations = localStorage.getItem('hide_tetra_basestations') === 'true'; // default: false (visas som standard)
 
         function toggleHideBasestations() {
             hideBasestations = !hideBasestations;

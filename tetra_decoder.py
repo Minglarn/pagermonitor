@@ -472,8 +472,9 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
         return b""
 
     # Round samples to a multiple of 16384 (standard libusb buffer size)
-    target_samples = max(32768, int(round((sample_rate * duration_sec) / 16384.0)) * 16384)
-    num_samples = min(target_samples, 131072)
+    # 163840 samples at 2.4 MS/s is 68.2 ms (> 1 full TETRA TDMA frame of 56.67 ms)
+    target_samples = max(65536, int(round((sample_rate * duration_sec) / 16384.0)) * 16384)
+    num_samples = max(target_samples, 163840)
 
     def _execute_capture():
         global _current_child_proc

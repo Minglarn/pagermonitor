@@ -297,7 +297,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         logger.info(f"[{config['name']}] TETRA BASSTATION SYNKRISERAD: {rest}")
 
                         settings = get_settings()
-                        if settings.get('log_tetra_basestations', 'false') != 'true':
+                        if settings.get('log_tetra_basestations', 'true') != 'true':
                             for cb in list(new_message_callbacks):
                                 try: cb({'type': 'ping'})
                                 except Exception: pass

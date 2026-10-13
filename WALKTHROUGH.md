@@ -906,9 +906,24 @@
     - Satt `num_samples` till jämna multipler av libusb-buffertar (max 131 072 samples / 8 buffertar).
     - Lagt till 120 ms återhämtningspaus efter varje capture i `finally`.
     - Om provtagningen returnerar ofullständig data pausas processen i 350 ms och provtagningen gör automatiskt ett andra försök innan ett felmeddelande genereras.
-  - **Tester och Verifiering**:
+## 61. Återställt Standardvisning och Samplingslängd för TETRA-basstationer (v2026.10.13.24)
+- **Bakgrund och Identifierade Orsaker**:
+  - Användaren noterade att basstationer plötsligt inte syntes eller hittades längre efter de senaste ändringarna.
+  - Orsaken var trefaldig:
+    1. I CalVer `2026.10.13.22` sattes `log_tetra_basestations` till standardvärdet `'false'` i databasen och snabbfiltret i webbläsaren till `hideBasestations = true` (dolt som standard). Detta medförde att inga basstationer sparades till databasen eller skickades ut i realtidsflödet, och om några fanns i historiken filtrerades de bort av DataTables.
+    2. I CalVer `2026.10.13.23` begränsades provtagningsstorleken i `probe_block` till `131 072` samples (54.6 ms vid 2.4 MS/s). En fullständig TETRA TDMA-ram är 56.67 ms, vilket innebar att skannern riskerade att sampla mindre än en komplett ram och därmed missa bärvågsidentifiering och pi/4-DQPSK-träningssekvenser under svepen.
+    3. Mottagarens frekvensintervall hade flyttats under tidigare felsökning (t.ex. till 415M-430M istället för 460M-470M där aktiva basstationer fanns).
+- **Genomförda Åtgärder**:
+  - **Återställd Samplingslängd ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Återställt `num_samples` i `probe_block` till minst 163 840 samples (68.2 ms vid 2.4 MS/s, 10 stycken 16k-buffertar). Detta garanterar att hela TETRA-ramen och dess träningssekvens alltid fångas.
+  - **Standardvisning Aktiverad ([database.py](file:///d:/antigravity/pager-monitor/database.py), [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Ändrat standardvärdet för `log_tetra_basestations` till `'true'`. Basstationer loggas och skickas därmed i realtid som standard.
+  - **Webbgränssnitt Uppdaterat ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+    - Standardläge för snabbknappen är nu `Basstationer: Visas` (`hideBasestations = false`).
+    - Om användaren vill dölja dem från larmflödet klickar man på knappen, som då växlar till `Basstationer: Dolda`.
+  - **Verifiering**:
     - Samtliga 54 enhetstester passerar felfritt.
-    - Versionsbump till CalVer `2026.10.13.23`.
+    - Versionsbump till CalVer `2026.10.13.24`.
 
 
 

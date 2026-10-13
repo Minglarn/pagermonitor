@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.24] - Återställt Standardvisning och Samplingslängd för TETRA-basstationer
+
+### Fixed
+- **Återställd Samplingslängd för TETRA-skanner (`tetra_decoder.py`)**:
+  - Återställt provtagningsstorleken i `probe_block` till minst 163 840 samples (68.2 ms vid 2.4 MS/s). Den tidigare begränsningen till 131 072 samples (54.6 ms) var kortare än en hel TETRA TDMA-ram (56.67 ms), vilket gjorde att bärvågssynkronisering och pi/4-DQPSK-konstellationsmätning kunde missa träningssekvenser under svep.
+- **Återställd Standardvisning av Basstationer (`database.py`, `sdr_processor.py`, `templates/index.html`, `templates/larm.html`)**:
+  - Ändrat standardinställningen för `log_tetra_basestations` till `'true'` så att nyfunna TETRA/Rakel-basstationer alltid loggas och visas i realtid.
+  - Justerat DataTables-snabbfiltret i webbgränssnittet så att standardläget är "Basstationer: Visas". Användare som vill dölja basstationer från larmflödet kan enkelt klicka på knappen "Basstationer: Visas" för att växla till "Basstationer: Dolda".
+
 ## [2026.10.13.23] - Garanterad Terminering av Bakgrundsprocesser för TETRA och USB Återhämtningspauser
 
 ### Fixed
