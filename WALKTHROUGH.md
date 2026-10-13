@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.17`
+- **CalVer**: `2026.10.13.18`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -830,10 +830,17 @@
   - **Normaliseringsfunktion (`normalize_rate_hz` i [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
     - Implementerat robust sanering av både `sample_rate` och `resample_rate`.
     - Omvandlar automatiskt vanliga enhetssträngar (`250K`, `250k`, `22.05k`, `1.8M`) till rena heltal i Hertz (`250000`, `22050`, `1800000`) innan de skickas vidare till `rtl_fm` och `multimon-ng`.
+## 55. Återställt librtlsdr till Steve-M Drivrutiner (v2026.10.13.18)
+- **Bakgrund och Problem**:
+  - Efter installation av `rtlsdrblog/rtl-sdr-blog` upplevdes att enhet 2 (`10000002`) slutade leverera asynkrona bulk-dataprover över USB-bussen till både `rtl_fm`, `rtl_sdr` och `rtl_test`.
+- **Genomförda Åtgärder**:
+  - **Återställt `Dockerfile` ([Dockerfile](file:///d:/antigravity/pager-monitor/Dockerfile))**:
+    - Återställt källkodspaketet för `librtlsdr` till `https://github.com/steve-m/librtlsdr.git`.
+    - Säkerställer identisk drivrutinsuppsättning och standard Osmocom/Steve-M USB-buffring som applikationen byggdes med innan V4-experimentet.
   - **Tester och Verifiering**:
-    - Nya enhetstester i `tests/test_sdr_watchdog.py` verifierar att `250K` och `22.05k` expanderas till korrekta heltal i kommandoradsanropet.
     - Samtliga enhetstester passerar felfritt.
-    - Versionsbump till CalVer `2026.10.13.17`.
+    - Versionsbump till CalVer `2026.10.13.18`.
+
 
 
 

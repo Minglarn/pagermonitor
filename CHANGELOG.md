@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.18] - Återställt librtlsdr till Steve-M Drivrutiner
+
+### Changed
+- **Återställt `librtlsdr` i `Dockerfile`**:
+  - Återställt källkodsrepot för `librtlsdr` till `https://github.com/steve-m/librtlsdr.git` (ordinarie standarddrivrutiner innan Blog V4-experimentet).
+  - Säkerställer identisk binärkompatibilitet och USB-hantering som applikationen ursprungligen körde med.
+
 ## [2026.10.13.17] - Automatisk Sanering av Samplingsfrekvens och Enheter i rtl_fm
 
 ### Fixed

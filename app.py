@@ -114,7 +114,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.13.17"
+APP_VERSION = "2026.10.13.18"
 
 @app.context_processor
 def inject_globals():
