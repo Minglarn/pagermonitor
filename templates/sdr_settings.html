@@ -100,8 +100,8 @@
                             <div class="col">
                                 <div class="form-group">
                                     <label for="frequency">Frequency (MHz)</label>
-                                    <input type="text" id="frequency" name="frequency" placeholder="169.800M" required>
-                                    <small id="freqHelpText">Standard: 169.8M (POCSAG). För TETRA stöds direkt kanal (t.ex. 390.125M), skanningsintervall (t.ex. 390M-395M) eller frekvenslista (t.ex. 390.125M, 390.250M).</small>
+                                    <input type="text" id="frequency" name="frequency" placeholder="169.800M">
+                                    <small id="freqHelpText">Standard: 169.8M (POCSAG). För TETRA stöds direkt kanal (t.ex. 390.125M) eller skanning (t.ex. 390M-395M). För RDS-TMC kan fältet lämnas helt tomt för automatisk P4-sökning.</small>
                                 </div>
                             </div>
                             <div class="col">
@@ -419,8 +419,12 @@
                 if (rdsSection) rdsSection.style.display = 'block';
                 if (pocsagSection) pocsagSection.style.display = 'none';
                 if (formatGroup) formatGroup.style.display = 'none';
+                const freqEl = document.getElementById('frequency');
+                if (freqEl) {
+                    freqEl.placeholder = 'auto (lämna tomt för automatisk P4-sökning)';
+                }
                 if (freqHelp) {
-                    freqHelp.innerHTML = '<b>RDS-TMC Frekvens:</b> Standard <code>100.5M</code> (Sveriges Radio P4) eller valfri FM-kanal som sänder RDS/TMC (87.5–108.0 MHz).';
+                    freqHelp.innerHTML = '<b>RDS-TMC Frekvens:</b> Ange <code>auto</code>, <code>scan</code> eller <b>lämna fältet helt tomt</b> så söks den starkaste Sveriges Radio P4-sändaren med TMC upp automatiskt. Du kan även ange en fast frekvens (t.ex. <code>103.3M</code> eller <code>100.1M</code>).';
                 }
             } else {
                 if (tetraSection) tetraSection.style.display = 'none';

@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.36] - Stöd för Tomt Frekvensfält, Auto/Scan och Förtydligade Hjälptexter
+
+### Added
+- **Tydlig Information om Auto, Scan och Tomt Fält (`sdr_settings.html`, `settings.html`)**:
+  - Förtydligat hjälptexten och placeholder direkt under frekvensfältet: användaren informeras om att fältet kan lämnas **helt tomt** eller sättas till `auto` / `scan` för att automatiskt söka upp den starkaste Sveriges Radio P4-stationen (TMC).
+  - Tagit bort det tvingande `required`-attributet från frekvensinmatningen i både hårdvaruinställningar och modalerna för att skapa/klona mottagare.
+
+### Fixed
+- **Hantering av Frekvensintervall och Tom Frekvens (`rds_decoder.py`, `sdr_processor.py`, `database.py`)**:
+  - Åtgärdat felet där ett frekvensintervall (t.ex. `87.5M-108M`) orsakade fel i frekvensparsningen och låste radion direkt på `87.5M`.
+  - Implementerat `is_fm_scanning_range()` och `parse_range_hz()` som känner av intervall som `87.5M-108M`, `auto`, `scan` eller tomt fält och automatiskt triggar en spektrumsökning över P4-frekvenser.
+
 ## [2026.10.13.35] - Strikt Begränsning till RDS-TMC Trafikmeddelanden & Eliminering av Låttextspam
 
 ### Changed

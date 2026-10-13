@@ -618,8 +618,12 @@ def save_sdr_instance(data):
     
     instance_id = data.get('id')
     name = str(data.get('name', 'Ny mottagare')).strip()
-    raw_freq = str(data.get('frequency', '169.8M')).strip()
-    freq = re.sub(r'\s+', '', raw_freq)
+    protocol = data.get('protocol', 'POCSAG')
+    raw_freq = str(data.get('frequency', '')).strip()
+    if not raw_freq or raw_freq.lower() in ('auto', 'scan'):
+        freq = 'auto' if protocol == 'RDS-TMC' else ('390M-395M' if protocol == 'TETRA' else '169.8M')
+    else:
+        freq = re.sub(r'\s+', '', raw_freq)
     gain = str(data.get('gain', 'auto')).strip()
     serial = str(data.get('device_serial', '')).strip()
     ppm = data.get('ppm_error', '0')

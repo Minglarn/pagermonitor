@@ -172,6 +172,12 @@ SWEDEN_LTN01 = {
 def parse_freq_to_hz(freq_str):
     """Konverterar frekvenssträng till Hz heltal."""
     s = str(freq_str).strip().lower()
+    if any(sep in s for sep in ('-', ',', ':', '..')):
+        parts = re.split(r'[\-,:\.]+', s)
+        parts = [p.strip() for p in parts if p.strip()]
+        if parts:
+            s = parts[0]
+
     if s.endswith('mhz'):
         s = s[:-3]
         multiplier = 1e6
@@ -193,7 +199,34 @@ def parse_freq_to_hz(freq_str):
             val *= 1e6
         return int(round(val))
     except (ValueError, TypeError):
-        return 100500000
+        return 103300000
+
+def parse_range_hz(freq_str):
+    """Returnerar (min_hz, max_hz) om strängen är ett intervall som 87.5M-108M."""
+    s = str(freq_str).strip().lower()
+    if any(sep in s for sep in ('-', ':', '..')):
+        parts = re.split(r'[\-:\.]+', s)
+        parts = [p.strip() for p in parts if p.strip()]
+        if len(parts) >= 2:
+            h1 = parse_freq_to_hz(parts[0])
+            h2 = parse_freq_to_hz(parts[1])
+            if h1 and h2:
+                return min(h1, h2), max(h1, h2)
+    return 87500000, 108000000
+
+def is_fm_scanning_range(freq_str):
+    """Avgör om frekvenssträngen är ett skanningsintervall eller automatisk sökning."""
+    if not freq_str:
+        return True
+    s = str(freq_str).strip().lower()
+    if s in ("auto", "scan", "fm", "all"):
+        return True
+    if any(sep in s for sep in ("-", ",", ":", "..")):
+        return True
+    hz = parse_freq_to_hz(s)
+    if not (87500000 <= hz <= 108000000):
+        return True
+    return False
 
 def load_custom_location_table(filepath=None):
     """Loads external JSON location table if provided or found in workspace."""
@@ -281,7 +314,7 @@ _last_reported_station = ""
 
 def format_and_print_rds(ps="", pi=""):
     """Skriver ut identifierad radiostation som telemetri (ej larm)."""
-    global _last_reported_station
+    global _last_reported_station, chosen_freq_global
     cur = f"{ps}_{pi}"
     if cur == _last_reported_station:
         return None
@@ -294,6 +327,11 @@ def format_and_print_rds(ps="", pi=""):
         parts.append(f"PI: {pi}")
     out_line = " ".join(parts)
     print(out_line, flush=True)
+
+    is_sr = "P4" in ps.upper() or "SR" in ps.upper() or str(pi).upper().startswith("0XE204") or str(pi).upper().startswith("0XE4")
+    if is_sr:
+        format_and_print_lock(chosen_freq_global, f"Sveriges Radio P4 bekräftad ({ps}, PI: {pi})")
+
     return out_line
 
 def parse_redsea_json_line(line_str):
@@ -365,82 +403,87 @@ def parse_redsea_json_line(line_str):
 
     return None
 
-def find_best_fm_station(device="", gain="auto", ppm="0"):
+chosen_freq_global = "103.3M"
+
+def find_best_fm_station(device="", gain="auto", ppm="0", min_hz=87500000, max_hz=108000000):
     """
-    Söker automatiskt efter aktiv Sveriges Radio P4-station på 87.5–108.0 MHz.
+    Söker automatiskt efter aktiv Sveriges Radio P4-station inom angivet frekvensintervall.
     TMC sänds uteslutande via SR P4 (och delvis P3) i Sverige.
     """
-    format_and_print_scan("Avsöker FM-bandet efter Sveriges Radio P4 (TMC)...")
+    format_and_print_scan(f"Avsöker FM-bandet ({min_hz/1e6:.1f}–{max_hz/1e6:.1f} MHz) efter Sveriges Radio P4 (TMC)...")
 
-    # Primära P4 frekvenser i Sverige (Stockholm 103.3M, Sörmland 100.1M, Uppsala 102.5M, etc.)
+    # Primära P4 frekvenser i Sverige (Stockholm 103.3M, Sörmland 100.1M, Uppsala 102.5M, Göteborg 101.9M m.fl.)
     p4_freqs = [
-        "103.3M",  # SR P4 Radio Stockholm / Västerbotten
-        "100.1M",  # SR P4 Sörmland
-        "102.5M",  # SR P4 Uppland
-        "101.9M",  # SR P4 Göteborg
-        "102.0M",  # SR P4 Malmöhus / Gävleborg
-        "99.8M",   # SR P4 Östergötland
-        "102.8M",  # SR P4 Örebro / Västernorrland
-        "100.8M",  # SR P4 Jönköping
-        "100.3M",  # SR P4 Skaraborg
-        "100.0M",  # SR P4 Värmland
-        "101.3M",  # SR P4 Dalarna / Halland
-        "101.4M",  # SR P4 Kristianstad
-        "100.2M",  # SR P4 Kalmar
-        "101.0M",  # SR P4 Kronoberg
-        "100.4M",  # SR P4 Blekinge / Jämtland
-        "100.5M",  # SR P4 Norrbotten / Västmanland (OBS: i Stockholm är 100.5M RIX FM!)
-        "99.4M",
-        "98.3M"
+        ("103.3M", 103300000, "SR P4 Stockholm / Västerbotten"),
+        ("100.1M", 100100000, "SR P4 Sörmland"),
+        ("102.5M", 102500000, "SR P4 Uppland"),
+        ("101.9M", 101900000, "SR P4 Göteborg"),
+        ("102.0M", 102000000, "SR P4 Malmöhus / Gävleborg"),
+        ("99.8M",   99800000, "SR P4 Östergötland"),
+        ("102.8M", 102800000, "SR P4 Örebro / Västernorrland"),
+        ("100.8M", 100800000, "SR P4 Jönköping"),
+        ("100.3M", 100300000, "SR P4 Skaraborg"),
+        ("100.0M", 100000000, "SR P4 Värmland"),
+        ("101.3M", 101300000, "SR P4 Dalarna / Halland"),
+        ("101.4M", 101400000, "SR P4 Kristianstad"),
+        ("100.2M", 100200000, "SR P4 Kalmar"),
+        ("101.0M", 101000000, "SR P4 Kronoberg"),
+        ("100.4M", 100400000, "SR P4 Blekinge / Jämtland"),
+        ("100.5M", 100500000, "SR P4 Norrbotten / Västmanland"),
+        ("99.4M",   99400000, "SR P4"),
+        ("98.3M",   98300000, "SR P4")
     ]
 
+    valid_cands = [c for c in p4_freqs if min_hz <= c[1] <= max_hz]
+    if not valid_cands:
+        valid_cands = p4_freqs
+
+    # Snabb RF-effektmätning med rtl_power om tillgängligt (utan hängningar)
     import shutil
-    has_rtl_fm = bool(shutil.which("rtl_fm"))
-    has_redsea = bool(shutil.which("redsea"))
+    if shutil.which("rtl_power"):
+        import tempfile
+        try:
+            with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as tf:
+                tmp_csv = tf.name
 
-    if has_rtl_fm and has_redsea:
-        for cand in p4_freqs:
-            try:
-                cmd_rtl = ["rtl_fm", "-M", "fm", "-s", "171k", "-r", "171k", "-f", cand]
-                if device: cmd_rtl.extend(["-d", device])
-                if gain and gain != "auto": cmd_rtl.extend(["-g", str(gain)])
-                if ppm and ppm != "0": cmd_rtl.extend(["-p", str(ppm)])
-                cmd_rtl.append("-")
+            p_cmd = ["rtl_power", "-f", f"{min_hz/1e6:.1f}M:{max_hz/1e6:.1f}M:200k", "-i", "1", "-e", "1s"]
+            if device: p_cmd.extend(["-d", device])
+            p_cmd.append(tmp_csv)
 
-                cmd_red = ["redsea", "-r", "171k"]
-                p1 = subprocess.Popen(cmd_rtl, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-                p2 = subprocess.Popen(cmd_red, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
-                p1.stdout.close()
+            res = subprocess.run(p_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2.5)
+            if res.returncode == 0 and os.path.exists(tmp_csv):
+                best_cand_freq = None
+                best_power = -999.0
+                with open(tmp_csv, 'r') as f:
+                    for r in f:
+                        parts = [p.strip() for p in r.split(',')]
+                        if len(parts) >= 7:
+                            try:
+                                f_low = float(parts[2])
+                                f_step = float(parts[4])
+                                db_vals = [float(x) for x in parts[6:] if x]
+                                for idx, db in enumerate(db_vals):
+                                    freq_pt = f_low + idx * f_step
+                                    for cand_str, cand_hz, cand_name in valid_cands:
+                                        if abs(freq_pt - cand_hz) <= 120000:
+                                            if db > best_power:
+                                                best_power = db
+                                                best_cand_freq = cand_str
+                            except Exception:
+                                pass
+                try: os.remove(tmp_csv)
+                except Exception: pass
+                if best_cand_freq:
+                    format_and_print_scan(f"Starkaste P4-frekvens identifierad via RF-spektrum: {best_cand_freq} ({best_power:.1f} dB)")
+                    return best_cand_freq
+        except Exception:
+            pass
 
-                start_t = time.time()
-                found = False
-                while time.time() - start_t < 1.5:
-                    line = p2.stdout.readline()
-                    if not line:
-                        break
-                    line = line.strip()
-                    if line.startswith("{") and line.endswith("}"):
-                        try:
-                            d = json.loads(line)
-                            ps_val = str(d.get("ps", "")).upper()
-                            pi_val = str(d.get("pi", "")).upper()
-                            if "P4" in ps_val or "SR" in ps_val or pi_val.startswith("0XE204") or pi_val.startswith("0XE4") or "tmc" in d:
-                                found = True
-                                break
-                        except Exception:
-                            pass
-
-                p2.kill()
-                p1.kill()
-
-                if found:
-                    format_and_print_scan(f"Hittade Sveriges Radio P4 med TMC på {cand}")
-                    return cand
-            except Exception:
-                pass
-
-    # Standardiserat val för P4 (103.3 MHz SR P4 Stockholm istället för 100.5 MHz som var RIX FM)
-    return "103.3M"
+    # Standard P4 inom intervallet (Stockholm 103.3 MHz SR P4)
+    chosen = valid_cands[0][0]
+    cand_name = valid_cands[0][2]
+    format_and_print_scan(f"Valde primär SR P4 frekvens: {chosen} ({cand_name})")
+    return chosen
 
 def run_test_feed(freq="103.3M"):
     """Genererar syntetiska RDS och TMC-händelser för testning och demonstration."""
@@ -486,7 +529,7 @@ def run_test_feed(freq="103.3M"):
 
 def main():
     parser = argparse.ArgumentParser(description="PagerMonitor RDS / RDS-TMC (ALERT-C) Decoder")
-    parser.add_argument("--freq", default="100.5M", help="FM frequency (e.g. 100.5M or 98.3M or auto)")
+    parser.add_argument("--freq", default="103.3M", help="FM frequency (e.g. 103.3M, 87.5M-108M, or auto)")
     parser.add_argument("--device", default="", help="RTL-SDR device serial or index")
     parser.add_argument("--gain", default="auto", help="Tuner gain in dB or auto")
     parser.add_argument("--ppm", default="0", help="PPM error correction")
@@ -505,17 +548,18 @@ def main():
             pass
         return
 
-    # Kontrollera frekvens: om användaren angett "auto", "scan" eller frekvens utanför FM-bandet (t.ex. 169.8M)
-    freq_hz = parse_freq_to_hz(args.freq)
-    is_auto = str(args.freq).lower() in ("auto", "scan") or not (87000000 <= freq_hz <= 108500000)
-
-    if is_auto:
-        format_and_print_scan(f"Frekvens '{args.freq}' är utanför FM-bandet (87.5–108.0 MHz). Söker automatiskt FM-station...")
-        chosen_freq = find_best_fm_station(device=args.device, gain=args.gain, ppm=args.ppm)
-        format_and_print_lock(chosen_freq, "Automatisk FM-stationslåsning aktiv")
+    # Kontrollera om användaren angett ett intervall (t.ex. 87.5M-108M), "auto", "scan" eller frekvens utanför FM-bandet
+    global chosen_freq_global
+    if is_fm_scanning_range(args.freq):
+        min_hz, max_hz = parse_range_hz(args.freq)
+        format_and_print_scan(f"Frekvenssökning begärd ({args.freq}). Söker aktiv Sveriges Radio P4 (TMC)...")
+        chosen_freq = find_best_fm_station(device=args.device, gain=args.gain, ppm=args.ppm, min_hz=min_hz, max_hz=max_hz)
+        chosen_freq_global = chosen_freq
+        format_and_print_lock(chosen_freq, f"Automatisk FM-sökning låst på SR P4 ({chosen_freq})")
     else:
         chosen_freq = args.freq
-        format_and_print_lock(chosen_freq, "FM-frekvens låst")
+        chosen_freq_global = chosen_freq
+        format_and_print_lock(chosen_freq, f"FM-frekvens låst ({chosen_freq})")
 
     if args.test_feed:
         run_test_feed(chosen_freq)

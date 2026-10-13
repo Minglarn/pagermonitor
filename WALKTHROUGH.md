@@ -1135,3 +1135,25 @@
 - **Verifiering**:
   - Samtliga 25 enhetstester inklusive nytt test `test_non_tmc_rds_telemetry_not_saved_as_message` passerar felfritt.
   - Versionsbump till CalVer `2026.10.13.35`.
+
+---
+
+### 33. Stöd för Tomt Frekvensfält, Intervallhantering och Tydliggörande av Auto/Scan (v2026.10.13.36)
+- **Problembeskrivning**:
+  1. Användaren angav frekvensintervallet `87.5M-108M`, men radion låste omedelbart på `87.5M` där det inte fanns någon sändare (`[RDS] RDS-TMC LOCK: Station låst på frekvens 87.5M (Freq: 87.5M-108M Status: LOCKED (FM-frekvens låst))`).
+  2. Användaren önskade att kunna lämna frekvensfältet helt tomt så att den starkaste P4-stationen söks upp automatiskt, och påpekade att information om att man kan ange `auto` eller `scan` saknades under frekvensfältet i användargränssnittet.
+- **Identifierade Orsaker**:
+  1. `parse_freq_to_hz` hanterade inte strängar med bindestreck som `87.5M-108M`. Den kastade ett `ValueError`, föll tillbaka på standardvärdet och fick skriptet att tro att frekvensen redan var en enskild giltig frekvens istället för ett skanningsintervall.
+  2. Frekvensfältet i formulären hade ett tvingande `required`-attribut i HTML, vilket hindrade användaren från att spara ett tomt fält för automatisk sökning.
+- **Teknisk Implementering**:
+  - **Intervall- och Scan-detektering ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Implementerat `is_fm_scanning_range(freq_str)` och `parse_range_hz(freq_str)` som känner av om fältet är tomt, satt till `auto`/`scan`, eller innehåller intervall som `87.5M-108M`.
+    - I dessa fall initieras alltid `find_best_fm_station` med rätt min/max frekvensgränser så att en bekräftad Sveriges Radio P4-station väljs.
+  - **Stöd för Tomt Frekvensfält ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py), [database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+    - Om frekvens lämnas tom (`""`) sätts den automatiskt till `'auto'` för `RDS-TMC`, `'390M-395M'` för `TETRA` och `'169.8M'` för `POCSAG`.
+  - **Uppdaterade Gränssnittstexter ([templates/sdr_settings.html](file:///d:/antigravity/pager-monitor/templates/sdr_settings.html), [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+    - Tagit bort `required` från formulären.
+    - Lagt till tydliga hjälptexter och placeholders under frekvensfältet som informerar användaren om att man kan ange `auto`, `scan` eller lämna fältet helt tomt för automatisk sökning efter närmaste och starkaste Sveriges Radio P4-sändare.
+- **Verifiering**:
+  - Samtliga 25 enhetstester passerar felfritt.
+  - Versionsbump till CalVer `2026.10.13.36`.

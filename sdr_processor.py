@@ -264,9 +264,9 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                 logger.debug(f"[{config['name']}] RAW_ALL: {line}")
 
             if line.startswith("RDS:") or line.startswith("RDS-INFO:"):
-                # Vanlig RDS stationsinformation (t.ex. PS eller RadioText)
-                # Detta är INTE ett larm och skall ALDRIG sparas i databasen eller skickas i larmflödet!
-                logger.debug(f"[{config['name']}] RDS TELEMETRI: {line}")
+                # Vanlig RDS stationsinformation (t.ex. PS eller PI)
+                # Detta är stationsidentifiering - logga som INFO så användaren ser vilken radiokanal som tas emot
+                logger.info(f"[{config['name']}] {line}")
                 ps_match = re.search(r'PS:\s*([^P\n\r]+?)(?=\s+(?:PI:|RT:|$))', line)
                 if ps_match:
                     config['station_name'] = ps_match.group(1).strip()
@@ -671,6 +671,8 @@ def normalize_freq(freq_val, default='169.8M'):
     s = re.sub(r'\s+', '', s)
     if not s:
         return default
+    if s.lower() in ('auto', 'scan'):
+        return 'auto'
     # Handle scanning ranges like 390.0M-395.0M or lists
     if any(sep in s for sep in [',', '-', ':']):
         parts = re.split(r'([,\-:])', s)
@@ -700,7 +702,9 @@ def normalize_freq(freq_val, default='169.8M'):
 
 def start_instance(config):
     """Starts the subprocesses for a single SDR instance."""
-    freq = normalize_freq(config.get('frequency', '169.8M'))
+    protocol = config.get('protocol', 'POCSAG')
+    default_f = 'auto' if protocol == 'RDS-TMC' else ('390M-395M' if protocol == 'TETRA' else '169.8M')
+    freq = normalize_freq(config.get('frequency', ''), default=default_f)
     gain = config.get('gain', 'auto')
     serial = str(config.get('device_serial', '')).strip()
     ppm = config.get('ppm_error', '0')
