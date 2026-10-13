@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.13] - Optimerad Provtagning och Utökad Timeout för USB-skanning
+
+### Added
+- **Optimerad Provtagning och Timeout för USB (`tetra_decoder.py`)**:
+  - Ökat timeouten i `probe_block` från 3.5 till 8.0 sekunder för att ge Blog V4 och USB-bussen tillräcklig tid att initiera PLL och allokera USB-överföringar utan `TimeoutExpired`.
+  - Minskat `duration_sec` till 0.08s (max 180 000 samples) vilket minskar datamängden från 1.44 MB till ~360 KB per block och accelererar svephastigheten dramatiskt.
+  - Implementerat explicit hantering av `TimeoutExpired` med mjuk omstart och fördröjning för att förhindra att USB-bussen låses vid intensiva svep.
+
 ## [2026.10.13.12] - Officiellt RTL-SDR Blog V4 Drivrutinsstöd (rtlsdr-blog R828D) och Diagnostik
 
 ### Added

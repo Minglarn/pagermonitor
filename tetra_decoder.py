@@ -436,7 +436,7 @@ def run_test_feed(locked_freq="390.125M"):
         idx += 1
         time.sleep(8.0)
 
-def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="", duration_sec=0.3):
+def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="", duration_sec=0.08):
     """
     Captures a wideband block of raw IQ samples from rtl_sdr.
     Returns raw bytes.
@@ -450,7 +450,7 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
         format_and_print_event("SCAN", msg="Kunde inte hitta 'rtl_sdr' binär i miljön.")
         return b""
 
-    num_samples = int(sample_rate * duration_sec)
+    num_samples = min(int(sample_rate * duration_sec), 180000)
     cmd = [rtl_bin, '-f', str(center_hz), '-s', str(sample_rate), '-n', str(num_samples)]
     if gain and gain != 'auto':
         cmd.extend(['-g', str(gain)])
@@ -464,7 +464,7 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
     try:
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         _current_child_proc = proc
-        raw_iq, err_bytes = proc.communicate(timeout=3.5)
+        raw_iq, err_bytes = proc.communicate(timeout=8.0)
         if len(raw_iq) < 10000:
             err_text = err_bytes.decode('latin-1', errors='replace').strip() if err_bytes else ""
             if err_text:
@@ -472,6 +472,16 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
                 diag = " | ".join(lines[-2:]) if lines else "Inga data från rtl_sdr"
                 format_and_print_event("SCAN", msg=f"rtl_sdr hårdvaruvarning (enhet {device or '0'}): {diag}")
         return raw_iq
+    except subprocess.TimeoutExpired:
+        if proc:
+            try:
+                proc.kill()
+                proc.wait(timeout=1.0)
+            except Exception:
+                pass
+        format_and_print_event("SCAN", msg=f"rtl_sdr provtagning timeade ut för enhet {device or '0'} (USB upptagen)")
+        time.sleep(0.5)
+        return b""
     except Exception as e:
         if proc:
             try:
@@ -561,7 +571,7 @@ class TetraScanner:
                     gain=self.gain,
                     ppm=self.ppm,
                     device=self.device,
-                    duration_sec=0.3
+                    duration_sec=0.08
                 )
 
                 if len(raw_iq) >= 50000:

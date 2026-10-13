@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.12`
+- **CalVer**: `2026.10.13.13`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -772,6 +772,23 @@
   - **Tester och Verifiering**:
     - Samtliga 50 enhetstester i testsviten passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.12`.
+
+## 50. Optimerad Provtagning och Utökad Timeout för USB-skanning (v2026.10.13.13)
+- **Bakgrund och Problem**:
+  - Vid svep över frekvensintervall (t.ex. `390.0M-395.0M`) timeade `rtl_sdr` ut med felet `Command timed out after 3.5 seconds`.
+  - Orsaken var att USB-initialiseringen, PLL-låsningen och asynkron nedstängning tog mer än 3.5 sekunder (särskilt i system med 4 USB-donglar).
+  - Dessutom samplades 720 000 samples (1.44 MB) per provtagning i onödan, vilket skapade onödig USB-last.
+- **Genomförda Åtgärder**:
+  - **Utökad Timeout ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Ökat timeouten i `probe_block` från 3.5s till 8.0s så att enheten hinner initialisera och stänga utan att kasta `TimeoutExpired`.
+  - **Minskad Provtagningsmängd**:
+    - Minskat provtagningstiden till 0.08s (max 180 000 samples / 360 KB), vilket ger mer än tillräcklig spektrumnoggrannhet men överförs på bråkdelen av tiden.
+  - **Mjuk USB-återställning**:
+    - Fångar `subprocess.TimeoutExpired` explicit, terminerar processen och inför en återhämtningspaus för att förhindra att USB-bussen låses.
+  - **Tester och Verifiering**:
+    - Samtliga 50 enhetstester i testsviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.13`.
+
 
 
 
