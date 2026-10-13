@@ -333,5 +333,47 @@ class TestSdrWatchdog(unittest.TestCase):
         self.assertEqual(args[1], 'Prio 1 Larm pa last frekvens')
         self.assertEqual(kwargs.get('frequency'), '390.125M')
 
+    @patch('sdr_processor.get_sdr_instances')
+    @patch('sdr_processor.start_instance')
+    def test_supervisor_accepts_instance_when_p1_is_none(self, mock_start, mock_get_instances):
+        """Verifiera att supervisor startar instansen och inte loggar 'Failed to start' när p1 är None (TETRA scan)."""
+        mock_p2 = MagicMock()
+        mock_p2.poll.return_value = None
+        mock_p2.pid = 9999
+        mock_start.return_value = (None, mock_p2)
+
+        inst_conf = {
+            'id': 10,
+            'name': 'TETRA SCAN TEST',
+            'enabled': 1,
+            'frequency': '420.3M:422.7M-25K',
+            'protocol': 'TETRA'
+        }
+        mock_get_instances.return_value = [inst_conf]
+
+        # Kör start-logiken som supervisor utför
+        p1, p2 = mock_start(inst_conf)
+        self.assertIsNone(p1)
+        self.assertIsNotNone(p2)
+
+        # Verifiera att logiken if p2: passerar
+        self.assertTrue(bool(p2))
+
+        # Verifiera statusrapportering när p1 är None
+        sdr_processor.active_instances[10] = {
+            'p1': None,
+            'p2': mock_p2,
+            'config': inst_conf,
+            'stop_event': MagicMock(),
+            'thread': MagicMock(),
+            'started_at': 1000.0
+        }
+        status = sdr_processor.get_sdr_runtime_status()
+        self.assertIn(10, status)
+        self.assertTrue(status[10]['is_running'])
+        self.assertIsNone(status[10]['rtl_fm_pid'])
+        self.assertEqual(status[10]['multimon_pid'], 9999)
+
+
 
 

@@ -669,7 +669,7 @@ def run_sdr_process():
                 
                 if should_start:
                     p1, p2 = start_instance(db_inst)
-                    if p1 and p2:
+                    if p2:
                         stop_event = threading.Event()
                         monitor_thread = threading.Thread(
                             target=monitor_instance, 
@@ -689,10 +689,13 @@ def run_sdr_process():
                             def verify_recovery(inst_id, inst_name, proc1, proc2):
                                 # Wait for USB device initialization and startup grace period
                                 time.sleep(2.5)
-                                if proc1.poll() is None and proc2.poll() is None:
-                                    logger.info(f"Watchdog: Instance {inst_id} ({inst_name}) recovered and verified stable (PIDs: rtl_fm={proc1.pid}, multimon-ng={proc2.pid}).")
+                                proc1_ok = proc1 is None or proc1.poll() is None
+                                proc2_ok = proc2 is not None and proc2.poll() is None
+                                if proc1_ok and proc2_ok:
+                                    p1_pid = proc1.pid if proc1 else 'N/A'
+                                    logger.info(f"Watchdog: Instance {inst_id} ({inst_name}) recovered and verified stable (PIDs: rtl={p1_pid}, multimon/decoder={proc2.pid}).")
                                     try:
-                                        restart_text = f"Receiver processes died unexpectedly. Instance '{inst_name}' recovered and verified running stably (PID: {proc1.pid})."
+                                        restart_text = f"Receiver processes died unexpectedly. Instance '{inst_name}' recovered and verified running stably (PID: {p1_pid})."
                                         row_id, timestamp = save_message(
                                             address='SYSTEM',
                                             message=restart_text,
@@ -719,13 +722,13 @@ def run_sdr_process():
                                     except Exception as e:
                                         logger.error(f"Failed to record watchdog restart event: {e}")
                                 else:
-                                    p1_ret = proc1.poll()
-                                    p2_ret = proc2.poll()
+                                    p1_ret = proc1.poll() if proc1 else 'N/A'
+                                    p2_ret = proc2.poll() if proc2 else 'N/A'
                                     last_err = instance_errors.get(inst_id, [])
                                     err_msg = f": {last_err[-1]}" if last_err else ""
                                     logger.error(
                                         f"Watchdog: Instance {inst_id} ({inst_name}) failed startup health check "
-                                        f"(rtl_fm exit: {p1_ret}, multimon exit: {p2_ret}){err_msg}. Will retry on next sync."
+                                        f"(rtl exit: {p1_ret}, decoder exit: {p2_ret}){err_msg}. Will retry on next sync."
                                     )
                                     time.sleep(2.0)
                                     sync_event.set()
@@ -753,7 +756,7 @@ def run_sdr_process():
                         
                     p1 = inst.get('p1')
                     p2 = inst.get('p2')
-                    p1_running = p1 is not None and p1.poll() is None
+                    p1_running = p1 is None or p1.poll() is None
                     p2_running = p2 is not None and p2.poll() is None
                     
                     if p1_running and p2_running:
@@ -766,8 +769,8 @@ def run_sdr_process():
                             status_parts.append(f"[{name}] OK (lyssnar)")
                     else:
                         dead = []
-                        if not p1_running: dead.append("rtl_fm")
-                        if not p2_running: dead.append("multimon")
+                        if p1 is not None and p1.poll() is not None: dead.append("rtl")
+                        if not p2_running: dead.append("decoder")
                         status_parts.append(f"[{name}] FEL ({'+'.join(dead)} dod)")
                 
                 if status_parts:
@@ -786,13 +789,13 @@ def get_sdr_runtime_status():
     for inst_id, inst in list(active_instances.items()):
         p1 = inst.get('p1')
         p2 = inst.get('p2')
-        p1_running = p1 is not None and p1.poll() is None
+        p1_running = p1 is None or p1.poll() is None
         p2_running = p2 is not None and p2.poll() is None
         errs = instance_errors.get(inst_id, [])
         last_rec = inst.get('last_message_time')
         status[inst_id] = {
             'is_running': p1_running and p2_running,
-            'rtl_fm_pid': p1.pid if p1_running else None,
+            'rtl_fm_pid': p1.pid if (p1 and p1.poll() is None) else None,
             'multimon_pid': p2.pid if p2_running else None,
             'started_at': inst.get('started_at'),
             'uptime_seconds': int(now - inst.get('started_at', now)),

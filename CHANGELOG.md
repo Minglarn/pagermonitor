@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.7] - Åtgärdat Start och Övervakning av TETRA Skanningsinstanser
+
+### Fixed
+- **SDR Supervisor Startlogik (`sdr_processor.py`)**:
+  - Åtgärdat bugg i supervisor-loopen där instanser med fristående skanningsprocess (där `p1` är `None` och `p2` är avkodaren/skannern) tidigare misslyckades med felmeddelandet `"Failed to start <namn>. Retrying next sync."`.
+  - Supervisor accepterar nu processpar där `p1` är valfri (`if p2:`), vilket tillåter `tetra_decoder.py` att starta och hantera frekvenssvep sömlöst.
+  - Säkrat upp `verify_recovery`, `get_sdr_runtime_status()` och supervisor heartbeat så att instanser utan separat `p1` rapporteras som friska (`OK (lyssnar)`) istället för felaktigt larm om död `rtl_fm`.
+- **Enhetstester**:
+  - Tillagt enhetstest `test_supervisor_accepts_instance_when_p1_is_none` i `tests/test_sdr_watchdog.py`.
+
 ## [2026.10.13.6] - Frekvensskanning och Kontrollkanaljakt (MCCH Hunt) för TETRA / RAKEL
 
 ### Added

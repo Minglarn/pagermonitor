@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.6`
+- **CalVer**: `2026.10.13.7`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -657,5 +657,23 @@
     - Skapade `test_tetra_scanning_start_instance` och `test_tetra_monitor_handles_scan_and_lock_frequency` i [tests/test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py).
     - Samtliga 47 enhetstester i sviten passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.6`.
+
+## 44. Åtgärdat Start och Övervakning av TETRA Skanningsinstanser (v2026.10.13.7)
+- **Bakgrund och Problem**:
+  - Vid start av en TETRA-instans med skanning (`--scan`, t.ex. med frekvensintervall som `420.3M:422.7M-25K`) loggades:
+    `Starting TETRA [TETRA SCAN]: ...`
+    `Failed to start TETRA. Retrying next sync.`
+  - Orsaken var att SDR-supervisorn i [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py) kontrollerade `if p1 and p2:`. Vid skanningsläge hanterar [tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py) hårdvaruprocessen internt eller i simulerat flöde och returnerar `p1 = None` tillsammans med processen `p2`.
+  - Eftersom `p1` var `None` misslyckades villkoret `if p1 and p2:`, varpå supervisorn felaktigt tolkade starten som misslyckad.
+- **Genomförda Åtgärder**:
+  - **SDR Supervisor ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Ändrat villkoret vid start av instanser från `if p1 and p2:` till `if p2:`.
+    - Uppdaterat `verify_recovery` så att den kontrollerar `proc1_ok = proc1 is None or proc1.poll() is None`.
+    - Uppdaterat `get_sdr_runtime_status()` och supervisor heartbeat så att `p1_running = p1 is None or p1.poll() is None`. Detta förhindrar felaktiga larm om att `rtl_fm` är död när instansen körs i skanningsläge.
+  - **Tester och Verifiering**:
+    - Skapade `test_supervisor_accepts_instance_when_p1_is_none` i [tests/test_sdr_watchdog.py](file:///d:/antigravity/pager-monitor/tests/test_sdr_watchdog.py).
+    - Samtliga 48 enhetstester i sviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.7`.
+
 
 
