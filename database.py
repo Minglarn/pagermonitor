@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import re
 import logging
 from datetime import datetime
 
@@ -585,10 +586,11 @@ def save_sdr_instance(data):
     c = conn.cursor()
     
     instance_id = data.get('id')
-    name = data.get('name', 'Ny mottagare')
-    freq = data.get('frequency', '169.8M')
-    gain = data.get('gain', 'auto')
-    serial = data.get('device_serial', '')
+    name = str(data.get('name', 'Ny mottagare')).strip()
+    raw_freq = str(data.get('frequency', '169.8M')).strip()
+    freq = re.sub(r'\s+', '', raw_freq)
+    gain = str(data.get('gain', 'auto')).strip()
+    serial = str(data.get('device_serial', '')).strip()
     ppm = data.get('ppm_error', '0')
     sample_rate = data.get('sample_rate', '22050')
     resample_rate = data.get('resample_rate', '22050')

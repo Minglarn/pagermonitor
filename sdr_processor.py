@@ -514,9 +514,44 @@ def kill_orphaned_rtl_for_device(device_serial):
     except Exception as e:
         logger.debug(f"Fel vid sökning efter föräldralösa processer: {e}")
 
+def normalize_freq(freq_val, default='169.8M'):
+    """Normalizes frequency string to remove whitespace and format cleanly for rtl_fm / rtl_sdr."""
+    if not freq_val:
+        return default
+    s = str(freq_val).strip()
+    s = re.sub(r'\s+', '', s)
+    if not s:
+        return default
+    # Handle scanning ranges like 390.0M-395.0M or lists
+    if any(sep in s for sep in [',', '-', ':']):
+        parts = re.split(r'([,\-:])', s)
+        return ''.join(normalize_freq(p) if p not in (',', '-', ':') else p for p in parts)
+    
+    lower = s.lower()
+    if lower.endswith('mhz'):
+        s = s[:-3] + 'M'
+    elif lower.endswith('khz'):
+        s = s[:-3] + 'k'
+    elif lower.endswith('ghz'):
+        s = s[:-3] + 'G'
+    elif s.endswith('m'):
+        s = s[:-1] + 'M'
+    elif s.endswith('K'):
+        s = s[:-1] + 'k'
+    
+    # If pure float/number < 10000 (e.g. 169.8 or 161.4375), user meant MHz
+    try:
+        val = float(s)
+        if 0 < val < 10000:
+            return f"{s}M"
+    except ValueError:
+        pass
+        
+    return s
+
 def start_instance(config):
     """Starts the subprocesses for a single SDR instance."""
-    freq = config.get('frequency', '169.8M')
+    freq = normalize_freq(config.get('frequency', '169.8M'))
     gain = config.get('gain', 'auto')
     serial = str(config.get('device_serial', '')).strip()
     ppm = config.get('ppm_error', '0')

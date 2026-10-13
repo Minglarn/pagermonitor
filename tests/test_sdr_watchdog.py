@@ -202,6 +202,16 @@ class TestSdrWatchdog(unittest.TestCase):
         self.assertEqual(sdr_processor.normalize_rate_hz('1.8M'), '1800000')
         self.assertEqual(sdr_processor.normalize_rate_hz(''), '22050')
 
+    def test_normalize_freq(self):
+        """Verifiera att frekvenssträngar med mellanslag eller avvikande enheter tvättas för rtl_fm."""
+        self.assertEqual(sdr_processor.normalize_freq('169.8M  '), '169.8M')
+        self.assertEqual(sdr_processor.normalize_freq('169.8m'), '169.8M')
+        self.assertEqual(sdr_processor.normalize_freq('169.8 MHz'), '169.8M')
+        self.assertEqual(sdr_processor.normalize_freq('169.8'), '169.8M')
+        self.assertEqual(sdr_processor.normalize_freq('161.4375'), '161.4375M')
+        self.assertEqual(sdr_processor.normalize_freq('169800000'), '169800000')
+        self.assertEqual(sdr_processor.normalize_freq('390M-395M'), '390M-395M')
+
     @patch('subprocess.Popen')
     def test_tetra_start_instance(self, mock_popen):
         """Verifiera att TETRA-protokoll startar rtl_sdr och tetra_decoder.py med rätt flaggor."""

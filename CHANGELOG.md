@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.20] - Robust Sanering och Normalisering av Frekvenser i rtl_fm
+
+### Fixed
+- **Automatisk Sanering av Frekvenssträngar (`normalize_freq` i `sdr_processor.py` & `database.py`)**:
+  - `rtl_fm` (C-funktionen `atofs`) inspekterar sista tecknet `f[strlen(f)-1]` för multiplikator (`M`, `k`). Om användaren angav ett avslutande mellanslag (t.ex. `169.8M `) tolkades sista tecknet som mellanslag och ignorerade `M`, vilket resulterade i att frekvensen sattes till 169.8 Hz och tunades till `253744 Hz` (253 kHz långvåg istället för 169.8 MHz).
+  - Implementerat `normalize_freq` som tvättar bort alla interna och avslutande mellanslag, säkerställer korrekt versalt `M` för megahertz, hanterar frekvensintervall samt automatiskt lägger till `M` om användaren enbart anger ett rent tal i MHz (t.ex. `169.8` eller `161.4375`).
+  - `save_sdr_instance` i `database.py` sanerar nu också frekvensen och serienumret vid databaslagring.
+
 ## [2026.10.13.19] - Automatisk Terminering av Föräldralösa RTL-processer och Garanterad USB-release
 
 ### Fixed

@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.19`
+- **CalVer**: `2026.10.13.20`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -849,9 +849,20 @@
     - Skickar först `SIGTERM` så att Python-avkodaren kan exekvera sin signalhanterare och döda sina egna underprocesser innan `SIGKILL` appliceras.
   - **Garanterad Processdödande i `finally` ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
     - Tillagt `proc.kill()` i `finally`-blocket för `probe_block`.
+## 57. Robust Sanering och Normalisering av Frekvenser i rtl_fm (v2026.10.13.20)
+- **Bakgrund och Problem**:
+  - `rtl_fm` (C-funktionen `atofs`) inspekterar sista tecknet `f[strlen(f)-1]` för multiplikator (`M`, `k`). Om användaren råkade ange ett avslutande mellanslag (t.ex. `169.8M `) tolkades sista tecknet som mellanslag och ignorerade `M`.
+  - Frekvensen sattes då till 169.8 Hz och tunades av `rtl_fm` till `253744 Hz` (253 kHz långvåg istället för 169.8 MHz).
+- **Genomförda Åtgärder**:
+  - **Normalisering av Frekvenser (`normalize_freq` i [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py) & [database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+    - Tvättar bort alla interna och avslutande mellanslag.
+    - Säkerställer korrekt versalt `M` för megahertz, hanterar frekvensintervall samt lägger automatiskt till `M` om användaren anger rena tal under 10 000 (t.ex. `169.8` eller `161.4375`).
+    - Databasfunktionerna sanerar nu också frekvens och serienummer vid lagring.
   - **Tester och Verifiering**:
-    - Samtliga 51 enhetstester i testsviten passerar felfritt.
-    - Versionsbump till CalVer `2026.10.13.19`.
+    - Nya enhetstester i `tests/test_sdr_watchdog.py` verifierar normaliseringen.
+    - Samtliga 52 tester i testsviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.20`.
+
 
 
 
