@@ -472,14 +472,18 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
                 diag = " | ".join(lines[-2:]) if lines else "Inga data från rtl_sdr"
                 format_and_print_event("SCAN", msg=f"rtl_sdr hårdvaruvarning (enhet {device or '0'}): {diag}")
         return raw_iq
-    except subprocess.TimeoutExpired:
+    except subprocess.TimeoutExpired as te:
         if proc:
             try:
                 proc.kill()
                 proc.wait(timeout=1.0)
             except Exception:
                 pass
-        format_and_print_event("SCAN", msg=f"rtl_sdr provtagning timeade ut för enhet {device or '0'} (USB upptagen)")
+        err_msg = ""
+        if te.stderr:
+            err_msg = te.stderr.decode('latin-1', errors='replace').strip()
+        last_line = err_msg.splitlines()[-1] if err_msg else "Inget svar från dongeln (kontrollera enhetsindex)"
+        format_and_print_event("SCAN", msg=f"rtl_sdr timeout för enhet {device or '0'}: {last_line}")
         time.sleep(0.5)
         return b""
     except Exception as e:

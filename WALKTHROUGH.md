@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.14`
+- **CalVer**: `2026.10.13.15`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -800,6 +800,18 @@
   - **Tester och Verifiering**:
     - Samtliga 50 enhetstester i testsviten passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.14`.
+
+## 52. Detaljerad Timeout-felanalys för RTL-SDR Hårdvaruenheter (v2026.10.13.15)
+- **Bakgrund och Problem**:
+  - Vid `TimeoutExpired` antogs det tidigare att USB-bussen var upptagen, vilket maskerade eventuella faktiska felmeddelanden som `rtl_sdr` skrev ut till stderr innan processen hängde.
+- **Genomförda Åtgärder**:
+  - **Stderr-utläsning vid Timeout ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Fångar `subprocess.TimeoutExpired as te` och läser ut `te.stderr`.
+    - Skriver ut den faktiska sista felraden direkt till loggen så att eventuella fel (t.ex. `Device index out of range` om serienummer tolkats som index, eller libusb-fel) syns omedelbart.
+  - **Tester och Verifiering**:
+    - Samtliga 50 enhetstester i testsviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.15`.
+
 
 
 

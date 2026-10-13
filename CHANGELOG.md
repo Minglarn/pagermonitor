@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.15] - Detaljerad Timeout-felanalys för RTL-SDR Hårdvaruenheter
+
+### Added
+- **Stderr-utläsning vid TimeoutExpired (`tetra_decoder.py`)**:
+  - Vid `TimeoutExpired` läses nu `te.stderr` ut från processen så att exakt meddelande från `rtl_sdr` (t.ex. `Device index out of range`, `usb_claim_interface error` etc.) skrivs ut direkt i loggen istället för en statisk gissning.
+
 ## [2026.10.13.14] - Återställt Standard Processpiping för POCSAG-mottagare (RIKS 1 / RIKS 2)
 
 ### Fixed
