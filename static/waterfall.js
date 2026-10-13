@@ -63,7 +63,7 @@ window.WaterfallManager = (function () {
     }
 
     function registerChannel(sdrName, frequency) {
-        if (!frequency || frequency === 'Unknown') return null;
+        if (!frequency || frequency === 'Unknown' || frequency === 'RESTART') return null;
         const key = getChannelKey(frequency);
         const normFreq = normalizeFrequency(frequency);
 
@@ -73,7 +73,13 @@ window.WaterfallManager = (function () {
             matchedName = matchInst.name;
         }
         if (!matchedName || matchedName === 'Unknown' || matchedName.startsWith('Freq ')) {
-            matchedName = matchInst ? matchInst.name : `Freq ${frequency}`;
+            if (matchInst && matchInst.name) {
+                matchedName = matchInst.name;
+            } else if (frequency.startsWith('4') || frequency.startsWith('39')) {
+                matchedName = `TETRA ${frequency}`;
+            } else {
+                matchedName = `Freq ${frequency}`;
+            }
         }
 
         if (!channels[key]) {
@@ -301,8 +307,10 @@ window.WaterfallManager = (function () {
         if (!msg || !msg.timestamp) return;
 
         const freq = msg.frequency || 'Unknown';
+        if (freq === 'RESTART' || freq === 'Unknown') return;
         const sdrName = msg.sdr_name || (msg.frequency ? `Freq ${msg.frequency}` : 'Receiver');
         const ch = registerChannel(sdrName, freq);
+        if (!ch) return;
 
         const msgDate = new Date(msg.timestamp);
         const now = new Date();

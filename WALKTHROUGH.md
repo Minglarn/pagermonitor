@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.21`
+- **CalVer**: `2026.10.13.22`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -869,6 +869,28 @@
     - Enhetstester i `tests/test_sdr_watchdog.py` verifierar spektral effektmätning och kandidatdetektering.
     - Samtliga 52 tester passerar felfritt.
     - Versionsbump till CalVer `2026.10.13.21`.
+
+## 59. RF Activity Rullningslist och Styrning av TETRA-basstationsloggning (v2026.10.13.22)
+- **Bakgrund och Problem**:
+  - När TETRA-skannern låste och synkroniserade basstationer över frekvensbandet skapades en separat rad i `RF ACTIVITY` (vattenfallet) för varje unik frekvens, vilket gjorde att panelen expanderade med över 13 rader och tryckte ner hela användargränssnittet.
+  - Dessutom registrerades varje basstationslåsning som ett larm i meddelandeflödet och databasen (`Aktiv TETRA Basstation på <frekvens>`), vilket fyllde larmtabellen och dolde faktiska anrop och personsökarlarm.
+- **Genomförda Åtgärder**:
+  - **RF Activity Max 5 Rader med Rullningslist ([waterfall.css](file:///d:/antigravity/pager-monitor/static/waterfall.css))**:
+    - Satte `.waterfall-channels` till `max-height: 220px; overflow-y: auto; overflow-x: hidden;` med skräddarsydd mörk rullningslist.
+    - Maximalt 5 kanaler visas samtidigt, varefter mjuk rullning aktiveras.
+    - Filtrerar bort systemhändelsen `RESTART` från att skapas som radiokanal i vattenfallet ([waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js)).
+  - **Snabbfilter för att Dölja Basstationer ([index.html](file:///d:/antigravity/pager-monitor/templates/index.html) & [larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+    - Lade till knappen `Dölj Basstationer / Visa Basstationer` i rubrikfältet.
+    - Använder DataTables anpassade filter (`$.fn.dataTable.ext.search`) för att omedelbart dölja eller visa basstationer utan sidomladdning. Standardinställningen sparas i `localStorage` som dolda.
+  - **Inställning för Basstationsloggning i Databasen ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py), [database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py) & [settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+    - Ny inställning `log_tetra_basestations` (standard: `false`).
+    - När avstängd loggas basstationsinformation (frekvens, SNR, modulation, drift, MCC/MNC) enbart i systemkonsolen, utan att skapa poster i `messages.db` eller skicka larm över MQTT.
+    - Ny endpoint `DELETE /api/messages/basestations` för att med ett klick rensa tidigare basstationsloggar ur databasen.
+  - **Tester och Verifiering**:
+    - Nya tester `test_tetra_net_basestation_filtered_by_default` och `test_tetra_net_basestation_saved_when_setting_enabled` i `tests/test_sdr_watchdog.py`.
+    - Samtliga 54 tester passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.22`.
+
 
 
 

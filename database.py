@@ -39,7 +39,8 @@ def get_default_settings():
         'duplicate_handling': 'merge',
         'duplicate_window': '120',
         'auto_prune_enabled': 'true',
-        'auto_prune_days': '30'
+        'auto_prune_days': '30',
+        'log_tetra_basestations': 'false'
     }
 
 def init_db():

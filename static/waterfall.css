@@ -187,6 +187,30 @@
     display: flex;
     flex-direction: column;
     gap: 0.45rem;
+    max-height: 220px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.waterfall-channels::-webkit-scrollbar {
+    width: 6px;
+}
+
+.waterfall-channels::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 3px;
+}
+
+.waterfall-channels::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+.waterfall-channels::-webkit-scrollbar-thumb:hover {
+    background: var(--accent, #38bdf8);
 }
 
 /* Channel Waterfall Row */
@@ -432,6 +456,40 @@
     0% { transform: scale(0.7); }
     70% { transform: scale(1.2); }
     100% { transform: scale(1); }
+}
+
+.header-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0.6rem 0.9rem;
+    border-radius: 50px;
+    background: var(--input-bg, #0d1117);
+    border: 1px solid var(--panel-border, #1f2937);
+    color: var(--text-secondary, #94a3b8);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    user-select: none;
+    height: 44px;
+}
+
+.header-filter-btn:hover {
+    border-color: var(--accent);
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.header-filter-btn.active-filter {
+    border-color: rgba(56, 189, 248, 0.5) !important;
+    background: rgba(56, 189, 248, 0.12) !important;
+    color: var(--accent, #38bdf8) !important;
+}
+
+.header-filter-btn.active-filter i {
+    color: var(--accent, #38bdf8);
 }
 
 /* Paused Notification Bar */

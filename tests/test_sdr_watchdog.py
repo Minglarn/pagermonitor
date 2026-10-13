@@ -358,6 +358,73 @@ class TestSdrWatchdog(unittest.TestCase):
         self.assertEqual(args[1], 'Prio 1 Larm pa last frekvens')
         self.assertEqual(kwargs.get('frequency'), '390.125M')
 
+    @patch('sdr_processor.save_message')
+    @patch('sdr_processor.publish_message')
+    @patch('sdr_processor.get_settings')
+    def test_tetra_net_basestation_filtered_by_default(self, mock_settings, mock_publish, mock_save):
+        """Verifiera att TETRA NET basstationssynk inte sparas som larm i databasen nar log_tetra_basestations ar false."""
+        mock_settings.return_value = {'log_tetra_basestations': 'false'}
+
+        mock_p1 = MagicMock()
+        mock_p1.stderr.readline.side_effect = [b'']
+        mock_p1.poll.return_value = 0
+
+        mock_p2 = MagicMock()
+        mock_p2.stdout.readline.side_effect = [
+            'TETRA: NET MCC: 240 MNC: 01 Msg: Aktiv TETRA Basstation på 461.675M | Status: LÅST | Signal: SNR +9.5 dB | Modulation: pi/4-DQPSK (56%) | Frekvensdrift: +229 Hz\n',
+            ''
+        ]
+        mock_p2.poll.return_value = 0
+
+        stop_event = MagicMock()
+        stop_event.is_set.side_effect = [False, False, True]
+
+        config = {'id': 7, 'name': 'RAKEL TEST', 'frequency': '460M-470M', 'protocol': 'TETRA'}
+
+        sdr_processor.monitor_instance(7, mock_p1, mock_p2, stop_event, config)
+
+        self.assertEqual(config.get('active_frequency'), '461.675M')
+        mock_save.assert_not_called()
+        mock_publish.assert_not_called()
+
+    @patch('sdr_processor.save_message')
+    @patch('sdr_processor.publish_message')
+    @patch('sdr_processor.get_alias_info')
+    @patch('sdr_processor.get_settings')
+    def test_tetra_net_basestation_saved_when_setting_enabled(self, mock_settings, mock_alias, mock_publish, mock_save):
+        """Verifiera att TETRA NET basstationssynk sparas med komplett metadata nar log_tetra_basestations ar true."""
+        mock_settings.return_value = {'log_tetra_basestations': 'true', 'garbage_filter': 'false', 'duplicate_handling': 'mark'}
+        mock_alias.return_value = None
+        mock_save.return_value = (401, '2026-10-13 14:00:00')
+
+        mock_p1 = MagicMock()
+        mock_p1.stderr.readline.side_effect = [b'']
+        mock_p1.poll.return_value = 0
+
+        mock_p2 = MagicMock()
+        mock_p2.stdout.readline.side_effect = [
+            'TETRA: NET MCC: 240 MNC: 01 Msg: Aktiv TETRA Basstation på 461.675M | Status: LÅST | Signal: SNR +9.5 dB | Modulation: pi/4-DQPSK (56%) | Frekvensdrift: +229 Hz\n',
+            ''
+        ]
+        mock_p2.poll.return_value = 0
+
+        stop_event = MagicMock()
+        stop_event.is_set.side_effect = [False, False, True]
+
+        config = {'id': 8, 'name': 'RAKEL TEST', 'frequency': '460M-470M', 'protocol': 'TETRA'}
+
+        sdr_processor.monitor_instance(8, mock_p1, mock_p2, stop_event, config)
+
+        self.assertEqual(config.get('active_frequency'), '461.675M')
+        mock_save.assert_called_once()
+        args, kwargs = mock_save.call_args
+        self.assertEqual(args[0], 'RAKEL-240-01')
+        self.assertIn('Aktiv TETRA Basstation', args[1])
+        self.assertIn('SNR +9.5 dB', args[1])
+        self.assertEqual(args[2], 'Rakel Basstation')
+        self.assertEqual(kwargs.get('frequency'), '461.675M')
+
+
     @patch('sdr_processor.get_sdr_instances')
     @patch('sdr_processor.start_instance')
     def test_supervisor_accepts_instance_when_p1_is_none(self, mock_start, mock_get_instances):

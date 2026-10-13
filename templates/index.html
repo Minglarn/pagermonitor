@@ -528,6 +528,10 @@
                         <p>Live POCSAG messages and pager traffic</p>
                     </div>
                     <div class="header-right-tools">
+                        <button id="toggleBasestationsBtn" class="header-filter-btn" onclick="toggleHideBasestations()" title="Dölj eller visa TETRA-basstationer i tabellen">
+                            <i class="fas fa-broadcast-tower" id="basestationIcon"></i>
+                            <span id="basestationText">Dölj Basstationer</span>
+                        </button>
                         <button id="livePauseBtn" class="live-pause-btn" onclick="toggleLivePause()" title="Pause real-time feed">
                             <span class="live-pause-dot"></span>
                             <i class="fas fa-pause" id="livePauseIcon"></i>
@@ -668,6 +672,31 @@
         let allAlarms = [];
         let isLivePaused = false;
         let pausedQueue = [];
+        let hideBasestations = localStorage.getItem('hide_tetra_basestations') !== 'false'; // default: true
+
+        function toggleHideBasestations() {
+            hideBasestations = !hideBasestations;
+            localStorage.setItem('hide_tetra_basestations', hideBasestations ? 'true' : 'false');
+            updateBasestationBtnUI();
+            if (dataTable) {
+                dataTable.draw();
+            }
+        }
+
+        function updateBasestationBtnUI() {
+            const btn = document.getElementById('toggleBasestationsBtn');
+            const text = document.getElementById('basestationText');
+            if (!btn) return;
+            if (hideBasestations) {
+                btn.classList.add('active-filter');
+                if (text) text.textContent = 'Basstationer: Dolda';
+                btn.title = 'TETRA-basstationer är dolda från tabellen. Klicka för att visa.';
+            } else {
+                btn.classList.remove('active-filter');
+                if (text) text.textContent = 'Basstationer: Visas';
+                btn.title = 'TETRA-basstationer visas i tabellen. Klicka för att dölja.';
+            }
+        }
 
         function toggleLivePause() {
             isLivePaused = !isLivePaused;
@@ -1027,6 +1056,20 @@
 
             await fetchSettings();
             await fetchAlertWords();
+
+            // Filter out TETRA base stations when hideBasestations is active
+            $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                if (!hideBasestations) return true;
+                const meta = data[2] || '';
+                const addr = data[3] || '';
+                const msg = data[4] || '';
+                if (meta.includes('TETRA-NET') || addr.includes('RAKEL-') || msg.includes('Aktiv TETRA Basstation') || msg.includes('Aktiv Basstation på') || msg.includes('Aktiv Basstation')) {
+                    return false;
+                }
+                return true;
+            });
+
+            updateBasestationBtnUI();
 
             // Initialize DataTables
             dataTable = $('#alarmsTable').DataTable({

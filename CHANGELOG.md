@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.22] - RF Activity Rullningslist och Styrning av TETRA-basstationsloggning
+
+### Added
+- **RF Activity Max 5 Synliga Rader och Rullningslist (`static/waterfall.css`)**:
+  - Begränsat `.waterfall-channels` till max 5 synliga frekvensrader (`max-height: 220px; overflow-y: auto`).
+  - Lagt till skräddarsydd mörk rullningslist med accentfärg så att dynamiskt upptäckta kanaler inte expanderar sidan vertikalt eller trycker ner larmtabellen.
+  - Ignorerar systemhändelsen `RESTART` från att registreras som en RF-frekvens i vattenfallet.
+- **Snabbfilter för att Dölja/Visa Basstationer (`templates/index.html` & `templates/larm.html`)**:
+  - Ny snabbknapp `Dölj Basstationer / Visa Basstationer` i verktygsfältet bredvid pausknappen.
+  - Implementerat anpassat DataTables-filter (`$.fn.dataTable.ext.search`) som omedelbart döljer eller visar basstationsrader (`TETRA-NET`, `RAKEL-`, `Aktiv TETRA Basstation`) utan att behöva ladda om sidan.
+  - Valet sparas i `localStorage` (`hide_tetra_basestations`, standard: aktiverat/dolt).
+- **Inställning för Loggning av TETRA-basstationer i Larmflödet (`sdr_processor.py`, `database.py`, `app.py`, `templates/settings.html`)**:
+  - Ny inställning `log_tetra_basestations` (standard: `false`).
+  - När inställningen är avstängd loggas låsta och synkroniserade basstationer i systemkonsolen med alla detaljer (SNR, frekvensdrift, modulation, nätverk, cellkod), men skapar inga rader i larmdatabasen (`messages.db`) eller på MQTT-kanalen för larm.
+  - Vid aktivering sparas de som fullständiga informationsposter med strukturerad adress (`RAKEL-240-01`) och alias (`Rakel Basstation`).
+- **Rensning av Tidigare Basstationsloggar (`/api/messages/basestations`)**:
+  - Ny endpoint för att i ett klick rensa bort alla tidigare oskyddade basstationsloggar ur databasen direkt från inställningssidan.
+
 ## [2026.10.13.21] - Fixat Matematisk Bärvågsdetektering och Koherent Kanaleffekt i TETRA Scanner
 
 ### Fixed

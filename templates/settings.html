@@ -248,6 +248,31 @@
                                             Identical transmissions from the same CapCode within the specified time window are handled according to the selected action.
                                         </p>
                                     </div>
+
+                                    <!-- Subtle Divider -->
+                                    <div style="border-top: 1px solid var(--panel-border); margin: 0.85rem 0;"></div>
+
+                                    <!-- TETRA Base Station Logging -->
+                                    <div>
+                                        <div style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; color: var(--text-primary); margin-bottom: 0.25rem;">
+                                            <i class="fas fa-broadcast-tower" style="color: var(--accent); font-size: 0.8rem;"></i>
+                                            TETRA / Rakel Basstationsloggning
+                                        </div>
+                                        <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.35; margin: 0 0 0.65rem 0;">
+                                            Styr huruvida bärvågslåsningar och basstationssynk skall sparas som separata rader i larmtabellen under frekvenssvep.
+                                        </p>
+                                        <div class="form-group checkbox-group" style="margin-bottom: 0.5rem;">
+                                            <label style="font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+                                                <input type="checkbox" id="log_tetra_basestations">
+                                                Logga TETRA-basstationer i larmflödet
+                                            </label>
+                                        </div>
+                                        <div style="margin-top: 0.5rem;">
+                                            <button type="button" class="btn" onclick="clearBasestationLogs()" style="background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 0.78rem; padding: 0.35rem 0.75rem; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+                                                <i class="fas fa-trash-alt"></i> Rensa tidigare basstationsloggar ur databasen
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -821,13 +846,15 @@
         }
 
         const debouncedSaveAppearance = debounce(() => {
+            const logTetraEl = document.getElementById('log_tetra_basestations');
             saveSettings({
                 message_font: fontSelect.value,
                 message_font_size: fontSlider.value,
                 garbage_filter: garbageFilterCheckbox.checked ? 'true' : 'false',
                 garbage_filter_sensitivity: sensitivitySlider.value,
                 duplicate_handling: document.getElementById('duplicate_handling').value,
-                duplicate_window: document.getElementById('duplicate_window').value
+                duplicate_window: document.getElementById('duplicate_window').value,
+                log_tetra_basestations: (logTetraEl && logTetraEl.checked) ? 'true' : 'false'
             });
         }, 400);
 
@@ -852,12 +879,41 @@
                         document.getElementById('duplicate_window').value = data.duplicate_window;
                     }
 
+                    const logTetraEl = document.getElementById('log_tetra_basestations');
+                    if (logTetraEl) {
+                        logTetraEl.checked = (data.log_tetra_basestations === 'true');
+                    }
+
                     document.getElementById('filterSensitivityGroup').style.display =
                         (data.garbage_filter !== 'false') ? 'block' : 'none';
 
                     updatePreviewUI();
                 })
                 .catch(err => console.error('Could not load global settings:', err));
+        }
+
+        async function clearBasestationLogs() {
+            const confirmed = await showConfirm(
+                'Rensa TETRA-basstationsloggar?',
+                'Är du säker på att du vill ta bort alla oskyddade TETRA-basstationsloggar från databasen?',
+                'Rensa Nu',
+                'Avbryt'
+            );
+            if (!confirmed) return;
+
+            try {
+                const res = await fetch('/api/messages/basestations', { method: 'DELETE' });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    showStatus(data.message || `Rensade ${data.deleted_count} basstationsloggar!`, 'success');
+                    loadDatabaseStats();
+                } else {
+                    showStatus('Fel vid rensning: ' + (data.message || 'Okänt fel'), 'error');
+                }
+            } catch (err) {
+                console.error('Error clearing basestations:', err);
+                showStatus('Kunde inte rensa basstationer.', 'error');
+            }
         }
 
         // Database Statistics & Maintenance
@@ -1014,6 +1070,14 @@
             document.getElementById('duplicate_window').addEventListener('input', () => {
                 debouncedSaveAppearance();
             });
+
+            // TETRA Base Station logging auto-save
+            const logTetraEl = document.getElementById('log_tetra_basestations');
+            if (logTetraEl) {
+                logTetraEl.addEventListener('change', () => {
+                    debouncedSaveAppearance();
+                });
+            }
 
             // Auto Prune auto-save
             document.getElementById('auto_prune_enabled').addEventListener('change', () => {

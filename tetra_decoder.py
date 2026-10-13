@@ -650,15 +650,23 @@ class TetraScanner:
 
                             # Lock if either pi/4-DQPSK correlation passes or prominent carrier with SNR >= 9.0 dB
                             if is_tetra or snr_db >= 9.0:
+                                lock_msg = f"Freq: {cand_str} Status: LOCKED (TETRA bärvåg bekräftad, SNR: +{snr_db:.1f} dB, Score: {int(score*100)}%)"
                                 format_and_print_event(
                                     "LOCK", 
-                                    msg=f"Freq: {cand_str} Status: LOCKED (TETRA bärvåg bekräftad, SNR: +{snr_db:.1f} dB, Score: {int(score*100)}%)"
+                                    msg=lock_msg
+                                )
+                                net_msg = (
+                                    f"Aktiv TETRA Basstation på {cand_str} | "
+                                    f"Status: LÅST | "
+                                    f"Signal: SNR +{snr_db:.1f} dB | "
+                                    f"Modulation: pi/4-DQPSK ({int(score*100)}%) | "
+                                    f"Frekvensdrift: {int(drift_hz):+d} Hz"
                                 )
                                 format_and_print_event(
                                     "NET", 
                                     mcc="240", 
                                     mnc="01", 
-                                    msg=f"Aktiv TETRA Basstation på {cand_str}"
+                                    msg=net_msg
                                 )
                                 self.stream_continuous(cand_hz, cand_str)
                                 self.blacklist_until[cand_hz] = time.time() + 60.0
@@ -714,7 +722,12 @@ class TetraScanner:
                     last_activity = now
                     ev_type = ev.get('type', 'NET')
                     if ev_type == 'NET':
-                        format_and_print_event('NET', mcc=ev['mcc'], mnc=ev['mnc'], msg=ev['text'])
+                        mcc_str = str(ev.get('mcc', '240'))
+                        mnc_str = str(ev.get('mnc', '01'))
+                        cc_str = str(ev.get('color_code', '0'))
+                        net_label = "Rakel (MSB)" if (mcc_str == "240" and mnc_str in ("01", "1")) else f"TETRA {mcc_str}-{mnc_str}"
+                        msg_str = f"Aktiv Basstation på {f_str} | Nät: {net_label} (MCC: {mcc_str}, MNC: {mnc_str}) | Färgkod (ColorCode): {cc_str}"
+                        format_and_print_event('NET', mcc=mcc_str, mnc=mnc_str, cell=cc_str, msg=msg_str)
                     elif ev_type in ('CALL', 'STATUS', 'SDS'):
                         format_and_print_event(ev_type, gssi=ev.get('gssi'), issi=ev.get('issi'), msg=ev.get('text', ''))
 

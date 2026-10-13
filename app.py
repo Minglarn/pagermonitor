@@ -315,6 +315,24 @@ def prune_old_messages():
         "deleted_count": deleted
     })
 
+@app.route('/api/messages/basestations', methods=['DELETE', 'POST'])
+def clear_basestation_messages():
+    conn = database.get_db_connection()
+    c = conn.cursor()
+    c.execute("""
+        DELETE FROM messages 
+        WHERE (bitrate LIKE '%TETRA-NET%' OR message LIKE '%Aktiv TETRA Basstation%' OR message LIKE '%Aktiv Basstation på%') 
+        AND is_protected = 0
+    """)
+    deleted_count = c.rowcount
+    conn.commit()
+    conn.close()
+    return jsonify({
+        "status": "success", 
+        "message": f"Tog bort {deleted_count} basstationsloggar ur databasen.",
+        "deleted_count": deleted_count
+    })
+
 @app.route('/api/settings/defaults')
 def settings_defaults():
     return jsonify(get_default_settings())
@@ -332,7 +350,7 @@ def handle_settings():
             'enable_high_quality_fir', 'atan_math', 'oversampling',
             'multimon_input_type', 'garbage_filter', 'garbage_filter_sensitivity',
             'duplicate_handling', 'duplicate_window',
-            'auto_prune_enabled', 'auto_prune_days'
+            'auto_prune_enabled', 'auto_prune_days', 'log_tetra_basestations'
         ]
         sdr_restart_keys = {
             'frequency', 'gain', 'device_serial', 'multimon_verbosity', 

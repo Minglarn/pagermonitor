@@ -291,14 +291,51 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         continue
 
                     if tetra_type == "NET":
+                        freq_match = re.search(r'(?:Freq:\s*|på\s+)([0-9\.]+[kKMm]?)', rest)
+                        if freq_match:
+                            config['active_frequency'] = freq_match.group(1)
                         logger.info(f"[{config['name']}] TETRA BASSTATION SYNKRISERAD: {rest}")
+
+                        settings = get_settings()
+                        if settings.get('log_tetra_basestations', 'false') != 'true':
+                            for cb in list(new_message_callbacks):
+                                try: cb({'type': 'ping'})
+                                except Exception: pass
+                            continue
 
                     gssi_match = re.search(r'GSSI:\s*(\d+)', rest)
                     issi_match = re.search(r'ISSI:\s*(\d+)', rest)
+                    mcc_match = re.search(r'MCC:\s*(\d+)', rest)
+                    mnc_match = re.search(r'MNC:\s*(\d+)', rest)
+                    cell_match = re.search(r'Cell:\s*([^\s]+)', rest)
                     msg_match = re.search(r'Msg:\s*(.+)$', rest)
 
-                    address = gssi_match.group(1) if gssi_match else (issi_match.group(1) if issi_match else "TETRA")
-                    message = msg_match.group(1).strip() if msg_match else rest
+                    if gssi_match:
+                        address = gssi_match.group(1)
+                    elif issi_match:
+                        address = issi_match.group(1)
+                    elif tetra_type == "NET":
+                        mcc_val = mcc_match.group(1) if mcc_match else "240"
+                        mnc_val = mnc_match.group(1) if mnc_match else "01"
+                        net_prefix = "RAKEL" if (mcc_val == "240" and mnc_val in ("01", "1")) else "TETRA"
+                        if cell_match:
+                            address = f"{net_prefix}-C{cell_match.group(1)}"
+                        else:
+                            address = f"{net_prefix}-{mcc_val}-{mnc_val}"
+                    else:
+                        address = "TETRA"
+
+                    message_text = msg_match.group(1).strip() if msg_match else rest
+                    if tetra_type == "NET":
+                        mcc_val = mcc_match.group(1) if mcc_match else "240"
+                        mnc_val = mnc_match.group(1) if mnc_match else "01"
+                        net_label = "Sverige / Rakel (MSB)" if (mcc_val == "240" and mnc_val in ("01", "1")) else f"MCC: {mcc_val}, MNC: {mnc_val}"
+                        if "MCC" not in message_text and "Nät:" not in message_text:
+                            message = f"{message_text} | Nät: {net_label}"
+                        else:
+                            message = message_text
+                    else:
+                        message = message_text
 
                     if tetra_type == "SDS":
                         bitrate = "TETRA-SDS"
@@ -343,6 +380,12 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     alias_info = get_alias_info(address)
                     alias = alias_info['alias'] if alias_info else ''
                     is_hidden = alias_info['is_hidden'] if alias_info else False
+                    
+                    if not alias and is_tetra:
+                        if address.startswith("RAKEL"):
+                            alias = "Rakel Basstation" if tetra_type == "NET" else "Rakel"
+                        elif address.startswith("TETRA"):
+                            alias = "TETRA Basstation" if tetra_type == "NET" else "TETRA"
                     
                     if is_hidden:
                         logger.info(f"[{config['name']}] RAW: {line} [DROPPED] Cause: MUTED")
