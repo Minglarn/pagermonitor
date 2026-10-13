@@ -113,7 +113,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.13.2"
+APP_VERSION = "2026.10.13.3"
 
 @app.context_processor
 def inject_globals():
@@ -287,7 +287,7 @@ def get_messages():
     alerts_only = request.args.get('alerts_only', default='0').lower() in ('1', 'true')
     
     settings = database.get_settings()
-    dup_handling = settings.get('duplicate_handling', 'mark')
+    dup_handling = settings.get('duplicate_handling', 'merge')
     include_dups = request.args.get('include_duplicates', '0').lower() in ('1', 'true')
     exclude_duplicates = (dup_handling == 'hide') and not include_dups
 
@@ -328,13 +328,16 @@ def handle_settings():
             'multimon_charset', 'multimon_format', 'message_font', 
             'message_font_size', 'sample_rate', 'resample_rate', 
             'enable_dc_removal', 'ppm_error', 'enable_deemp', 
+            'enable_high_quality_fir', 'atan_math', 'oversampling',
             'multimon_input_type', 'garbage_filter', 'garbage_filter_sensitivity',
+            'duplicate_handling', 'duplicate_window',
             'auto_prune_enabled', 'auto_prune_days'
         ]
         sdr_restart_keys = {
             'frequency', 'gain', 'device_serial', 'multimon_verbosity', 
             'multimon_charset', 'multimon_format', 'sample_rate', 'resample_rate', 
-            'enable_dc_removal', 'ppm_error', 'enable_deemp', 'multimon_input_type'
+            'enable_dc_removal', 'ppm_error', 'enable_deemp', 'enable_high_quality_fir',
+            'atan_math', 'oversampling', 'multimon_input_type'
         }
         sdr_restart_needed = False
         for key in allowed_keys:

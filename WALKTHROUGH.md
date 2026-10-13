@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.2`
+- **CalVer**: `2026.10.13.3`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -567,3 +567,16 @@
   - **Verifiering**:
     - Befintliga och nya testsviter passerar utan regressioner.
     - Versionsbump till CalVer `2026.10.13.2`.
+
+## 40. Åtgärdat Sparning av Duplikathantering och Duplikatfönster i Inställningar (v2026.10.13.3)
+- **Bakgrund och Problem**:
+  - Ändringar av `Duplicate Action` (t.ex. till *Group into same event (Increment 2x, 3x badge)*) eller `Time Window` sparades inte i gränssnittet och återgick till standardvärden efter omladdning av sidan.
+  - Granskning av `handle_settings()` i [app.py](file:///d:/antigravity/pager-monitor/app.py) visade att `duplicate_handling` och `duplicate_window` (samt avancerade filterflaggor) saknades i `allowed_keys`-listan och därmed filtrerades bort vid `POST /api/settings`.
+- **Genomförda Åtgärder**:
+  - **Uppdaterad vitlista i [app.py](file:///d:/antigravity/pager-monitor/app.py)**:
+    - Lagt till `duplicate_handling`, `duplicate_window`, `enable_high_quality_fir`, `atan_math` och `oversampling` i `allowed_keys`.
+    - Standardiserat fallback-värdet för `duplicate_handling` till `'merge'` i [app.py](file:///d:/antigravity/pager-monitor/app.py#L290) i linje med [database.py](file:///d:/antigravity/pager-monitor/database.py).
+  - **Tester och Verifiering**:
+    - Utökat `test_settings_autosave_api` i [tests/test_security_and_larm.py](file:///d:/antigravity/pager-monitor/tests/test_security_and_larm.py) med validering av att `duplicate_handling` och `duplicate_window` sparas och returneras vid `GET /api/settings`.
+    - Samtliga 42 tester i testsviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.3`.

@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.3] - Åtgärdat Sparning av Duplikathantering och Duplikatfönster i Inställningar
+
+### Fixed
+- **Sparning av Duplicate Handling & Time Window**:
+  - Åtgärdat bugg i `/api/settings` ([app.py](file:///d:/antigravity/pager-monitor/app.py)) där `duplicate_handling` och `duplicate_window` (samt avancerade filter `enable_high_quality_fir`, `atan_math`, `oversampling`) saknades i `allowed_keys`-vitlistan.
+  - Inställningar för duplikathantering (`merge`, `mark`, `hide`, `discard`) och tidsfönster sparas och laddas nu pålitligt vid ändring i användargränssnittet.
+
 ## [2026.10.13.2] - Stöd för Manuell SDR Gain (-g) och PPM-korrigering (-p) i rtl_fm
 
 ### Fixed

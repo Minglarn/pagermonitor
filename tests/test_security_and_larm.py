@@ -148,6 +148,8 @@ def test_settings_autosave_api(client):
         'message_font_size': '1.1',
         'garbage_filter': 'true',
         'garbage_filter_sensitivity': '45',
+        'duplicate_handling': 'merge',
+        'duplicate_window': '180',
         'auto_prune_enabled': 'true',
         'auto_prune_days': '45'
     }
@@ -162,6 +164,8 @@ def test_settings_autosave_api(client):
     assert saved['message_font'] == 'JetBrains Mono'
     assert saved['message_font_size'] == '1.1'
     assert saved['garbage_filter_sensitivity'] == '45'
+    assert saved['duplicate_handling'] == 'merge'
+    assert saved['duplicate_window'] == '180'
 
 def test_messages_limit_options(client):
     """Verifiera att /api/messages hanterar limit-parametrar korrekt (standard 500, explicit limit, och 'all')."""
