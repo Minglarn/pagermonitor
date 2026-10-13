@@ -176,6 +176,8 @@ class TestSdrWatchdog(unittest.TestCase):
             'device_serial': '10000002'
         }
 
+        config['sample_rate'] = '250K'
+        config['resample_rate'] = '22.05k'
         p1, p2 = sdr_processor.start_instance(config)
         self.assertEqual(mock_popen.call_count, 2)
         rtl_cmd = mock_popen.call_args_list[0][0][0]
@@ -186,6 +188,19 @@ class TestSdrWatchdog(unittest.TestCase):
         self.assertIn('5', rtl_cmd)
         self.assertIn('-d', rtl_cmd)
         self.assertIn('10000002', rtl_cmd)
+        self.assertIn('-s', rtl_cmd)
+        self.assertIn('250000', rtl_cmd)
+        self.assertIn('-r', rtl_cmd)
+        self.assertIn('22050', rtl_cmd)
+
+    def test_normalize_rate_hz(self):
+        """Verifiera att enheter som k, K, M normaliseras till korrekta heltalssiffror för rtl_fm."""
+        self.assertEqual(sdr_processor.normalize_rate_hz('250K'), '250000')
+        self.assertEqual(sdr_processor.normalize_rate_hz('250k'), '250000')
+        self.assertEqual(sdr_processor.normalize_rate_hz('22050'), '22050')
+        self.assertEqual(sdr_processor.normalize_rate_hz('22.05k'), '22050')
+        self.assertEqual(sdr_processor.normalize_rate_hz('1.8M'), '1800000')
+        self.assertEqual(sdr_processor.normalize_rate_hz(''), '22050')
 
     @patch('subprocess.Popen')
     def test_tetra_start_instance(self, mock_popen):

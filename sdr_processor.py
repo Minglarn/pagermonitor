@@ -469,14 +469,31 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
         if not stop_event.is_set():
             sync_event.set()
 
+def normalize_rate_hz(rate_val, default='22050'):
+    """Normalizes sample/resample rate inputs like '250k', '250K', '250000' to clean integer string in Hz."""
+    if not rate_val:
+        return default
+    s = str(rate_val).strip()
+    try:
+        lower = s.lower()
+        if lower.endswith('k'):
+            return str(int(float(lower[:-1]) * 1000))
+        elif lower.endswith('m'):
+            return str(int(float(lower[:-1]) * 1000000))
+        elif s.isdigit():
+            return s
+    except (ValueError, TypeError):
+        pass
+    return s.lower()
+
 def start_instance(config):
     """Starts the subprocesses for a single SDR instance."""
     freq = config.get('frequency', '169.8M')
     gain = config.get('gain', 'auto')
     serial = config.get('device_serial', '')
     ppm = config.get('ppm_error', '0')
-    sample_rate = config.get('sample_rate', '22050')
-    resample_rate = config.get('resample_rate', '22050')
+    sample_rate = normalize_rate_hz(config.get('sample_rate', '22050'), '22050')
+    resample_rate = normalize_rate_hz(config.get('resample_rate', '22050'), '22050')
     enable_dc = str(config.get('enable_dc_removal', 'true')).lower() == 'true'
     enable_deemp = str(config.get('enable_deemp', 'true')).lower() == 'true'
     enable_hq_fir = str(config.get('enable_high_quality_fir', 'true')).lower() == 'true'

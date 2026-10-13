@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.16`
+- **CalVer**: `2026.10.13.17`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -821,9 +821,20 @@
     - Ändrat `probe_block` att använda en temporär fil (`tempfile.mkstemp`) som utdatafil istället för stdout-pipe.
     - `rtl_sdr` skriver direkt till disk/tmpfs och avslutas rent omedelbart när begärda prover är insamlade.
     - Python läser in I/Q-datan och tar bort temporärfilen direkt, vilket eliminerar alla pipe-deadlocks.
+## 54. Automatisk Sanering av Samplingsfrekvens och Enheter i rtl_fm (v2026.10.13.17)
+- **Bakgrund och Problem**:
+  - `rtl_fm` parsar numeriska parametrar via C-hjälpfunktionen `atofs()`. Denna funktion stöder enbart suffix med gemener (`k`, `m`, `g`) och inte versaler (`K`, `M`).
+  - När användaren angav `250K` (med versalt `K`) i hårdvaruinställningarna matchade inte switchen, vilket resulterade i att `rtl_fm` fick ett samplingsvärde på `250` Hz istället för `250 000` Hz.
+  - Den ogiltiga samplingsfrekvensen orsakade att `rtl_fm` kraschade omedelbart vid uppstart utan att initiera tunern eller producera standardutskrifter.
+- **Genomförda Åtgärder**:
+  - **Normaliseringsfunktion (`normalize_rate_hz` i [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Implementerat robust sanering av både `sample_rate` och `resample_rate`.
+    - Omvandlar automatiskt vanliga enhetssträngar (`250K`, `250k`, `22.05k`, `1.8M`) till rena heltal i Hertz (`250000`, `22050`, `1800000`) innan de skickas vidare till `rtl_fm` och `multimon-ng`.
   - **Tester och Verifiering**:
-    - Samtliga 50 enhetstester i testsviten passerar felfritt.
-    - Versionsbump till CalVer `2026.10.13.16`.
+    - Nya enhetstester i `tests/test_sdr_watchdog.py` verifierar att `250K` och `22.05k` expanderas till korrekta heltal i kommandoradsanropet.
+    - Samtliga enhetstester passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.17`.
+
 
 
 

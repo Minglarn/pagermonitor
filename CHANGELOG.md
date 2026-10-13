@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.17] - Automatisk Sanering av Samplingsfrekvens och Enheter i rtl_fm
+
+### Fixed
+- **Robust Normalisering av Samplingshastighet (`normalize_rate_hz` i `sdr_processor.py`)**:
+  - `rtl_fm` (C-funktionen `atofs`) stöder enbart gemener (`k`, `m`, `g`) och inte versaler (`K`, `M`). Om en användare anger `250K` tolkas detta som 250 Hz, vilket orsakar att `rtl_fm` kraschar omedelbart vid start.
+  - Implementerat `normalize_rate_hz` som automatiskt omvandlar strängar med enheter som `250K`, `250k`, `22.05k` etc. till rena heltal i Hz (`250000`, `22050`) innan argumenten skickas till `rtl_fm` och `multimon-ng`.
+  - Säkerställer att mottagare med RTL-SDR Blog V4 och övriga donglar startar stabilt oavsett versalisering i hårdvaruinställningarna.
+
 ## [2026.10.13.16] - Filbaserad Provtagning för RTL-SDR Blockskanning
 
 ### Fixed
