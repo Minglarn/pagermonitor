@@ -516,6 +516,13 @@ def probe_block(center_hz, sample_rate=2400000, gain="auto", ppm="0", device="",
         format_and_print_event("SCAN", msg=f"Fel vid anrop av rtl_sdr: {e}")
         return b""
     finally:
+        if proc:
+            try:
+                if proc.poll() is None:
+                    proc.kill()
+                    proc.wait(timeout=0.5)
+            except Exception:
+                pass
         if _current_child_proc == proc:
             _current_child_proc = None
 

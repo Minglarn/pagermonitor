@@ -486,11 +486,39 @@ def normalize_rate_hz(rate_val, default='22050'):
         pass
     return s.lower()
 
+def kill_orphaned_rtl_for_device(device_serial):
+    """Kills any orphaned rtl_sdr or rtl_fm process in the container using this device serial."""
+    if not device_serial or os.name != 'posix' or not os.path.exists('/proc'):
+        return
+    dev_str = str(device_serial).strip()
+    if not dev_str:
+        return
+    try:
+        my_pid = os.getpid()
+        for pid_dir in os.listdir('/proc'):
+            if pid_dir.isdigit() and int(pid_dir) != my_pid:
+                cmdline_path = os.path.join('/proc', pid_dir, 'cmdline')
+                try:
+                    with open(cmdline_path, 'rb') as f:
+                        cmdline = f.read().decode('latin-1', errors='ignore')
+                    args = cmdline.split('\x00')
+                    is_rtl = any(bin_name in (args[0] if args else '') for bin_name in ['rtl_sdr', 'rtl_fm', 'rtl_test'])
+                    if is_rtl:
+                        for i, arg in enumerate(args):
+                            if arg == '-d' and i + 1 < len(args) and args[i + 1] == dev_str:
+                                logger.warning(f"Dödar föräldralös RTL-process PID {pid_dir} ({args[0]}) som låste enhet {dev_str}")
+                                os.kill(int(pid_dir), signal.SIGKILL)
+                                break
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.debug(f"Fel vid sökning efter föräldralösa processer: {e}")
+
 def start_instance(config):
     """Starts the subprocesses for a single SDR instance."""
     freq = config.get('frequency', '169.8M')
     gain = config.get('gain', 'auto')
-    serial = config.get('device_serial', '')
+    serial = str(config.get('device_serial', '')).strip()
     ppm = config.get('ppm_error', '0')
     sample_rate = normalize_rate_hz(config.get('sample_rate', '22050'), '22050')
     resample_rate = normalize_rate_hz(config.get('resample_rate', '22050'), '22050')
@@ -500,6 +528,9 @@ def start_instance(config):
     atan_math = config.get('atan_math', 'std')
     oversampling = config.get('oversampling', '4')
     
+    if serial:
+        kill_orphaned_rtl_for_device(serial)
+
     rtl_cmd = ['rtl_fm', '-f', freq, '-M', 'fm', '-s', sample_rate, '-r', resample_rate]
     if gain and gain != 'auto': rtl_cmd.extend(['-g', str(gain)])
     if ppm and ppm != '0': rtl_cmd.extend(['-p', str(ppm)])
@@ -508,7 +539,6 @@ def start_instance(config):
     if enable_hq_fir: rtl_cmd.append('-F')
     if atan_math in ['std', 'fast']: rtl_cmd.extend(['-A', atan_math])
     if oversampling and oversampling != '1': rtl_cmd.extend(['-o', oversampling])
-    serial = str(config.get('device_serial', '')).strip()
     if serial:
         rtl_cmd.extend(['-d', serial])
         logger.info(f"[{config['name']}] Använder specifik SDR-enhet / serienummer: '{serial}'")
@@ -604,14 +634,33 @@ def stop_instance_procs(instance_id):
         logger.info(f"Stopping SDR instance: {inst['config']['name']}")
         inst['stop_event'].set()
         
-        # Kill processes
+        serial = inst.get('config', {}).get('device_serial', '')
+
+        # 1. Send SIGTERM first so python decoders can cleanly kill their child rtl processes
         for p in [inst.get('p2'), inst.get('p1')]:
-            if p:
+            if p and p.poll() is None:
                 try:
-                    if p.poll() is None:
-                        p.kill()
-                        p.wait(timeout=2)
+                    p.terminate()
                 except Exception: pass
+        
+        # 2. Wait up to 1.0 second for graceful exit
+        for p in [inst.get('p2'), inst.get('p1')]:
+            if p and p.poll() is None:
+                try:
+                    p.wait(timeout=1.0)
+                except Exception: pass
+
+        # 3. Force kill with SIGKILL if still lingering
+        for p in [inst.get('p2'), inst.get('p1')]:
+            if p and p.poll() is None:
+                try:
+                    p.kill()
+                    p.wait(timeout=1.0)
+                except Exception: pass
+
+        # 4. Clean up any orphaned child processes that still claim this USB device
+        if serial:
+            kill_orphaned_rtl_for_device(serial)
         
         del active_instances[instance_id]
 

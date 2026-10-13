@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.13.19] - Automatisk Terminering av Föräldralösa RTL-processer och Garanterad USB-release
+
+### Fixed
+- **Automatisk Terminering av Föräldralösa USB-processer (`kill_orphaned_rtl_for_device` i `sdr_processor.py`)**:
+  - Åtgärdat felet där `tetra_decoder.py` eller tidigare avbrutna instanser lämnade underprocesser (`rtl_sdr`, `rtl_fm`) igång som föräldralösa processer (adopterade av PID 1), vilket låste USB-enheten (`usb_claim_interface error -6`) även efter att instansen stängts av i gränssnittet.
+  - Implementerat scanning av `/proc` för att automatiskt identifiera och döda (`SIGKILL`) alla föräldralösa processer som använder samma `-d <serial>` innan en ny instans startas samt vid stopp av en instans.
+- **Graciös Processavstängning (`stop_instance_procs` i `sdr_processor.py`)**:
+  - Ändrat avstängningssekvensen att först skicka `SIGTERM` så att Python-avkodare kan köra sin interna signalhanterare och avsluta sina egna barnprocesser innan hård avstängning (`SIGKILL`) genomförs.
+- **Garanterad Processavslutning i `finally` (`tetra_decoder.py`)**:
+  - `probe_block` och `stream_continuous` dödar nu explicit underprocessen `proc` i sitt `finally`-block, vilket omöjliggör att `rtl_sdr` lämnas hängande vid timeouts eller fel.
+
 ## [2026.10.13.18] - Återställt librtlsdr till Steve-M Drivrutiner
 
 ### Changed

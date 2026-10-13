@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.18`
+- **CalVer**: `2026.10.13.19`
 - **Date**: 2026-10-13
 - **Language**: English / Swedish
 
@@ -837,9 +837,22 @@
   - **Återställt `Dockerfile` ([Dockerfile](file:///d:/antigravity/pager-monitor/Dockerfile))**:
     - Återställt källkodspaketet för `librtlsdr` till `https://github.com/steve-m/librtlsdr.git`.
     - Säkerställer identisk drivrutinsuppsättning och standard Osmocom/Steve-M USB-buffring som applikationen byggdes med innan V4-experimentet.
+## 56. Automatisk Terminering av Föräldralösa RTL-processer och Garanterad USB-release (v2026.10.13.19)
+- **Bakgrund och Problem**:
+  - När användaren stoppade mottagare (särskilt TETRA i skanningsläge) eller ändrade inställningar kunde underprocessen `rtl_sdr` (eller `rtl_fm`) lämnas igång som en föräldralös process (reparentad till PID 1).
+  - Denna dolda bakgrundsprocess behöll det exklusiva libusb-låset på enheten, vilket orsakade `usb_claim_interface error -6` både inuti och utanför containern ända tills hela containern stängdes ner.
+- **Genomförda Åtgärder**:
+  - **Skanning och Terminering av Föräldralösa Processer (`kill_orphaned_rtl_for_device` i [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Läser `/proc` för att identifiera aktiva processer (`rtl_sdr`, `rtl_fm`, `rtl_test`) vars kommandoradsargument refererar till `-d <serial>`.
+    - Dödar eventuella föräldralösa processer omedelbart med `SIGKILL` både innan en instans startas och när den stoppas.
+  - **Graciös Processavstängning (`stop_instance_procs` i [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Skickar först `SIGTERM` så att Python-avkodaren kan exekvera sin signalhanterare och döda sina egna underprocesser innan `SIGKILL` appliceras.
+  - **Garanterad Processdödande i `finally` ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Tillagt `proc.kill()` i `finally`-blocket för `probe_block`.
   - **Tester och Verifiering**:
-    - Samtliga enhetstester passerar felfritt.
-    - Versionsbump till CalVer `2026.10.13.18`.
+    - Samtliga 51 enhetstester i testsviten passerar felfritt.
+    - Versionsbump till CalVer `2026.10.13.19`.
+
 
 
 
