@@ -608,6 +608,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         }
 
                     metadata = {
+                        'protocol': protocol_type,
                         'bitrate': bitrate,
                         'function': function_code,
                         'frequency': freq,

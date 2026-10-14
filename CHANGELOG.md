@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.14] - Protokoll-Badge i RF/META, Fix för Test-TMC och Synkad Versionsspårbarhet
+
+### Added
+- **Protokollmärken i RF / META (`index.html`, `larm.html`, `statistics.html`, `style.css`)**:
+  - Nytt dedikerat protokollmärke i kolumnen `RF / META` för alla meddelandelistor och larmtabeller.
+  - Skiljer visuellt och tydligt mellan olika mottagna protokoll:
+    - `POCSAG`: Smaragdgrön badge (`proto-pocsag`).
+    - `TETRA`: Bärnstensgul badge (`proto-tetra`).
+    - `RDS`: Korallrosa badge (`proto-rds`).
+    - `AFSK`: Indigoblå badge (`proto-afsk`).
+  - Optimerad metadata-rendering så att underprotokoll och hastigheter (`1200bps`, `SDS`, `NET`, `TMC`) kompletterar utan redundans.
+  - Stöd för både ljust och mörkt tema med hög kontrast och läsbarhet.
+- **Protokoll-härledning i API och Backend (`database.py`, `sdr_processor.py`, `app.py`)**:
+  - Fältet `protocol` skickas nu alltid med i SSE-realtidsflödet och härleds i databasfrågor (`/api/messages`).
+
+### Fixed
+- **Åtgärdat Importfel vid RDS-TMC Testsignal (`app.py`)**:
+  - Åtgärdat fel `NameError: name 'save_message' is not defined` vid anrop till `/api/test/tmc`.
+- **Synkroniserad Versionsspårbarhet (`app.py`, `README.md`)**:
+  - Uppdaterat central `APP_VERSION` till `2026.10.14.14` så att sidopanelens versionsnummer stämmer överens med gällande CalVer.
+- **Korrigerat Sökfilter och Kanalmappning för RDS i Waterfall (`waterfall.js`)**:
+  - Klick på RDS-kanalen i waterfall sätter sökfiltret till `RDS` istället för `auto`.
+  - Inkommande RDS-TMC meddelanden binds direkt till den befintliga `RDS`-kanalen.
+
+## [2026.10.14.13] - Korrigerat Kanalfilter för RDS i RF Activity Waterfall
+
+### Fixed
+- **Sökfilter vid Val av RDS i Waterfall (`waterfall.js`)**:
+  - Åtgärdat fel där klick på en kanal med frekvens `auto` satte sökfiltret till ordet `auto` istället för mottagarens namn `RDS`.
+  - När kanalen RDS klickas sätts sökfiltret nu korrekt till `RDS`, vilket omedelbart matchar alla `RDS-TMC` larm i tabellen.
+  - Kopplat inkommande RDS-TMC meddelanden direkt till den befintliga `RDS`-kanalen i waterfall så att det inte skapas dubbla rader (t.ex. `Freq 103.3M`), och uppdaterat kanalens visningsfrekvens till den låsta frekvensen.
+
 ## [2026.10.14.12] - Korrigerad Grupp 3A Matchning och Protokoll-Badge utan 'bps'
 
 ### Fixed

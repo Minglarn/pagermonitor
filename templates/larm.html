@@ -737,17 +737,50 @@
             }
 
             const displayAddress = alarm.alias ? alarm.alias : alarm.address;
+            // Bestäm protokoll och märke
+            let protoName = '';
+            let protoClass = '';
+            const rawProto = (alarm.protocol || '').toString().trim().toUpperCase();
+            const rawBitrate = (alarm.bitrate || '').toString().trim();
+            const addrUpper = (alarm.address || '').toString().trim().toUpperCase();
+            const aliasUpper = (alarm.alias || '').toString().trim().toUpperCase();
+            const msgUpper = (alarm.message || '').toString().trim().toUpperCase();
+
+            if (rawProto.includes('TETRA') || rawBitrate.toUpperCase().includes('TETRA') || addrUpper.startsWith('RAKEL') || addrUpper.startsWith('TETRA') || aliasUpper.includes('BASSTATION') || msgUpper.includes('TETRA BASSTATION')) {
+                protoName = 'TETRA';
+                protoClass = 'proto-tetra';
+            } else if (rawProto.includes('RDS') || rawProto.includes('TMC') || rawBitrate.toUpperCase().includes('RDS') || rawBitrate.toUpperCase().includes('TMC') || addrUpper.startsWith('E4:') || addrUpper.startsWith('TMC-') || aliasUpper.startsWith('RDS') || msgUpper.includes('RDS-TMC')) {
+                protoName = 'RDS';
+                protoClass = 'proto-rds';
+            } else if (rawProto.includes('AFSK') || rawProto.includes('UFSK') || rawBitrate.toUpperCase().includes('AFSK') || rawBitrate.toUpperCase().includes('UFSK') || addrUpper === 'AFSK') {
+                protoName = 'AFSK';
+                protoClass = 'proto-afsk';
+            } else if (rawProto.includes('POCSAG') || rawBitrate.toUpperCase().includes('POCSAG') || /^\d+$/.test(rawBitrate) || /^\d+$/.test(addrUpper)) {
+                protoName = 'POCSAG';
+                protoClass = 'proto-pocsag';
+            } else if (rawProto && rawProto !== 'UNKNOWN') {
+                protoName = rawProto;
+                protoClass = 'proto-generic';
+            }
+            const protoTag = protoName ? `<span class="badge meta badge-proto ${protoClass}">${protoName}</span>` : '';
+
             let formattedBitrate = '';
             if (alarm.bitrate) {
                 let bStr = String(alarm.bitrate).trim();
                 if (bStr && bStr !== 'WATCHDOG') {
-                    if (bStr.includes('RDS') || bStr.includes('TMC') || bStr.includes('TETRA')) {
-                        formattedBitrate = bStr;
+                    if (bStr.toUpperCase().startsWith('TETRA-')) {
+                        formattedBitrate = bStr.substring(6);
+                    } else if (bStr.toUpperCase() === 'TETRA') {
+                        formattedBitrate = '';
+                    } else if (bStr.toUpperCase() === 'RDS-TMC') {
+                        formattedBitrate = 'TMC';
+                    } else if (bStr.toUpperCase() === 'RDS') {
+                        formattedBitrate = '';
                     } else if (/^POCSAG\s*\d+$/i.test(bStr)) {
                         formattedBitrate = bStr.replace(/^POCSAG\s*/i, '') + 'bps';
                     } else if (/^\d+$/.test(bStr)) {
                         formattedBitrate = bStr + 'bps';
-                    } else if (!bStr.toLowerCase().endsWith('bps')) {
+                    } else if (!bStr.toLowerCase().endsWith('bps') && !bStr.includes('-')) {
                         formattedBitrate = bStr + 'bps';
                     } else {
                         formattedBitrate = bStr;
@@ -770,7 +803,7 @@
             tr.innerHTML = `
                 <td class="id-cell">${alarm.id}</td>
                 <td class="ts-cell" data-order="${alarm.timestamp}">${formattedTime}</td>
-                <td class="meta-cell"><div class="meta-wrapper">${freqTag}${bitrateTag}${funcTag}${duplicateTag}${repeatTag}</div></td>
+                <td class="meta-cell"><div class="meta-wrapper">${freqTag}${protoTag}${bitrateTag}${funcTag}${duplicateTag}${repeatTag}</div></td>
                 <td class="addr-cell">
                     <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
                 </td>

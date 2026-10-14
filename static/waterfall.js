@@ -116,7 +116,7 @@ window.WaterfallManager = (function () {
                     <div class="channel-indicator-dot" id="dot-${ch.id}"></div>
                     <div class="channel-text">
                         <span class="channel-name" title="${ch.name}">${ch.name}</span>
-                        <span class="channel-freq">${ch.frequency}</span>
+                        <span class="channel-freq" id="freq-${ch.id}">${ch.frequency}</span>
                     </div>
                 </div>
                 <div class="channel-canvas-cell">
@@ -165,8 +165,14 @@ window.WaterfallManager = (function () {
             if (onFilterCallback) onFilterCallback('');
         } else {
             activeFilterChannel = ch.id;
-            // Filter by frequency or name
-            if (onFilterCallback) onFilterCallback(ch.frequency || ch.name);
+            let filterTerm = ch.frequency;
+            // Om kanalen är RDS, filtrera alltid på 'RDS' (matchar 'RDS-TMC' i flödet istället för 'auto')
+            if (ch.name && (ch.name.toUpperCase() === 'RDS' || ch.name.toUpperCase().includes('RDS') || ch.name.toUpperCase().includes('TMC'))) {
+                filterTerm = 'RDS';
+            } else if (!filterTerm || filterTerm.toLowerCase() === 'auto' || filterTerm.toLowerCase() === 'scan' || filterTerm.toLowerCase() === 'unknown') {
+                filterTerm = ch.name;
+            }
+            if (onFilterCallback) onFilterCallback(filterTerm || ch.name);
         }
 
         // Update UI highlights
@@ -313,8 +319,30 @@ window.WaterfallManager = (function () {
 
         const freq = msg.frequency || 'Unknown';
         if (freq === 'RESTART' || freq === 'Unknown') return;
-        const sdrName = msg.sdr_name || (msg.frequency ? `Freq ${msg.frequency}` : 'Receiver');
-        const ch = registerChannel(sdrName, freq);
+
+        const isRdsMsg = (msg.bitrate && (msg.bitrate.includes('RDS') || msg.bitrate.includes('TMC'))) || 
+                         (msg.protocol && msg.protocol.includes('RDS')) ||
+                         (msg.sdr_name && msg.sdr_name.toUpperCase().includes('RDS'));
+
+        let ch = null;
+        if (isRdsMsg) {
+            // Leta efter befintlig RDS-kanal (t.ex. 'RDS' med frekvens 'auto')
+            const rdsKey = Object.keys(channels).find(k => channels[k].name && (channels[k].name.toUpperCase() === 'RDS' || channels[k].name.toUpperCase().includes('RDS')));
+            if (rdsKey) {
+                ch = channels[rdsKey];
+                // Uppdatera visningsfrekvens till den aktiva låsta frekvensen om den tidigare var 'auto'
+                if (freq && freq !== 'Unknown' && ch.frequency.toLowerCase() === 'auto') {
+                    ch.frequency = freq;
+                    const freqEl = document.getElementById(`freq-${ch.id}`);
+                    if (freqEl) freqEl.textContent = freq;
+                }
+            }
+        }
+
+        if (!ch) {
+            const sdrName = msg.sdr_name || (msg.frequency ? `Freq ${msg.frequency}` : 'Receiver');
+            ch = registerChannel(sdrName, freq);
+        }
         if (!ch) return;
 
         const msgDate = new Date(msg.timestamp);

@@ -17,7 +17,8 @@ from database import (
     get_sdr_instances, save_sdr_instance, delete_sdr_instance, toggle_sdr_instance,
     clone_sdr_instance,
     delete_message, toggle_message_lock, clear_messages, prune_messages,
-    get_database_stats, auto_prune_if_enabled, clear_basestation_messages
+    get_database_stats, auto_prune_if_enabled, clear_basestation_messages,
+    save_message
 )
 
 try:
@@ -114,7 +115,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.14.08"
+APP_VERSION = "2026.10.14.14"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
@@ -349,6 +350,7 @@ def handle_test_tmc():
             'message': msg,
             'alias': alias,
             'function_code': function_code,
+            'protocol': 'RDS-TMC',
             'bitrate': bitrate,
             'frequency': freq,
             'repeat_count': 1,

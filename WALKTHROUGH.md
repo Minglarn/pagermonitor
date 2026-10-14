@@ -1355,7 +1355,30 @@
   - Alla 27 enhetstester passerar.
   - Versionsbump till CalVer `2026.10.14.12`.
 
+---
 
-
-
-
+### 43. Dedikerat Protokollmärke i RF / META, Fix för Test-TMC och Synkad Versionsspårbarhet (v2026.10.14.14)
+- **Problembeskrivning**:
+  - Användaren önskade att tydligt se protokolltyp (`POCSAG`, `TETRA`, `RDS`, `AFSK`) i tabellens kolumn `RF / META`.
+  - Vid klick på RDS-mottagaren i vattenfallet (RF Activity) sattes sökfiltret till mottagarens frekvens `'auto'` istället för `'RDS'`, vilket resulterade i att inga larm matchades.
+  - När knappen för att skicka testsignal för RDS-TMC klickades uppstod ett backendfel: `NameError: name 'save_message' is not defined`.
+  - Sidopanelens versionsnummer visade `v2026.10.14.08` trots att nyare versioner hade publicerats.
+- **Teknisk Implementering**:
+  - **Dedikerade Protokoll-Badges ([index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+    - Implementerat logik som automatiskt härleder protokoll från meddelandedata och genererar färgkodade badges i kolumnen `RF / META`:
+      - `POCSAG`: Smaragdgrön (`.proto-pocsag`).
+      - `TETRA`: Bärnstensgul (`.proto-tetra`).
+      - `RDS`: Korallrosa (`.proto-rds`).
+      - `AFSK`: Indigoblå (`.proto-afsk`).
+    - Smart komplettering av bitrate-märket så att underprotokoll och hastigheter (`1200bps`, `SDS`, `NET`, `TMC`) visas utan redundans.
+  - **Protokoll-berikning i API & Databas ([database.py](file:///d:/antigravity/pager-monitor/database.py), [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+    - Fältet `protocol` inkluderas i alla utgående SSE-meddelanden och härleds i `get_recent_messages()`.
+  - **Åtgärdat Importfel vid RDS-TMC Testsignal ([app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+    - Importerat `save_message` i `app.py` så att testlarmet sparas och emitteras korrekt.
+  - **Korrigerat Waterfall-filter för RDS ([static/waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js))**:
+    - Klick på kanalen `RDS` filtrerar på `'RDS'` istället för `'auto'`, och inkommande `RDS-TMC`-larm mappas direkt till den befintliga `RDS`-kanalen.
+  - **Synkroniserad Versionshantering ([app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md))**:
+    - Uppdaterat `APP_VERSION` i `app.py` till `2026.10.14.14` vilket propageras automatiskt via context processorn till sidopanelen och footern i alla mallar.
+- **Verifiering**:
+  - Samtliga 27 enhetstester passerar (`python -m unittest discover tests`).
+  - Versionsbump till CalVer `2026.10.14.14`.

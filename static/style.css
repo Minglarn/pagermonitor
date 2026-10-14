@@ -748,6 +748,42 @@ th:first-child,
     border: 1px solid rgba(168, 85, 247, 0.45);
 }
 
+.badge.meta.badge-proto {
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.badge.meta.badge-proto.proto-pocsag {
+    background: rgba(16, 185, 129, 0.18);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.45);
+}
+
+.badge.meta.badge-proto.proto-tetra {
+    background: rgba(245, 158, 11, 0.18);
+    color: #fcd34d;
+    border: 1px solid rgba(245, 158, 11, 0.45);
+}
+
+.badge.meta.badge-proto.proto-rds {
+    background: rgba(244, 63, 94, 0.18);
+    color: #fda4af;
+    border: 1px solid rgba(244, 63, 94, 0.45);
+}
+
+.badge.meta.badge-proto.proto-afsk {
+    background: rgba(99, 102, 241, 0.18);
+    color: #a5b4fc;
+    border: 1px solid rgba(99, 102, 241, 0.45);
+}
+
+.badge.meta.badge-proto.proto-generic {
+    background: rgba(148, 163, 184, 0.18);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+}
+
 /* Light Mode Badges - High contrast, sharp readability */
 [data-theme="light"] .badge {
     background: #e0f2fe;
@@ -770,6 +806,36 @@ th:first-child,
     background: #f3e8ff;
     color: #6b21a8;
     border: 1px solid #c084fc;
+}
+
+[data-theme="light"] .badge.meta.badge-proto.proto-pocsag {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+[data-theme="light"] .badge.meta.badge-proto.proto-tetra {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+}
+
+[data-theme="light"] .badge.meta.badge-proto.proto-rds {
+    background: #ffe4e6;
+    color: #9f1239;
+    border: 1px solid #fda4af;
+}
+
+[data-theme="light"] .badge.meta.badge-proto.proto-afsk {
+    background: #e0e7ff;
+    color: #3730a3;
+    border: 1px solid #a5b4fc;
+}
+
+[data-theme="light"] .badge.meta.badge-proto.proto-generic {
+    background: #f1f5f9;
+    color: #475569;
+    border: 1px solid #cbd5e1;
 }
 
 [data-theme="light"] .badge.warning {

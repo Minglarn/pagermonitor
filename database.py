@@ -409,6 +409,15 @@ def get_recent_messages(limit=None, before_id=None, search=None, alerts_only=Fal
             msg['function_code'] = row[col_names.index('function_code')]
         if 'bitrate' in col_names:
             msg['bitrate'] = row[col_names.index('bitrate')]
+            b_val = str(msg['bitrate'] or '').strip()
+            if 'TETRA' in b_val or str(msg['address']).startswith('RAKEL-') or str(msg['address']).startswith('TETRA-'):
+                msg['protocol'] = 'TETRA'
+            elif 'RDS' in b_val or 'TMC' in b_val or str(msg['address']).startswith('E4:') or str(msg['address']).startswith('TMC-'):
+                msg['protocol'] = 'RDS-TMC'
+            elif 'AFSK' in b_val or 'UFSK' in b_val or msg['address'] == 'AFSK':
+                msg['protocol'] = 'AFSK'
+            elif 'POCSAG' in b_val or b_val.isdigit() or str(msg['address']).isdigit():
+                msg['protocol'] = 'POCSAG'
         if 'frequency' in col_names:
             msg['frequency'] = row[col_names.index('frequency')]
         if 'is_duplicate' in col_names:
