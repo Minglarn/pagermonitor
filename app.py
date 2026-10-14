@@ -27,6 +27,8 @@ except ImportError:
     def init_mqtt():
         pass
 from sdr_processor import start_sdr_thread, restart_sdr, on_new_message, get_sdr_runtime_status
+from vdl2_receiver import init_vdl2, restart_vdl2, get_vdl2_status, send_test_vdl2_message
+from sonde_receiver import init_sonde, restart_sonde, get_sonde_status, get_active_sondes_api, send_test_sonde_message
 from log_streamer import setup_log_capture, log_manager
 
 # Setup basic logging
@@ -115,7 +117,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.14.24"
+APP_VERSION = "2026.10.14.27"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
@@ -366,6 +368,41 @@ def handle_test_tmc():
         logger.error(f"Error generating test TMC message: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/vdl2/status')
+def vdl2_status():
+    """Returnerar aktuell anslutningsstatus och telemetri för VDL2."""
+    return jsonify(get_vdl2_status())
+
+@app.route('/api/vdl2/test', methods=['POST'])
+def vdl2_test():
+    """Skickar ett syntetiskt VDL2/ACARS-meddelande till databas och realtidsflöde."""
+    try:
+        res = send_test_vdl2_message()
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Error sending test VDL2 message: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/sonde/status')
+def sonde_status():
+    """Returnerar aktuell lyssnarstatus och telemetri för radiosondmottagaren."""
+    return jsonify(get_sonde_status())
+
+@app.route('/api/sonde/active')
+def sonde_active():
+    """Returnerar alla aktiva väderballonger med telemetri och flygspår."""
+    return jsonify(get_active_sondes_api())
+
+@app.route('/api/sonde/test', methods=['POST'])
+def sonde_test():
+    """Skickar en syntetisk väderballong (RS41-SG) till databas och realtidsflöde."""
+    try:
+        res = send_test_sonde_message()
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Error sending test Sonde message: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/api/settings/defaults')
 def settings_defaults():
     return jsonify(get_default_settings())
@@ -384,7 +421,9 @@ def handle_settings():
             'multimon_input_type', 'garbage_filter', 'garbage_filter_sensitivity',
             'duplicate_handling', 'duplicate_window',
             'auto_prune_enabled', 'auto_prune_days', 'log_tetra_basestations',
-            'tetra_scan_mode', 'tetra_dwell_time', 'tetra_skip_encrypted'
+            'tetra_scan_mode', 'tetra_dwell_time', 'tetra_skip_encrypted',
+            'vdl2_enabled', 'vdl2_host', 'vdl2_port', 'vdl2_filter_empty',
+            'sonde_enabled', 'sonde_udp_port', 'sonde_db_interval'
         ]
         sdr_restart_keys = {
             'frequency', 'gain', 'device_serial', 'multimon_verbosity', 
@@ -393,15 +432,27 @@ def handle_settings():
             'atan_math', 'oversampling', 'multimon_input_type',
             'tetra_scan_mode', 'tetra_dwell_time', 'tetra_skip_encrypted'
         }
+        vdl2_keys = {'vdl2_enabled', 'vdl2_host', 'vdl2_port', 'vdl2_filter_empty'}
+        sonde_keys = {'sonde_enabled', 'sonde_udp_port', 'sonde_db_interval'}
         sdr_restart_needed = False
+        vdl2_restart_needed = False
+        sonde_restart_needed = False
         for key in allowed_keys:
             if key in data:
                 update_setting(key, data[key])
                 if key in sdr_restart_keys:
                     sdr_restart_needed = True
+                if key in vdl2_keys:
+                    vdl2_restart_needed = True
+                if key in sonde_keys:
+                    sonde_restart_needed = True
         
         if sdr_restart_needed:
             restart_sdr()
+        if vdl2_restart_needed:
+            restart_vdl2()
+        if sonde_restart_needed:
+            restart_sonde()
             
         return jsonify({"status": "success"})
     
@@ -576,6 +627,8 @@ def notify_clients(message_data):
             client_queues.remove(q)
 
 on_new_message(notify_clients)
+init_vdl2(notify_clients)
+init_sonde(notify_clients)
 
 @app.route('/stream')
 def stream():

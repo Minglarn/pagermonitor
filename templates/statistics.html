@@ -803,6 +803,12 @@
             } else if (rawProto.includes('RDS') || rawProto.includes('TMC') || rawBitrate.toUpperCase().includes('RDS') || rawBitrate.toUpperCase().includes('TMC') || addrUpper.startsWith('E4:') || addrUpper.startsWith('TMC-') || aliasUpper.startsWith('RDS') || msgUpper.includes('RDS-TMC')) {
                 protoName = 'RDS';
                 protoClass = 'proto-rds';
+            } else if (rawProto.includes('VDL') || rawBitrate.toUpperCase().includes('VDL') || rawProto.includes('ACARS') || rawBitrate.toUpperCase().includes('ACARS') || msgUpper.includes('VDL2') || msgUpper.includes('ACARS')) {
+                protoName = 'VDL2';
+                protoClass = 'proto-vdl2';
+            } else if (rawProto.includes('SONDE') || rawBitrate.toUpperCase().includes('SONDE') || msgUpper.includes('VÄDERBALLONG') || msgUpper.includes('RADIOSOND')) {
+                protoName = 'SONDE';
+                protoClass = 'proto-sonde';
             } else if (rawProto.includes('AFSK') || rawProto.includes('UFSK') || rawBitrate.toUpperCase().includes('AFSK') || rawBitrate.toUpperCase().includes('UFSK') || addrUpper === 'AFSK') {
                 protoName = 'AFSK';
                 protoClass = 'proto-afsk';
@@ -829,6 +835,14 @@
                     } else if (bStr.toUpperCase() === 'RDS-TMC') {
                         formattedBitrate = 'TMC';
                     } else if (bStr.toUpperCase() === 'RDS') {
+                        formattedBitrate = '';
+                    } else if (bStr.toUpperCase().startsWith('VDL2-')) {
+                        formattedBitrate = bStr.substring(5);
+                    } else if (bStr.toUpperCase() === 'VDL2') {
+                        formattedBitrate = '';
+                    } else if (bStr.toUpperCase().startsWith('SONDE-')) {
+                        formattedBitrate = bStr.substring(6);
+                    } else if (bStr.toUpperCase() === 'SONDE') {
                         formattedBitrate = '';
                     } else if (/^POCSAG\s*\d+$/i.test(bStr)) {
                         formattedBitrate = bStr.replace(/^POCSAG\s*/i, '') + 'bps';

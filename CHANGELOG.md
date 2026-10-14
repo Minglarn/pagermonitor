@@ -5,6 +5,76 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.27] - Radiosond- och Väderballongsintegration via radiosonde_auto_rx UDP-ström
+
+- **UDP Telemetrimottagare (`sonde_receiver.py`)**:
+  - Implementerat en asynkron bakgrundslyssnare på UDP-port `55673` för att ta emot realtidstelemetri (`PAYLOAD_SUMMARY`) från `radiosonde_auto_rx`.
+  - Stöd för kända radiosondmodeller (Vaisala RS41, RS41-SG, RS92, GRAW DFM-09, Meteomodem M10/M20, m.fl.).
+- **Smart Flödeshantering & Skydd mot Databasöverbelastning**:
+  - Väderballonger sänder telemetri varje sekund under 2-3 timmar (~9 000 paket per flygning).
+  - Implementerat en aktiv rad per flygning i databasen som uppdateras med rate-limiting (standard var 5:e sekund) via `repeat_update` och SQL UPDATE.
+  - Varje sekund skickas lättviktig `sonde_telemetry` via SSE direkt till webbläsaren för silkesmjuka kartuppdateringar utan onödig databasbelastning.
+- **Milstolpar och Händelselogik under Flygning**:
+  - **Start**: Sparas som en separat händelse i databasen när en ny ballong upptäcks.
+  - **Sprängning (Burst)**: Detekteras automatiskt när ballongen nått över 8 000 m och faller kraftigt (sjunkhastighet < -4 m/s och fallit > 250 m från maxhöjd). Loggar maxhöjd och sparar milstolpen i databasen.
+  - **Landning**: Detekteras automatiskt när ballongen når under 350 m eller stannar vid marken. Sparar slutposition och landningshöjd.
+- **Gränssnitt och Inställningar**:
+  - Ny flik "Radiosonder" i inställningspanelen med realtidsstatus, mottagna UDP-paket, aktiva sonder i luften och maxhöjdrekord.
+  - Möjlighet att konfigurera lyssnarport (standard 55673) och databasintervall.
+  - Testknapp för syntetisk radiosond (RS41-SG) för omedelbar verifiering.
+  - Nya protokollmärken för `SONDE` med specialanpassad färgprofil i mörkt och ljust läge.
+- **Enhetstester**:
+  - Tillagt `tests/test_sonde.py` som validerar modellavkodning, telemetriprompt, flygfasdetektering (ascent, burst, landing) och API-status.
+
+## [2026.10.14.26] - Avancerad MIAM Airbus Telemetri, Mönster 1-4 Geoparsning och Identifieringslyft
+
+- **MIAM Airbus Telemetriavlastning (`vdl2_receiver.py`)**:
+  - Implementerat prioriterad extrahering av uppackad Airbus-telemetri via `vdl2.avlc.acars.miam.single_transfer.miam_core.data.acars.msg_text`.
+  - Den råa komprimerade Base85-strängen i ACARS ignoreras automatiskt till förmån för klartextmeddelandet.
+- **Multimönster Positions- och Telemetriextrahering (`extract_position_and_telemetry`)**:
+  - **Mönster 1 (Airbus MIAM/FDIMU semikolon-format)**:
+    - Extraherar `PALAT` och `PALONG` med flyttalskonvertering och vetenskaplig notation (`5.875309E+01` -> 58.75309° N, `1.543292E+01` -> 15.43292° E).
+    - Extraherar `PAALT` (flygnivå FL), `PASAT` (temperatur °C), `PAFOB` (bränsle kg), `PAMN` (Mach-tal), `PATHDG` (kurs/heading), `PAFMSAWID` (aktiv waypoint), `PAGWTFQMS` (bruttovikt kg) och `PAWS` (vindhastighet kt).
+    - Bygger en strukturerad telemetrisammanfattning direkt i meddelandet och metadatan.
+  - **Mönster 2 (Standard decimalformat, t.ex. Ryanair Label 16)**:
+    - Extraherar `N 56.955 E 17.322` samt flyghöjd från intilliggande kommaseparerade fält (`37012` -> FL370).
+  - **Mönster 3 (Kompakt DM-format, t.ex. Finnair Label H1)**:
+    - Konverterar `POSN58525E018360` till decimala koordinater: `N58525` = 58° + 52.5'/60 = 58.875°, `E018360` = 18° + 36.0'/60 = 18.600°.
+  - **Mönster 4 (XID / GSIF / ADS-C struktur)**:
+    - Fallback till `xid.ac_location` och `adsc.basic_report` direkt ur JSON om meddelandetexten saknar koordinater.
+- **CPDLC Flygledningsparsning**:
+  - Fullständig avkodning av `vdl2.avlc.x25.clnp.cotp.cpdlc` samt ARINC 622 CPDLC med märkningen `[CPDLC]`.
+- **Rensad Registrering, Adressering och SNR**:
+  - Rensar automatiskt bort inledande punkter i registrering (t.ex. `".OH-LWI"` -> `"OH-LWI"`).
+  - Formaterar adress/avsändare till komplett format: `Flight (Reg) [ICAO]` (t.ex. `AY1338 (OH-LWI) [461F50]`).
+  - Beräknar mottagnings-SNR i realtid (`sig_level - noise_level` dB) och presenterar det i meddelandesträngen och metadatan.
+- **Strikt Paketfiltrering**:
+  - Filtrerar bort tomma signallänkar (t.ex. `AVLC Receive Ready` och `X.224 COTP Data Ack`) när filterinställningen är aktiverad.
+
+## [2026.10.14.25] - VDL Mode 2 / Flygdata TCP-integration mot dumpvdl2 och acars_router
+
+- **Nätverksbaserad VDL2-mottagare (`vdl2_receiver.py`)**:
+  - Implementerat en asynkron bakgrundsklient som strömmar färdigavkodade VDL Mode 2-meddelanden över TCP (standard: `192.168.1.242:15555`) direkt från användarens befintliga `dumpvdl2` / `acars_router`-container.
+  - Eliminerat behovet av ytterligare USB-hårdvarulås och kompilering av tunga C-binärer i Pager-Monitors egen container.
+  - Inbyggd automatisk återanslutning med exponentiell backoff vid nätverksavbrott eller omstart av router-containern.
+- **Intelligent JSON- och Meddelandeparsning**:
+  - Stöd för både dumpvdl2:s hierarkiska protokollstruktur (`vdl2` -> `avlc` -> `acars` / `cpdlc` / `x25`) samt normaliserade routerformat.
+  - Extraherar flygnummer (flight), registrering (reg/tail), ICAO 24-bit hexadress, mottagningsfrekvens, signalkvalitet och ACARS label-koder.
+  - Avkodning av CPDLC (Controller-Pilot Data Link Communications) flygledningsmeddelanden och positionsrapporter med koordinatparsning (Lat/Lon).
+- **Berikad Flygbolags- och Label-mappning**:
+  - Inbyggt uppslagsregister för nordiska och internationella flygbolag (SAS, Norwegian, Finnair, Ryanair, Lufthansa, British Airways m.fl.) som automatiskt fyller i aliasfältet med flygbolagsnamn och flygplansregistrering.
+  - Svenska beskrivningar för standardiserade ACARS labels (Positionsrapporter, OOOI-tider, Väder/METAR, Tekniska statusrapporter m.m.).
+- **Filtrering och Duplikathantering**:
+  - Inställningsbart filter (`vdl2_filter_empty`) för att ignorera tomma radiohandskakningar/signallänksramar och enbart spara meningsfulla textmeddelanden.
+  - Integrerad med Pager-Monitors duplikatskydd och sammanfogningslogik (merge/discard).
+- **Dedikerat Webbgränssnitt för VDL2 / Flygdata**:
+  - Ny flik **VDL2 / Flygdata** i Inställningar med realtidstelemetri (anslutningsstatus, antal mottagna nätverkspaket, avkodade meddelanden, senast sedda flygplan och tidsstämpel).
+  - Direkt konfigurering av värdadress (IP), TCP-port och innehållsfiltrering med omedelbar autosparning.
+  - Testknapp för att skicka syntetiska VDL2/ACARS-testlarm (`/api/vdl2/test`) direkt till realtidsflödet, databasen och larmtabellen.
+- **UI och Protokollstöd (`style.css`, `index.html`, `larm.html`, `statistics.html`)**:
+  - Ny flygblå protokollbricka (`proto-vdl2`) för både mörkt och ljust tema.
+  - Integrerad presentation i realtidsflödet, larmlistan och statistiksidan.
+
 ## [2026.10.14.24] - Fix för Global UnboundLocalError i Sessionsloop och Realistisk Dwell-tid vid FM-skanning
 
 - **Åtgärdat `UnboundLocalError` i `run_rds_session` (`rds_decoder.py`)**:

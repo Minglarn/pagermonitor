@@ -101,6 +101,12 @@
                         <button class="tab-trigger" onclick="switchTab('maintenance')">
                             <i class="fas fa-database" style="margin-right: 6px;"></i> Database & Storage
                         </button>
+                        <button class="tab-trigger" onclick="switchTab('vdl2')">
+                            <i class="fas fa-plane" style="margin-right: 6px;"></i> VDL2 / Flygdata
+                        </button>
+                        <button class="tab-trigger" onclick="switchTab('sonde')">
+                            <i class="fas fa-satellite" style="margin-right: 6px;"></i> Radiosonder
+                        </button>
                     </div>
 
                     <!-- TAB 1: SDR RECEIVERS -->
@@ -543,6 +549,199 @@
                         </div>
                     </div>
 
+                    <!-- TAB 4: VDL2 / FLYGDATA -->
+                    <div id="tab-vdl2" class="tab-content">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">VDL Mode 2 / Flygdata (dumpvdl2)</h3>
+                                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
+                                    Ta emot avkodade ACARS, CPDLC och flygtrafikmeddelanden från din dumpvdl2/acars_router-instans via TCP-nätverksström.
+                                </p>
+                            </div>
+                            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                <button type="button" class="secondary-btn" onclick="sendTestVdl2Alert()"
+                                    style="border-color: #38bdf8; color: #38bdf8; padding: 0.55rem 1.1rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-paper-plane"></i> Skicka Test-ACARS
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Status Cards Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Anslutningsstatus</div>
+                                <div id="vdl2StatusBadge" style="display: inline-block; padding: 0.3rem 0.75rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem; background: rgba(148, 163, 184, 0.15); color: #cbd5e1;">Laddar...</div>
+                                <div id="vdl2StatusText" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; word-break: break-all;">-</div>
+                            </div>
+                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Mottagna Nätverkspaket</div>
+                                <div id="vdl2PacketsCount" style="font-size: 1.6rem; font-weight: 800; color: #38bdf8;">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Totalt från TCP-uttag</div>
+                            </div>
+                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Avkodade Textmeddelanden</div>
+                                <div id="vdl2MessagesCount" style="font-size: 1.6rem; font-weight: 800; color: #10b981;">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">ACARS / CPDLC sparade</div>
+                            </div>
+                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Senaste Flygplan</div>
+                                <div id="vdl2LastFlight" style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary);">-</div>
+                                <div id="vdl2LastTime" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Ingen aktivitet ännu</div>
+                            </div>
+                        </div>
+
+                        <!-- Settings Form -->
+                        <div class="glass-panel" style="padding: 1.5rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                            <h4 style="margin: 0 0 1.25rem 0; color: var(--text-primary); font-size: 1.05rem;">
+                                <i class="fas fa-network-wired" style="color: #38bdf8; margin-right: 8px;"></i> Nätverkskonfiguration för VDL2
+                            </h4>
+
+                            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">Aktivera VDL2-mottagare</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                                            Anslut automatiskt i bakgrunden till dumpvdl2/acars_router och mata inkommande meddelanden till databasen.
+                                        </div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="vdl2_enabled" onchange="autoSaveVdl2Settings()">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
+                                    <div>
+                                        <label style="display: block; font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.4rem;">
+                                            Värdadress / IP
+                                        </label>
+                                        <input type="text" id="vdl2_host" class="form-input" value="192.168.1.242"
+                                            style="width: 100%; padding: 0.55rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text-primary);"
+                                            onchange="autoSaveVdl2Settings()">
+                                        <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+                                            IP-adress eller värdnamn till maskinen eller containern som kör dumpvdl2 eller acars_router.
+                                        </small>
+                                    </div>
+
+                                    <div>
+                                        <label style="display: block; font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.4rem;">
+                                            TCP-port
+                                        </label>
+                                        <input type="number" id="vdl2_port" class="form-input" value="15555" min="1" max="65535"
+                                            style="width: 100%; padding: 0.55rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text-primary);"
+                                            onchange="autoSaveVdl2Settings()">
+                                        <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+                                            Standardport för VDL2 JSON-ström (t.ex. <code>15555</code> för acars_router VDLM2 server).
+                                        </small>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">Filtrera bort tomma signallänksramar</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                                            Logga endast meddelanden som faktiskt innehåller text (ACARS eller CPDLC). Förhindrar att tusentals tomma länksynkar sparas.
+                                        </div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="vdl2_filter_empty" checked onchange="autoSaveVdl2Settings()">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 5: RADIOSONDER / VÄDERBALLONGER -->
+                    <div id="tab-sonde" class="tab-content">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+                            <div>
+                                <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">Radiosonder / Väderballonger (radiosonde_auto_rx)</h3>
+                                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
+                                    Ta emot och spåra telemetri från radiosonder (RS41, DFM, m.fl.) i realtid via UDP-port 55673 (PAYLOAD_SUMMARY).
+                                </p>
+                            </div>
+                            <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                <button type="button" class="secondary-btn" onclick="sendTestSondeAlert()"
+                                    style="border-color: #c084fc; color: #c084fc; padding: 0.55rem 1.1rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-paper-plane"></i> Skicka Test-Sond
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Status Cards Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Lyssnarstatus</div>
+                                <div id="sondeStatusBadge" style="display: inline-block; padding: 0.3rem 0.75rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem; background: rgba(148, 163, 184, 0.15); color: #cbd5e1;">Laddar...</div>
+                                <div id="sondeStatusText" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; word-break: break-all;">-</div>
+                            </div>
+                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Mottagna UDP-paket</div>
+                                <div id="sondePacketsCount" style="font-size: 1.6rem; font-weight: 800; color: #c084fc;">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Totalt från radiosonde_auto_rx</div>
+                            </div>
+                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Aktiva Ballonger</div>
+                                <div id="sondeActiveCount" style="font-size: 1.6rem; font-weight: 800; color: #10b981;">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">I luften just nu</div>
+                            </div>
+                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Senaste Sond & Maxhöjd</div>
+                                <div id="sondeLastSonde" style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary);">-</div>
+                                <div id="sondeLastTime" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Ingen aktivitet ännu</div>
+                            </div>
+                        </div>
+
+                        <!-- Settings Form -->
+                        <div class="glass-panel" style="padding: 1.5rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                            <h4 style="margin: 0 0 1.25rem 0; color: var(--text-primary); font-size: 1.05rem;">
+                                <i class="fas fa-network-wired" style="color: #c084fc; margin-right: 8px;"></i> UDP-konfiguration för radiosonde_auto_rx
+                            </h4>
+
+                            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">Aktivera Radiosondmottagare</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                                            Öppnar en lokal UDP-socket som tar emot strömmande telemetri från radiosonde_auto_rx.
+                                        </div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="sonde_enabled" onchange="autoSaveSondeSettings()">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
+                                    <div>
+                                        <label style="display: block; font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.4rem;">
+                                            UDP Lyssnarport
+                                        </label>
+                                        <input type="number" id="sonde_udp_port" class="form-input" value="55673" min="1" max="65535"
+                                            style="width: 100%; padding: 0.55rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text-primary);"
+                                            onchange="autoSaveSondeSettings()">
+                                        <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+                                            Port dit <code>radiosonde_auto_rx</code> skickar sina <code>PAYLOAD_SUMMARY</code> UDP-paket (standard <code>55673</code>).
+                                        </small>
+                                    </div>
+
+                                    <div>
+                                        <label style="display: block; font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.4rem;">
+                                            Databasintervall (sekunder)
+                                        </label>
+                                        <input type="number" id="sonde_db_interval" class="form-input" value="5" min="1" max="60"
+                                            style="width: 100%; padding: 0.55rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text-primary);"
+                                            onchange="autoSaveSondeSettings()">
+                                        <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+                                            Hur ofta den aktiva raden i databasen uppdateras (standard 5s) för att undvika överbelastning av SQLite.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="statusMessage" class="status-message"></div>
                 </div>
             </main>
@@ -686,6 +885,9 @@
             };
         }
 
+        let vdl2PollInterval = null;
+        let sondePollInterval = null;
+
         function switchTab(tabId) {
             document.querySelectorAll('.tab-trigger').forEach(btn => btn.classList.remove('active'));
             const activeBtn = document.querySelector(`.tab-trigger[onclick="switchTab('${tabId}')"]`);
@@ -699,6 +901,25 @@
                 loadSDRs();
             } else if (tabId === 'maintenance') {
                 loadDatabaseStats();
+            } else if (tabId === 'vdl2') {
+                loadVdl2Status();
+                if (!vdl2PollInterval) {
+                    vdl2PollInterval = setInterval(loadVdl2Status, 3000);
+                }
+            } else if (tabId === 'sonde') {
+                loadSondeStatus();
+                if (!sondePollInterval) {
+                    sondePollInterval = setInterval(loadSondeStatus, 3000);
+                }
+            }
+
+            if (tabId !== 'vdl2' && vdl2PollInterval) {
+                clearInterval(vdl2PollInterval);
+                vdl2PollInterval = null;
+            }
+            if (tabId !== 'sonde' && sondePollInterval) {
+                clearInterval(sondePollInterval);
+                sondePollInterval = null;
             }
         }
 
@@ -1066,12 +1287,177 @@
                         rdsHbToEl.value = data.rds_heartbeat_timeout;
                     }
 
+                    const vdl2EnEl = document.getElementById('vdl2_enabled');
+                    if (vdl2EnEl) vdl2EnEl.checked = (data.vdl2_enabled !== 'false');
+                    const vdl2HostEl = document.getElementById('vdl2_host');
+                    if (vdl2HostEl && data.vdl2_host) vdl2HostEl.value = data.vdl2_host;
+                    const vdl2PortEl = document.getElementById('vdl2_port');
+                    if (vdl2PortEl && data.vdl2_port) vdl2PortEl.value = data.vdl2_port;
+                    const vdl2FiltEl = document.getElementById('vdl2_filter_empty');
+                    if (vdl2FiltEl) vdl2FiltEl.checked = (data.vdl2_filter_empty !== 'false');
+
+                    const sondeEnEl = document.getElementById('sonde_enabled');
+                    if (sondeEnEl) sondeEnEl.checked = (data.sonde_enabled !== 'false');
+                    const sondePortEl = document.getElementById('sonde_udp_port');
+                    if (sondePortEl && data.sonde_udp_port) sondePortEl.value = data.sonde_udp_port;
+                    const sondeIntEl = document.getElementById('sonde_db_interval');
+                    if (sondeIntEl && data.sonde_db_interval) sondeIntEl.value = data.sonde_db_interval;
+
                     document.getElementById('filterSensitivityGroup').style.display =
                         (data.garbage_filter !== 'false') ? 'block' : 'none';
 
                     updatePreviewUI();
                 })
                 .catch(err => console.error('Could not load global settings:', err));
+        }
+
+        function loadVdl2Status() {
+            fetch('/api/vdl2/status')
+                .then(res => res.json())
+                .then(data => {
+                    const badge = document.getElementById('vdl2StatusBadge');
+                    const text = document.getElementById('vdl2StatusText');
+                    const packets = document.getElementById('vdl2PacketsCount');
+                    const messages = document.getElementById('vdl2MessagesCount');
+                    const flight = document.getElementById('vdl2LastFlight');
+                    const time = document.getElementById('vdl2LastTime');
+
+                    if (badge) {
+                        if (data.connected) {
+                            badge.style.background = 'rgba(16, 185, 129, 0.2)';
+                            badge.style.color = '#34d399';
+                            badge.innerText = 'Ansluten';
+                        } else if (data.status_text && data.status_text.includes('Inaktiverad')) {
+                            badge.style.background = 'rgba(148, 163, 184, 0.15)';
+                            badge.style.color = '#94a3b8';
+                            badge.innerText = 'Inaktiverad';
+                        } else {
+                            badge.style.background = 'rgba(239, 68, 68, 0.2)';
+                            badge.style.color = '#f87171';
+                            badge.innerText = 'Frånkopplad';
+                        }
+                    }
+                    if (text) text.innerText = data.status_text || '-';
+                    if (packets) packets.innerText = (data.packets_received || 0).toLocaleString();
+                    if (messages) messages.innerText = (data.messages_decoded || 0).toLocaleString();
+                    if (flight) flight.innerText = data.last_flight || '-';
+                    if (time) {
+                        if (data.last_message_time) {
+                            const d = new Date(data.last_message_time);
+                            time.innerText = 'Senaste: ' + d.toLocaleTimeString();
+                        } else {
+                            time.innerText = 'Ingen aktivitet ännu';
+                        }
+                    }
+                })
+                .catch(err => console.error('Could not fetch VDL2 status:', err));
+        }
+
+        function autoSaveVdl2Settings() {
+            const payload = {
+                vdl2_enabled: document.getElementById('vdl2_enabled').checked ? 'true' : 'false',
+                vdl2_host: document.getElementById('vdl2_host').value.trim() || '192.168.1.242',
+                vdl2_port: document.getElementById('vdl2_port').value.trim() || '15555',
+                vdl2_filter_empty: document.getElementById('vdl2_filter_empty').checked ? 'true' : 'false'
+            };
+            saveSettings(payload).then(() => {
+                setTimeout(loadVdl2Status, 600);
+            });
+        }
+
+        async function sendTestVdl2Alert() {
+            try {
+                const res = await fetch('/api/vdl2/test', { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    showStatus('Syntetiskt VDL2-larm skickat (SK142)! Kontrollera larmtabellen.', 'success');
+                    loadVdl2Status();
+                } else {
+                    showStatus('Fel vid sändning av testmeddelande: ' + (data.message || 'Okänt fel'), 'error');
+                }
+            } catch (err) {
+                console.error('Error sending test VDL2 message:', err);
+                showStatus('Kunde inte skicka test-VDL2.', 'error');
+            }
+        }
+
+        function loadSondeStatus() {
+            fetch('/api/sonde/status')
+                .then(res => res.json())
+                .then(data => {
+                    const badge = document.getElementById('sondeStatusBadge');
+                    const text = document.getElementById('sondeStatusText');
+                    const packets = document.getElementById('sondePacketsCount');
+                    const active = document.getElementById('sondeActiveCount');
+                    const lastSonde = document.getElementById('sondeLastSonde');
+                    const time = document.getElementById('sondeLastTime');
+
+                    if (badge) {
+                        if (data.listening) {
+                            badge.style.background = 'rgba(16, 185, 129, 0.2)';
+                            badge.style.color = '#34d399';
+                            badge.innerText = 'Lyssnar (UDP ' + (data.port || '55673') + ')';
+                        } else if (data.status_text && data.status_text.includes('Inaktiverad')) {
+                            badge.style.background = 'rgba(148, 163, 184, 0.15)';
+                            badge.style.color = '#94a3b8';
+                            badge.innerText = 'Inaktiverad';
+                        } else {
+                            badge.style.background = 'rgba(239, 68, 68, 0.2)';
+                            badge.style.color = '#f87171';
+                            badge.innerText = 'Fel / Stängd';
+                        }
+                    }
+                    if (text) text.innerText = data.status_text || '-';
+                    if (packets) packets.innerText = (data.packets_received || 0).toLocaleString();
+                    if (active) active.innerText = (data.active_sondes || 0).toLocaleString();
+                    if (lastSonde) {
+                        if (data.last_callsign) {
+                            lastSonde.innerText = `${data.last_callsign} (${data.last_model || 'Sond'})`;
+                        } else {
+                            lastSonde.innerText = '-';
+                        }
+                    }
+                    if (time) {
+                        if (data.last_packet_time) {
+                            const d = new Date(data.last_packet_time);
+                            let tStr = 'Senaste: ' + d.toLocaleTimeString();
+                            if (data.max_altitude_record) {
+                                tStr += ` | Maxhöjd: ${Number(data.max_altitude_record).toLocaleString()} m`;
+                            }
+                            time.innerText = tStr;
+                        } else {
+                            time.innerText = 'Ingen aktivitet ännu';
+                        }
+                    }
+                })
+                .catch(err => console.error('Could not fetch Sonde status:', err));
+        }
+
+        function autoSaveSondeSettings() {
+            const payload = {
+                sonde_enabled: document.getElementById('sonde_enabled').checked ? 'true' : 'false',
+                sonde_udp_port: document.getElementById('sonde_udp_port').value.trim() || '55673',
+                sonde_db_interval: document.getElementById('sonde_db_interval').value.trim() || '5'
+            };
+            saveSettings(payload).then(() => {
+                setTimeout(loadSondeStatus, 600);
+            });
+        }
+
+        async function sendTestSondeAlert() {
+            try {
+                const res = await fetch('/api/sonde/test', { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    showStatus('Syntetiskt Radiosond-larm skickat (V1420512 RS41-SG)! Kontrollera larmtabellen.', 'success');
+                    loadSondeStatus();
+                } else {
+                    showStatus('Fel vid sändning av test-radiosond: ' + (data.message || 'Okänt fel'), 'error');
+                }
+            } catch (err) {
+                console.error('Error sending test Sonde message:', err);
+                showStatus('Kunde inte skicka test-radiosond.', 'error');
+            }
         }
 
         async function clearBasestationLogs() {

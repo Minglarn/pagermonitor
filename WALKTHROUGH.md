@@ -1,8 +1,8 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.13.32`
-- **Date**: 2026-10-13
+- **CalVer**: `2026.10.14.26`
+- **Date**: 2026-10-14
 - **Language**: English / Swedish
 
 ---
@@ -1617,5 +1617,102 @@
 - **Verifiering**:
   - AST-kontroll validerar att inga globala variabler skuggas i modulens funktioner.
   - Samtliga 27 enhetstester passerar utan anmärkning (`python -m unittest discover tests`).
+
+### 53. VDL Mode 2 / Flygdata TCP-integration mot dumpvdl2 och acars_router (v2026.10.14.25)
+- **Bakgrund och Behov**:
+  - Användaren kör redan en separat `dumpvdl2`-container (`ghcr.io/sdr-enthusiasts/docker-dumpvdl2:latest`) på samma host (`192.168.1.242`) tillsammans med `acars2pos_vdml`.
+  - Istället för att installera en extra RTL-SDR eller kompilera `dumpvdl2` inuti Pager-Monitor önskades en ren nätverksintegration för att strömma färdigavkodad VDL2/ACARS-data direkt till Pager-Monitors gränssnitt, databas och realtidsflöde.
+  - I arkitekturen skickar `dumpvdl2` data via ZeroMQ till port 35555 (`acars_router`), som i sin tur serverar färdig VDL2-JSON över TCP på port **`15555`** (`tcp://192.168.1.242:15555`).
+- **Teknisk Implementering**:
+  - **Asynkron Nätverksklient ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+    - Implementerat en dedikerad bakgrundstråd som ansluter till `tcp://192.168.1.242:15555`.
+    - Automatisk återanslutning med exponentiell backoff (3s upp till 30s) ifall routern startas om.
+    - Läser inkommande JSON rad för rad utan att blockera webbservern.
+  - **Avancerad JSON-dekoder ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+    - Hanterar både dumpvdl2:s hierarkiska JSON (`vdl2 -> avlc -> acars / cpdlc / x25`) samt normaliserade fält.
+    - Extraherar flygnummer (flight), registrering (reg/tail), ICAO-adress (24-bit hex), frekvens (t.ex. `136.975M`), signalnivå och ACARS label-kod.
+    - CPDLC-avkodare: Strukturerar flygledningsmeddelanden (uplink/downlink-klareringar och instruktioner) till ren klartext.
+    - Geoparsning: Extraherar latitud och longitud ur både JSON och rå ACARS-text (t.ex. `/POS 59.35N 018.00E`), vilket möjliggör kartplacering.
+  - **Berikad Flygbolags- och Label-mappning ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+    - Automatisk mappning av flygbolagsprefix (SAS, Norwegian, Finnair, Ryanair, Lufthansa m.fl.) som fyller aliasfältet (t.ex. `SAS Scandinavian Airlines (SE-ROP)`).
+    - Svenska beskrivningar för standardiserade ACARS labels (Positionsrapporter, OOOI-tider, Väder/METAR, Tekniska rapporter).
+  - **Smart Filtrering och Duplikathantering ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+    - Inställningen `vdl2_filter_empty` (standard: `true`) filtrerar bort tomma signallänksramar och loggar endast faktiska meddelanden.
+    - Integrerad med Pager-Monitors duplikathantering (`merge`/`discard`) och `increment_message_repeat`.
+  - **Webbgränssnitt och Telemetri ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+    - Ny flik **VDL2 / Flygdata** i Inställningar.
+    - Realtids-KPI:er: Anslutningsstatus (Ansluten / Frånkopplad / Inaktiv), mottagna TCP-paket, avkodade textmeddelanden, senast sedda flygplan och tidsstämpel.
+    - Konfigurering för värd-IP (`192.168.1.242`), TCP-port (`15555`) och filter med omedelbar autosparning.
+    - Testknapp för att skicka syntetiska test-ACARS (`/api/vdl2/test`).
+  - **UI-styling och Protokollstöd ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+    - Ny flygblå badge (`proto-vdl2`) för både mörkt och ljust tema.
+    - Korrekt rendering i live-flödet, larmlistan och statistiken.
+- **Verifiering**:
+  - Enhetstester verifierade med `python -c` för dumpvdl2 ACARS-ram, positions- och koordinatparsning, tomt ramfilter och testlarm-injektion.
+  - Importkontroll och bakgrundsstart verifierad.
+
+### 54. MIAM Airbus Telemetriavlastning, Mönster 1-4 Geoparsning och Utökad Avsändarformatering (v2026.10.14.26)
+- **Bakgrund och Problem**:
+  - Vid analys av användarens liveström från `dumpvdl2` påträffades flera specifika protokollstrukturer och telemetriformat:
+    1. Airbus använder MIAM (Media Independent Aircraft Messaging) där ACARS-texten komprimeras med Base85. I `dumpvdl2` packas detta upp under `vdl2.avlc.acars.miam.single_transfer.miam_core.data.acars.msg_text`. Den tidigare parsern sparade den oläsliga Base85-strängen från yttre `msg_text`.
+    2. Flygplansmeddelanden sänder positionsdata och telemetri i flera olika proprietära och standardiserade format (Airbus FDIMU med vetenskaplig notation, Ryanair decimalformat och Finnair kompakt DM-format).
+    3. Registreringar kan innehålla inledande punkter (t.ex. `.OH-LWI`).
+    4. Användaren önskade att adress/avsändare i Pager-Monitor visar fullständig identitet: `Flight (Reg) [ICAO]`, samt frekvens och beräknat SNR (`sig_level - noise_level` dB).
+- **Teknisk Implementering**:
+  - **Prioriterad MIAM Extrahering ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+    - Kontrollerar först om `vdl2.avlc.acars.miam.single_transfer.miam_core.data.acars.msg_text` finns. Om så är fallet används den uppackade texten och Base85-strängen ignoreras.
+  - **Mönster 1: Airbus MIAM / FDIMU semikolon-format ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+    - Extraherar `PALAT` och `PALONG` med `float()` (klarar vetenskaplig notation som `5.875309E+01` och `1.543292E+01`).
+    - Tolkar `PAALT` (fot), `PASAT` (temp °C), `PAFOB` (bränsle kg), `PAMN` (Mach), `PATHDG` (kurs), `PAFMSAWID` (waypoint), `PAGWTFQMS` (bruttovikt) och `PAWS` (vind kt).
+    - Genererar strukturerad telemetrisammanfattning: `[FL410 | Waypoint: RIRIP | Mach 0.84 | Kurs: 52° | Temp: -63.5°C | Bränsle: 8810 kg | Vind: 80 kt]`.
+  - **Mönster 2: Standard decimalformat ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+    - Extraherar `N 56.955 E 17.322` samt flyghöjd ur kommaseparerade fält (t.ex. `37012` -> FL370).
+  - **Mönster 3: Kompakt DM-format ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+    - Konverterar `POSN58525E018360`:
+      - `N58525` = 58° + 52.5'/60 = 58.875°
+      - `E018360` = 18° + 36.0'/60 = 18.600°
+  - **Mönster 4: Fallback till XID och ADS-C ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+    - Om meddelandetexten saknar koordinater kontrolleras `xid.ac_location` och `adsc.basic_report` i JSON.
+  - **Fullständig Avsändarformatering och SNR ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+    - Rensa ledande punkter: `.OH-LWI` -> `OH-LWI`.
+    - Formaterar adress: `AY1338 (OH-LWI) [461F50]`.
+    - Beräknar mottagnings-SNR: `sig_level - noise_level` dB (t.ex. `SNR: +36.0 dB`).
+### 55. Radiosond- och Väderballongsintegration via radiosonde_auto_rx UDP-ström (v2026.10.14.27)
+- **Bakgrund och Problem**:
+  - Användaren önskade integrera väderballonger (radiosonder) i Pager-Monitor i realtid från `radiosonde_auto_rx`.
+  - `radiosonde_auto_rx` skickar sammanfattande JSON-telemetri (`PAYLOAD_SUMMARY`) via UDP på port `55673`.
+  - En radiosond sänder telemetri varje sekund under 2-3 timmar (~9 000 paket per flygning). Att spara varje paket som en separat rad i SQLite skulle leda till extrem databasuppsvällning och spam i meddelandelistan, samtidigt som kartan kräver frekventa positionsuppdateringar.
+- **Teknisk Implementering**:
+  - **Asynkron UDP-lyssnare ([sonde_receiver.py](file:///d:/antigravity/pager-monitor/sonde_receiver.py))**:
+    - Byggt `SondeReceiver` och `SondeState` som binder till UDP `0.0.0.0:55673` i bakgrunden.
+    - Avkodar JSON-paket av typen `PAYLOAD_SUMMARY` med kända sonder (Vaisala RS41, RS41-SG, RS92, GRAW DFM, Meteomodem M10/M20, LMS6, m.fl.).
+    - Formaterar frekvens och anropssignal, och spårar flygväg (upp till 500 historiska punkter per ballong).
+  - **Smart Flödeshantering & Skydd mot Databasöverbelastning ([sonde_receiver.py](file:///d:/antigravity/pager-monitor/sonde_receiver.py))**:
+    - **Aktiv rad i databasen**: När en ny ballong upptäcks skapas en aktiv rad i databasen. Denna rad uppdateras periodiskt (standard var 5:e sekund) med `UPDATE messages SET message = ?, repeat_count = ?, last_timestamp = ? WHERE id = ?`.
+    - **Realtids-SSE**: Varje 1-sekundspaket skickas som ett `sonde_telemetry`-event direkt till frontendens anslutna klienter via SSE utan att skriva till databasen, vilket ger silkesmjuka kartuppdateringar i realtid.
+  - **Milstolpar och Händelselogik ([sonde_receiver.py](file:///d:/antigravity/pager-monitor/sonde_receiver.py))**:
+    - **Start**: Sparas som en separat rad med bitrate `SONDE-START` när en ny ballong upptäcks.
+    - **Sprängning (Burst)**: Detekteras automatiskt när ballongen nått över 8 000 meter och sjunker kraftigt (`vel_v < -4 m/s` och fallit minst 250 m från maxhöjd). Loggas som `[SPRÄNGNING/BURST]` med maxhöjd och bitrate `SONDE-BURST`.
+    - **Landning**: Detekteras automatiskt när ballongen når under 350 m höjd eller stannar vid marken. Loggas som `[LANDNING]` med slutposition, batterispänning och bitrate `SONDE-LAND`.
+  - **Databas & API-endpoints ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+    - Standardinställningar tillagda i databasen: `sonde_enabled: 'true'`, `sonde_udp_port: '55673'`, `sonde_db_interval: '5'`.
+    - Nya API-rutter:
+      - `GET /api/sonde/status`: Returnerar lyssnarstatus, port, paketantal, aktiva sonder och maxhöjdrekord.
+      - `GET /api/sonde/active`: Returnerar aktiva ballonger med positionsspår för kartor.
+      - `POST /api/sonde/test`: Skickar en syntetisk RS41-SG ballong för omedelbar verifiering.
+    - Dynamisk omstart av UDP-lyssnaren i `handle_settings` vid ändrade radiosondinställningar.
+  - **Gränssnitt och Inställningar ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+    - Ny flik "Radiosonder" i inställningsvyn med realtidsstatuskort, UDP-portkonfiguration och testknapp.
+    - Autosparning av inställningar och bakgrundspolling av status.
+  - **UI-styling och Protokollstöd ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+    - Ny lila badge (`proto-sonde`) för både mörkt och ljust tema.
+    - Protokolldetektering för `SONDE` och formatering av bitrate-etiketter.
+  - **Enhetstester ([tests/test_sonde.py](file:///d:/antigravity/pager-monitor/tests/test_sonde.py))**:
+    - Täckning för modellparsning, frekvensformatering, flygfasstatus (stiger, burst, landad) och API-status.
+- **Verifiering**:
+  - Samtliga 37 enhetstester i hela projektet godkända (`python -m unittest discover tests`).
+
+
+
 
 

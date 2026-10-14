@@ -45,7 +45,14 @@ def get_default_settings():
         'tetra_dwell_time': '60',
         'tetra_skip_encrypted': 'false',
         'rds_heartbeat_interval': '10',
-        'rds_heartbeat_timeout': '5'
+        'rds_heartbeat_timeout': '5',
+        'vdl2_enabled': 'true',
+        'vdl2_host': '192.168.1.242',
+        'vdl2_port': '15555',
+        'vdl2_filter_empty': 'true',
+        'sonde_enabled': 'true',
+        'sonde_udp_port': '55673',
+        'sonde_db_interval': '5'
     }
 
 def init_db():
