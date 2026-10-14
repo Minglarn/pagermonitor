@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.18] - Åtgärdat Falsk TMC-låsning på RadioText+ och Korrigerade Redsea Flaggor
+
+### Fixed
+- **Separation av RadioText+ (RT+) och ALERT-C i Grupp 3A (`rds_decoder.py`)**:
+  - Åtgärdat kritisk bugg där mottagaren felaktigt identifierade RadioText+ (ODA 3A) som en aktiv TMC-sändare med AID `0xCD46`. Detta medförde att mottagaren låste sig permanent på stationer som enbart sände låttitlar/artister (t.ex. 88.7 MHz) utan att sända några faktiska ALERT-C trafikmeddelanden (Grupp 8A).
+  - Grupp 3A valideras nu strikt mot ALERT-C AID `0xCD46`/`0xCD47`, applikationsnamnet `"RDS-TMC: ALERT-C"` och redseas `system_info`-träd.
+  - Pulsmätarens TMC-status skiljer nu explicit mellan äkta ALERT-C och vanlig RadioText+ (`TMC: Ej TMC (Grupp 3A är RadioText+, ej ALERT-C)`).
+- **Korrigerade Redsea Flaggor (`rds_decoder.py`)**:
+  - Tagit bort flaggan `-u` från anropet till `redsea`. I redsea är `-u` en förkortning för `--rbds` (nordamerikansk radiostandard) och skall inte användas för europeisk FM-RDS i Sverige.
+- **Prioriterade Regionala Huvudsändare i Frekvenskön (`rds_decoder.py`)**:
+  - `P4_STATIONS` prioriterar nu starka regionala huvudsändare med bekräftad ALERT-C distribution (Stockholm 103.3 MHz, Sörmland 100.1 MHz, Uppland 102.5 MHz, Göteborg 101.9 MHz) före lokala slavsändare.
+
 ## [2026.10.14.17] - Strikt ALERT-C (Grupp 3A) Låsning vid RDS-skanning och P4 Snabbval i SDR Inställningar
 
 ### Added

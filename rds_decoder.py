@@ -43,7 +43,9 @@ _heartbeat_stats = {
     'gain': 'auto',
     'freq': '103.3M',
     'has_received_any_frame': False,
-    'groups_seen': set()
+    'groups_seen': set(),
+    'has_seen_tmc_3a': False,
+    'has_seen_tmc_8a': False
 }
 _heartbeat_thread_started = False
 
@@ -137,13 +139,17 @@ def _heartbeat_worker():
             groups_seen = sorted(list(_heartbeat_stats.get('groups_seen', set())))
             groups_display = ", ".join(groups_seen) if groups_seen else "-"
 
-            # Tydlig indikator för TMC-status baserat på mottagna RDS-grupper
-            if "8A" in groups_seen:
-                tmc_status = "Aktiv (ALERT-C larm mottagna)"
+            # Tydlig indikator för TMC-status baserat på mottagna RDS-grupper och validerad ALERT-C data
+            has_8a = ("8A" in groups_seen) or _heartbeat_stats.get('has_seen_tmc_8a', False)
+            has_3a_tmc = _heartbeat_stats.get('has_seen_tmc_3a', False)
+            if has_8a:
+                tmc_status = "Aktiv (ALERT-C 8A-larm mottagna)"
+            elif has_3a_tmc:
+                tmc_status = "Synkad (Grupp 3A ALERT-C bekräftad, avvaktar 8A-larm)"
             elif "3A" in groups_seen:
-                tmc_status = "Synkad (Grupp 3A aktiv, inga 8A-larm i luften)"
+                tmc_status = "Ej TMC (Grupp 3A är RadioText+, ej ALERT-C)"
             else:
-                tmc_status = "Söker handskakning (3A)"
+                tmc_status = "Söker handskakning (3A ALERT-C)"
 
             station_str = ps if ps else "FM"
             pi_str = pi if pi else "0x0000"
@@ -468,6 +474,10 @@ def reset_station_state():
     _current_channel_is_commercial = False
     _current_channel_p4_confirmed = False
     _group_3a_confirmed = False
+    with _heartbeat_lock:
+        _heartbeat_stats['groups_seen'] = set()
+        _heartbeat_stats['has_seen_tmc_3a'] = False
+        _heartbeat_stats['has_seen_tmc_8a'] = False
 
 def format_and_print_lock(freq_str, status_msg):
     """Skriver ut låst frekvens för sdr_processor.py telemetri (deduplicerad)."""
@@ -608,7 +618,7 @@ def parse_redsea_json_line(line_str):
     group_type = str(data.get("group", "")).upper()
     record_rds_frame(pi=pi_val, ps=ps_val, group=group_type, count=1)
 
-    # 1. Kontrollera Grupp 3A: Handskakning och Systeminformation (ALERT-C AID: 0xCD46, LTN: 1)
+    # 1. Kontrollera Grupp 3A: Handskakning och Systeminformation (ALERT-C AID: 0xCD46/0xCD47, LTN: 1)
     oda_info = data.get("oda") or data.get("open_data_app") or {}
     raw_aid = data.get("aid") or (oda_info.get("aid") if isinstance(oda_info, dict) else "") or ""
     aid_str = str(raw_aid).upper().replace("0X", "").strip()
@@ -616,18 +626,34 @@ def parse_redsea_json_line(line_str):
         aid_str = ""
 
     app_str = str(data.get("application", "") or (oda_info.get("application", "") or oda_info.get("app_name", "") if isinstance(oda_info, dict) else "")).upper()
-    is_group_3a = (
-        group_type == "3A" or 
-        ("CD46" in aid_str and aid_str != "") or 
-        ("TMC" in app_str and app_str != "") or 
-        ("oda" in data and isinstance(oda_info, dict) and "CD46" in str(oda_info).upper()) or
-        ("open_data_app" in data and isinstance(oda_info, dict) and any(x in str(oda_info).upper() for x in ("TMC", "8A", "CD46")))
+    tmc_dict = data.get("tmc") if isinstance(data.get("tmc"), dict) else {}
+    has_system_info = isinstance(tmc_dict.get("system_info"), dict)
+
+    # Strikt identifiering av äkta ALERT-C / TMC (inte vanlig RadioText+ eller andra ODA-appar)
+    is_alert_c_tmc = (
+        ("CD46" in aid_str and aid_str != "") or
+        ("CD47" in aid_str and aid_str != "") or
+        has_system_info or
+        ("ALERT-C" in app_str) or
+        ("TMC" in app_str and "RADIOTEXT" not in app_str) or
+        ("oda" in data and isinstance(oda_info, dict) and any(x in str(oda_info).upper() for x in ("CD46", "CD47", "ALERT-C"))) or
+        ("open_data_app" in data and isinstance(oda_info, dict) and any(x in str(oda_info).upper() for x in ("ALERT-C", "CD46", "CD47")) and "RADIOTEXT" not in str(oda_info).upper())
     )
+
+    is_group_3a = is_alert_c_tmc and (group_type == "3A" or "open_data_app" in data or "oda" in data or has_system_info)
 
     if is_group_3a:
         global _group_3a_confirmed, _current_channel_tmc_active
         _current_channel_tmc_active = True
-        ltn_num = data.get("ltn") or (oda_info.get("ltn") if isinstance(oda_info, dict) else 1) or 1
+        with _heartbeat_lock:
+            _heartbeat_stats['has_seen_tmc_3a'] = True
+
+        ltn_num = (
+            tmc_dict.get("system_info", {}).get("location_table") or
+            data.get("ltn") or
+            (oda_info.get("ltn") if isinstance(oda_info, dict) else 1) or
+            1
+        )
         aid_disp = f"0x{aid_str}" if aid_str else "0xCD46"
         status_disp = "AKTIV"
 
@@ -642,14 +668,21 @@ def parse_redsea_json_line(line_str):
             format_and_print_lock(chosen_freq_global, f"Aktiv RDS-TMC sändare bekräftad (Grupp 3A, AID: {aid_disp}, LTN: {ltn_num})")
 
     # 2. Kontrollera Grupp 8A: ALERT-C Trafikmeddelanden
-    is_group_8a = ("tmc" in data or group_type == "8A")
+    tmc_root = data.get("tmc") if isinstance(data.get("tmc"), dict) else data
+    is_group_8a = (
+        ("tmc" in data and isinstance(data.get("tmc"), dict) and ("message" in data["tmc"] or "user_message" in data["tmc"])) or
+        (group_type == "8A") or
+        ("tmc" in data and isinstance(data.get("tmc"), dict) and "location" in data["tmc"]) or
+        ("location" in data and ("event_codes" in data or "events" in data))
+    )
     if is_group_8a:
         global _channel_lock_printed
         _current_channel_tmc_active = True
+        with _heartbeat_lock:
+            _heartbeat_stats['has_seen_tmc_8a'] = True
         if not _channel_lock_printed:
             _channel_lock_printed = True
             format_and_print_lock(chosen_freq_global, "Aktiv RDS-TMC trafikdataström bekräftad (Grupp 8A)")
-        tmc_root = data.get("tmc") if isinstance(data.get("tmc"), dict) else data
         # Redsea kapslar in TMC-data inuti ett inre 'message'- eller 'user_message'-objekt
         if isinstance(tmc_root.get("message"), dict):
             tmc = tmc_root.get("message")
@@ -701,6 +734,10 @@ def parse_redsea_json_line(line_str):
                     event_descs.extend([str(x) for x in raw_ed if str(x)])
                 elif isinstance(raw_ed, str):
                     event_descs.append(raw_ed)
+
+            direct_desc = tmc.get("description") or tmc_root.get("description") or data.get("description")
+            if direct_desc and str(direct_desc) not in event_descs:
+                event_descs.append(str(direct_desc))
 
             extent = tmc.get("extent", tmc_root.get("extent", data.get("extent", 0)))
             dir_raw = str(tmc.get("direction", tmc_root.get("direction", data.get("direction", "+")))).lower()
@@ -778,17 +815,17 @@ def parse_redsea_json_line(line_str):
 chosen_freq_global = "103.3M"
 
 P4_STATIONS = [
-    ("88.7M",   88700000, "SR P4 Sörmland (Nyköping/Kisa)"),
-    ("100.1M", 100100000, "SR P4 Sörmland"),
-    ("103.3M", 103300000, "SR P4 Stockholm / Västerbotten"),
-    ("93.8M",   93800000, "SR P4 Stockholm"),
-    ("102.5M", 102500000, "SR P4 Uppland"),
+    ("103.3M", 103300000, "SR P4 Stockholm / Västerbotten (Nacka 60 kW)"),
+    ("100.1M", 100100000, "SR P4 Sörmland (60 kW)"),
+    ("93.8M",   93800000, "SR P4 Södertälje"),
+    ("102.5M", 102500000, "SR P4 Uppland (Uppsala 60 kW)"),
+    ("101.9M", 101900000, "SR P4 Göteborg (60 kW)"),
+    ("102.0M", 102000000, "SR P4 Malmöhus / Gävleborg"),
     ("100.5M", 100500000, "SR P4 Västmanland / Norrbotten"),
     ("102.8M", 102800000, "SR P4 Örebro / Västernorrland"),
     ("99.8M",   99800000, "SR P4 Östergötland"),
     ("102.2M", 102200000, "SR P4 Östergötland"),
-    ("101.9M", 101900000, "SR P4 Göteborg"),
-    ("102.0M", 102000000, "SR P4 Malmöhus / Gävleborg"),
+    ("88.7M",   88700000, "SR P4 Sörmland (Nyköping/Kisa slavsändare)"),
     ("87.9M",   87900000, "SR P4 Malmöhus"),
     ("101.3M", 101300000, "SR P4 Dalarna / Halland"),
     ("103.8M", 103800000, "SR P4 Halland"),
@@ -891,7 +928,8 @@ def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.
         rtl_cmd.extend(["-p", str(ppm)])
     rtl_cmd.append("-")
 
-    redsea_cmd = ["redsea", "-u", "-r", "171k"]
+    # Kör redsea i europeiskt RDS-läge (-r 171k). Flaggan -u aktiverar amerikanskt RBDS-läge och skall ej användas i Europa.
+    redsea_cmd = ["redsea", "-r", "171k"]
 
     line_queue = queue.Queue()
     reader_stop = threading.Event()
@@ -951,7 +989,10 @@ def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.
 
             # 3. Kontrollera om tidsgränsen uppnåtts utan att RDS-TMC detekterats (endast vid skanningsläge)
             if is_scan and not is_locked and (time.time() - start_time) > dwell_timeout:
-                if _current_channel_p4_confirmed:
+                groups_seen_now = _heartbeat_stats.get('groups_seen', set())
+                if _current_channel_p4_confirmed and "3A" in groups_seen_now:
+                    format_and_print_scan(f"P4-station identifierad på {freq_str} ({_last_reported_ps or 'SR P4'}), men sänder inte RDS-TMC (Grupp 3A är RadioText+, ej ALERT-C). Söker vidare...")
+                elif _current_channel_p4_confirmed:
                     format_and_print_scan(f"P4-station identifierad på {freq_str} ({_last_reported_ps or 'SR P4'}), men ingen aktiv RDS-TMC (Grupp 3A) inom {int(dwell_timeout)}s. Söker vidare...")
                 else:
                     format_and_print_scan(f"Ingen RDS-TMC detekterad på {freq_str} inom {int(dwell_timeout)}s. Söker vidare...")

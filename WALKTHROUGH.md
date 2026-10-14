@@ -1440,3 +1440,28 @@
 - **Verifiering**:
   - Testat syntetisk ALERT-C injicering med `python rds_decoder.py --test-tmc` och verifierat korrekt sekvens: P4 identifieras -> söker Grupp 3A -> låsning sker först vid detekterad Grupp 3A och Grupp 8A.
   - Kört hela testsviten `python -m pytest` med 62 godkända tester.
+
+### 46. Eliminering av Falsk TMC-låsning på RadioText+ (RT+) och Korrigering av redsea-flaggor (v2026.10.14.18)
+- **Bakgrund och Problem**:
+  - Trots 100% signalkvalitet och kontinuerliga heartbeat-loggar på 88.7 MHz (P4 Sörmland relä) togs inga ALERT-C trafikmeddelanden emot (`RDS-grupper: 0A, 10A, 14A, 1A, 2A, 3A, 4A, 6A`).
+  - Heartbeat-meddelandet rapporterade `TMC: Synkad (Grupp 3A aktiv, inga 8A-larm i luften)` trots att sändaren inte sände någon ALERT-C TMC alls.
+  - Undersökning av redsea-flaggor och källkod visade:
+    1. Flaggan `-p` i redsea motsvarar `--show-partial` (visar partiella textblock). Den aktiverar inte hex-visning eller ALERT-C-avkodning.
+    2. Flaggan `-u` i redsea är en kortform för `--rbds` (nordamerikansk standard). Att köra `-u` i Europa ändrar programtyper (PTY) och stationsanropskoder, vilket är felaktigt för europeisk RDS.
+    3. I [rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py) fanns villkoret `group_type == "3A" or ...`. Eftersom RDS Grupp 3A används för ALLA Open Data Applications (ODA) – inklusive RadioText+ (RT+, AID `0x4BD7`) som Sveriges Radio använder för artist och låttitel – tolkades alla RadioText+ 3A-paket felaktigt som en bekräftad TMC ALERT-C handskakning (AID `0xCD46`). Skannern fastnade därmed på frekvenser som bara sände låtinformation och saknade Grupp 8A trafikdata.
+- **Teknisk Implementering**:
+  - **Korrekt Flaggkonfiguration för redsea ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Tog bort den felaktiga `-u` (RBDS) flaggan från kommandot. Kommandot körs nu som `["redsea", "-r", "171k"]` i rent europeiskt RDS/ALERT-C JSON-läge utan risk för felaktiga tabeller.
+  - **Strikt Differentiering mellan ALERT-C och RadioText+ ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Ändrade logiken i `parse_redsea_json_line` så att Grupp 3A validerar ODA-applikationen. Endast paket med AID `0xCD46` / `0xCD47`, `system_info` eller uttrycklig text `RDS-TMC: ALERT-C` klassas som TMC.
+    - Paket med `RadioText+ (RT+)` eller AID `0x4BD7` identifieras explicit och triggar inte längre TMC-låsning eller aktiv TMC-flagga.
+    - Uppdaterade heartbeat-arbetaren (`_heartbeat_worker`) att rapportera exakt status:
+      - Om äkta ALERT-C 3A mottagits: `TMC: Synkad (Grupp 3A aktiv, inga 8A-larm i luften)`.
+      - Om endast RadioText+ 3A mottagits: `TMC: Ej TMC (Grupp 3A är RadioText+, ej ALERT-C)`.
+  - **Prioriterad Frekvensordning för Skanning ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Flyttade regionala hög-effektssändare (`103.3M` Nacka 60 kW, `100.1M` Sörmland 60 kW, `93.8M` Ragnhildsborg, `102.5M` Uppsala 20 kW, `101.9M` Göteborg 60 kW) till toppen av skanningslistan före mindre slavsändare som `88.7M`.
+  - **Versionsspårbarhet**:
+    - Uppdaterat versionsnummer till CalVer `2026.10.14.18` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+- **Verifiering**:
+  - Testat syntetisk injicering med `python rds_decoder.py --test-tmc` och verifierat att RadioText+ 3A-paket inte sätter TMC-status till aktiv, medan ALERT-C 3A sätter status och låser mottagningen korrekt.
+  - Samtliga 62 enhetstester passerar utan anmärkning.
