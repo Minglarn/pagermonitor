@@ -50,6 +50,7 @@ def get_default_settings():
         'vdl2_host': '192.168.1.242',
         'vdl2_port': '15555',
         'vdl2_filter_empty': 'true',
+        'vdl2_filter_links': 'false',
         'sonde_enabled': 'true',
         'sonde_udp_port': '55673',
         'sonde_db_interval': '5'

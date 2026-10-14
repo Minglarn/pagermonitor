@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.14.26`
+- **CalVer**: `2026.10.14.28`
 - **Date**: 2026-10-14
 - **Language**: English / Swedish
 
@@ -1711,6 +1711,29 @@
     - Täckning för modellparsning, frekvensformatering, flygfasstatus (stiger, burst, landad) och API-status.
 - **Verifiering**:
   - Samtliga 37 enhetstester i hela projektet godkända (`python -m unittest discover tests`).
+
+### 56. Humaniserad ACARS-avkodning, Dedikerad SNR-pill, Robust HTML-escaping och RF Activity Sonde-korrigering (v2026.10.14.28)
+- **Dedikerad SNR-pill bredvid ACARS-märket ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - SNR visas nu som en egen smaragdgrön pill (`.badge.meta.badge-snr`) under texten i `.msg-meta-bar`, placerad direkt bredvid ACARS/bitrate-pillret.
+  - Texten i meddelanderutan rensas automatiskt från `| SNR: +XX.X dB` så att ren payload visas utan brus.
+  - Stilregler för `.badge.meta.badge-snr` tillagda för både mörkt och ljust tema.
+- **Robust HTML-escaping av rådata och kryptiska meddelanden ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - **Problem**: Rådata från POCSAG/FLEX eller binär data med vinkelparenteser (t.ex. `<` och `>`) tolkades av webbläsaren som HTML-taggar (t.ex. `<s>` som orsakade genomstrykning/strikethrough eller `<a>` som skapade felaktiga länkar).
+  - **Lösning**: Implementerat fullständig `escapeHtml()` för alla specialtecken (`&`, `<`, `>`, `"`, `'`) i `formatMessage()` och `highlightMessage()`. Radbrytningar ersätts först efter att all råtext escapats.
+- **Korrekt Namngivning och Isolering av Radiosonder i RF Activity ([static/waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js), [sonde_receiver.py](file:///d:/antigravity/pager-monitor/sonde_receiver.py))**:
+  - **Problem**: En tidigare hårdkodad regel i `static/waterfall.js` klassificerade alla okända frekvenser som började på siffran `4` som `TETRA`, vilket gjorde att väderballonger på standardfrekvensen 403.500 MHz registrerades som `TETRA 403.500M`.
+  - **Lösning**:
+    - Avlägsnat hårdkodningen för `frequency.startsWith('4')`.
+    - Lagt till igenkänning av `isSondeMsg` som alltid namnger kanalen `Radiosond` med frekvens.
+    - `sonde_receiver.py` skickar nu explicit `sdr_name: 'Radiosond'` och SNR-värde i samtliga SSE-händelser.
+- **Humaniserad ACARS-avkodning ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Svensk uppslagsbok `ACARS_LABELS` för informativa etiketter (t.ex. `[SA: Länkstatus (Media Advisory)]`, `[B9: Begäran om flygplatsväder (ATIS)]`).
+  - Tolkning av länkstatus (Media Advisory) med etablerade länkar (VDL2, HF, Satcom) och tidsangivelser i UTC.
+  - Flygplatsavkodning (`AIRPORT_MAP`) för ATIS- och klareringsbegäran (`/EKCH.TI2/` -> Köpenhamn/Kastrup).
+  - Prefix för Boeing/Honeywell FMS (`#M1B`) och underhållsdata.
+  - XID Handover-stöd och ny inställning för att dölja periodiska ACARS-länktest (`Label Q0`).
+- **Verifiering**:
+  - Samtliga 42 enhetstester godkända (`python -m unittest discover tests`).
 
 
 

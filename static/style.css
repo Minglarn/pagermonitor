@@ -770,6 +770,13 @@ th:first-child,
     border: 1px solid rgba(168, 85, 247, 0.45);
 }
 
+.badge.meta.badge-snr {
+    background: rgba(16, 185, 129, 0.18);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.45);
+    font-weight: 600;
+}
+
 .badge.meta.badge-proto {
     font-weight: 700;
     letter-spacing: 0.03em;
@@ -840,6 +847,12 @@ th:first-child,
     background: #f3e8ff;
     color: #6b21a8;
     border: 1px solid #c084fc;
+}
+
+[data-theme="light"] .badge.meta.badge-snr {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
 }
 
 [data-theme="light"] .badge.meta.badge-proto.proto-pocsag {

@@ -858,6 +858,33 @@
                 }
             }
             const bitrateTag = formattedBitrate ? `<span class="badge meta">${formattedBitrate}</span>` : '';
+
+            let cleanMsg = m.message || '';
+            let snrVal = m.snr || '';
+            if (!snrVal && cleanMsg) {
+                const snrMatch = cleanMsg.match(/\bSNR:\s*([+-]?[0-9]+(?:\.[0-9]+)?\s*dB)\b/i);
+                if (snrMatch) {
+                    snrVal = snrMatch[1];
+                }
+            }
+            if (cleanMsg) {
+                cleanMsg = cleanMsg.replace(/\s*\|\s*SNR:\s*[+-]?[0-9]+(?:\.[0-9]+)?\s*dB/gi, '')
+                                   .replace(/\bSNR:\s*[+-]?[0-9]+(?:\.[0-9]+)?\s*dB\b/gi, '')
+                                   .trim();
+            }
+
+            let snrText = '';
+            if (snrVal) {
+                let s = String(snrVal).trim();
+                if (!s.toUpperCase().startsWith('SNR:')) {
+                    snrText = `SNR: ${s}`;
+                } else {
+                    snrText = s;
+                }
+            }
+            const snrTag = snrText ? `<span class="badge meta badge-snr" title="Signal/brusförhållande">${snrText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` : '';
+            const safeMsgClean = cleanMsg ? cleanMsg.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+
             const funcLabel = (m.function !== undefined && m.function !== null) ? ((m.function === 0 || m.function === 3) ? "Alpha" : "Num") : "";
             const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
             const duplicateTag = m.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
@@ -870,7 +897,7 @@
                 timeDisplay += `<div class="last-seen-time">(Last: ${lastTimeStr})</div>`;
             }
 
-            const metaBarBadges = `${freqTag}${bitrateTag}${funcTag}${duplicateTag}${repeatTag}`;
+            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${funcTag}${duplicateTag}${repeatTag}`;
             const metaBarHtml = metaBarBadges ? `<div class="msg-meta-bar">${metaBarBadges}</div>` : '';
 
             tr.innerHTML = `
@@ -878,7 +905,7 @@
                 <td class="ts-cell" data-order="${m.timestamp}">${timeDisplay}</td>
                 <td class="meta-cell"><div class="meta-wrapper">${protoTag}</div></td>
                 <td class="addr-cell"><span class="badge" title="${m.address}">${displayAddress}</span></td>
-                <td class="msg-cell"><div class="msg-text">${safeMsg}</div>${metaBarHtml}</td>
+                <td class="msg-cell"><div class="msg-text">${safeMsgClean}</div>${metaBarHtml}</td>
                 <td class="actions-cell">
                     <div class="actions-wrapper">
                         <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">

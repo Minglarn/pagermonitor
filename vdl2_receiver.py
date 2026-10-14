@@ -74,29 +74,203 @@ AIRLINE_MAP = {
 }
 
 # ACARS Label-koder och deras svenska förklaringar
-LABEL_MAP = {
-    '10': 'Rutt & Färdplan',
+ACARS_LABELS = {
+    'SA': 'Länkstatus (Media Advisory)',
+    'B9': 'Begäran om flygplatsväder (ATIS)',
+    'A9': 'Flygplatsväder (ATIS)',
+    'B6': 'Begäran om färdtillstånd (PDC/DCL)',
+    'A6': 'Begäran om färdtillstånd (PDC/DCL)',
+    'BA': 'Oceanic Clearance',
+    'AA': 'Oceanic Clearance',
+    '10': 'Positionsrapport',
     '14': 'ETA / Beräknad ankomst',
-    '15': 'Start / Takeoff (OOOI)',
-    '16': 'Landning / Touchdown (OOOI)',
-    '20': 'Bränsle & Prestanda',
-    '21': 'Motorrapport',
+    '15': 'Positionsrapport (Start / Takeoff)',
+    '16': 'Positionsrapport (Landning / Touchdown)',
+    '20': 'Positionsrapport (Bränsle & Prestanda)',
+    '21': 'Positionsrapport (Motorrapport)',
+    '4J': 'Positionsrapport',
+    'POS': 'Positionsrapport',
+    'H1': 'FMS / Färddator-rapport',
+    'MA': 'MIAM Komprimerad Telemetri',
+    '80': 'Operativt meddelande / Dispatch (OUT)',
+    '81': 'Operativt meddelande / Dispatch (OFF)',
+    '82': 'Operativt meddelande / Dispatch (ON)',
+    '83': 'Operativt meddelande / Dispatch (IN)',
+    'RA': 'Operativt meddelande / Driftrapport',
+    '5U': 'Väderbegäran / METAR',
+    '57': 'Väderbegäran / METAR',
+    'WX': 'Väderbegäran / METAR',
     '30': 'Väder / METAR / TAF',
     '44': 'Teknisk flygplansstatus',
     '4A': 'Motorövervakning (ECM)',
-    '5D': 'ATIS Information',
-    '5U': 'Flygplatsprognos',
-    '5Z': 'Flygledning (CPDLC)',
-    '80': 'Gate Departure (OUT)',
-    '81': 'Airborne (OFF)',
-    '82': 'Touchdown (ON)',
-    '83': 'At Gate (IN)',
-    'B6': 'Cockpit-meddelande',
-    'H1': 'Positionsrapport',
-    'RA': 'Automatisk driftrapport',
+    '5D': 'Flygplatsväder (ATIS)',
+    '5Z': 'Flygbolagsdata (Airline Designated)',
+    'Q0': 'Länktest (ACARS Link Test)',
+    'Q1': 'Avgångsrapport (OOOI)',
+    'Q2': 'Ankomstrapport (OOOI)',
+    '_d': 'Tom kvittens (ACK)',
     'SQ': 'Transponder / Squawk',
     '_': 'Flygledning (ATC)'
 }
+LABEL_MAP = ACARS_LABELS
+
+# Kända ICAO-flygplatser och deras namn
+AIRPORT_MAP = {
+    'ESSA': 'Stockholm/Arlanda',
+    'ESSB': 'Stockholm/Bromma',
+    'ESKN': 'Stockholm/Skavsta',
+    'ESGG': 'Göteborg/Landvetter',
+    'ESMS': 'Malmö',
+    'ESSV': 'Visby',
+    'ESOW': 'Västerås',
+    'ESCF': 'Linköping/Malmen',
+    'ESNN': 'Sundsvall',
+    'ESNU': 'Umeå',
+    'ESPA': 'Luleå',
+    'ESNZ': 'Åre/Östersund',
+    'ESMQ': 'Kalmar',
+    'ESNX': 'Arvidsjaur',
+    'ESOE': 'Örebro',
+    'ESOK': 'Karlstad',
+    'EKCH': 'Köpenhamn/Kastrup',
+    'EKBI': 'Billund',
+    'EKYT': 'Aalborg',
+    'ENGM': 'Oslo/Gardermoen',
+    'ENBR': 'Bergen/Flesland',
+    'ENZV': 'Stavanger/Sola',
+    'ENVA': 'Trondheim/Værnes',
+    'EFHK': 'Helsingfors/Vanda',
+    'EFOU': 'Uleåborg',
+    'EFRO': 'Rovaniemi',
+    'EFTU': 'Åbo/Turku',
+    'EETN': 'Tallinn',
+    'EVRA': 'Riga',
+    'EYVI': 'Vilnius',
+    'EPWA': 'Warszawa/Chopin',
+    'EPGD': 'Gdansk',
+    'EDDF': 'Frankfurt',
+    'EDDM': 'München',
+    'EDDB': 'Berlin',
+    'EDDH': 'Hamburg',
+    'EHAM': 'Amsterdam/Schiphol',
+    'EBBR': 'Bryssel',
+    'EGLL': 'London/Heathrow',
+    'EGKK': 'London/Gatwick',
+    'EGSS': 'London/Stansted',
+    'EGGW': 'London/Luton',
+    'EGCC': 'Manchester',
+    'EIDW': 'Dublin',
+    'LFPG': 'Paris/CDG',
+    'LFPO': 'Paris/Orly',
+    'LFMN': 'Nice',
+    'LSZH': 'Zürich',
+    'LSGG': 'Genève',
+    'LOWW': 'Wien',
+    'LIRF': 'Rom/Fiumicino',
+    'LIMC': 'Milano/Malpensa',
+    'LEMD': 'Madrid/Barajas',
+    'LEBL': 'Barcelona',
+    'LEPA': 'Palma de Mallorca',
+    'LPPT': 'Lissabon',
+    'LGAV': 'Aten',
+    'LTFM': 'Istanbul'
+}
+
+# Länkkoder för Media Advisory (Label SA)
+LINK_NAMES = {
+    'V': 'VHF ACARS',
+    '2': 'VDL2',
+    'H': 'HF',
+    'S': 'Satcom',
+    'G': 'GlobalStar',
+    'I': 'Iridium'
+}
+
+def humanize_acars_message(label, msg_text, acars_dict=None):
+    """
+    Tolkar kryptiska ACARS-koder till läsbar svenska (Media Advisory, ATIS, Clearance, FMS m.m.).
+    """
+    lbl = (label or '').strip().upper()
+    txt = (msg_text or '').strip()
+
+    # 1. Label SA (Media Advisory / Länkstatus)
+    if lbl == 'SA' or txt.startswith('0E') or txt.startswith('0L'):
+        media_adv = acars_dict.get('media_adv') if isinstance(acars_dict, dict) else None
+        if isinstance(media_adv, dict):
+            state_raw = str(media_adv.get('state') or '').lower()
+            status_w = "Länk upprättad" if ("estab" in state_raw or state_raw == 'e') else ("Länk förlorad" if ("lost" in state_raw or state_raw == 'l') else "Länkstatus")
+            curr_code = str(media_adv.get('curr_link') or media_adv.get('current_link') or '').upper()
+            curr_link = LINK_NAMES.get(curr_code, curr_code or 'VDL2')
+            tm_str = media_adv.get('time') or ''
+            time_part = f" kl {tm_str} UTC" if tm_str else ""
+            av_list = media_adv.get('avail_links') or []
+            avail_names = [LINK_NAMES.get(str(x).upper(), str(x)) for x in av_list]
+            avail_part = f" | Tillgängliga länkar: {', '.join(avail_names)}" if avail_names else ""
+            raw_suffix = f" ({txt})" if txt else ""
+            return f"{status_w} på {curr_link}{time_part}{avail_part}{raw_suffix}".strip()
+
+        m_sa = re.search(r'0([EL])([V2HSGI])(\d{2})(\d{2})(\d{2})([V2HSGI]*)', txt)
+        if m_sa:
+            stat_code = m_sa.group(1).upper()
+            status_w = "Länk upprättad" if stat_code == 'E' else "Länk förlorad"
+            curr_code = m_sa.group(2).upper()
+            curr_link = LINK_NAMES.get(curr_code, curr_code)
+            hh, mm, ss = m_sa.group(3), m_sa.group(4), m_sa.group(5)
+            avail_raw = m_sa.group(6).upper()
+            avail_names = [LINK_NAMES.get(c, c) for c in avail_raw]
+            avail_part = f" | Tillgängliga länkar: {', '.join(avail_names)}" if avail_names else ""
+            return f"{status_w} på {curr_link} kl {hh}:{mm}:{ss} UTC{avail_part} ({txt})"
+        elif lbl == 'SA' and txt:
+            return f"Länkstatus (Media Advisory) | Rådata: {txt}"
+
+    # 2. Begäran om ATIS och starttillstånd (/XXXX.TI2, /XXXX.DC1, /XXXX.OC1)
+    m_action = re.search(r'/([A-Z]{4})\.(TI2|DC1|OC1)/?', txt, re.IGNORECASE)
+    if m_action:
+        icao = m_action.group(1).upper()
+        act = m_action.group(2).upper()
+        ap_name = AIRPORT_MAP.get(icao)
+        ap_disp = f"{icao} ({ap_name})" if ap_name else icao
+        if act == 'TI2':
+            desc = f"Begär aktuellt flygplatsväder (ATIS) för {ap_disp}"
+        elif act == 'DC1':
+            desc = f"Begär starttillstånd (Departure Clearance) för {ap_disp}"
+        elif act == 'OC1':
+            desc = f"Begär Oceanic Clearance via {ap_disp}"
+        else:
+            desc = f"Flygplatsanrop för {ap_disp}"
+        return f"{desc} | Rådata: {txt}"
+
+    # 2b. Label B9 eller A9 med flygplatskod
+    if lbl in ('B9', 'A9') and txt:
+        m_icao = re.search(r'\b([A-Z]{4})\b', txt)
+        if m_icao and m_icao.group(1) in AIRPORT_MAP:
+            icao = m_icao.group(1)
+            ap_name = AIRPORT_MAP[icao]
+            if lbl == 'B9':
+                return f"Begär flygplatsväder (ATIS) för {icao} ({ap_name}) | Rådata: {txt}"
+            else:
+                return f"Flygplatsväder (ATIS) för {icao} ({ap_name}) | {txt}"
+
+    # 3. Boeing / Honeywell FMS & CMC prefix
+    if txt.startswith('#M1B'):
+        if not txt.startswith('[Boeing/Honeywell FMS]'):
+            txt = f"[Boeing/Honeywell FMS] {txt}"
+    elif txt.startswith('#CFB'):
+        if not txt.startswith('[Underhållsdata/CMC]'):
+            txt = f"[Underhållsdata/CMC] {txt}"
+    elif txt.startswith('#DFB'):
+        if not txt.startswith('[Flygdata/DFDAU]'):
+            txt = f"[Flygdata/DFDAU] {txt}"
+
+    # 4. Label Q0 (Link Test Ping)
+    if lbl == 'Q0':
+        return f"ACARS Länktest (Link Test Ping) | Rådata: {txt}" if txt else "ACARS Länktest (Link Test Ping)"
+
+    # 5. Label _d (ACK)
+    if lbl == '_d' or not txt:
+        return "Kvittens (ACK)" if not txt else f"Kvittens (ACK) | {txt}"
+
+    return txt
 
 def find_nested_key(data, target_key):
     """Söker rekursivt efter en nyckel i ett nästlat JSON-objekt eller lista."""
@@ -254,9 +428,8 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
                     break
         return res
 
-    # --- Mönster 3: Kompakt DM-format i ACARS (t.ex. Finnair Label H1) ---
-    # Exempel: POSN58525E018360,...
-    # N58525 = 58° + 52.5'/60 = 58.875, E018360 = 18° + 36.0'/60 = 18.600
+    # --- Mönster 3: Kompakt DM-format i ACARS (t.ex. Finnair Label H1) och generella DM-format ---
+    # Exempel: POSN58525E018360,... eller 5912.4N 01805.2E eller N5912.4 E01805.2
     m3 = re.search(r'(?:POS)?\s*([NS])([0-9]{2})([0-9]{2,3})\s*([EW])([0-9]{3})([0-9]{2,3})', raw_text, re.IGNORECASE)
     if m3:
         try:
@@ -273,66 +446,166 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
             lon = (lon_deg + lon_min) * (-1 if lon_ew == 'W' else 1)
 
             res['lat'], res['lon'] = round(lat, 4), round(lon, 4)
-
-            # Sök efter ev FL / Altitud i texten
-            m_alt = re.search(r'(?:FL|ALT)[,\s]*([0-9]{2,5})', raw_text, re.IGNORECASE)
-            if m_alt:
-                a_val = int(m_alt.group(1))
-                if a_val < 500:
-                    res['alt_ft'] = a_val * 100
-                    res['telemetry_summary'] = f"FL{a_val}"
-                else:
-                    res['alt_ft'] = a_val
-                    res['telemetry_summary'] = f"FL{round(a_val / 100)}"
-            return res
         except (ValueError, TypeError):
             pass
 
-    # --- Mönster 4: Fallback till XID / GSIF / ADS-C struktur ur JSON ---
-    if isinstance(vdl2_obj, dict):
-        # 1. XID ac_location
-        avlc = vdl2_obj.get('avlc', {}) if isinstance(vdl2_obj, dict) else {}
-        xid = avlc.get('xid', {}) if isinstance(avlc, dict) else {}
-        ac_loc = xid.get('ac_location', {}) if isinstance(xid, dict) else {}
-        loc = ac_loc.get('loc', {}) if isinstance(ac_loc, dict) else ac_loc
-        if isinstance(loc, dict) and 'lat' in loc and 'lon' in loc:
+    if res['lat'] is None:
+        # Format med decimalpunkt: 5912.4N 01805.2E eller N5912.4 E01805.2
+        m_dm_dec = re.search(r'([0-9]{2})([0-9]{2}\.[0-9]+)\s*([NS])\s*[/,\s]?\s*([0-9]{3})([0-9]{2}\.[0-9]+)\s*([EW])', raw_text, re.IGNORECASE)
+        if not m_dm_dec:
+            m_dm_dec = re.search(r'([NS])\s*([0-9]{2})([0-9]{2}\.[0-9]+)\s*[/,\s]?\s*([EW])\s*([0-9]{3})([0-9]{2}\.[0-9]+)', raw_text, re.IGNORECASE)
+            if m_dm_dec:
+                try:
+                    lat_ns = m_dm_dec.group(1).upper()
+                    lat_deg = int(m_dm_dec.group(2))
+                    lat_min = float(m_dm_dec.group(3))
+                    lat = (lat_deg + lat_min / 60.0) * (-1 if lat_ns == 'S' else 1)
+
+                    lon_ew = m_dm_dec.group(4).upper()
+                    lon_deg = int(m_dm_dec.group(5))
+                    lon_min = float(m_dm_dec.group(6))
+                    lon = (lon_deg + lon_min / 60.0) * (-1 if lon_ew == 'W' else 1)
+                    res['lat'], res['lon'] = round(lat, 4), round(lon, 4)
+                except (ValueError, TypeError):
+                    pass
+        else:
             try:
-                res['lat'] = float(loc['lat'])
-                res['lon'] = float(loc['lon'])
-                res['telemetry_summary'] = "XID Positionsrapport"
-                return res
+                lat_deg = int(m_dm_dec.group(1))
+                lat_min = float(m_dm_dec.group(2))
+                lat_ns = m_dm_dec.group(3).upper()
+                lat = (lat_deg + lat_min / 60.0) * (-1 if lat_ns == 'S' else 1)
+
+                lon_deg = int(m_dm_dec.group(4))
+                lon_min = float(m_dm_dec.group(5))
+                lon_ew = m_dm_dec.group(6).upper()
+                lon = (lon_deg + lon_min / 60.0) * (-1 if lon_ew == 'W' else 1)
+                res['lat'], res['lon'] = round(lat, 4), round(lon, 4)
             except (ValueError, TypeError):
                 pass
 
-        # 2. ADS-C strukturer
-        adsc = find_nested_key(vdl2_obj, 'adsc') or find_nested_key(vdl2_obj, 'basic_report')
-        if isinstance(adsc, dict):
-            lat_a = adsc.get('lat') or adsc.get('latitude')
-            lon_a = adsc.get('lon') or adsc.get('longitude')
-            if lat_a is not None and lon_a is not None:
+    if res['lat'] is None:
+        # Format: LAT 59.21 LON 18.08 eller LAT: 59.21, LON: 18.08
+        m_latlon = re.search(r'LAT(?:ITUDE)?[:\s]+(-?[0-9]{1,3}\.[0-9]+)[,\s]+LON(?:GITUDE)?[:\s]+(-?[0-9]{1,3}\.[0-9]+)', raw_text, re.IGNORECASE)
+        if m_latlon:
+            try:
+                res['lat'] = float(m_latlon.group(1))
+                res['lon'] = float(m_latlon.group(2))
+            except (ValueError, TypeError):
+                pass
+
+    # Sök efter FL / Altitud i texten om den inte redan är känd
+    if res['alt_ft'] is None:
+        m_fl = re.search(r'\b(?:FL|F)\s*([0-9]{2,3})\b', raw_text, re.IGNORECASE)
+        if m_fl:
+            fl_val = int(m_fl.group(1))
+            res['alt_ft'] = fl_val * 100
+            fl_str = f"FL{fl_val}"
+            res['telemetry_summary'] = (fl_str + f" | {res['telemetry_summary']}").strip(' |') if res['telemetry_summary'] else fl_str
+        else:
+            m_alt_raw = re.search(r'\bALT[:\s]+([0-9]{4,5})\b', raw_text, re.IGNORECASE)
+            if m_alt_raw:
+                alt_num = int(m_alt_raw.group(1))
+                res['alt_ft'] = alt_num
+                fl_str = f"FL{round(alt_num / 100)}"
+                res['telemetry_summary'] = (fl_str + f" | {res['telemetry_summary']}").strip(' |') if res['telemetry_summary'] else fl_str
+
+    # Sök efter rutt/flygplatser i texten (t.ex. ESSA/EFHK eller ARN-HEL)
+    m_route = re.search(r'\b([A-Z]{4})/([A-Z]{4})\b', raw_text)
+    if not m_route:
+        m_route = re.search(r'\b([A-Z]{3})[-/]([A-Z]{3})\b', raw_text)
+    if m_route:
+        orig = m_route.group(1).upper()
+        dest = m_route.group(2).upper()
+        if orig not in ('MIN', 'SEC', 'DEG', 'KMH') and dest not in ('MIN', 'SEC', 'DEG', 'KMH'):
+            res['telemetry']['route'] = f"{orig} -> {dest}"
+            r_str = f"Rutt: {orig} -> {dest}"
+            if res['telemetry_summary']:
+                if r_str not in res['telemetry_summary']:
+                    res['telemetry_summary'] += f" | {r_str}"
+            else:
+                res['telemetry_summary'] = r_str
+
+    # --- Mönster 4: Fallback till XID / GSIF / ADS-C struktur ur JSON ---
+    if isinstance(vdl2_obj, dict):
+        avlc = vdl2_obj.get('avlc', {}) if isinstance(vdl2_obj, dict) else {}
+        xid = avlc.get('xid', {}) if isinstance(avlc, dict) else {}
+        if isinstance(xid, dict):
+            # 1. XID ac_location
+            ac_loc = xid.get('ac_location', {})
+            loc = ac_loc.get('loc', {}) if isinstance(ac_loc, dict) else ac_loc
+            if isinstance(loc, dict) and 'lat' in loc and 'lon' in loc:
                 try:
-                    res['lat'] = float(lat_a)
-                    res['lon'] = float(lon_a)
-                    alt_a = adsc.get('alt') or adsc.get('altitude')
-                    if alt_a:
-                        res['alt_ft'] = int(float(alt_a))
-                        res['telemetry_summary'] = f"ADS-C FL{round(res['alt_ft'] / 100)}"
-                    else:
-                        res['telemetry_summary'] = "ADS-C Positionsrapport"
-                    return res
+                    res['lat'] = float(loc['lat'])
+                    res['lon'] = float(loc['lon'])
+                    if 'alt' in loc:
+                        res['alt_ft'] = int(float(loc['alt']))
+                        res['telemetry_summary'] = f"XID FL{round(res['alt_ft'] / 100)}"
+                    elif not res['telemetry_summary']:
+                        res['telemetry_summary'] = "XID Positionsrapport"
                 except (ValueError, TypeError):
                     pass
 
-        # 3. Top-level koordinater
-        lat_top = vdl2_obj.get('lat') or vdl2_obj.get('latitude')
-        lon_top = vdl2_obj.get('lon') or vdl2_obj.get('longitude')
-        if lat_top is not None and lon_top is not None:
-            try:
-                res['lat'] = float(lat_top)
-                res['lon'] = float(lon_top)
-                return res
-            except (ValueError, TypeError):
-                pass
+            # XID vdl_params -> dst_airport
+            vdl_params = xid.get('vdl_params', {}) if isinstance(xid.get('vdl_params'), dict) else {}
+            dst_ap = vdl_params.get('dst_airport') or xid.get('dst_airport')
+            if dst_ap:
+                dst_code = str(dst_ap).strip().upper()
+                res['dst_airport'] = dst_code
+                ap_name = AIRPORT_MAP.get(dst_code, '')
+                ap_str = f"Destination: {dst_code} ({ap_name})" if ap_name else f"Destination: {dst_code}"
+                if res['telemetry_summary']:
+                    if ap_str not in res['telemetry_summary']:
+                        res['telemetry_summary'] += f" | {ap_str}"
+                else:
+                    res['telemetry_summary'] = ap_str
+
+        # 2. ADS-C strukturer ur arinc622
+        arinc = find_nested_key(vdl2_obj, 'arinc622')
+        if isinstance(arinc, dict):
+            adsc_node = arinc.get('adsc')
+            if isinstance(adsc_node, dict):
+                brep = adsc_node.get('basic_report', adsc_node)
+                if isinstance(brep, dict) and 'lat' in brep and 'lon' in brep:
+                    try:
+                        res['lat'] = float(brep['lat'])
+                        res['lon'] = float(brep['lon'])
+                        if 'alt' in brep:
+                            res['alt_ft'] = int(float(brep['alt']))
+                            res['telemetry_summary'] = f"ADS-C FL{round(res['alt_ft'] / 100)}"
+                        elif not res['telemetry_summary']:
+                            res['telemetry_summary'] = "ADS-C Positionsrapport"
+                    except (ValueError, TypeError):
+                        pass
+
+        # 3. Övriga ADS-C strukturer
+        if res['lat'] is None:
+            adsc = find_nested_key(vdl2_obj, 'adsc') or find_nested_key(vdl2_obj, 'basic_report')
+            if isinstance(adsc, dict):
+                lat_a = adsc.get('lat') or adsc.get('latitude')
+                lon_a = adsc.get('lon') or adsc.get('longitude')
+                if lat_a is not None and lon_a is not None:
+                    try:
+                        res['lat'] = float(lat_a)
+                        res['lon'] = float(lon_a)
+                        alt_a = adsc.get('alt') or adsc.get('altitude')
+                        if alt_a:
+                            res['alt_ft'] = int(float(alt_a))
+                            res['telemetry_summary'] = f"ADS-C FL{round(res['alt_ft'] / 100)}"
+                        elif not res['telemetry_summary']:
+                            res['telemetry_summary'] = "ADS-C Positionsrapport"
+                    except (ValueError, TypeError):
+                        pass
+
+        # 4. Top-level koordinater
+        if res['lat'] is None:
+            lat_top = vdl2_obj.get('lat') or vdl2_obj.get('latitude')
+            lon_top = vdl2_obj.get('lon') or vdl2_obj.get('longitude')
+            if lat_top is not None and lon_top is not None:
+                try:
+                    res['lat'] = float(lat_top)
+                    res['lon'] = float(lon_top)
+                except (ValueError, TypeError):
+                    pass
 
     return res
 
@@ -371,10 +644,10 @@ def format_cpdlc(cpdlc_obj):
         
     return " ".join(parts).strip()
 
-def parse_vdl2_frame(data, filter_empty=True):
+def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
     """
     Parsar ett JSON-paket från dumpvdl2 eller acars_router och returnerar ett strukturerat meddelande.
-    Implementerar prioriteringsordning för MIAM, ACARS, CPDLC och telemetri.
+    Implementerar prioriteringsordning för MIAM, ACARS, CPDLC och telemetri samt läsbar avkodning.
     """
     if not isinstance(data, dict):
         return None
@@ -405,7 +678,7 @@ def parse_vdl2_frame(data, filter_empty=True):
     if sig_level is not None and noise_level is not None:
         try:
             snr_db = round(float(sig_level) - float(noise_level), 1)
-            snr_str = f"SNR: {snr_db:+.1f} dB"
+            snr_str = f"{snr_db:+.1f} dB"
         except (ValueError, TypeError):
             pass
 
@@ -439,7 +712,6 @@ def parse_vdl2_frame(data, filter_empty=True):
 
     # PRIORITERINGSORDNING FÖR TEXT:
     # A) MIAM (Uppackad Airbus-telemetri):
-    # Kolla FÖRST om vdl2.avlc.acars.miam.single_transfer.miam_core.data.acars.msg_text finns.
     if isinstance(acars, dict):
         flight = str(acars.get('flight') or '').strip().upper()
         reg = str(acars.get('reg') or '').strip()
@@ -486,8 +758,11 @@ def parse_vdl2_frame(data, filter_empty=True):
     if reg:
         reg = re.sub(r'^\.+', '', reg).strip().upper()
 
+    # Filter för länktest (Label Q0) om filter_links är på
+    if filter_links and label.upper() == 'Q0':
+        return None
+
     # C) CPDLC (Flygledningsmeddelanden):
-    # Kolla vdl2.avlc.x25.clnp.cotp.cpdlc eller övriga CPDLC-grenar
     cpdlc_data = None
     if isinstance(avlc, dict) and isinstance(avlc.get('x25'), dict):
         x25 = avlc['x25']
@@ -509,18 +784,25 @@ def parse_vdl2_frame(data, filter_empty=True):
     lat = pos_res['lat']
     lon = pos_res['lon']
     alt_ft = pos_res['alt_ft']
+    dst_airport = pos_res.get('dst_airport')
     telemetry_summary = pos_res['telemetry_summary']
     telemetry_data = pos_res['telemetry']
 
     # 4. Filtrering av tomma paket (AVLC Receive Ready, COTP Ack etc.)
-    has_payload = bool(msg_text or cpdlc_text or (lat is not None and lon is not None))
+    has_payload = bool(msg_text or cpdlc_text or (lat is not None and lon is not None) or dst_airport)
     if not has_payload:
         if filter_empty:
             return None
         msg_text = f"VDL2 Signallänk: {src_type} ({src_addr or 'Okänd'}) -> {dst_type} ({dst_addr or 'Okänd'})"
+    elif not msg_text and not cpdlc_text:
+        if dst_airport:
+            ap_desc = AIRPORT_MAP.get(dst_airport, '')
+            ap_info = f" ({ap_desc})" if ap_desc else ""
+            msg_text = f"[XID Handover] Stationslänk upprättad | Destination: {dst_airport}{ap_info}"
+        elif lat is not None and lon is not None:
+            msg_text = "[XID Positionsrapport] Flygplansposition mottagen via stationslänk"
 
     # 5. Konstruera Avsändare / Adress:
-    # "Sätt adress/avsändare i Pager-Monitor till t.ex. AY1338 (OH-LWI) [461F50]"
     addr_parts = []
     if flight:
         addr_parts.append(flight)
@@ -548,27 +830,35 @@ def parse_vdl2_frame(data, filter_empty=True):
     alias = airline_name if airline_name else (reg if reg else (f"Flygplan {src_addr}" if src_addr else "VDL2 Flygplan"))
 
     # 7. Formatera meddelandesträng med etiketter och telemetri
+    humanized_msg = humanize_acars_message(label, msg_text, acars_dict=acars) if msg_text else ""
+
     formatted_msg_parts = []
     if cpdlc_text:
         formatted_msg_parts.append(f"[CPDLC] {cpdlc_text}")
 
-    if msg_text:
-        label_desc = LABEL_MAP.get(label, f"Label {label}" if label else "")
-        label_prefix = f"[{label} {label_desc}] " if label_desc else (f"[{label}] " if label else "")
+    if humanized_msg:
+        label_desc = ACARS_LABELS.get(label)
+        if label_desc:
+            label_prefix = f"[{label}: {label_desc}] "
+        elif label:
+            label_prefix = f"[{label}] "
+        else:
+            label_prefix = ""
+
         if is_miam:
             label_prefix = "[MIAM Airbus] " + label_prefix
-        formatted_msg_parts.append(f"{label_prefix}{msg_text}")
+        formatted_msg_parts.append(f"{label_prefix}{humanized_msg}")
 
     if telemetry_summary:
-        formatted_msg_parts.append(f"[{telemetry_summary}]")
+        if telemetry_summary not in humanized_msg:
+            formatted_msg_parts.append(f"[{telemetry_summary}]")
 
-    full_message = " | ".join(formatted_msg_parts) if formatted_msg_parts else msg_text
+    full_message = " | ".join(formatted_msg_parts) if formatted_msg_parts else (humanized_msg or msg_text)
     
     if lat is not None and lon is not None:
-        full_message += f" | Lat: {lat:.4f}, Lon: {lon:.4f}"
-
-    if snr_str:
-        full_message += f" | {snr_str}"
+        coord_str = f"Lat: {lat:.4f}, Lon: {lon:.4f}"
+        if coord_str not in full_message:
+            full_message += f" | {coord_str}"
 
     bitrate_str = "VDL2-CPDLC" if cpdlc_text else ("VDL2-MIAM" if is_miam else ("VDL2-ACARS" if label else "VDL2"))
 
@@ -585,7 +875,8 @@ def parse_vdl2_frame(data, filter_empty=True):
         'lat': lat,
         'lon': lon,
         'alt_ft': alt_ft,
-        'snr': snr_db,
+        'snr': snr_str,
+        'snr_db': snr_db,
         'is_miam': is_miam,
         'label': label,
         'telemetry': telemetry_data
@@ -598,6 +889,7 @@ class VDL2Receiver:
         self.host = '192.168.1.242'
         self.port = 15555
         self.filter_empty = True
+        self.filter_links = False
         self.enabled = True
         self.thread = None
         self.running = False
@@ -625,7 +917,7 @@ class VDL2Receiver:
     def set_callback(self, cb):
         self.callback = cb
 
-    def start(self, host=None, port=None, filter_empty=None, enabled=None):
+    def start(self, host=None, port=None, filter_empty=None, filter_links=None, enabled=None):
         with self.lock:
             if host is not None: self.host = str(host).strip()
             if port is not None:
@@ -633,6 +925,8 @@ class VDL2Receiver:
                 except (ValueError, TypeError): self.port = 15555
             if filter_empty is not None:
                 self.filter_empty = (str(filter_empty).lower() == 'true')
+            if filter_links is not None:
+                self.filter_links = (str(filter_links).lower() == 'true')
             if enabled is not None:
                 self.enabled = (str(enabled).lower() == 'true')
 
@@ -668,11 +962,11 @@ class VDL2Receiver:
                 self.sock = None
         logger.info("[VDL2] Mottagare stoppad.")
 
-    def restart(self, host=None, port=None, filter_empty=None, enabled=None):
+    def restart(self, host=None, port=None, filter_empty=None, filter_links=None, enabled=None):
         logger.info("[VDL2] Startar om mottagare...")
         self.stop()
         time.sleep(0.5)
-        self.start(host=host, port=port, filter_empty=filter_empty, enabled=enabled)
+        self.start(host=host, port=port, filter_empty=filter_empty, filter_links=filter_links, enabled=enabled)
 
     def get_status(self):
         with self.lock:
@@ -737,7 +1031,7 @@ class VDL2Receiver:
             backoff = min(backoff * 2, 30)
 
     def _handle_frame(self, raw_json):
-        parsed = parse_vdl2_frame(raw_json, filter_empty=self.filter_empty)
+        parsed = parse_vdl2_frame(raw_json, filter_empty=self.filter_empty, filter_links=self.filter_links)
         if not parsed:
             return
 
@@ -896,12 +1190,13 @@ def init_vdl2(notify_callback=None):
     host = settings.get('vdl2_host', '192.168.1.242')
     port = settings.get('vdl2_port', '15555')
     filter_empty = settings.get('vdl2_filter_empty', 'true')
+    filter_links = settings.get('vdl2_filter_links', 'false')
     enabled = settings.get('vdl2_enabled', 'true')
 
     if notify_callback:
         vdl2_receiver.set_callback(notify_callback)
 
-    vdl2_receiver.start(host=host, port=port, filter_empty=filter_empty, enabled=enabled)
+    vdl2_receiver.start(host=host, port=port, filter_empty=filter_empty, filter_links=filter_links, enabled=enabled)
 
 def restart_vdl2():
     """Startar om VDL2-mottagaren med uppdaterade inställningar."""
@@ -910,6 +1205,7 @@ def restart_vdl2():
         host=settings.get('vdl2_host', '192.168.1.242'),
         port=settings.get('vdl2_port', '15555'),
         filter_empty=settings.get('vdl2_filter_empty', 'true'),
+        filter_links=settings.get('vdl2_filter_links', 'false'),
         enabled=settings.get('vdl2_enabled', 'true')
     )
 

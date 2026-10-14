@@ -75,9 +75,11 @@ window.WaterfallManager = (function () {
         if (!matchedName || matchedName === 'Unknown' || matchedName.startsWith('Freq ')) {
             if (matchInst && matchInst.name) {
                 matchedName = matchInst.name;
-            } else if (frequency.startsWith('4') || frequency.startsWith('39')) {
+            } else if (matchedName && (matchedName.toUpperCase().includes('SONDE') || matchedName.toUpperCase().includes('RADIO'))) {
+                // Behåll radiosondnamn
+            } else if ((frequency.startsWith('38') || frequency.startsWith('39')) && (!matchedName || matchedName.toUpperCase().includes('TETRA'))) {
                 matchedName = `TETRA ${frequency}`;
-            } else {
+            } else if (!matchedName || matchedName === 'Unknown') {
                 matchedName = `Freq ${frequency}`;
             }
         }
@@ -324,6 +326,15 @@ window.WaterfallManager = (function () {
                          (msg.protocol && msg.protocol.includes('RDS')) ||
                          (msg.sdr_name && msg.sdr_name.toUpperCase().includes('RDS'));
 
+        const isSondeMsg = (msg.protocol && msg.protocol.toUpperCase().includes('SONDE')) ||
+                           (msg.bitrate && msg.bitrate.toUpperCase().includes('SONDE')) ||
+                           (msg.sdr_name && (msg.sdr_name.toUpperCase().includes('SONDE') || msg.sdr_name.toUpperCase().includes('RADIO'))) ||
+                           (msg.alias && (msg.alias.toUpperCase().includes('RS41') || msg.alias.toUpperCase().includes('DFM') || msg.alias.toUpperCase().includes('SONDE')));
+
+        const isVdl2Msg = (msg.protocol && msg.protocol.toUpperCase().includes('VDL')) ||
+                          (msg.bitrate && msg.bitrate.toUpperCase().includes('VDL')) ||
+                          (msg.sdr_name && msg.sdr_name.toUpperCase().includes('VDL'));
+
         let ch = null;
         if (isRdsMsg) {
             // Leta efter befintlig RDS-kanal (t.ex. 'RDS' med frekvens 'auto')
@@ -340,7 +351,16 @@ window.WaterfallManager = (function () {
         }
 
         if (!ch) {
-            const sdrName = msg.sdr_name || (msg.frequency ? `Freq ${msg.frequency}` : 'Receiver');
+            let sdrName = msg.sdr_name;
+            if (!sdrName) {
+                if (isSondeMsg) {
+                    sdrName = `Radiosond ${freq}`;
+                } else if (isVdl2Msg) {
+                    sdrName = `VDL2 ${freq}`;
+                } else {
+                    sdrName = msg.frequency ? `Freq ${msg.frequency}` : 'Receiver';
+                }
+            }
             ch = registerChannel(sdrName, freq);
         }
         if (!ch) return;

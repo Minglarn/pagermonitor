@@ -478,6 +478,7 @@ class SondeReceiver:
             # Skicka startmeddelande till larmflödet
             if self.callback:
                 try:
+                    snr_display = f"{sonde.snr:.1f} dB" if sonde.snr is not None else None
                     self.callback({
                         'type': 'message',
                         'id': msg_id,
@@ -488,6 +489,8 @@ class SondeReceiver:
                         'protocol': 'SONDE',
                         'bitrate': 'SONDE-START',
                         'frequency': freq_str,
+                        'sdr_name': 'Radiosond',
+                        'snr': snr_display,
                         'repeat_count': 1,
                         'lat': sonde.lat,
                         'lon': sonde.lon
@@ -502,6 +505,8 @@ class SondeReceiver:
                         'protocol': 'SONDE',
                         'bitrate': 'SONDE',
                         'frequency': freq_str,
+                        'sdr_name': 'Radiosond',
+                        'snr': snr_display,
                         'repeat_count': 1,
                         'lat': sonde.lat,
                         'lon': sonde.lon
@@ -536,6 +541,7 @@ class SondeReceiver:
             logger.info(f"[SONDE BURST] {callsign} nådde {int(sonde.max_alt):,} m!")
             if self.callback:
                 try:
+                    snr_display = f"{sonde.snr:.1f} dB" if sonde.snr is not None else None
                     self.callback({
                         'type': 'message',
                         'id': b_id,
@@ -546,6 +552,8 @@ class SondeReceiver:
                         'protocol': 'SONDE',
                         'bitrate': 'SONDE-BURST',
                         'frequency': freq_str,
+                        'sdr_name': 'Radiosond',
+                        'snr': snr_display,
                         'repeat_count': 1,
                         'lat': sonde.lat,
                         'lon': sonde.lon
@@ -579,6 +587,7 @@ class SondeReceiver:
             logger.info(f"[SONDE LANDNING] {callsign} landade vid Lat: {sonde.lat}, Lon: {sonde.lon}")
             if self.callback:
                 try:
+                    snr_display = f"{sonde.snr:.1f} dB" if sonde.snr is not None else None
                     self.callback({
                         'type': 'message',
                         'id': l_id,
@@ -589,6 +598,8 @@ class SondeReceiver:
                         'protocol': 'SONDE',
                         'bitrate': 'SONDE-LAND',
                         'frequency': freq_str,
+                        'sdr_name': 'Radiosond',
+                        'snr': snr_display,
                         'repeat_count': 1,
                         'lat': sonde.lat,
                         'lon': sonde.lon
@@ -619,6 +630,7 @@ class SondeReceiver:
                 
                 # Skicka repeat_update via SSE så raden i tabellen uppdateras direkt
                 if self.callback:
+                    snr_display = f"{sonde.snr:.1f} dB" if sonde.snr is not None else None
                     self.callback({
                         'type': 'repeat_update',
                         'id': sonde.db_active_row_id,
@@ -627,6 +639,8 @@ class SondeReceiver:
                         'frequency': freq_str,
                         'address': callsign,
                         'message': summary,
+                        'sdr_name': 'Radiosond',
+                        'snr': snr_display,
                         'lat': sonde.lat,
                         'lon': sonde.lon
                     })

@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.28] - Humaniserad ACARS-avkodning, Dedikerad SNR-pill, Robust HTML-escaping och RF Activity Sonde-korrigering
+
+- **Dedikerad SNR-pill under meddelandetexten bredvid ACARS-märket**:
+  - SNR visas nu som en separat smaragdgrön pill (`.badge.meta.badge-snr`) under texten i `.msg-meta-bar`, placerad direkt bredvid ACARS/bitrate-pillret.
+  - SNR-strängar rensas automatiskt bort från meddelandetexten i användargränssnittet (`index.html`, `larm.html`, `statistics.html`), vilket ger ett rent och proffsigt textfält utan brus.
+  - Färgstilar implementerade för både mörkt och ljust tema i `static/style.css`.
+- **Skydd mot felaktig HTML-tolkning av krypterade eller binära tecken (HTML Escaping)**:
+  - Åtgärdat problem där kryptiska och binära tecken i POCSAG/FLEX/ACARS meddelanden (t.ex. vinkelparenteser `<` och `>`) tolkades som HTML-taggar av webbläsaren, vilket orsakade oönskad överstrykning (strikethrough) eller länkar.
+  - Fullständig HTML-escaping (`&`, `<`, `>`, `"`, `'`) i `formatMessage` och `highlightMessage` innan radbrytningar appliceras.
+- **Korrekt Namngivning och Isolering av Radiosonder i RF Activity (`static/waterfall.js`)**:
+  - Avlägsnat en felaktig hårdkodning som tidigare klassificerade alla frekvenser som började på `4` som `TETRA`.
+  - Radiosonder (400-406 MHz) registreras nu konsekvent under det korrekta namnet `Radiosond` med frekvens (t.ex. `Radiosond 403.500M`) istället för att förväxlas med TETRA.
+  - `sonde_receiver.py` skickar nu explicit `sdr_name: 'Radiosond'` och SNR-data i alla realtids-callbacks.
+- **Humaniserad ACARS-avkodning (`vdl2_receiver.py`)**:
+  - Svensk uppslagsbok `ACARS_LABELS` för informativa etiketter (t.ex. `[SA: Länkstatus (Media Advisory)]`, `[B9: Begäran om flygplatsväder (ATIS)]`).
+  - Tolkning av länkstatus (Media Advisory) med etablerade länkar (VDL2, HF, Satcom) och tidsangivelser i UTC.
+  - Flygplatsavkodning (`AIRPORT_MAP`) för ATIS- och klareringsbegäran (`/EKCH.TI2/` -> Köpenhamn/Kastrup).
+  - Prefix för Boeing/Honeywell FMS (`#M1B`) och underhållsdata.
+  - XID Handover-stöd och ny inställning för att dölja periodiska ACARS-länktest (`Label Q0`).
+
 ## [2026.10.14.27] - Radiosond- och Väderballongsintegration via radiosonde_auto_rx UDP-ström
 
 - **UDP Telemetrimottagare (`sonde_receiver.py`)**:

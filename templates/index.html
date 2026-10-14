@@ -812,13 +812,24 @@
             }
         }
 
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
         // Highlight word matches
         function highlightMessage(text) {
-            if (!alertWords.length) return text;
+            if (!alertWords || !alertWords.length) return text;
             let highlighted = text;
             alertWords.forEach(aw => {
-                if (aw.is_active) {
-                    const regex = new RegExp(`(${aw.word})(?![^<]*>)`, 'gi');
+                if (aw.is_active && aw.word) {
+                    const safeWord = escapeHtml(aw.word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`(${safeWord})(?![^<]*>)`, 'gi');
                     highlighted = highlighted.replace(regex, `<span class="alert-word" style="color: ${aw.color || '#ef4444'}; border-bottom-color: ${aw.color || '#ef4444'}">$1</span>`);
                 }
             });
@@ -826,8 +837,11 @@
         }
 
         function formatMessage(msgStr) {
-            let formatted = (msgStr || '').replace(/<CR><LF>/g, '<br>').replace(/\n/g, '<br>');
-            return highlightMessage(formatted);
+            if (!msgStr) return '';
+            let text = String(msgStr).replace(/<CR><LF>/gi, '\n');
+            let escaped = escapeHtml(text);
+            let withBreaks = escaped.replace(/\r\n|\n|\r/g, '<br>');
+            return highlightMessage(withBreaks);
         }
 
         function showSystemToast(title, message) {
@@ -987,13 +1001,40 @@
                 }
             }
             const bitrateTag = formattedBitrate ? `<span class="badge meta">${formattedBitrate}</span>` : '';
+
+            // Extrahera SNR för dedikerad pill bredvid ACARS/bitrate-pillret
+            let cleanMsg = alarm.message || '';
+            let snrVal = alarm.snr || '';
+            if (!snrVal && cleanMsg) {
+                const snrMatch = cleanMsg.match(/\bSNR:\s*([+-]?[0-9]+(?:\.[0-9]+)?\s*dB)\b/i);
+                if (snrMatch) {
+                    snrVal = snrMatch[1];
+                }
+            }
+            if (cleanMsg) {
+                cleanMsg = cleanMsg.replace(/\s*\|\s*SNR:\s*[+-]?[0-9]+(?:\.[0-9]+)?\s*dB/gi, '')
+                                   .replace(/\bSNR:\s*[+-]?[0-9]+(?:\.[0-9]+)?\s*dB\b/gi, '')
+                                   .trim();
+            }
+
+            let snrText = '';
+            if (snrVal) {
+                let s = String(snrVal).trim();
+                if (!s.toUpperCase().startsWith('SNR:')) {
+                    snrText = `SNR: ${s}`;
+                } else {
+                    snrText = s;
+                }
+            }
+            const snrTag = snrText ? `<span class="badge meta badge-snr" title="Signal/brusförhållande">${escapeHtml(snrText)}</span>` : '';
+
             const funcLabel = alarm.function !== undefined ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
             const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
             const freqTag = alarm.frequency ? `<span class="badge meta badge-freq">${alarm.frequency}</span>` : '';
             const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
             const repeatTag = (alarm.repeat_count && alarm.repeat_count > 1) ? `<span class="badge repeat-badge meta" title="Repeated ${alarm.repeat_count} times">${alarm.repeat_count}x</span>` : '';
 
-            const metaBarBadges = `${freqTag}${bitrateTag}${funcTag}${duplicateTag}${repeatTag}`;
+            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${funcTag}${duplicateTag}${repeatTag}`;
             const metaBarHtml = metaBarBadges ? `<div class="msg-meta-bar">${metaBarBadges}</div>` : '';
 
             tr.innerHTML = `
@@ -1001,9 +1042,9 @@
                 <td class="ts-cell" data-order="${alarm.timestamp}">${formattedTime}</td>
                 <td class="meta-cell"><div class="meta-wrapper">${protoTag}</div></td>
                 <td class="addr-cell">
-                    <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
+                    <span class="badge" title="${escapeHtml(alarm.address)}" onclick="openAliasModal('${escapeHtml(alarm.address)}')">${escapeHtml(displayAddress)}</span>
                 </td>
-                <td class="msg-cell"><div class="msg-text">${formatMessage(alarm.message)}</div>${metaBarHtml}</td>
+                <td class="msg-cell"><div class="msg-text">${formatMessage(cleanMsg)}</div>${metaBarHtml}</td>
                 <td class="actions-cell">
                     <div class="actions-wrapper">
                         <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">

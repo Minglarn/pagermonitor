@@ -640,11 +640,24 @@
                                     <div>
                                         <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">Filtrera bort tomma signallänksramar</div>
                                         <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">
-                                            Logga endast meddelanden som faktiskt innehåller text (ACARS eller CPDLC). Förhindrar att tusentals tomma länksynkar sparas.
+                                            Logga endast meddelanden som faktiskt innehåller text (ACARS eller CPDLC) eller telemetri. Förhindrar att tusentals tomma länksynkar sparas.
                                         </div>
                                     </div>
                                     <label class="switch">
                                         <input type="checkbox" id="vdl2_filter_empty" checked onchange="autoSaveVdl2Settings()">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">Dölj ACARS Länktest (Label Q0)</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                                            Filtrerar bort periodiska "Link Test" ping-meddelanden som inte innehåller någon användbar information.
+                                        </div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="vdl2_filter_links" onchange="autoSaveVdl2Settings()">
                                         <span class="slider round"></span>
                                     </label>
                                 </div>
@@ -1295,6 +1308,8 @@
                     if (vdl2PortEl && data.vdl2_port) vdl2PortEl.value = data.vdl2_port;
                     const vdl2FiltEl = document.getElementById('vdl2_filter_empty');
                     if (vdl2FiltEl) vdl2FiltEl.checked = (data.vdl2_filter_empty !== 'false');
+                    const vdl2LinksEl = document.getElementById('vdl2_filter_links');
+                    if (vdl2LinksEl) vdl2LinksEl.checked = (data.vdl2_filter_links === 'true');
 
                     const sondeEnEl = document.getElementById('sonde_enabled');
                     if (sondeEnEl) sondeEnEl.checked = (data.sonde_enabled !== 'false');
@@ -1358,7 +1373,8 @@
                 vdl2_enabled: document.getElementById('vdl2_enabled').checked ? 'true' : 'false',
                 vdl2_host: document.getElementById('vdl2_host').value.trim() || '192.168.1.242',
                 vdl2_port: document.getElementById('vdl2_port').value.trim() || '15555',
-                vdl2_filter_empty: document.getElementById('vdl2_filter_empty').checked ? 'true' : 'false'
+                vdl2_filter_empty: document.getElementById('vdl2_filter_empty').checked ? 'true' : 'false',
+                vdl2_filter_links: document.getElementById('vdl2_filter_links').checked ? 'true' : 'false'
             };
             saveSettings(payload).then(() => {
                 setTimeout(loadVdl2Status, 600);
