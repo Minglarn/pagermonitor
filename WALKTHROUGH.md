@@ -1465,3 +1465,29 @@
 - **Verifiering**:
   - Testat syntetisk injicering med `python rds_decoder.py --test-tmc` och verifierat att RadioText+ 3A-paket inte sätter TMC-status till aktiv, medan ALERT-C 3A sätter status och låser mottagningen korrekt.
   - Samtliga 62 enhetstester passerar utan anmärkning.
+
+### 47. Åtgärd av Falsk 8A-låsning på Icke-TMC Stationer (SR P1/P2/P3) (v2026.10.14.19)
+- **Bakgrund och Problem**:
+  - Vid mottagning på 99.3 MHz (SR P3, PI `0xE203`) detekterades ett enstaka rått RDS-block för Grupp 8A i luften.
+  - Loggen visade: `[RDS] RDS-TMC LOCK: Station låst på frekvens 99.3M` och `TMC: Aktiv (ALERT-C 8A-larm mottagna)`.
+  - Trots detta syntes inga larm i webbgränssnittets meddelandeflöde ("Men jag ser inget i flödet?!").
+  - Orsaken:
+    1. I Sverige sänder Sveriges Radio RDS-TMC **uteslutande på SR P4**. SR P1, P2 och P3 har ingen TMC-sändning.
+    2. Redseas TMC-avkodare (`TMCService`) kräver Grupp 3A ODA ALERT-C (`AID 0xCD46`) för att initieras (`if (!is_initialized_) return;`). På P3 sänds aldrig Grupp 3A för TMC, vilket gör att redsea kastar alla 8A-block direkt utan att avkoda några meddelanden.
+    3. I [rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py) fanns kontrollen `(group_type == "8A")` i `is_group_8a`. Den satte felaktigt `_current_channel_tmc_active = True`, satte `has_seen_tmc_8a = True` och låste mottagaren på 99.3 MHz, trots att inget meddelande (`loc_code`) fanns och ingen 3A handskakning skett. Därmed blev mottagaren låst på P3 och väntade förgäves på meddelanden som aldrig sänds där.
+- **Teknisk Implementering**:
+  - **Strikt Krav på Avkodat Meddelande för 8A-låsning ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - `_current_channel_tmc_active = True`, `has_seen_tmc_8a = True` och anrop till `format_and_print_lock(...)` sker nu **enbart** om ett faktiskt giltigt ALERT-C plats-ID (`loc_code is not None`) avkodats ur meddelandeblocken.
+    - Ett rått 8A-block utan avkodat innehåll loggas nu som partiellt block enbart om stationen tidigare bekräftats via Grupp 3A ODA ALERT-C. På icke-TMC stationer ignoreras råa 8A-block helt så att de inte avbryter eller låser skanningen.
+  - **Tydlig Identifiering av SR P1, P2 och P3 ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Lagt till igenkänning av PI-koderna `0xE201` (P1), `0xE202` (P2) och `0xE203` (P3) samt motsvarande stationsnamn.
+    - Heartbeat-övervakaren informerar nu omedelbart i statusen:
+      `TMC: Ej TMC-sändare (P3 SR sänder ej TMC, välj SR P4)`
+    - Skanningsmotorn rapporterar direkt:
+      `Station P3 SR (PI: 0xE203) sänder inte RDS-TMC (TMC sänds enbart på SR P4).`
+  - **Versionsspårbarhet**:
+    - Uppdaterat versionsnummer till CalVer `2026.10.14.19` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+- **Verifiering**:
+  - Testat rå 8A injicering mot P3 PI `0xE203`: Mottagaren rapporterar korrekt `sänder inte RDS-TMC` och låser inte (`tmc_active = False`).
+  - Testat syntetisk ALERT-C injicering med `python rds_decoder.py --test-tmc`: Framgångsrik avkodning av Grupp 3A och Grupp 8A med korrekt generering av `RDS-TMC: LOC: 14502 ...`.
+  - Samtliga 62 enhetstester passerar med 100% godkänt resultat.

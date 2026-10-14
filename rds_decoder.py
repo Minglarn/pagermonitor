@@ -140,12 +140,21 @@ def _heartbeat_worker():
             groups_display = ", ".join(groups_seen) if groups_seen else "-"
 
             # Tydlig indikator för TMC-status baserat på mottagna RDS-grupper och validerad ALERT-C data
-            has_8a = ("8A" in groups_seen) or _heartbeat_stats.get('has_seen_tmc_8a', False)
+            has_8a_alarm = _heartbeat_stats.get('has_seen_tmc_8a', False)
             has_3a_tmc = _heartbeat_stats.get('has_seen_tmc_3a', False)
-            if has_8a:
+            clean_pi = str(pi if pi else "").upper().replace("0X", "").strip()
+            station_u = str(ps if ps else "").upper()
+            is_non_tmc_sr = clean_pi in ("E201", "E202", "E203") or any(x in station_u for x in ("P1", "P2", "P3"))
+
+            if has_8a_alarm:
                 tmc_status = "Aktiv (ALERT-C 8A-larm mottagna)"
             elif has_3a_tmc:
-                tmc_status = "Synkad (Grupp 3A ALERT-C bekräftad, avvaktar 8A-larm)"
+                if "8A" in groups_seen:
+                    tmc_status = "Synkad (Grupp 3A aktiv, tar emot 8A-paket)"
+                else:
+                    tmc_status = "Synkad (Grupp 3A ALERT-C bekräftad, avvaktar 8A-larm)"
+            elif is_non_tmc_sr:
+                tmc_status = f"Ej TMC-sändare ({station_str} sänder ej TMC, välj SR P4)"
             elif "3A" in groups_seen:
                 tmc_status = "Ej TMC (Grupp 3A är RadioText+, ej ALERT-C)"
             else:
@@ -598,6 +607,8 @@ def format_and_print_rds(ps="", pi=""):
     elif is_commercial_station(_last_reported_ps, _last_reported_pi):
         _current_channel_is_commercial = True
         format_and_print_scan(f"Station {_last_reported_ps or 'FM'} (PI: 0x{_last_reported_pi}) är en kommersiell station och sänder inte RDS-TMC.")
+    elif _last_reported_pi in ("E201", "E202", "E203") or any(x in (_last_reported_ps or "").upper() for x in ("P1", "P2", "P3")):
+        format_and_print_scan(f"Station {_last_reported_ps or 'SR'} (PI: 0x{_last_reported_pi}) sänder inte RDS-TMC (TMC sänds enbart på SR P4).")
 
     return out_line
 
@@ -669,20 +680,13 @@ def parse_redsea_json_line(line_str):
 
     # 2. Kontrollera Grupp 8A: ALERT-C Trafikmeddelanden
     tmc_root = data.get("tmc") if isinstance(data.get("tmc"), dict) else data
-    is_group_8a = (
+    has_tmc_message = (
         ("tmc" in data and isinstance(data.get("tmc"), dict) and ("message" in data["tmc"] or "user_message" in data["tmc"])) or
-        (group_type == "8A") or
         ("tmc" in data and isinstance(data.get("tmc"), dict) and "location" in data["tmc"]) or
         ("location" in data and ("event_codes" in data or "events" in data))
     )
+    is_group_8a = (group_type == "8A") or has_tmc_message
     if is_group_8a:
-        global _channel_lock_printed
-        _current_channel_tmc_active = True
-        with _heartbeat_lock:
-            _heartbeat_stats['has_seen_tmc_8a'] = True
-        if not _channel_lock_printed:
-            _channel_lock_printed = True
-            format_and_print_lock(chosen_freq_global, "Aktiv RDS-TMC trafikdataström bekräftad (Grupp 8A)")
         # Redsea kapslar in TMC-data inuti ett inre 'message'- eller 'user_message'-objekt
         if isinstance(tmc_root.get("message"), dict):
             tmc = tmc_root.get("message")
@@ -699,6 +703,13 @@ def parse_redsea_json_line(line_str):
             loc_code = data.get("location")
 
         if loc_code is not None:
+            global _channel_lock_printed
+            _current_channel_tmc_active = True
+            with _heartbeat_lock:
+                _heartbeat_stats['has_seen_tmc_8a'] = True
+            if not _channel_lock_printed:
+                _channel_lock_printed = True
+                format_and_print_lock(chosen_freq_global, "Aktiv RDS-TMC trafikdataström bekräftad (Grupp 8A)")
             event_codes = []
             event_descs = []
 
@@ -794,12 +805,14 @@ def parse_redsea_json_line(line_str):
                 msg=event_desc
             )
         else:
-            # Partiell 8A grupp (t.ex. fortsättningsblock eller rådata)
-            global _last_raw_8a_log
-            now = time.time()
-            if '_last_raw_8a_log' not in globals() or now - _last_raw_8a_log > 15.0:
-                _last_raw_8a_log = now
-                print("INFO: [RDS-TMC] ALERT-C Grupp 8A detekterad i luften (Inväntar komplett meddelandesekvens)", flush=True)
+            # Partiell 8A grupp (t.ex. pågående flerblocks-sekvens i luften)
+            # Logga enbart om stationen faktiskt är bekräftad TMC-station (Grupp 3A aktiv)
+            if _group_3a_confirmed:
+                global _last_raw_8a_log
+                now = time.time()
+                if '_last_raw_8a_log' not in globals() or now - _last_raw_8a_log > 15.0:
+                    _last_raw_8a_log = now
+                    print("INFO: [RDS-TMC] ALERT-C Grupp 8A block mottaget (Inväntar komplett sekvens)", flush=True)
 
     # 3. Kontrollera vanlig RDS-metadata (PS / PI)
     # RadioText (låttitlar/artister/reklam) ignoreras helt för att undvika spam.

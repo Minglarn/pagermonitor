@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.19] - Förhindrat Falsk TMC-låsning på Råa 8A-block och Identifiering av Icke-TMC Stationer
+
+### Fixed
+- **Strikt Krav på Avkodat Meddelande för Grupp 8A-låsning (`rds_decoder.py`)**:
+  - Åtgärdat bugg där mottagaren låste sig och felaktigt rapporterade `TMC: Aktiv (ALERT-C 8A-larm mottagna)` enbart för att ett enstaka rått RDS-block för Grupp 8A detekterades i luften på icke-TMC stationer (t.ex. SR P3, 99.3 MHz).
+  - Grupp 8A låser nu endast mottagaren och flaggar aktiv TMC om ett fullständigt och giltigt ALERT-C meddelande (`loc_code`) faktiskt avkodats, eller om sändaren tidigare bekräftats via Grupp 3A ODA ALERT-C.
+  - Partiella 8A-block loggas nu endast på bekräftade TMC-stationer för att undvika vilseledande loggar på icke-TMC kanaler.
+- **Tydlig Identifiering av SR P1, P2 och P3 (`rds_decoder.py`)**:
+  - Sveriges Radio sänder ALERT-C TMC uteslutande via SR P4.
+  - Avkodaren känner nu igen PI-koder och stationsnamn för P1, P2 och P3 (`0xE201`, `0xE202`, `0xE203`) och informerar direkt i heartbeat (`TMC: Ej TMC-sändare (P3 SR sänder ej TMC, välj SR P4)`) samt i skanningsloggen om att TMC inte sänds på dessa kanaler.
+
 ## [2026.10.14.18] - Åtgärdat Falsk TMC-låsning på RadioText+ och Korrigerade Redsea Flaggor
 
 ### Fixed
