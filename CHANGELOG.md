@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.10] - Förbättrad Redsea ODA/TMC-tolkning och Direkt Testlarm till Realtidsflödet
+
+### Added
+- **Stöd för Redsea ODA- och Meddelandestrukturer (`rds_decoder.py`)**:
+  - Utökat stöd för `redsea`:s fält `open_data_app` (Grupp 3A) samt `user_message` och `events`-array (Grupp 8A).
+  - Åtgärdat fel där AID kunde loggas som `0xNONE` vid saknade fält i redsea-strömmen; faller nu alltid tillbaka till `0xCD46` (ALERT-C).
+  - Stöd för `direction: "positive"` / `"negative"` från redsea.
+- **Direkt Testlarm i Realtidsflödet (`app.py`, `templates/settings.html`, `rds_decoder.py`)**:
+  - Nytt endpoint `POST /api/test/tmc` som sparar testlarmet och sänder ut det live via SSE till alla öppna webbläsarfönster utan att sidan behöver laddas om.
+  - Ny knapp i gränssnittet under Inställningar -> Manuella databasåtgärder: "Skicka testsignal för RDS-TMC".
+  - Kommandot `--test-tmc --save-db` anropar nu webbserverns interna REST API i första hand för omedelbar realtidsvisning i flödet.
+
 ## [2026.10.14.09] - TMC-statusindikator i Heartbeat och --save-db Testläge
 
 ### Added

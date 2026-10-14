@@ -605,21 +605,26 @@ def parse_redsea_json_line(line_str):
     record_rds_frame(pi=pi_val, ps=ps_val, group=group_type, count=1)
 
     # 1. Kontrollera Grupp 3A: Handskakning och Systeminformation (ALERT-C AID: 0xCD46, LTN: 1)
-    oda_info = data.get("oda") or {}
-    aid_str = str(data.get("aid") or (oda_info.get("aid") if isinstance(oda_info, dict) else "")).upper().replace("0X", "").strip()
-    app_str = str(data.get("application", "") or (oda_info.get("application", "") if isinstance(oda_info, dict) else "")).upper()
+    oda_info = data.get("oda") or data.get("open_data_app") or {}
+    raw_aid = data.get("aid") or (oda_info.get("aid") if isinstance(oda_info, dict) else "") or ""
+    aid_str = str(raw_aid).upper().replace("0X", "").strip()
+    if aid_str in ("", "NONE", "NULL"):
+        aid_str = "CD46"
+    aid_disp = f"0x{aid_str}"
+
+    app_str = str(data.get("application", "") or (oda_info.get("application", "") or oda_info.get("app_name", "") if isinstance(oda_info, dict) else "")).upper()
     is_group_3a = (
         group_type == "3A" or 
         "CD46" in aid_str or 
         "TMC" in app_str or 
-        ("oda" in data and isinstance(oda_info, dict) and "CD46" in str(oda_info).upper())
+        ("oda" in data and isinstance(oda_info, dict) and "CD46" in str(oda_info).upper()) or
+        ("open_data_app" in data and isinstance(oda_info, dict) and any(x in str(oda_info).upper() for x in ("TMC", "8A", "CD46")))
     )
 
     if is_group_3a:
         global _group_3a_confirmed, _current_channel_tmc_active
         _current_channel_tmc_active = True
         ltn_num = data.get("ltn") or (oda_info.get("ltn") if isinstance(oda_info, dict) else 1) or 1
-        aid_disp = f"0x{aid_str}" if aid_str else "0xCD46"
         status_disp = "AKTIV"
 
         # Logga vid INFO-nivå när grupp 3A (TMC System Information) detekteras
@@ -638,9 +643,11 @@ def parse_redsea_json_line(line_str):
     if is_group_8a:
         _current_channel_tmc_active = True
         tmc_root = data.get("tmc") if isinstance(data.get("tmc"), dict) else data
-        # Redsea kapslar in TMC-data inuti ett inre 'message'-objekt
+        # Redsea kapslar in TMC-data inuti ett inre 'message'- eller 'user_message'-objekt
         if isinstance(tmc_root.get("message"), dict):
             tmc = tmc_root.get("message")
+        elif isinstance(tmc_root.get("user_message"), dict):
+            tmc = tmc_root.get("user_message")
         else:
             tmc = tmc_root
 
@@ -652,30 +659,45 @@ def parse_redsea_json_line(line_str):
             loc_code = data.get("location")
 
         if loc_code is not None:
-            # Extrahera event_codes (lista med koder)
-            event_codes = tmc.get("event_codes") or tmc_root.get("event_codes") or data.get("event_codes") or []
-            if isinstance(event_codes, int):
-                event_codes = [event_codes]
-            elif not isinstance(event_codes, list):
-                try:
-                    event_codes = [int(event_codes)]
-                except (ValueError, TypeError):
-                    single_code = tmc.get("event_code") or tmc_root.get("event_code") or data.get("event_code")
-                    if single_code is not None:
-                        try: event_codes = [int(single_code)]
-                        except Exception: event_codes = []
-                    else:
-                        event_codes = []
+            event_codes = []
+            event_descs = []
 
-            # Extrahera event_descriptions (klartext från redsea om tillgängligt)
-            event_descs = tmc.get("event_descriptions") or tmc_root.get("event_descriptions") or data.get("event_descriptions") or []
-            if isinstance(event_descs, str):
-                event_descs = [event_descs]
-            elif not isinstance(event_descs, list):
-                event_descs = []
+            # Stöd både redseas events-array med objekt och generiska listor
+            raw_events = tmc.get("events") or tmc_root.get("events") or data.get("events") or []
+            if isinstance(raw_events, list):
+                for ev in raw_events:
+                    if isinstance(ev, dict):
+                        ec = ev.get("event_code") or ev.get("code") or ev.get("event")
+                        if ec is not None:
+                            try: event_codes.append(int(ec))
+                            except Exception: pass
+                        desc = ev.get("description") or ev.get("event_description") or ev.get("text")
+                        if desc:
+                            event_descs.append(str(desc))
+                    elif isinstance(ev, int):
+                        event_codes.append(ev)
+                    elif isinstance(ev, str) and ev.isdigit():
+                        event_codes.append(int(ev))
+
+            raw_ec = tmc.get("event_codes") or tmc_root.get("event_codes") or data.get("event_codes")
+            if raw_ec:
+                if isinstance(raw_ec, list):
+                    for ec in raw_ec:
+                        try: event_codes.append(int(ec))
+                        except Exception: pass
+                elif isinstance(raw_ec, int):
+                    event_codes.append(raw_ec)
+
+            raw_ed = tmc.get("event_descriptions") or tmc_root.get("event_descriptions") or data.get("event_descriptions")
+            if raw_ed:
+                if isinstance(raw_ed, list):
+                    event_descs.extend([str(x) for x in raw_ed if str(x)])
+                elif isinstance(raw_ed, str):
+                    event_descs.append(raw_ed)
 
             extent = tmc.get("extent", tmc_root.get("extent", data.get("extent", 0)))
-            direction = tmc.get("direction", tmc_root.get("direction", data.get("direction", "+")))
+            dir_raw = str(tmc.get("direction", tmc_root.get("direction", data.get("direction", "+")))).lower()
+            direction = "-" if ("neg" in dir_raw or "-" in dir_raw) else "+"
             urgency = tmc.get("urgency", tmc_root.get("urgency", data.get("urgency", "normal")))
             duration = tmc.get("duration", tmc_root.get("duration", data.get("duration", "")))
 
@@ -1024,6 +1046,19 @@ def run_test_tmc(save_db=False):
 
     if save_db:
         try:
+            # 1. Prova först att anropa webbserverns interna REST API så att webbläsare meddelas i realtid via SSE
+            import urllib.request
+            try:
+                req = urllib.request.Request("http://127.0.0.1:5000/api/test/tmc", data=b"{}", headers={"Content-Type": "application/json"})
+                with urllib.request.urlopen(req, timeout=1.5) as resp:
+                    if resp.status == 200:
+                        print("[TEST] Larmet har skickats till applikationen och aktiverats i realtidsflödet!", flush=True)
+                        print("RDS-TMC: Testläge slutfört framgångsrikt.", flush=True)
+                        return res_8a
+            except Exception:
+                pass
+
+            # 2. Fallback: spara direkt i SQLite databasfilen om webbservern inte svarar på port 5000
             from database import save_message, init_db, DB_PATH
             import os
             db_dir = os.path.dirname(DB_PATH)
@@ -1037,7 +1072,7 @@ def run_test_tmc(save_db=False):
                     bitrate="RDS-TMC",
                     frequency="103.3M"
                 )
-                print("[TEST] Larmet har sparats i databasen messages.db och är nu synligt i applikationens gränssnitt!", flush=True)
+                print("[TEST] Larmet har sparats i databasen messages.db (ladda om sidan i webbläsaren för att se det)!", flush=True)
             else:
                 print(f"[TEST] Databasmapp hittades inte: {db_dir}", flush=True)
         except Exception as e:

@@ -329,6 +329,41 @@ def handle_clear_basestations():
         logger.error(f"Error clearing basestation messages: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/test/tmc', methods=['POST'])
+def handle_test_tmc():
+    """Genererar ett syntetiskt ALERT-C trafikmeddelande och skickar till SSE och databas."""
+    try:
+        from sdr_processor import new_message_callbacks
+        address = "E4:14502"
+        alias = "Trafikplats Nyköping Norra (Avfart 134)"
+        msg = "Trafikolycka (Stationary traffic for 2 km) (Trafikplats Nyköping Norra (Avfart 134)) | Lat: 58.7612, Lon: 17.0211"
+        freq = "88.7M"
+        bitrate = "RDS-TMC"
+        function_code = 3
+
+        saved_id, saved_ts = save_message(address, msg, alias, function_code, bitrate, freq)
+        payload = {
+            'id': saved_id,
+            'timestamp': saved_ts,
+            'address': address,
+            'message': msg,
+            'alias': alias,
+            'function_code': function_code,
+            'bitrate': bitrate,
+            'frequency': freq,
+            'repeat_count': 1,
+            'is_duplicate': False
+        }
+        for cb in list(new_message_callbacks):
+            try: cb(payload)
+            except Exception: pass
+
+        logger.info(f"[RDS-TMC TEST] Syntetiskt testlarm skickat till realtidsflödet: {msg}")
+        return jsonify({"status": "success", "message": "Syntetiskt testlarm skickat", "data": payload})
+    except Exception as e:
+        logger.error(f"Error generating test TMC message: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/api/settings/defaults')
 def settings_defaults():
     return jsonify(get_default_settings())

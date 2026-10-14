@@ -497,6 +497,19 @@
 
                                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: 1.25rem; border-bottom: 1px solid var(--panel-border);">
                                         <div>
+                                            <h5 style="margin: 0; font-size: 0.9rem; color: var(--accent);">Skicka testsignal för RDS-TMC</h5>
+                                            <p style="margin: 0.2rem 0 0 0; font-size: 0.75rem; color: var(--text-secondary);">
+                                                Injicerar ett syntetiskt ALERT-C trafiklarm (E4 Nyköping) i databasen och sänder ut det live via SSE till realtidsflödet.
+                                            </p>
+                                        </div>
+                                        <button type="button" class="secondary-btn" onclick="sendTestTmcAlert()"
+                                            style="border-color: var(--accent); color: var(--accent); padding: 0.45rem 1rem; margin: 0;">
+                                            Skicka Testlarm
+                                        </button>
+                                    </div>
+
+                                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: 1.25rem; border-bottom: 1px solid var(--panel-border);">
+                                        <div>
                                             <h5 style="margin: 0; font-size: 0.9rem; color: var(--text-primary);">Prune old messages now</h5>
                                             <p style="margin: 0.2rem 0 0 0; font-size: 0.75rem; color: var(--text-secondary);">
                                                 Immediately deletes non-protected messages older than specified days.
@@ -1082,6 +1095,22 @@
             } catch (err) {
                 console.error('Error clearing basestations:', err);
                 showStatus('Kunde inte rensa basstationer.', 'error');
+            }
+        }
+
+        async function sendTestTmcAlert() {
+            try {
+                const res = await fetch('/api/test/tmc', { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    showStatus('Syntetiskt RDS-TMC larm skickat till realtidsflödet!', 'success');
+                    loadDatabaseStats();
+                } else {
+                    showStatus('Kunde inte skicka testlarm: ' + (data.message || 'Okänt fel'), 'error');
+                }
+            } catch (e) {
+                console.error('Error sending test TMC alert:', e);
+                showStatus('Nätverksfel vid sändning av testlarm.', 'error');
             }
         }
 
