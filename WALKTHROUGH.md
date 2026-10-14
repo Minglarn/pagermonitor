@@ -1593,3 +1593,29 @@
 - **Verifiering**:
   - Samtliga 27 enhetstester passerar utan fel (`python -m unittest discover tests`).
 
+### 52. Global Deklaration i run_rds_session och Dwell-tidsjustering vid Skanning (v2026.10.14.24)
+- **Bakgrund och Problem**:
+  - Användaren rapporterade två problem:
+    1. Fel i fast frekvenskörning:
+       `UnboundLocalError: cannot access local variable '_current_channel_tmc_active' where it is not associated with a value` i [rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py) rad 1109 inuti `run_rds_session`.
+    2. Vid frekvenssökning över FM-bandet rusade skannern förbi kanaler på endast 2.5 sekunder utan att stanna på starka riksstationer ("det går för fort, stannar inte ens på de stora RIKS frekvenserna").
+  - Orsaker:
+    - I `run_rds_session` tilldelades `_current_channel_tmc_active = True` utan att variabeln deklarerats med `global` överst i funktionen. Python behandlade den därmed som en lokal variabel och kraschade när den lästes vid början av while-loopen.
+    - 2.5 sekunder snabbavbrott var för kort tid: RTL-SDR och redsea behöver 3–5 sekunder för att initiera USB-dongeln, låsa sin 57 kHz PLL och dekodera den första 104-bitars RDS-ramen. Skannern avbröt därmed frekvensen innan redsea ens hunnit producera data.
+    - Spektrummätningen med `rtl_power` sorterade alla frekvenser enbart efter RF-energi, vilket kunde placera kommersiella hög-effektssändare före de faktiska SR-sändarna.
+- **Teknisk Implementering**:
+  - **Global Deklaration i `run_rds_session` ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Deklarerat `_current_channel_tmc_active`, `_current_channel_p4_confirmed` och `_current_channel_is_commercial` i `global`-deklarationen i `run_rds_session`.
+  - **Ökat Snabbavbrott till 6.0s ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Ändrat timeout för signalavkänning från 2.5s till 6.0s så att redsea hinner synkronisera biphase-klockan och producera ramdata.
+  - **Prioriterad SR TMC-spektrumsortering ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Vid `rtl_power`-mätning sorteras kända SR-stationer (P3 och P4) internt efter starkaste lokala signalstyrka och placeras alltid före generiska FM-rasterfrekvenser.
+  - **Förfinad Identifiering ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Kommersiella stationer och SR P1/P2 sållas bort direkt så att de aldrig klassas som SR TMC.
+  - **Versionsspårbarhet**:
+    - Uppdaterat version till CalVer `2026.10.14.24` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+- **Verifiering**:
+  - AST-kontroll validerar att inga globala variabler skuggas i modulens funktioner.
+  - Samtliga 27 enhetstester passerar utan anmärkning (`python -m unittest discover tests`).
+
+

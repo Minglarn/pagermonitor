@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.24] - Fix för Global UnboundLocalError i Sessionsloop och Realistisk Dwell-tid vid FM-skanning
+
+- **Åtgärdat `UnboundLocalError` i `run_rds_session` (`rds_decoder.py`)**:
+  - `_current_channel_tmc_active`, `_current_channel_p4_confirmed` och `_current_channel_is_commercial` saknade `global`-deklaration inuti `run_rds_session`. När ett värde tilldelades i funktionen tolkade Python variabeln som lokal vilket orsakade ett omedelbart `UnboundLocalError` när den lästes vid loopens start.
+  - Deklarerat samtliga nödvändiga modulglobaler i funktionens huvud.
+- **Justering av Snabbavbrott från 2.5s till 6.0s**:
+  - RTL-SDR hårdvaruinitiering och `redsea` biphase-avkodning behöver 3–5 sekunder för att etablera bärvågssynk och avkoda det första 104-bitars RDS-blocket. Det tidigare 2.5s-avbrottet avbröt frekvenser innan dekodern ens hunnit producera sin första rad data, vilket fick skannern att rusa förbi aktiva RIKS-stationer.
+  - Tidsfönstret för signalavkänning har justerats till 6.0s vilket ger stabil synk.
+- **Prioritering av Kända SR TMC-stationer vid Spektrummätning**:
+  - Kända sändare för SR P3 och SR P4 prioriteras nu alltid överst i sökkön och sorteras efter lokal RF-signalstyrka via `rtl_power`, före godtyckliga FM-rasterfrekvenser.
+- **Förfinad Stationsidentifiering**:
+  - Kommersiella radiostationer och SR P1/P2 sållas bort direkt så att de aldrig fellåses som SR TMC.
+
 ## [2026.10.14.23] - Fix för UnboundLocalError i RDS Heartbeat, Prioritering av 88.7M och Robust Processhantering
 
 - **Åtgärdat `UnboundLocalError` i `_heartbeat_worker` (`rds_decoder.py`)**:

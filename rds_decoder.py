@@ -622,25 +622,6 @@ class AlertCDecoder:
 
 _raw_alert_c_decoder = AlertCDecoder()
 
-def is_sr_tmc_station(ps_str, pi_str):
-    """Avgör om stationen är Sveriges Radio TMC-distributör (SR P3 eller SR P4)."""
-    ps_u = str(ps_str or "").upper().strip()
-    pi_clean = str(pi_str or "").upper().replace("0X", "").strip()
-
-    if "P3" in ps_u or "P4" in ps_u or "SR" in ps_u:
-        return True
-    if pi_clean == "E203": # SR P3 (Rikstäckande RDS-TMC nät)
-        return True
-    # P4 distriktskoder (Sörmland: 0xEA24, Uppland: 0xE404, m.fl.)
-    if any(pi_clean.startswith(pfx) for pfx in ("EA", "EB", "EC", "ED", "E4", "E204")):
-        return True
-    if pi_clean.startswith("E2") and not any(pi_clean == x for x in ("E201", "E202")):
-        return True
-    return False
-
-def is_sr_p4_station(ps_str, pi_str):
-    return is_sr_tmc_station(ps_str, pi_str)
-
 def is_commercial_station(ps_str, pi_str):
     """Avgör om stationen är kommersiell radio som saknar RDS-TMC."""
     ps_u = str(ps_str or "").upper().strip()
@@ -650,11 +631,38 @@ def is_commercial_station(ps_str, pi_str):
         return True
     if pi_clean.startswith("E2") and len(pi_clean) >= 4 and pi_clean[2:4].isalnum():
         try:
-            if int(pi_clean[2:4], 16) >= 0x40:
+            if int(pi_clean[2:4], 16) >= 0x30:
                 return True
         except ValueError:
             pass
     return False
+
+def is_sr_tmc_station(ps_str, pi_str):
+    """Avgör om stationen är Sveriges Radio TMC-distributör (SR P3 eller SR P4)."""
+    if is_commercial_station(ps_str, pi_str):
+        return False
+    ps_u = str(ps_str or "").upper().strip()
+    pi_clean = str(pi_str or "").upper().replace("0X", "").strip()
+
+    if pi_clean in ("E201", "E202") or any(x in ps_u for x in ("P1", "P2")):
+        return False
+    if "P3" in ps_u or "P4" in ps_u or "SVERIGES RADIO" in ps_u or ps_u.startswith("SR") or ps_u.endswith("SR"):
+        return True
+    if pi_clean == "E203": # SR P3 (Rikstäckande RDS-TMC nät)
+        return True
+    # P4 distriktskoder (Sörmland: 0xEA24, Uppland: 0xE404, m.fl.)
+    if any(pi_clean.startswith(pfx) for pfx in ("EA", "EB", "EC", "ED", "E4", "E204", "E224")):
+        return True
+    if pi_clean.startswith("E2"):
+        try:
+            if int(pi_clean[2:4], 16) < 0x30:
+                return True
+        except ValueError:
+            pass
+    return False
+
+def is_sr_p4_station(ps_str, pi_str):
+    return is_sr_tmc_station(ps_str, pi_str)
 
 def format_and_print_rds(ps="", pi=""):
     """Skriver ut identifierad radiostation som telemetri (ej larm, strikt deduplicerad mot spam)."""
@@ -1027,9 +1035,12 @@ def get_p4_candidates(freq_arg, device="", min_hz=87500000, max_hz=108000000):
                 except Exception: pass
 
                 if cand_powers:
-                    sorted_cands = sorted(all_cands, key=lambda c: cand_powers.get(c[0], -999.0), reverse=True)
+                    # Kända SR TMC-stationer prioriteras alltid först, sorterade efter lokal signalstyrka
+                    known_sorted = sorted(known_cands, key=lambda c: cand_powers.get(c[0], -999.0), reverse=True)
+                    generic_sorted = sorted([c for c in all_cands if c not in known_cands], key=lambda c: cand_powers.get(c[0], -999.0), reverse=True)
+                    sorted_cands = known_sorted + generic_sorted
                     best_f = sorted_cands[0]
-                    format_and_print_scan(f"RF-spektrum identifierade starkaste FM-frekvens: {best_f[0]} ({best_f[2]}, {cand_powers.get(best_f[0], 0):.1f} dB)")
+                    format_and_print_scan(f"RF-spektrum identifierade starkaste SR-kandidat: {best_f[0]} ({best_f[2]}, {cand_powers.get(best_f[0], 0):.1f} dB)")
                     return sorted_cands
         except Exception:
             pass
@@ -1045,7 +1056,7 @@ def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.
       - Avbryter om ingen RDS-TMC detekteras inom dwell_timeout sekunder.
       - Låser och förblir aktiv så länge mottagningen har aktiv TMC-synk.
     """
-    global _current_child_proc, chosen_freq_global
+    global _current_child_proc, chosen_freq_global, _current_channel_tmc_active, _current_channel_p4_confirmed, _current_channel_is_commercial
     chosen_freq_global = freq_str
     reset_station_state()
     with _heartbeat_lock:
@@ -1137,13 +1148,14 @@ def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.
                 format_and_print_scan(f"Frekvens {freq_str} sänder kommersiell radio utan RDS-TMC ({_last_reported_ps or 'FM'}). Söker vidare...")
                 return False
 
-            # 4. Snabbavbrott på 2.5s om ingen RDS-signal alls detekteras (tom bärvåg/brus)
+            # 4. Avbrott på 6.0s om ingen RDS-signal alls detekteras (tom bärvåg/brus)
+            # RTL-SDR hårdvara och redsea behöver 3-5 sekunder för att starta, synka 57 kHz PLL och avkoda första blocket
             elapsed = time.time() - start_time
-            if is_scan and not is_locked and elapsed > 2.5:
+            if is_scan and not is_locked and elapsed > 6.0:
                 with _heartbeat_lock:
                     has_frames = _heartbeat_stats.get('has_received_any_frame', False)
                 if not has_frames:
-                    format_and_print_scan(f"Ingen RDS-signal detekterad på {freq_str} inom 2.5s. Söker vidare...")
+                    format_and_print_scan(f"Ingen RDS-signal detekterad på {freq_str} inom 6.0s. Söker vidare...")
                     return False
 
             # 5. Tidsgräns vid okänd signal som sänder RDS men inte identifierats som SR P3/P4
