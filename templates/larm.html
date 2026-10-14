@@ -665,12 +665,21 @@
             }
         }
 
-        // Find matching alert word in message
+        // Hjälpfunktion för att matcha hela ord (Unicode-säker för å, ä, ö)
+        function checkAlertWordMatch(word, text) {
+            if (!word || !text) return false;
+            const cleanWord = String(word).trim();
+            if (!cleanWord) return false;
+            const safeWord = cleanWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(?<![a-zA-Z0-9åäöÅÄÖ])${safeWord}(?![a-zA-Z0-9åäöÅÄÖ])`, 'i');
+            return regex.test(text);
+        }
+
+        // Find matching alert word in message (endast hela ord)
         function findMatchingAlert(msgText) {
-            if (!alertWords || !alertWords.length) return null;
-            const upper = msgText.toUpperCase();
+            if (!alertWords || !alertWords.length || !msgText) return null;
             for (const aw of alertWords) {
-                if (aw.is_active && upper.includes(aw.word.toUpperCase())) {
+                if (aw.is_active && checkAlertWordMatch(aw.word, msgText)) {
                     return aw;
                 }
             }
@@ -687,14 +696,16 @@
                 .replace(/'/g, '&#39;');
         }
 
-        // Highlight alert words in message text
+        // Highlight alert words in message text (endast hela ord)
         function highlightMessage(text) {
-            if (!alertWords || !alertWords.length) return text;
+            if (!alertWords || !alertWords.length || !text) return text;
             let highlighted = text;
             alertWords.forEach(aw => {
                 if (aw.is_active && aw.word) {
-                    const safeWord = escapeHtml(aw.word).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                    const regex = new RegExp(`(${safeWord})(?![^<]*>)`, 'gi');
+                    const cleanWord = String(aw.word).trim();
+                    if (!cleanWord) return;
+                    const safeWord = escapeHtml(cleanWord).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const regex = new RegExp(`(?<![a-zA-Z0-9åäöÅÄÖ])(${safeWord})(?![a-zA-Z0-9åäöÅÄÖ])(?![^<]*>)`, 'gi');
                     highlighted = highlighted.replace(regex, `<span class="alert-word" style="color: ${aw.color || '#ef4444'}; border-bottom-color: ${aw.color || '#ef4444'}">$1</span>`);
                 }
             });
@@ -734,10 +745,6 @@
             } else {
                 tr.className = 'alert-row';
             }
-
-            const match = findMatchingAlert(alarm.message);
-            const hitWord = alarm.alert_word || (match ? match.word : 'ALARM');
-            const hitColor = alarm.alert_color || (match ? match.color : '#ef4444');
 
             const dateObj = new Date(alarm.timestamp);
             const dateStr = dateObj.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -821,7 +828,7 @@
             }
             const bitrateTag = formattedBitrate ? `<span class="badge meta">${formattedBitrate}</span>` : '';
 
-            // Extrahera SNR för dedikerad pill bredvid ACARS/bitrate-pillret
+            // Rensa och bearbeta meddelandetext och extrahera SNR
             let cleanMsg = alarm.message || '';
             let snrVal = alarm.snr || '';
             if (!snrVal && cleanMsg) {
@@ -847,7 +854,99 @@
             }
             const snrTag = snrText ? `<span class="badge meta badge-snr" title="Signal/brusförhållande">${escapeHtml(snrText)}</span>` : '';
 
-            const funcLabel = alarm.function !== undefined ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
+            // VDL2 Metadata Badges (Krav 1: Badge-raden längst ner)
+            let vdl2BadgesHtml = '';
+            const isVdl2 = protoName === 'VDL2';
+            if (isVdl2) {
+                let regVal = alarm.reg || '';
+                let flightVal = alarm.flight || '';
+                let icaoVal = alarm.icao || '';
+                let stationVal = alarm.station || '';
+                let statusVal = alarm.ground_status || '';
+                let labelVal = alarm.label || '';
+                let labelDescVal = alarm.label_desc || '';
+
+                // Fallback-extrahering ur alarm.address (t.ex. "D84378 (SE-RTA) [4ACA81]")
+                if (!flightVal && alarm.address) {
+                    const mFl = alarm.address.match(/^([A-Z0-9]{2,8})\b/i);
+                    if (mFl && mFl[1] !== 'VDL2') flightVal = mFl[1].toUpperCase();
+                }
+                if (!regVal && alarm.address) {
+                    const mReg = alarm.address.match(/\(([A-Z0-9.-]+)\)/i);
+                    if (mReg) regVal = mReg[1].replace(/^\.+/, '').toUpperCase();
+                }
+                if (!icaoVal && alarm.address) {
+                    const mIcao = alarm.address.match(/\[([0-9A-Fa-f]{6})\]/);
+                    if (mIcao) icaoVal = mIcao[1].toUpperCase();
+                }
+
+                // Fallback-extrahering ur äldre sparad meddelandetext med [Reg: ... | Flight: ...]
+                if (cleanMsg) {
+                    if (cleanMsg.includes('Reg:') || cleanMsg.includes('Flight:') || cleanMsg.includes('ICAO:')) {
+                        const rM = cleanMsg.match(/\bReg:\s*([A-Z0-9.-]+)/i);
+                        if (rM && !regVal) regVal = rM[1].replace(/^\.+/, '').toUpperCase();
+
+                        const fM = cleanMsg.match(/\bFlight:\s*([A-Z0-9]+)/i);
+                        if (fM && !flightVal) flightVal = fM[1].toUpperCase();
+
+                        const iM = cleanMsg.match(/\bICAO:\s*([0-9A-Fa-f]{6})/i);
+                        if (iM && !icaoVal) icaoVal = iM[1].toUpperCase();
+
+                        const sM = cleanMsg.match(/\bTo:\s*([^|\]\n]+)/i);
+                        if (sM && !stationVal) stationVal = sM[1].trim();
+
+                        const stM = cleanMsg.match(/\b(?:On Ground|Status):\s*(Yes|No|Airborne|On Ground)/i);
+                        if (stM && !statusVal) {
+                            const rawSt = stM[1].toLowerCase();
+                            statusVal = (rawSt === 'yes' || rawSt === 'on ground') ? 'On Ground' : 'Airborne';
+                        }
+
+                        cleanMsg = cleanMsg.replace(/^\[?Reg:[^\]\n]*\]?\r?\n?/i, '')
+                                           .replace(/^Flight:[^\n]*\r?\n?/i, '')
+                                           .trim();
+                    }
+
+                    // Extrahera och rensa inledande Label-prefix (t.ex. [H1: FMS / Färddator-rapport] eller [83])
+                    const lblPrefixMatch = cleanMsg.match(/^\[([A-Z0-9_]{1,4})(?::\s*([^\]]+))?\]\s*/i);
+                    if (lblPrefixMatch) {
+                        if (!labelVal) labelVal = lblPrefixMatch[1].toUpperCase();
+                        if (!labelDescVal && lblPrefixMatch[2]) labelDescVal = lblPrefixMatch[2].trim();
+                        cleanMsg = cleanMsg.replace(/^\[[A-Z0-9_]{1,4}(?::\s*[^\]]+)?\]\s*/i, '').trim();
+                    }
+
+                    // Rensa bort eventuella kvarvarande pipe-tecken från meddelandetexten
+                    if (cleanMsg.includes(' | ')) {
+                        cleanMsg = cleanMsg.replace(/\s*\|\s*/g, '   ');
+                    }
+                }
+
+                // Bygg badges
+                const regTag = regVal ? `<span class="badge meta badge-reg" title="Registrering">${escapeHtml(regVal)}</span>` : '';
+                const flightTag = flightVal ? `<span class="badge meta badge-flight" title="Flight / Callsign">${escapeHtml(flightVal)}</span>` : '';
+                const icaoTag = icaoVal ? `<span class="badge meta badge-icao" title="ICAO-adress">ICAO: ${escapeHtml(icaoVal)}</span>` : '';
+                const stationTag = stationVal ? `<span class="badge meta badge-station" title="Markstation">To: ${escapeHtml(stationVal)}</span>` : '';
+                const statusTag = statusVal ? `<span class="badge meta badge-status ${statusVal === 'Airborne' ? 'badge-airborne' : 'badge-ground'}" title="Flygstatus">${escapeHtml(statusVal)}</span>` : '';
+
+                let labelBadgeText = '';
+                if (labelVal) {
+                    labelBadgeText = labelVal;
+                    if (labelDescVal) {
+                        let shortDesc = labelDescVal.split('/')[0].trim().replace('-rapport', '').replace('rapport', '').trim();
+                        labelBadgeText = `${labelVal} (${shortDesc})`;
+                    }
+                }
+                const labelTag = labelBadgeText ? `<span class="badge meta badge-label" title="ACARS Label">Label: ${escapeHtml(labelBadgeText)}</span>` : '';
+
+                vdl2BadgesHtml = `${regTag}${flightTag}${icaoTag}${stationTag}${statusTag}${labelTag}`;
+            }
+
+            // Ordbevaknings-matchning (Krav 3: Körs på cleanMsg, endast hela ord)
+            const match = findMatchingAlert(cleanMsg);
+            const hitWord = alarm.alert_word || (match ? match.word : 'ALARM');
+            const hitColor = alarm.alert_color || (match ? match.color : '#ef4444');
+
+            // Dölj Alpha/Num för VDL2
+            const funcLabel = (!isVdl2 && alarm.function !== undefined) ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
             const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
             const freqTag = alarm.frequency ? `<span class="badge meta badge-freq">${alarm.frequency}</span>` : '';
             const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
@@ -857,7 +956,7 @@
                 `<span class="badge" style="background: rgba(6, 182, 212, 0.15); color: #0284c7; border: 1px solid rgba(6, 182, 212, 0.4); font-weight: 700; text-transform: uppercase;"><i class="fas fa-broadcast-tower" style="margin-right: 4px; font-size: 0.75rem;"></i>BASE</span>` :
                 `<span class="badge" style="background: ${hitColor}22; color: ${hitColor}; border: 1px solid ${hitColor}66; font-weight: 700; text-transform: uppercase;"><i class="fas fa-tag" style="margin-right: 4px; font-size: 0.75rem;"></i>${hitWord}</span>`;
 
-            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${funcTag}${duplicateTag}${repeatTag}`;
+            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${funcTag}${duplicateTag}${repeatTag}`;
             const metaBarHtml = metaBarBadges ? `<div class="msg-meta-bar">${metaBarBadges}</div>` : '';
 
             tr.innerHTML = `

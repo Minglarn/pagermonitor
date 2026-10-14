@@ -883,9 +883,91 @@
                 }
             }
             const snrTag = snrText ? `<span class="badge meta badge-snr" title="Signal/brusförhållande">${snrText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` : '';
+
+            // VDL2 Metadata Badges (Krav 1: Badge-raden längst ner)
+            let vdl2BadgesHtml = '';
+            const isVdl2 = protoName === 'VDL2';
+            if (isVdl2) {
+                let regVal = m.reg || '';
+                let flightVal = m.flight || '';
+                let icaoVal = m.icao || '';
+                let stationVal = m.station || '';
+                let statusVal = m.ground_status || '';
+                let labelVal = m.label || '';
+                let labelDescVal = m.label_desc || '';
+
+                if (!flightVal && m.address) {
+                    const mFl = m.address.match(/^([A-Z0-9]{2,8})\b/i);
+                    if (mFl && mFl[1] !== 'VDL2') flightVal = mFl[1].toUpperCase();
+                }
+                if (!regVal && m.address) {
+                    const mReg = m.address.match(/\(([A-Z0-9.-]+)\)/i);
+                    if (mReg) regVal = mReg[1].replace(/^\.+/, '').toUpperCase();
+                }
+                if (!icaoVal && m.address) {
+                    const mIcao = m.address.match(/\[([0-9A-Fa-f]{6})\]/);
+                    if (mIcao) icaoVal = mIcao[1].toUpperCase();
+                }
+
+                if (cleanMsg) {
+                    if (cleanMsg.includes('Reg:') || cleanMsg.includes('Flight:') || cleanMsg.includes('ICAO:')) {
+                        const rM = cleanMsg.match(/\bReg:\s*([A-Z0-9.-]+)/i);
+                        if (rM && !regVal) regVal = rM[1].replace(/^\.+/, '').toUpperCase();
+
+                        const fM = cleanMsg.match(/\bFlight:\s*([A-Z0-9]+)/i);
+                        if (fM && !flightVal) flightVal = fM[1].toUpperCase();
+
+                        const iM = cleanMsg.match(/\bICAO:\s*([0-9A-Fa-f]{6})/i);
+                        if (iM && !icaoVal) icaoVal = iM[1].toUpperCase();
+
+                        const sM = cleanMsg.match(/\bTo:\s*([^|\]\n]+)/i);
+                        if (sM && !stationVal) stationVal = sM[1].trim();
+
+                        const stM = cleanMsg.match(/\b(?:On Ground|Status):\s*(Yes|No|Airborne|On Ground)/i);
+                        if (stM && !statusVal) {
+                            const rawSt = stM[1].toLowerCase();
+                            statusVal = (rawSt === 'yes' || rawSt === 'on ground') ? 'On Ground' : 'Airborne';
+                        }
+
+                        cleanMsg = cleanMsg.replace(/^\[?Reg:[^\]\n]*\]?\r?\n?/i, '')
+                                           .replace(/^Flight:[^\n]*\r?\n?/i, '')
+                                           .trim();
+                    }
+
+                    const lblPrefixMatch = cleanMsg.match(/^\[([A-Z0-9_]{1,4})(?::\s*([^\]]+))?\]\s*/i);
+                    if (lblPrefixMatch) {
+                        if (!labelVal) labelVal = lblPrefixMatch[1].toUpperCase();
+                        if (!labelDescVal && lblPrefixMatch[2]) labelDescVal = lblPrefixMatch[2].trim();
+                        cleanMsg = cleanMsg.replace(/^\[[A-Z0-9_]{1,4}(?::\s*[^\]]+)?\]\s*/i, '').trim();
+                    }
+
+                    if (cleanMsg.includes(' | ')) {
+                        cleanMsg = cleanMsg.replace(/\s*\|\s*/g, '   ');
+                    }
+                }
+
+                const regTag = regVal ? `<span class="badge meta badge-reg" title="Registrering">${regVal.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` : '';
+                const flightTag = flightVal ? `<span class="badge meta badge-flight" title="Flight / Callsign">${flightVal.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` : '';
+                const icaoTag = icaoVal ? `<span class="badge meta badge-icao" title="ICAO-adress">ICAO: ${icaoVal.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` : '';
+                const stationTag = stationVal ? `<span class="badge meta badge-station" title="Markstation">To: ${stationVal.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` : '';
+                const statusTag = statusVal ? `<span class="badge meta badge-status ${statusVal === 'Airborne' ? 'badge-airborne' : 'badge-ground'}" title="Flygstatus">${statusVal}</span>` : '';
+
+                let labelBadgeText = '';
+                if (labelVal) {
+                    labelBadgeText = labelVal;
+                    if (labelDescVal) {
+                        let shortDesc = labelDescVal.split('/')[0].trim().replace('-rapport', '').replace('rapport', '').trim();
+                        labelBadgeText = `${labelVal} (${shortDesc})`;
+                    }
+                }
+                const labelTag = labelBadgeText ? `<span class="badge meta badge-label" title="ACARS Label">Label: ${labelBadgeText.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</span>` : '';
+
+                vdl2BadgesHtml = `${regTag}${flightTag}${icaoTag}${stationTag}${statusTag}${labelTag}`;
+            }
+
             const safeMsgClean = cleanMsg ? cleanMsg.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
 
-            const funcLabel = (m.function !== undefined && m.function !== null) ? ((m.function === 0 || m.function === 3) ? "Alpha" : "Num") : "";
+            const funcLabel = (!isVdl2 && m.function !== undefined && m.function !== null) ? ((m.function === 0 || m.function === 3) ? "Alpha" : "Num") : "";
             const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
             const duplicateTag = m.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
             const repeatTag = (m.repeat_count && m.repeat_count > 1) ? `<span class="badge repeat-badge meta" title="Repeated ${m.repeat_count} times">${m.repeat_count}x</span>` : '';
@@ -897,7 +979,7 @@
                 timeDisplay += `<div class="last-seen-time">(Last: ${lastTimeStr})</div>`;
             }
 
-            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${funcTag}${duplicateTag}${repeatTag}`;
+            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${funcTag}${duplicateTag}${repeatTag}`;
             const metaBarHtml = metaBarBadges ? `<div class="msg-meta-bar">${metaBarBadges}</div>` : '';
 
             tr.innerHTML = `

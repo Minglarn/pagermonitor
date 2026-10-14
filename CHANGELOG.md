@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.32] - Strukturerad Metadata på Badge-raden, Ren Textlayout utan Pipes och Helords-ordbevakning
+
+- **KRAV 1: Flytta VDL2/ACARS Metadata till Badge-raden längst ner**:
+  - Metadata flyttad från textinnehållet till strukturerade fält och renderas nu som eleganta badges i `.msg-meta-bar` längst ner i cellen bredvid frekvens, ACARS och SNR:
+    - **Registrering**: t.ex. `.badge.badge-reg` (`SE-RTA` / `ET-ATK`).
+    - **Flightnummer & Flygbolag**: t.ex. `.badge.badge-flight` (`ET0715` / `D84378`).
+    - **ICAO Hex**: t.ex. `.badge.badge-icao` (`ICAO: 040127`).
+    - **Markstation**: t.ex. `.badge.badge-station` (`To: Arlanda ESSA`).
+    - **Status**: t.ex. `.badge.badge-status.badge-airborne` (`Airborne`) eller `.badge.badge-status.badge-ground` (`On Ground`).
+    - **Label**: t.ex. `.badge.badge-label` (`Label: 83 - Operativt meddelande`).
+  - Rensat bort protokollbrus såsom `Mode: 2`, `Block: 8`, `Msg: F40A`, `ACK: !` samt dolt ovidkommande `Alpha`/`Num` för VDL2.
+  - Bakåtkompatibel frontend-rensning och extraktion i `index.html`, `larm.html` och `statistics.html` för historiska meddelanden.
+- **KRAV 2: Ren och Snygg Presentation av Meddelandetexten (helt utan "|" tecken)**:
+  - Samtliga avkodningsregler i `acars_human_parser.py` och `vdl2_receiver.py` omformaterade så att de aldrig använder pipe-tecken (`|`).
+  - Texten är prydligt uppställd med rena radbrytningar och tydliga fältnamn på svenska:
+    - **Färddator-rapport (Label H1 POSN)**:
+      `Höjd: FL330   Temperatur: -47 C   Vind: 343 deg (91 kt)`
+      `Nästa brytpunkt: MC624 (kl 20:45:16 UTC)`
+      `Position: 56.8433, 16.3250`
+    - **CSV-rapport (Label 83)**:
+      `Rutt: ESSA -> HAAB (Avgång/Ankomst)   Tid: 20:29 UTC`
+      `Höjd: 22605 ft   Fart: 305 kt   Kurs: 166.9 deg   Bränsle: 43000`
+      `Position: 58.54, 18.94`
+    - **MIAM Airbus Telemetri**: Ny dedikerad regel `rule_miam_airbus_telemetry` för strukturerad presentation av Airbus-telemetri (höjd, vind, temperatur, waypoint, kurs, Mach, bränsle och koordinater).
+- **KRAV 3: Unicode- och Helordsmatchning i Ordbevakningen (Word Boundaries)**:
+  - Åtgärdat fel där sökord såsom `LIGHT` och `PORT` felaktigt triggade på delsträngar i `Flight` och `Airport`.
+  - Implementerat Unicode-säker helordsmatchning både i backend (`check_alert_words` och SQLite custom function `WORD_MATCH`) samt i frontend (`checkAlertWordMatch` och `highlightMessage`):
+    - Mönster: `(?<![a-zA-Z0-9åäöÅÄÖ])ORD(?![a-zA-Z0-9åäöÅÄÖ])` med case-insensitivity.
+  - Ordmatchningen körs uteslutande på själva meddelandetexten (`cleanMsg`), aldrig på metadata eller badge-fält.
+- **Tester**:
+  - Samtliga 68 enhetstester passerar grönt. Verifierat 100% fri från emojis.
+
 ## [2026.10.14.31] - Global Referensdatabas (acars_reference_data.json), Libacars-tolkning och Airframes Decoder-mönster
 
 - **Global Referensdatabas (`acars_reference_data.json`)**:

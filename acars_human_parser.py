@@ -185,11 +185,10 @@ def lookup_label(label_code: str) -> str:
     lbl = str(label_code).strip().upper()
     return ACARS_LABELS.get(lbl, "")
 
-def build_acars_metadata_header(avlc: dict = None, acars: dict = None, vdl2_frame: dict = None) -> str:
+def extract_acars_metadata(avlc: dict = None, acars: dict = None, vdl2_frame: dict = None) -> dict:
     """
-    Bygger en kompakt och informativ ACARS-metadata header (likt ACARSHUB).
-    Format:
-    [Reg: ET-ATK | Flight: ET0715 (Ethiopian Airlines) | ICAO: 040127 | To: 119AAA (Arlanda Airport ESSA) | On Ground: No | Mode: 2 | Msg: M37A]
+    Extraherar strukturerade metadatafält för ACARS/VDL2.
+    Returnerar en dictionary med reg, flight, airline, icao, station, to_addr, ground_status, label, label_desc.
     """
     if not avlc and isinstance(vdl2_frame, dict):
         avlc = vdl2_frame.get('avlc', {})
@@ -210,6 +209,7 @@ def build_acars_metadata_header(avlc: dict = None, acars: dict = None, vdl2_fram
 
     # Flight / Callsign
     flight = str(acars.get('flight') or '').strip().upper()
+    airline = lookup_airline(flight) if flight else ""
 
     # ICAO Hex
     icao = str(src.get('addr') or '').strip().upper()
@@ -221,64 +221,62 @@ def build_acars_metadata_header(avlc: dict = None, acars: dict = None, vdl2_fram
     if not to_addr and dst and not isinstance(dst, dict):
         to_addr = str(dst).strip().upper()
 
-    # On Ground status
-    status_raw = str(src.get('status') or '').strip().lower()
-    on_ground = None
-    if 'on ground' in status_raw or status_raw == 'ground':
-        on_ground = "Yes"
-    elif 'airborne' in status_raw or status_raw == 'air':
-        on_ground = "No"
-
-    # ACARS Mode, Block ID, Msg No, ACK
-    mode = str(acars.get('mode') or '').strip()
-    blk_id = str(acars.get('blk_id') or '').strip()
-    msg_num = str(acars.get('msg_num') or '').strip()
-    msg_seq = str(acars.get('msg_num_seq') or '').strip()
-    msg_no = f"{msg_num}{msg_seq}" if (msg_num or msg_seq) else ""
-    ack = acars.get('ack')
-
-    parts = []
-    if reg:
-        parts.append(f"Reg: {reg}")
-
-    if flight:
-        airline = lookup_airline(flight)
-        if airline:
-            parts.append(f"Flight: {flight} ({airline})")
-        else:
-            parts.append(f"Flight: {flight}")
-
-    if icao:
-        parts.append(f"ICAO: {icao}")
-
+    station = ""
     if to_addr:
         gs = lookup_ground_station(to_addr)
         if gs:
-            # Rensa eventuella inre parenteser för ren visning (Arlanda Airport ESSA)
-            clean_gs = re.sub(r'[\(\)]', '', gs).strip()
-            parts.append(f"To: {to_addr} ({clean_gs})")
+            clean_gs = re.sub(r'[\(\)]', '', gs).replace(' Airport', '').strip()
+            station = f"{clean_gs}" if clean_gs else to_addr
         else:
-            parts.append(f"To: {to_addr}")
+            station = to_addr
 
-    if on_ground is not None:
-        parts.append(f"On Ground: {on_ground}")
+    # On Ground status
+    status_raw = str(src.get('status') or '').strip().lower()
+    ground_status = ""
+    if 'on ground' in status_raw or status_raw == 'ground':
+        ground_status = "On Ground"
+    elif 'airborne' in status_raw or status_raw == 'air':
+        ground_status = "Airborne"
 
-    if mode:
-        parts.append(f"Mode: {mode}")
+    # Label
+    label = str(acars.get('label') or '').strip()
+    label_desc = lookup_label(label) if label else ""
 
-    if blk_id:
-        parts.append(f"Block: {blk_id}")
+    return {
+        'reg': reg,
+        'flight': flight,
+        'airline': airline,
+        'icao': icao,
+        'station': station,
+        'to_addr': to_addr,
+        'ground_status': ground_status,
+        'label': label,
+        'label_desc': label_desc
+    }
 
-    if msg_no:
-        parts.append(f"Msg: {msg_no}")
+def build_acars_metadata_header(avlc: dict = None, acars: dict = None, vdl2_frame: dict = None) -> str:
+    """
+    Bygger en ren och strukturerad ACARS-metadata header utan pipe-tecken eller protokollbrus.
+    Format:
+    Flight: ET0715 (Ethiopian Airlines)   Reg: ET-ATK   ICAO: 040127   To: Arlanda (ESSA)   Status: Airborne
+    """
+    meta = extract_acars_metadata(avlc=avlc, acars=acars, vdl2_frame=vdl2_frame)
+    parts = []
+    if meta['flight']:
+        if meta['airline']:
+            parts.append(f"Flight: {meta['flight']} ({meta['airline']})")
+        else:
+            parts.append(f"Flight: {meta['flight']}")
+    if meta['reg']:
+        parts.append(f"Reg: {meta['reg']}")
+    if meta['icao']:
+        parts.append(f"ICAO: {meta['icao']}")
+    if meta['station']:
+        parts.append(f"To: {meta['station']}")
+    if meta['ground_status']:
+        parts.append(f"Status: {meta['ground_status']}")
 
-    if ack is not None and str(ack).strip():
-        parts.append(f"ACK: {str(ack).strip()}")
-
-    if not parts:
-        return ""
-
-    return f"[{' | '.join(parts)}]"
+    return "   ".join(parts)
 
 
 def format_libacars_data(acars_dict: dict = None, xid_dict: dict = None, vdl2_frame: dict = None) -> str:
@@ -301,11 +299,12 @@ def format_libacars_data(acars_dict: dict = None, xid_dict: dict = None, vdl2_fr
                     lon = brep.get('lon') or brep.get('longitude')
                     alt = brep.get('alt') or brep.get('altitude')
                     if lat is not None and lon is not None:
-                        pos_str = f"Pos: {float(lat):.4f}, {float(lon):.4f}"
+                        pos_str = f"Position: {float(lat):.4f}, {float(lon):.4f}"
                         alt_str = f"Höjd: {int(float(alt))} ft" if alt else ""
-                        ads_parts = ["ADS-C Positionsrapport", pos_str]
+                        ads_lines = ["ADS-C Positionsrapport"]
+                        w_items = []
                         if alt_str:
-                            ads_parts.append(alt_str)
+                            w_items.append(alt_str)
                         
                         # Väderdata i earth_ref
                         earth = adsc.get('earth_ref', {})
@@ -313,12 +312,14 @@ def format_libacars_data(acars_dict: dict = None, xid_dict: dict = None, vdl2_fr
                             wd = earth.get('wind_dir')
                             ws = earth.get('wind_spd')
                             temp = earth.get('temp')
-                            if wd is not None and ws is not None:
-                                ads_parts.append(f"Vind: {wd} deg ({ws} kt)")
                             if temp is not None:
-                                ads_parts.append(f"Temp: {temp} C")
-                        
-                        parts.append(" | ".join(ads_parts))
+                                w_items.append(f"Temperatur: {temp} C")
+                            if wd is not None and ws is not None:
+                                w_items.append(f"Vind: {wd} deg ({ws} kt)")
+                        if w_items:
+                            ads_lines.append("   ".join(w_items))
+                        ads_lines.append(pos_str)
+                        parts.append("\n".join(ads_lines))
 
             # ATS meddelanden
             ats = arinc.get('ats')
@@ -334,7 +335,7 @@ def format_libacars_data(acars_dict: dict = None, xid_dict: dict = None, vdl2_fr
         if dst_ap:
             parts.append(f"VDL2 Stationslänk: Destination {dst_ap}")
 
-    return " | ".join(parts) if parts else ""
+    return "\n".join(parts) if parts else ""
 
 
 # ============================================================================
@@ -379,7 +380,7 @@ def rule_label_sa_media_advisory(text: str, label: str = None, metadata: dict = 
         tm_part = f" kl {tm} UTC" if tm else ""
         av_list = adv.get('avail_links') or []
         av_names = [link_names.get(str(x).upper(), str(x)) for x in av_list]
-        av_part = f" | Tillgängliga länkar: {', '.join(av_names)}" if av_names else ""
+        av_part = f"   Tillgängliga: {', '.join(av_names)}" if av_names else ""
         return f"{stat_w} på {c_link}{tm_part}{av_part}".strip()
 
     m = re.search(r'0([EL])([V2HSGI])(\d{2})(\d{2})(\d{2})([V2HSGI]*)', stripped)
@@ -389,11 +390,11 @@ def rule_label_sa_media_advisory(text: str, label: str = None, metadata: dict = 
         hh, mm, ss = m.group(3), m.group(4), m.group(5)
         avail_raw = m.group(6).upper()
         avail_names = [link_names.get(c, c) for c in avail_raw]
-        avail_part = f" | Tillgängliga länkar: {', '.join(avail_names)}" if avail_names else ""
+        avail_part = f"   Tillgängliga: {', '.join(avail_names)}" if avail_names else ""
         return f"{stat_w} på {curr_link} kl {hh}:{mm}:{ss} UTC{avail_part} ({stripped})"
 
     if lbl == 'SA' and stripped:
-        return f"Länkstatus (Media Advisory) | Rådata: {stripped}"
+        return f"Länkstatus (Media Advisory)\nRådata: {stripped}"
     return None
 
 
@@ -410,11 +411,11 @@ def rule_label_b6_cpdlc(text: str, label: str = None, metadata: dict = None) -> 
         icao = m_dc.group(1).upper()
         act = m_dc.group(2).upper()
         if act == 'DC1':
-            return f"Begär starttillstånd (Departure Clearance) för {icao} | Rådata: {stripped}"
+            return f"Begär starttillstånd (Departure Clearance) för {icao}\nRådata: {stripped}"
         elif act == 'OC1':
-            return f"Begär Oceanic Clearance för {icao} | Rådata: {stripped}"
+            return f"Begär Oceanic Clearance för {icao}\nRådata: {stripped}"
         elif act == 'TI2':
-            return f"Begär flygplatsväder (ATIS) för {icao} | Rådata: {stripped}"
+            return f"Begär flygplatsväder (ATIS) för {icao}\nRådata: {stripped}"
 
     # Fritext CPDLC med inledande snedstreck
     if stripped.startswith('/') and re.search(r'/(?:CLIMB|DESCEND|MAINTAIN|PROCEED|CONTACT|SQUAWK|DIRECT)', stripped, re.IGNORECASE):
@@ -422,7 +423,7 @@ def rule_label_b6_cpdlc(text: str, label: str = None, metadata: dict = None) -> 
         return f"Flygledningsmeddelande (CPDLC): {clean_msg}"
 
     if lbl in ('B6', 'A6') and stripped:
-        return f"Begäran om färdtillstånd (PDC/DCL) | Rådata: {stripped}"
+        return f"Begäran om färdtillstånd (PDC/DCL)\nRådata: {stripped}"
 
     return None
 
@@ -438,18 +439,18 @@ def rule_label_5u_weather_request(text: str, label: str = None, metadata: dict =
     m_atis = re.search(r'/([A-Z]{4})\.TI2/?', stripped, re.IGNORECASE)
     if m_atis:
         icao = m_atis.group(1).upper()
-        return f"Begär flygplatsväder (ATIS) för {icao} | Rådata: {stripped}"
+        return f"Begär flygplatsväder (ATIS) för {icao}\nRådata: {stripped}"
 
     # ICAO flygplats sökning i väderbegäran
     m_icao = re.search(r'\b([A-Z]{4})\b', stripped)
     if m_icao:
         icao = m_icao.group(1).upper()
         if lbl == 'B9':
-            return f"Begär flygplatsväder (ATIS) för {icao} | Rådata: {stripped}"
+            return f"Begär flygplatsväder (ATIS) för {icao}\nRådata: {stripped}"
         elif lbl == 'A9':
-            return f"Flygplatsväder (ATIS) för {icao} | {stripped}"
+            return f"Flygplatsväder (ATIS) för {icao}\n{stripped}"
         elif lbl in ('5U', '57', 'WX'):
-            return f"Begäran om flygplatsväder (METAR) för {icao} | Rådata: {stripped}"
+            return f"Begäran om flygplatsväder (METAR) för {icao}\nRådata: {stripped}"
 
     return None
 
@@ -459,7 +460,7 @@ def rule_label_q0_link_test(text: str, label: str = None, metadata: dict = None)
     stripped = text.strip()
     lbl = (label or '').upper()
     if lbl == 'Q0' or stripped == 'PING':
-        return f"ACARS Länktest (Link Test Ping) | Rådata: {stripped}" if stripped else "ACARS Länktest (Link Test Ping)"
+        return "ACARS Länktest (Link Test Ping)"
     return None
 
 
@@ -474,11 +475,10 @@ def rule_label_h1_fpn_flight_plan(text: str, label: str = None, metadata: dict =
             callsign = m_fpl.group(1)
             airports = re.findall(r'-([A-Z]{4})\d{4}', stripped)
             if len(airports) >= 2:
-                return f"Färdplan (FPL): {callsign} | Rutt: {airports[0]} -> {airports[1]}"
+                return f"Färdplan (FPL): {callsign}   Rutt: {airports[0]} -> {airports[1]}"
             elif len(airports) == 1:
-                return f"Färdplan (FPL): {callsign} | Flygplats: {airports[0]}"
+                return f"Färdplan (FPL): {callsign}   Flygplats: {airports[0]}"
             return f"Färdplan (FPL): {callsign}"
-
 
     # 2. FPN rutt (FPN/RI...)
     if stripped.startswith('FPN') or stripped.startswith('RI/'):
@@ -487,7 +487,7 @@ def rule_label_h1_fpn_flight_plan(text: str, label: str = None, metadata: dict =
             orig = m_fpn.group(1).upper()
             dest = m_fpn.group(2).upper()
             fl = m_fpn.group(3)
-            fl_str = f" | Höjd: FL{fl}" if fl else ""
+            fl_str = f"   Höjd: FL{fl}" if fl else ""
             return f"Färdplan (FPN): {orig} -> {dest}{fl_str}"
 
     # 3. INI flight initialization
@@ -497,7 +497,7 @@ def rule_label_h1_fpn_flight_plan(text: str, label: str = None, metadata: dict =
             orig = m_ini.group(1).upper()
             dest = m_ini.group(2).upper()
             tm = m_ini.group(3)
-            tm_str = f" | Tid: {tm[:2]}:{tm[2:]} UTC" if tm else ""
+            tm_str = f"   Tid: {tm[:2]}:{tm[2:]} UTC" if tm else ""
             return f"Färdförberedelse (INI): {orig} -> {dest}{tm_str}"
 
     return None
@@ -509,11 +509,15 @@ def rule_label_h1_posn_fms(text: str, label: str = None, metadata: dict = None) 
     Exempel: POSN59197E017265,N55208E004569,201749,380,N60045E021311,203531,N60157E022414,M58,33488,10132A6
     """
     stripped = text.strip()
-    suffix = ""
+    pos_suffix = ""
     if " | " in stripped:
         p = stripped.split(" | ", 1)
         base_text = p[0].strip()
-        suffix = " | " + p[1].strip()
+        pos_suffix = p[1].strip().replace(" | ", "  ")
+    elif "\n" in stripped:
+        p = stripped.split("\n", 1)
+        base_text = p[0].strip()
+        pos_suffix = p[1].strip()
     else:
         base_text = stripped
 
@@ -559,19 +563,28 @@ def rule_label_h1_posn_fms(text: str, label: str = None, metadata: dict = None) 
                 wind_str = f"{wdir} deg ({wspd} kt)"
                 break
 
-    parts = ["Färddator-rutt"]
+    lines = []
+    line1_items = []
     if fl_str:
-        parts.append(f"Höjd: {fl_str}")
+        line1_items.append(f"Höjd: {fl_str}")
     if temp_str:
-        parts.append(f"Temp: {temp_str}")
+        line1_items.append(f"Temperatur: {temp_str}")
     if wind_str:
-        parts.append(f"Vind: {wind_str}")
-    if next_wp and next_time:
-        parts.append(f"Nästa WP: {next_wp} (kl {next_time})")
-    elif next_wp:
-        parts.append(f"Nästa WP: {next_wp}")
+        line1_items.append(f"Vind: {wind_str}")
 
-    return " | ".join(parts) + suffix
+    if line1_items:
+        lines.append("   ".join(line1_items))
+
+    if next_wp and next_time:
+        lines.append(f"Nästa brytpunkt: {next_wp} (kl {next_time})")
+    elif next_wp:
+        lines.append(f"Nästa brytpunkt: {next_wp}")
+
+    if pos_suffix:
+        clean_p = pos_suffix.replace('Lat: ', '').replace('Lon: ', '')
+        lines.append(f"Position: {clean_p}")
+
+    return "\n".join(lines) if lines else None
 
 
 def rule_label_h1_resreq_ack(text: str, label: str = None, metadata: dict = None) -> str:
@@ -587,7 +600,7 @@ def rule_label_h1_resreq_ack(text: str, label: str = None, metadata: dict = None
         return f"Systemkvittens: Resursförfrågan {status_text}"
 
     if stripped.startswith('RESREQ'):
-        return f"Systemförfrågan: Resursbegäran (RESREQ) | {stripped}"
+        return f"Systemförfrågan: Resursbegäran (RESREQ)\nRådata: {stripped}"
 
     return None
 
@@ -675,23 +688,26 @@ def rule_label_38_finnair_weather(text: str, label: str = None, metadata: dict =
     if not (lat or lon or flight):
         return None
 
-    parts = []
+    lines = []
     if flight:
-        parts.append(f"Flight: {flight}")
-    if lat and lon:
-        parts.append(f"Position: {lat}, {lon}")
-    elif lat:
-        parts.append(f"Position: {lat}")
-    elif lon:
-        parts.append(f"Position: {lon}")
-    if alt:
-        parts.append(f"Höjd: {alt} ft")
-    if temp:
-        parts.append(f"Temp: {temp} C")
-    if wind_dir is not None and wind_spd is not None:
-        parts.append(f"Vind: {wind_dir} deg ({wind_spd} kt)")
+        lines.append(f"Flight: {flight}")
 
-    return " | ".join(parts)
+    w_items = []
+    if alt:
+        w_items.append(f"Höjd: {alt} ft")
+    if temp:
+        w_items.append(f"Temperatur: {temp} C")
+    if wind_dir is not None and wind_spd is not None:
+        w_items.append(f"Vind: {wind_dir} deg ({wind_spd} kt)")
+    if w_items:
+        lines.append("   ".join(w_items))
+
+    if lat and lon:
+        lines.append(f"Position: {lat}, {lon}")
+    elif lat or lon:
+        lines.append(f"Position: {lat or lon}")
+
+    return "\n".join(lines)
 
 
 def rule_label_83_csv_position(text: str, label: str = None, metadata: dict = None) -> str:
@@ -732,15 +748,11 @@ def rule_label_83_csv_position(text: str, label: str = None, metadata: dict = No
     except ValueError:
         return None
 
-    return (
-        f"Rutt: {dep} -> {dest} | "
-        f"Tid: {time_fmt} | "
-        f"Pos: {lat_str}, {lon_str} | "
-        f"Höjd: {alt_str} ft | "
-        f"Fart: {spd_str} kt | "
-        f"Kurs: {hdg_str} deg | "
-        f"Bränsle/Vikt: {fuel_str}"
-    )
+    line1 = f"Rutt: {dep} -> {dest} (Avgång/Ankomst)   Tid: {time_fmt}"
+    line2 = f"Höjd: {alt_str} ft   Fart: {spd_str} kt   Kurs: {hdg_str} deg   Bränsle: {fuel_str}"
+    line3 = f"Position: {lat_str}, {lon_str}"
+
+    return f"{line1}\n{line2}\n{line3}"
 
 
 def rule_label_83_eta_report(text: str, label: str = None, metadata: dict = None) -> str:
@@ -763,7 +775,7 @@ def rule_label_83_eta_report(text: str, label: str = None, metadata: dict = None
             orig, dest = tokens[3].split('/', 1)
             eta_raw = tokens[6]
             eta_fmt = f"{eta_raw[:2]}:{eta_raw[2:4]} UTC" if len(eta_raw) >= 4 else eta_raw
-            return f"Ankomstrapport: Rutt {orig} -> {dest} | ETA: {eta_fmt}"
+            return f"Ankomstrapport: Rutt {orig} -> {dest}   ETA: {eta_fmt}"
 
     return None
 
@@ -790,9 +802,89 @@ def rule_label_80_oooi_report(text: str, label: str = None, metadata: dict = Non
             parts.append(f"Flygplats: {ap.upper()}")
         if tm and len(tm) >= 4:
             parts.append(f"Tid: {tm[:2]}:{tm[2:4]} UTC")
-        return " | ".join(parts)
+        return "   ".join(parts)
 
     return None
+
+
+def rule_miam_airbus_telemetry(text: str, label: str = None, metadata: dict = None) -> str:
+    """MIAM Airbus telemetri (PAALT, PALAT, PALONG, PAFMSAWID etc.)."""
+    stripped = text.strip()
+    if 'PAALT,' not in stripped and 'PALAT,' not in stripped:
+        return None
+
+    kv = {}
+    for item in re.split(r'[;:]', stripped):
+        parts = item.split(',')
+        if len(parts) >= 2:
+            k = parts[0].strip().upper()
+            v = parts[1].strip()
+            kv[k] = v
+
+    lines = []
+    # Rad 1: Höjd, Temp, Vind
+    row1 = []
+    if 'PAALT' in kv:
+        try:
+            alt_ft = int(float(kv['PAALT']))
+            fl = round(alt_ft / 100)
+            row1.append(f"Höjd: FL{fl} ({alt_ft} ft)")
+        except (ValueError, TypeError):
+            pass
+
+    if 'PASAT' in kv:
+        try:
+            sat = round(float(kv['PASAT']))
+            row1.append(f"Temperatur: {sat} C")
+        except (ValueError, TypeError):
+            pass
+
+    if 'PAWS' in kv:
+        try:
+            ws = round(float(kv['PAWS']))
+            row1.append(f"Vind: {ws} kt")
+        except (ValueError, TypeError):
+            pass
+
+    if row1:
+        lines.append("   ".join(row1))
+
+    # Rad 2: Nästa brytpunkt, Kurs, Mach, Bränsle
+    row2 = []
+    if 'PAFMSAWID' in kv and kv['PAFMSAWID'].strip():
+        row2.append(f"Nästa brytpunkt: {kv['PAFMSAWID'].strip()}")
+    if 'PATHDG' in kv:
+        try:
+            hdg = round(float(kv['PATHDG']))
+            row2.append(f"Kurs: {hdg} deg")
+        except (ValueError, TypeError):
+            pass
+    if 'PAMN' in kv:
+        try:
+            mach = float(kv['PAMN'])
+            row2.append(f"Mach: {mach:.2f}")
+        except (ValueError, TypeError):
+            pass
+    if 'PAFOB' in kv:
+        try:
+            fob = int(float(kv['PAFOB']))
+            row2.append(f"Bränsle: {fob} kg")
+        except (ValueError, TypeError):
+            pass
+
+    if row2:
+        lines.append("   ".join(row2))
+
+    # Rad 3: Position
+    if 'PALAT' in kv and 'PALONG' in kv:
+        try:
+            lat = float(kv['PALAT'])
+            lon = float(kv['PALONG'])
+            lines.append(f"Position: {lat:.4f}, {lon:.4f}")
+        except (ValueError, TypeError):
+            pass
+
+    return "\n".join(lines) if lines else None
 
 
 def rule_label_10_through_22_pos(text: str, label: str = None, metadata: dict = None) -> str:
@@ -807,8 +899,13 @@ def rule_label_10_through_22_pos(text: str, label: str = None, metadata: dict = 
         lon_txt = m_pos.group(2).strip()
         # Försök hitta altitud
         alt_match = re.search(r'\b(\d{4,5})\b', stripped)
-        alt_part = f" | Höjd: {alt_match.group(1)} ft" if alt_match else ""
-        return f"Positionsrapport | Pos: {lat_txt}, {lon_txt}{alt_part}"
+        if alt_match:
+            alt_val = int(alt_match.group(1))
+            fl = round(alt_val / 100)
+            alt_part = f"   Höjd: FL{fl} ({alt_val} ft)"
+        else:
+            alt_part = ""
+        return f"Positionsrapport: {lat_txt}, {lon_txt}{alt_part}"
 
     return None
 
@@ -863,11 +960,11 @@ def rule_generic_fallback_telemetry(text: str, label: str = None, metadata: dict
     # 4. Koordinater: t.ex. 58.54N 18.94E eller N58.54 E18.94
     m_coord = re.search(r'([NS]\s*\d+\.?\d*)\s*[,/ ]\s*([EW]\s*\d+\.?\d*)', stripped, re.IGNORECASE)
     if m_coord:
-        extracted.append(f"Pos: {m_coord.group(1)}, {m_coord.group(2)}")
+        extracted.append(f"Position: {m_coord.group(1)}, {m_coord.group(2)}")
 
     if extracted:
-        summary = " | ".join(extracted)
-        return f"[Extraherat: {summary}] {stripped}"
+        summary = "   ".join(extracted)
+        return f"{summary}\n{stripped}"
 
     return None
 
@@ -875,6 +972,7 @@ def rule_generic_fallback_telemetry(text: str, label: str = None, metadata: dict
 # Lista av regler som exekveras i prioritetsordning
 PARSER_RULES = [
     rule_libacars_structured,
+    rule_miam_airbus_telemetry,
     rule_label_sa_media_advisory,
     rule_label_b6_cpdlc,
     rule_label_5u_weather_request,
@@ -892,12 +990,13 @@ PARSER_RULES = [
     rule_generic_fallback_telemetry,
 ]
 
-def parse_human_acars(message: str, label: str = None, metadata: dict = None) -> str:
+def parse_human_acars(message: str, label: str = None, metadata: dict = None, strip_prefix: bool = False) -> str:
     """
     Huvudfunktion för ACARS Human Readable Parser.
-    Tar emot ett meddelande, bevarar eventuella inledande prefix (t.ex. [H1: ...] eller [38]),
+    Tar emot ett meddelande, bevarar eventuella inledande prefix (t.ex. [H1: ...] eller [38]) om strip_prefix=False,
     testar mot de modulära reglerna, och returnerar en översatt text om träff finns.
-    Om ingen regel matchar returneras originaltexten oförändrad (fallback).
+    Om strip_prefix=True returneras ren meddelandetext utan inledande [Label]-prefix.
+    Om ingen regel matchar returneras meddelandet (eller dess kärntext) oförändrad.
     """
     if not message:
         return ""
@@ -921,9 +1020,13 @@ def parse_human_acars(message: str, label: str = None, metadata: dict = None) ->
         try:
             res = rule(core_text, label=label, metadata=metadata)
             if res:
+                if strip_prefix:
+                    return res.strip()
                 return f"{prefix}{res}".strip()
         except Exception:
             continue
 
-    # Fallback: Originaltext oförändrad
+    # Fallback: Originaltext oförändrad (eller core_text om strip_prefix)
+    if strip_prefix and core_text.strip():
+        return core_text.strip()
     return message

@@ -20,17 +20,18 @@ try:
     from acars_human_parser import (
         parse_human_acars, AIRLINE_MAP, GROUND_STATIONS, ACARS_LABELS as PARSER_ACARS_LABELS,
         lookup_airline, lookup_ground_station, lookup_label, build_acars_metadata_header,
-        format_libacars_data
+        extract_acars_metadata, format_libacars_data
     )
 except ImportError:
     AIRLINE_MAP = {}
     GROUND_STATIONS = {}
     PARSER_ACARS_LABELS = {}
-    def parse_human_acars(msg, label=None, metadata=None): return msg
+    def parse_human_acars(msg, label=None, metadata=None, strip_prefix=False): return msg
     def lookup_airline(f): return ""
     def lookup_ground_station(a): return ""
     def lookup_label(l): return ""
     def build_acars_metadata_header(avlc=None, acars=None, vdl2_frame=None): return ""
+    def extract_acars_metadata(avlc=None, acars=None, vdl2_frame=None): return {}
     def format_libacars_data(a=None, x=None, v=None): return ""
 
 logger = logging.getLogger(__name__)
@@ -749,9 +750,9 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
         if dst_airport:
             ap_desc = AIRPORT_MAP.get(dst_airport, '')
             ap_info = f" ({ap_desc})" if ap_desc else ""
-            msg_text = f"[XID Handover] Stationslänk upprättad | Destination: {dst_airport}{ap_info}"
+            msg_text = f"Stationslänk upprättad (XID Handover)   Destination: {dst_airport}{ap_info}"
         elif lat is not None and lon is not None:
-            msg_text = "[XID Positionsrapport] Flygplansposition mottagen via stationslänk"
+            msg_text = "Positionsrapport mottagen (XID Handover)"
 
     # 5. Konstruera Avsändare / Adress:
     addr_parts = []
@@ -767,50 +768,54 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
     else:
         address = "VDL2"
 
-    # 6. Bestäm Alias (Flygbolagsnamn)
-    airline_name = lookup_airline(flight) if flight else ""
+    # 6. Bestäm Alias (Flygbolagsnamn) och extrahera strukturerad metadata
+    meta = extract_acars_metadata(avlc=avlc, acars=acars, vdl2_frame=vdl2)
+    if not flight and meta.get('flight'):
+        flight = meta['flight']
+    if not reg and meta.get('reg'):
+        reg = meta['reg']
+
+    airline_name = meta.get('airline') or (lookup_airline(flight) if flight else "")
     alias = airline_name if airline_name else (reg if reg else (f"Flygplan {src_addr}" if src_addr else "VDL2 Flygplan"))
 
-    # 7. Formatera meddelandesträng med etiketter och telemetri
-    humanized_msg = humanize_acars_message(label, msg_text, acars_dict=acars) if msg_text else ""
+    station_name = meta.get('station') or ""
+    ground_status = meta.get('ground_status') or ""
+    label_desc = meta.get('label_desc') or lookup_label(label)
 
-    formatted_msg_parts = []
+    # 7. Formatera meddelandesträng rent utan | och utan inledande [Label]-prefix
+    message_lines = []
     if cpdlc_text:
-        formatted_msg_parts.append(f"[CPDLC] {cpdlc_text}")
+        message_lines.append(f"CPDLC: {cpdlc_text}")
 
-    if humanized_msg:
-        label_desc = ACARS_LABELS.get(label)
-        if label_desc:
-            label_prefix = f"[{label}: {label_desc}] "
-        elif label:
-            label_prefix = f"[{label}] "
-        else:
-            label_prefix = ""
+    if msg_text:
+        # Parsa genom acars_human_parser med strip_prefix=True för ren text
+        parsed_human = parse_human_acars(msg_text, label=label, metadata=acars, strip_prefix=True)
+        if parsed_human:
+            message_lines.append(parsed_human)
 
-        if is_miam:
-            label_prefix = "[MIAM Airbus] " + label_prefix
-        formatted_msg_parts.append(f"{label_prefix}{humanized_msg}")
+    # Om ingen text genererades, men telemetrisammanfattning finns
+    if not message_lines:
+        if telemetry_summary:
+            clean_summary = telemetry_summary.replace(' | ', '   ')
+            message_lines.append(clean_summary)
 
-    if telemetry_summary:
-        if telemetry_summary not in humanized_msg and "Fart: " not in humanized_msg:
-            formatted_msg_parts.append(f"[{telemetry_summary}]")
-
-    full_message = " | ".join(formatted_msg_parts) if formatted_msg_parts else (humanized_msg or msg_text)
-    
+    # Lägg till koordinater om de inte redan specificerats i meddelandet
     if lat is not None and lon is not None:
-        coord_str = f"Lat: {lat:.4f}, Lon: {lon:.4f}"
-        if coord_str not in full_message and "Pos: " not in full_message and "Position: " not in full_message:
-            full_message += f" | {coord_str}"
+        coord_line = f"Position: {lat:.4f}, {lon:.4f}"
+        joined_txt = "\n".join(message_lines)
+        if "Position:" not in joined_txt and "Pos:" not in joined_txt:
+            message_lines.append(coord_line)
 
-    full_message = parse_human_acars(full_message, label=label, metadata=acars)
-
-    # Bygg kompakt ACARSHUB-metadata header för VDL2/ACARS-meddelanden
-    meta_header = build_acars_metadata_header(avlc=avlc, acars=acars, vdl2_frame=vdl2)
-    if meta_header:
-        if full_message:
-            full_message = f"{meta_header}\n{full_message}"
+    full_message = "\n".join(message_lines).strip()
+    if not full_message:
+        if dst_airport:
+            ap_desc = AIRPORT_MAP.get(dst_airport, '')
+            ap_info = f" ({ap_desc})" if ap_desc else ""
+            full_message = f"Stationslänk upprättad   Destination: {dst_airport}{ap_info}"
+        elif lat is not None and lon is not None:
+            full_message = f"Positionsrapport mottagen   Position: {lat:.4f}, {lon:.4f}"
         else:
-            full_message = meta_header
+            full_message = f"VDL2 Signallänk: {src_type} ({src_addr or 'Okänd'}) -> {dst_type} ({dst_addr or 'Okänd'})"
 
     bitrate_str = "VDL2-CPDLC" if cpdlc_text else ("VDL2-MIAM" if is_miam else ("VDL2-ACARS" if label else "VDL2"))
 
@@ -824,13 +829,16 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
         'flight': flight,
         'reg': reg,
         'icao': src_addr,
+        'station': station_name,
+        'ground_status': ground_status,
+        'label': label,
+        'label_desc': label_desc,
         'lat': lat,
         'lon': lon,
         'alt_ft': alt_ft,
         'snr': snr_str,
         'snr_db': snr_db,
         'is_miam': is_miam,
-        'label': label,
         'telemetry': telemetry_data
     }
 
@@ -1057,8 +1065,38 @@ class VDL2Receiver:
         if is_duplicate and dup_handling == 'discard':
             return
 
-        # Spara till databas och trigga larmord
+        # Kontrollera larmord (endast på själva meddelandetexten med helordsmatchning)
         alert_match = check_alert_words(message)
+        now_iso = datetime.now().isoformat()
+
+        # Förbered metadata för databas, SSE och MQTT
+        metadata = {
+            'protocol': protocol_type,
+            'bitrate': bitrate,
+            'function': 1 if parsed.get('lat') else 0,
+            'frequency': freq,
+            'alert_word': alert_match['word'] if alert_match else None,
+            'alert_color': alert_match['color'] if alert_match else None,
+            'sdr_name': 'VDL2-Mätning',
+            'is_duplicate': is_duplicate,
+            'repeat_count': 1,
+            'last_timestamp': now_iso,
+            'flight': parsed.get('flight'),
+            'reg': parsed.get('reg'),
+            'icao': parsed.get('icao'),
+            'station': parsed.get('station'),
+            'ground_status': parsed.get('ground_status'),
+            'label': parsed.get('label'),
+            'label_desc': parsed.get('label_desc'),
+            'lat': parsed.get('lat'),
+            'lon': parsed.get('lon'),
+            'alt_ft': parsed.get('alt_ft'),
+            'snr': parsed.get('snr'),
+            'is_miam': parsed.get('is_miam'),
+            'telemetry': parsed.get('telemetry')
+        }
+
+        # Spara till databas
         msg_id, timestamp = save_message(
             address=address,
             message=message,
@@ -1068,8 +1106,10 @@ class VDL2Receiver:
             frequency=freq,
             is_duplicate=is_duplicate,
             repeat_count=1,
-            last_timestamp=None
+            last_timestamp=None,
+            metadata=metadata
         )
+        metadata['last_timestamp'] = timestamp
 
         with self.cache_lock:
             self.recent_cache[msg_key] = {
@@ -1087,28 +1127,6 @@ class VDL2Receiver:
             self.stats['last_flight'] = parsed.get('reg')
 
         logger.info(f"[VDL2 DECODED] -> [{address}] {alias} | {message}")
-
-        metadata = {
-            'protocol': protocol_type,
-            'bitrate': bitrate,
-            'function': 1 if parsed.get('lat') else 0,
-            'frequency': freq,
-            'alert_word': alert_match['word'] if alert_match else None,
-            'alert_color': alert_match['color'] if alert_match else None,
-            'sdr_name': 'VDL2-Mätning',
-            'is_duplicate': is_duplicate,
-            'repeat_count': 1,
-            'last_timestamp': timestamp,
-            'flight': parsed.get('flight'),
-            'reg': parsed.get('reg'),
-            'icao': parsed.get('icao'),
-            'lat': parsed.get('lat'),
-            'lon': parsed.get('lon'),
-            'alt_ft': parsed.get('alt_ft'),
-            'snr': parsed.get('snr'),
-            'is_miam': parsed.get('is_miam'),
-            'telemetry': parsed.get('telemetry')
-        }
 
         # Skicka till MQTT
         publish_message(address, message, timestamp, alias, metadata=metadata)

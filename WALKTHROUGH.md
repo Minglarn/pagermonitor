@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.14.31`
+- **CalVer**: `2026.10.14.32`
 - **Date**: 2026-10-14
 - **Language**: English / Swedish
 
@@ -1804,6 +1804,30 @@
 - **Verifiering**:
   - Samtliga 67 enhetstester godkända (`python -m unittest discover tests`).
   - Verifierat att koden och meddelandetexterna är 100% fria från emojis.
+
+### 60. Strukturerad Metadata på Badge-raden, Ren Textlayout utan Pipes och Helords-ordbevakning (v2026.10.14.32)
+- **KRAV 1: Metadata till Badge-raden ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [style.css](file:///d:/antigravity/pager-monitor/static/style.css), [index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - Metadata lyfts helt ut ur meddelandetexten och levereras som strukturerade fält (`flight`, `reg`, `icao`, `station`, `ground_status`, `label`, `label_desc`).
+  - Renderas som kompakta och färgkodade badges i `.msg-meta-bar` längst ner i meddelandecellen bredvid frekvens, ACARS och SNR:
+    - **Registrering**: `.badge.meta.badge-reg` (t.ex. `SE-RTA`).
+    - **Flight**: `.badge.meta.badge-flight` (t.ex. `D84378` / `ET0715 (Ethiopian Airlines)`).
+    - **ICAO**: `.badge.meta.badge-icao` (t.ex. `ICAO: 040127`).
+    - **Markstation**: `.badge.meta.badge-station` (t.ex. `To: Arlanda ESSA`).
+    - **Status**: `.badge.meta.badge-status.badge-airborne` / `.badge-ground`.
+    - **Label**: `.badge.meta.badge-label` (t.ex. `Label: 83 (Operativt meddelande)`).
+  - Dolt tekniskt brus (`Mode: 2`, `Block: 8`, `Msg: F40A`, `ACK: !`) samt avlägsnat `Alpha`/`Num` för VDL2.
+  - Full bakåtkompatibilitet: UI parsar och rensar bort eventuella inbäddade headers från gamla rader i databasen och presenterar dem automatiskt i badge-raden.
+- **KRAV 2: Ren Presentation utan Pipe-tecken ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Samtliga avkodningsregler har befriats från pipe-tecken (`|`).
+  - Texten formateras med rena radbrytningar och tydliga fältnamn på svenska för t.ex. H1 FMS Färddator, Label 83 CSV-rapporter och ny dedikerad regel för MIAM Airbus telemetri.
+- **KRAV 3: Unicode-säker Helordsmatchning i Ordbevakningen ([database.py](file:///d:/antigravity/pager-monitor/database.py), [index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - Åtgärdat falsklarm där larmord som `LIGHT` och `PORT` matchade delsträngar inuti `Flight` och `Airport`.
+  - Implementerat ordgränser: `(?<![a-zA-Z0-9åäöÅÄÖ])ORD(?![a-zA-Z0-9åäöÅÄÖ])` med case-insensitivity i backend (`check_alert_words` och SQLite `WORD_MATCH`) samt i frontend (`checkAlertWordMatch`).
+  - Ordmatchning sker strikt mot ren meddelandetext, aldrig mot metadata.
+- **Verifiering**:
+  - Samtliga 68 enhetstester godkända (`python -m unittest discover tests`).
+  - Verifierat att koden och meddelandetexterna är 100% fria från emojis.
+
 
 
 

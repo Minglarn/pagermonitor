@@ -9,11 +9,20 @@ from datetime import datetime
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'messages.db')
 
+def regex_word_match(pattern, text):
+    if not pattern or not text:
+        return 0
+    # Match whole word with word boundary (Unicode-aware for Swedish characters)
+    regex = rf'(?<![a-zA-Z0-9åäöÅÄÖ]){re.escape(str(pattern))}(?![a-zA-Z0-9åäöÅÄÖ])'
+    return 1 if re.search(regex, str(text), re.IGNORECASE) else 0
+
 def get_connection():
     """Create a sqlite3 connection with Unicode-aware helper functions."""
     conn = sqlite3.connect(DB_PATH)
     conn.create_function("UPPER_UNICODE", 1, lambda s: (s or '').upper())
+    conn.create_function("WORD_MATCH", 2, regex_word_match)
     return conn
+
 
 def get_default_settings():
     return {
@@ -86,7 +95,8 @@ def init_db():
         ('is_duplicate', 'INTEGER DEFAULT 0'),
         ('is_protected', 'INTEGER DEFAULT 0'),
         ('repeat_count', 'INTEGER DEFAULT 1'),
-        ('last_timestamp', 'TEXT DEFAULT ""')
+        ('last_timestamp', 'TEXT DEFAULT ""'),
+        ('metadata', 'TEXT DEFAULT ""')
     ]:
         try:
             c.execute(f'ALTER TABLE messages ADD COLUMN {col} {type_info}')
@@ -243,16 +253,29 @@ def init_db():
     conn.commit()
     conn.close()
 
-def save_message(address, message, alias='', function_code=0, bitrate='', frequency='', is_duplicate=False, is_protected=False, repeat_count=1, last_timestamp=None):
+def save_message(address, message, alias='', function_code=0, bitrate='', frequency='', is_duplicate=False, is_protected=False, repeat_count=1, last_timestamp=None, metadata=None):
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
     timestamp = datetime.now().isoformat()
     if last_timestamp is None:
         last_timestamp = timestamp
-    c.execute('''
-        INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected, repeat_count, last_timestamp)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ''', (timestamp, address, message, alias, function_code, bitrate, frequency, 1 if is_duplicate else 0, 1 if is_protected else 0, repeat_count, last_timestamp))
+    meta_json = ""
+    if metadata:
+        try:
+            import json
+            meta_json = json.dumps(metadata)
+        except Exception:
+            pass
+    try:
+        c.execute('''
+            INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected, repeat_count, last_timestamp, metadata)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (timestamp, address, message, alias, function_code, bitrate, frequency, 1 if is_duplicate else 0, 1 if is_protected else 0, repeat_count, last_timestamp, meta_json))
+    except sqlite3.OperationalError:
+        c.execute('''
+            INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected, repeat_count, last_timestamp)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (timestamp, address, message, alias, function_code, bitrate, frequency, 1 if is_duplicate else 0, 1 if is_protected else 0, repeat_count, last_timestamp))
     row_id = c.lastrowid
     conn.commit()
     conn.close()
@@ -359,10 +382,7 @@ def get_recent_messages(limit=None, before_id=None, search=None, alerts_only=Fal
             EXISTS (
                 SELECT 1 FROM alert_words aw
                 WHERE aw.is_active = 1
-                AND (
-                    m.message LIKE '%' || aw.word || '%'
-                    OR UPPER_UNICODE(m.message) LIKE '%' || UPPER_UNICODE(aw.word) || '%'
-                )
+                AND WORD_MATCH(aw.word, m.message) = 1
             )
         ''')
 
@@ -440,6 +460,16 @@ def get_recent_messages(limit=None, before_id=None, search=None, alerts_only=Fal
             msg['last_timestamp'] = row[col_names.index('last_timestamp')] or ''
         else:
             msg['last_timestamp'] = ''
+        if 'metadata' in col_names and row[col_names.index('metadata')]:
+            try:
+                import json
+                m_obj = json.loads(row[col_names.index('metadata')])
+                if isinstance(m_obj, dict):
+                    for k, v in m_obj.items():
+                        if k not in msg and v is not None:
+                            msg[k] = v
+            except Exception:
+                pass
             
         messages.append(msg)
     return messages
@@ -472,16 +502,25 @@ def get_alert_words():
     return alerts
 
 def check_alert_words(message):
-    """Scan a message for active alert words and return the first match (word, color) or None."""
+    """Scan a message for active alert words and return the first match (word, color) or None.
+    Matches ONLY whole words using Unicode-aware word boundaries.
+    """
+    if not message:
+        return None
     alerts = get_alert_words()
     # Sort by length descending to match longest word first (standard practice)
     alerts.sort(key=lambda x: len(x['word']), reverse=True)
     
-    msg_upper = message.upper()
+    msg_str = str(message)
     for alert in alerts:
-        if not alert['is_active']:
+        if not alert['is_active'] or not alert.get('word'):
             continue
-        if alert['word'].upper() in msg_upper:
+        word = str(alert['word']).strip()
+        if not word:
+            continue
+        # Helordsmatchning som hindrar att t.ex. 'LIGHT' matchar inuti 'Flight'
+        pattern = rf'(?<![a-zA-Z0-9åäöÅÄÖ]){re.escape(word)}(?![a-zA-Z0-9åäöÅÄÖ])'
+        if re.search(pattern, msg_str, re.IGNORECASE):
             return {
                 'word': alert['word'],
                 'color': alert['color']

@@ -777,6 +777,54 @@ th:first-child,
     font-weight: 600;
 }
 
+.badge.meta.badge-reg {
+    background: rgba(59, 130, 246, 0.18);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.45);
+    font-weight: 600;
+}
+
+.badge.meta.badge-flight {
+    background: rgba(14, 165, 233, 0.18);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.45);
+    font-weight: 700;
+}
+
+.badge.meta.badge-icao {
+    background: rgba(148, 163, 184, 0.15);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    font-family: var(--msg-font, monospace);
+}
+
+.badge.meta.badge-station {
+    background: rgba(20, 184, 166, 0.18);
+    color: #5eead4;
+    border: 1px solid rgba(20, 184, 166, 0.45);
+}
+
+.badge.meta.badge-status.badge-airborne {
+    background: rgba(14, 165, 233, 0.20);
+    color: #7dd3fc;
+    border: 1px solid rgba(56, 189, 248, 0.5);
+    font-weight: 600;
+}
+
+.badge.meta.badge-status.badge-ground {
+    background: rgba(245, 158, 11, 0.20);
+    color: #fcd34d;
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    font-weight: 600;
+}
+
+.badge.meta.badge-label {
+    background: rgba(139, 92, 246, 0.18);
+    color: #c4b5fd;
+    border: 1px solid rgba(139, 92, 246, 0.45);
+    font-weight: 600;
+}
+
 .badge.meta.badge-proto {
     font-weight: 700;
     letter-spacing: 0.03em;
@@ -853,6 +901,50 @@ th:first-child,
     background: #d1fae5;
     color: #065f46;
     border: 1px solid #6ee7b7;
+}
+
+[data-theme="light"] .badge.meta.badge-reg {
+    background: #dbeafe;
+    color: #1e40af;
+    border: 1px solid #93c5fd;
+}
+
+[data-theme="light"] .badge.meta.badge-flight {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #7dd3fc;
+    font-weight: 700;
+}
+
+[data-theme="light"] .badge.meta.badge-icao {
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+    font-family: var(--msg-font, monospace);
+}
+
+[data-theme="light"] .badge.meta.badge-station {
+    background: #ccfbf1;
+    color: #115e59;
+    border: 1px solid #5eead4;
+}
+
+[data-theme="light"] .badge.meta.badge-status.badge-airborne {
+    background: #e0f2fe;
+    color: #0284c7;
+    border: 1px solid #38bdf8;
+}
+
+[data-theme="light"] .badge.meta.badge-status.badge-ground {
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fcd34d;
+}
+
+[data-theme="light"] .badge.meta.badge-label {
+    background: #ede9fe;
+    color: #5b21b6;
+    border: 1px solid #c4b5fd;
 }
 
 [data-theme="light"] .badge.meta.badge-proto.proto-pocsag {
