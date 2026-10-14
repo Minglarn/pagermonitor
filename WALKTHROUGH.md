@@ -1263,4 +1263,36 @@
   - Samtliga 26 enhetstester passerar felfritt.
   - Versionsbump till CalVer `2026.10.14.05`.
 
+---
+
+### 39. Visning av Signalkvalitet och Gain i RDS Heartbeat-loggen (v2026.10.14.06)
+- **Problembeskrivning**:
+  - Användaren önskade se aktuell signalkvalitet och mottagarens Gain direkt i loggflödet för att enkelt kunna avgöra om Gain behöver justeras och hur justeringen påverkar mottagningen.
+- **Teknisk Implementering**:
+  - **Dynamisk Kvalitetsberäkning ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - RDS sänder data med en fast moduleringstakt på 1187.5 bit/s med 104 bitar per RDS-grupp (block A-D), vilket motsvarar ett teoretiskt max på cirka 11.41 grupper/ramar per sekund.
+    - `_heartbeat_worker` beräknar den faktiska takten och kvalitetsprocenten: `quality_pct = int(round((rate / 11.41) * 100))`.
+    - Pedagogisk kvalitetsbedömning:
+      - `>= 90 %`: `Perfekt mottagning` (`Status: SYNKERAD`, typ `OK`)
+      - `70 - 89 %`: `God mottagning` (`Status: SYNKERAD`, typ `OK`)
+      - `40 - 69 %`: `Acceptabel (enstaka paketfel)` (`Status: SYNKERAD`, typ `OK`)
+      - `< 40 %`: `Svag signal / Prova justera Gain` (`Status: SVAG SIGNAL`, typ `LOW`)
+  - **Integrerad Gain-telemetri ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py), [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - `sdr_processor.py` skickar konsekvent med `--gain` (`auto` eller t.ex. `25` dB) vid start av `rds_decoder.py`.
+    - Pulsmätaren inkluderar aktuell gain i loggsträngen (`Gain: 25 dB` eller `Gain: auto`).
+    - `sdr_processor.py` fångar upp status `LOW` och loggar som `logger.warning`, vilket tydligt larmar användaren om Gain är för låg eller hög.
+  - **Loggformat**:
+    - Vid god synk:
+      `INFO: [RDS] HEARTBEAT -> Station: P4 Sörml (PI: 0xEA24) | Status: SYNKERAD | Kvalitet: 98% (11.2/11.4 ramar/s - Perfekt mottagning) | Gain: 25 dB | Senaste aktivitet: 0.1s sedan`
+    - Vid svag signal:
+      `WARNING: [RDS] HEARTBEAT -> Station: P4 Sörml (PI: 0xEA24) | Status: SVAG SIGNAL | Kvalitet: 33% (3.8/11.4 ramar/s - Svag signal / Prova justera Gain) | Gain: 49.6 dB | Senaste aktivitet: 0.2s sedan`
+    - Vid signalbortfall:
+      `WARNING: [RDS] HEARTBEAT FÖRLORAD -> Ingen RDS-signal detekterad på 5.2s (Signalbortfall eller frekvens saknar RDS)`
+- **Verifiering**:
+  - Skapade och körde enhetstester i `tests/test_sdr_watchdog.py` som verifierar att loggarna hanterar `OK`, `LOW` och `LOST` med korrekta loggnivåer och strängar.
+  - Verifierade manuell pulsmätning och kvalitetsberäkning i Python för både perfekt, svag och förlorad signal.
+  - Samtliga 26 enhetstester passerar felfritt.
+  - Versionsbump till CalVer `2026.10.14.06`.
+
+
 

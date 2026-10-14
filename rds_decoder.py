@@ -32,6 +32,7 @@ _heartbeat_stats = {
     'last_pulse_log_time': time.time(),
     'heartbeat_interval': 10.0,
     'heartbeat_timeout': 5.0,
+    'gain': 'auto',
     'has_received_any_frame': False
 }
 _heartbeat_thread_started = False
@@ -59,7 +60,7 @@ def record_rds_frame(pi=None, ps=None, count=1):
 def _heartbeat_worker():
     """
     Trådsäker bakgrundsövervakare som periodiskt kontrollerar och loggar
-    RDS-mottagningens puls och synkstatus.
+    RDS-mottagningens puls, synkstatus, signalkvalitet och tuner-gain.
     """
     while not _shutdown_requested:
         time.sleep(0.5)
@@ -73,6 +74,7 @@ def _heartbeat_worker():
             count = _heartbeat_stats['frames_since_last_pulse']
             pi = _heartbeat_stats['last_pi']
             ps = _heartbeat_stats['last_ps']
+            gain_val = _heartbeat_stats.get('gain', 'auto')
 
             if (now - last_log) < interval:
                 continue
@@ -84,14 +86,45 @@ def _heartbeat_worker():
             _heartbeat_stats['last_pulse_log_time'] = now
             _heartbeat_stats['frames_since_last_pulse'] = 0
 
+        # Formatera gain-beskrivning
+        gain_str = str(gain_val).strip() if gain_val is not None else "auto"
+        if not gain_str or gain_str.lower() == "auto":
+            gain_display = "auto"
+        elif "db" not in gain_str.lower():
+            gain_display = f"{gain_str} dB"
+        else:
+            gain_display = gain_str
+
         # Kontrollera mottagningens synk och aktivitet
         if has_received and time_since_last_frame <= timeout:
             rate = count / time_window
+            # Teoretisk maxhastighet för RDS är ~11.41 grupper/ramar per sekund (1187.5 bit/s / 104 bitar/grupp)
+            quality_pct = int(round((rate / 11.41) * 100))
+            quality_pct = max(0, min(100, quality_pct))
+
+            if quality_pct >= 90:
+                qual_desc = "Perfekt mottagning"
+                status_str = "SYNKERAD"
+                hb_type = "OK"
+            elif quality_pct >= 70:
+                qual_desc = "God mottagning"
+                status_str = "SYNKERAD"
+                hb_type = "OK"
+            elif quality_pct >= 40:
+                qual_desc = "Acceptabel (enstaka paketfel)"
+                status_str = "SYNKERAD"
+                hb_type = "OK"
+            else:
+                qual_desc = "Svag signal / Prova justera Gain"
+                status_str = "SVAG SIGNAL"
+                hb_type = "LOW"
+
             station_str = ps if ps else "FM"
             pi_str = pi if pi else "0x0000"
             print(
-                f"RDS-HEARTBEAT: OK Station: {station_str} (PI: {pi_str}) | "
-                f"Status: SYNKERAD | Takt: {rate:.1f} ramar/s | Senaste aktivitet: {time_since_last_frame:.1f}s sedan",
+                f"RDS-HEARTBEAT: {hb_type} Station: {station_str} (PI: {pi_str}) | "
+                f"Status: {status_str} | Kvalitet: {quality_pct}% ({rate:.1f}/11.4 ramar/s - {qual_desc}) | "
+                f"Gain: {gain_display} | Senaste aktivitet: {time_since_last_frame:.1f}s sedan",
                 flush=True
             )
         else:
@@ -100,12 +133,13 @@ def _heartbeat_worker():
                 flush=True
             )
 
-def start_heartbeat_monitor(interval=10.0, timeout=5.0):
+def start_heartbeat_monitor(interval=10.0, timeout=5.0, gain='auto'):
     """Startar bakgrundstråden för RDS-pulsövervakning."""
     global _heartbeat_thread_started
     with _heartbeat_lock:
         _heartbeat_stats['heartbeat_interval'] = float(interval)
         _heartbeat_stats['heartbeat_timeout'] = float(timeout)
+        _heartbeat_stats['gain'] = str(gain) if gain else 'auto'
         _heartbeat_stats['last_pulse_log_time'] = time.time()
         _heartbeat_stats['last_frame_time'] = time.time()
         if not _heartbeat_thread_started:
@@ -727,6 +761,9 @@ def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.
     global _current_child_proc, chosen_freq_global
     chosen_freq_global = freq_str
     reset_station_state()
+    with _heartbeat_lock:
+        if gain:
+            _heartbeat_stats['gain'] = str(gain)
 
     rtl_cmd = ["rtl_fm", "-M", "fm", "-s", "171k", "-r", "171k", "-f", freq_str]
     if device:
@@ -875,7 +912,7 @@ def main():
     args = parser.parse_args()
 
     # Starta bakgrundstråd för realtidspuls
-    start_heartbeat_monitor(interval=args.heartbeat_interval, timeout=args.heartbeat_timeout)
+    start_heartbeat_monitor(interval=args.heartbeat_interval, timeout=args.heartbeat_timeout, gain=args.gain)
 
     # Om stdin skickas explicit via flagga --stdin
     if args.stdin:

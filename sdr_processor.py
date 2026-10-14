@@ -268,6 +268,9 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                 if payload.startswith("OK"):
                     hb_msg = payload[2:].strip()
                     logger.info(f"[{config['name']}] HEARTBEAT -> {hb_msg}")
+                elif payload.startswith("LOW"):
+                    hb_msg = payload[3:].strip()
+                    logger.warning(f"[{config['name']}] HEARTBEAT -> {hb_msg}")
                 elif payload.startswith("LOST"):
                     hb_msg = payload[4:].strip()
                     logger.warning(f"[{config['name']}] HEARTBEAT FÖRLORAD -> {hb_msg}")
@@ -836,7 +839,8 @@ def start_instance(config):
         if hb_interval: decoder_cmd.extend(['--heartbeat-interval', str(hb_interval)])
         if hb_timeout: decoder_cmd.extend(['--heartbeat-timeout', str(hb_timeout)])
         if serial: decoder_cmd.extend(['--device', serial])
-        if gain and gain != 'auto': decoder_cmd.extend(['--gain', str(gain)])
+        gain_val = gain if (gain and str(gain).strip()) else 'auto'
+        decoder_cmd.extend(['--gain', str(gain_val)])
         if ppm and ppm != '0': decoder_cmd.extend(['--ppm', str(ppm)])
 
         logger.info(f"Starting {config['name']} [RDS-TMC]: {' '.join(decoder_cmd)}")

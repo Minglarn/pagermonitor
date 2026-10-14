@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.06] - Visning av Signalkvalitet och Gain i RDS Heartbeat
+
+### Added
+- **Signalkvalitetsbedömning i RDS Heartbeat (`rds_decoder.py`, `sdr_processor.py`)**:
+  - Dynamisk beräkning av signalkvalitet i procent baserat på antalet felfria RDS-grupper per sekund dividerat med teoretiskt max (11.41 ramar/s för RDS ALERT-C).
+  - Pedagogisk kvalitetsgradering direkt i loggflödet:
+    - `>= 90 %`: `Perfekt mottagning`
+    - `70 - 89 %`: `God mottagning`
+    - `40 - 69 %`: `Acceptabel (enstaka paketfel)`
+    - `< 40 %`: `Svag signal / Prova justera Gain` (loggas som `WARNING`)
+  - Visning av aktuell Gain i loggraden (t.ex. `Gain: 25 dB` eller `Gain: auto`), vilket ger direkt återkoppling när användaren ändrar Gain i inställningarna eller kommandoraden.
+  - Exempel på loggutskrift vid god signal:
+    `INFO: [RDS] HEARTBEAT -> Station: P4 Sörml (PI: 0xEA24) | Status: SYNKERAD | Kvalitet: 98% (11.2/11.4 ramar/s - Perfekt mottagning) | Gain: 25 dB | Senaste aktivitet: 0.1s sedan`
+  - Exempel på loggutskrift vid svag signal:
+    `WARNING: [RDS] HEARTBEAT -> Station: P4 Sörml (PI: 0xEA24) | Status: SVAG SIGNAL | Kvalitet: 33% (3.8/11.4 ramar/s - Svag signal / Prova justera Gain) | Gain: 49.6 dB | Senaste aktivitet: 0.2s sedan`
+
+### Changed
+- **SDR Processor RDS-start (`sdr_processor.py`)**:
+  - Parametern `--gain` vidarebefordras nu konsekvent (`auto` eller specifikt dB-värde) till `rds_decoder.py` för omedelbar telemetri i pulsmätaren.
+  - Utökat testsvit med `test_rds_heartbeat_logging` för att verifiera både `OK`, `LOW` och `LOST` statusar.
+
 ## [2026.10.14.05] - Kontinuerlig Frekvensskanning och Eliminering av RDS-loggspam
 
 ### Added
