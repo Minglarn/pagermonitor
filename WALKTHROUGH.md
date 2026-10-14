@@ -1321,6 +1321,23 @@
   - Samtliga 27 enhetstester passerar felfritt.
   - Versionsbump till CalVer `2026.10.14.07`.
 
+---
+
+### 41. Mottagna RDS-grupptyper i Heartbeat och Grupp 3A Synk på INFO-nivå (v2026.10.14.08)
+- **Problembeskrivning**:
+  - Användaren såg utmärkt stationssynk (100% kvalitet) men inga loggar om mottagna TMC-meddelanden. För att ge 100% klarhet behövs transparens kring vilka faktiska RDS-grupper sändaren skickar i luften (t.ex. 0A, 2A, 3A, 8A).
+- **Teknisk Implementering**:
+  - **Spårning av RDS-grupper ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - `record_rds_frame` sparar alla unika mottagna grupper i en mängd (`groups_seen`).
+    - Heartbeat-raden listar alla mottagna grupper:
+      `INFO: [RDS] HEARTBEAT -> Station: P4 Sörml (PI: 0xEA24) | Status: SYNKERAD | Kvalitet: 100% (11.5/11.4 ramar/s) | RDS-grupper: 0A, 2A, 3A | Gain: 26 dB | Senaste aktivitet: 0.0s sedan`
+  - **3A Handskakning på INFO-nivå ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Ändrat loggnivån för Grupp 3A till INFO så att den alltid visas direkt i användarens konsol utan krav på debug-läge.
+- **Verifiering**:
+  - Samtliga 27 enhetstester passerar felfritt.
+  - Versionsbump till CalVer `2026.10.14.08`.
+
+
 
 
 

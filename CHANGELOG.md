@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.08] - Mottagna RDS-grupper i Heartbeat och 3A Synk på INFO-nivå
+
+### Added
+- **Spårning av RDS-grupptyper i Heartbeat (`rds_decoder.py`)**:
+  - Heartbeat-raden visar nu samtliga unika RDS-grupptyper som antennen faktiskt tar emot från FM-sändaren (t.ex. `RDS-grupper: 0A, 2A, 3A, 8A`).
+  - Detta ger 100% transparens: användaren ser direkt om masten sänder Grupp 3A (TMC-handskakning) och om Grupp 8A (trafiklarm) sänds i luften.
+- **TMC Handskakning (Grupp 3A) på INFO-nivå**:
+  - `INFO: [RDS-TMC] TMC SYNK (Grupp 3A) → AID: 0xCD46 | LTN: 1 (Sverige) | Systemstatus: AKTIV` loggas nu på INFO-nivå så att handskakningen syns direkt i standardloggen utan att debug-läge behöver aktiveras.
+
 ## [2026.10.14.07] - Robust RDS-TMC Parsning, Ofiltrerat Redsea-läge (-u) och Syntetiskt Testläge
 
 ### Added

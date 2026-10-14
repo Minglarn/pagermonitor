@@ -41,14 +41,15 @@ _heartbeat_stats = {
     'heartbeat_interval': 10.0,
     'heartbeat_timeout': 5.0,
     'gain': 'auto',
-    'has_received_any_frame': False
+    'has_received_any_frame': False,
+    'groups_seen': set()
 }
 _heartbeat_thread_started = False
 
-def record_rds_frame(pi=None, ps=None, count=1):
+def record_rds_frame(pi=None, ps=None, group=None, count=1):
     """
     Registrerar en eller flera giltiga mottagna RDS-ramar med korrekt checksumma.
-    Uppdaterar timestamp för senaste aktivitet och sparar senaste kända PI och PS.
+    Uppdaterar timestamp för senaste aktivitet och sparar senaste kända PI, PS och grupper.
     """
     now = time.time()
     with _heartbeat_lock:
@@ -64,6 +65,10 @@ def record_rds_frame(pi=None, ps=None, count=1):
             ps_clean = str(ps).strip()
             if ps_clean:
                 _heartbeat_stats['last_ps'] = ps_clean
+        if group:
+            grp_clean = str(group).strip().upper()
+            if grp_clean:
+                _heartbeat_stats['groups_seen'].add(grp_clean)
 
 def _heartbeat_worker():
     """
@@ -127,11 +132,15 @@ def _heartbeat_worker():
                 status_str = "SVAG SIGNAL"
                 hb_type = "LOW"
 
+            groups_seen = sorted(list(_heartbeat_stats.get('groups_seen', set())))
+            groups_display = ", ".join(groups_seen) if groups_seen else "-"
+
             station_str = ps if ps else "FM"
             pi_str = pi if pi else "0x0000"
             print(
                 f"RDS-HEARTBEAT: {hb_type} Station: {station_str} (PI: {pi_str}) | "
                 f"Status: {status_str} | Kvalitet: {quality_pct}% ({rate:.1f}/11.4 ramar/s - {qual_desc}) | "
+                f"RDS-grupper: {groups_display} | "
                 f"Gain: {gain_display} | Senaste aktivitet: {time_since_last_frame:.1f}s sedan",
                 flush=True
             )
@@ -583,9 +592,8 @@ def parse_redsea_json_line(line_str):
     # Registrera giltig mottagen RDS-ram/grupp i pulsmätaren
     pi_val = data.get("pi")
     ps_val = data.get("ps")
-    record_rds_frame(pi=pi_val, ps=ps_val, count=1)
-
     group_type = str(data.get("group", "")).upper()
+    record_rds_frame(pi=pi_val, ps=ps_val, group=group_type, count=1)
 
     # 1. Kontrollera Grupp 3A: Handskakning och Systeminformation (ALERT-C AID: 0xCD46, LTN: 1)
     oda_info = data.get("oda") or {}
@@ -605,9 +613,9 @@ def parse_redsea_json_line(line_str):
         aid_disp = f"0x{aid_str}" if aid_str else "0xCD46"
         status_disp = "AKTIV"
 
-        # Logga vid DEBUG-nivå när grupp 3A (TMC System Information) detekteras
-        debug_3a_line = f"DEBUG: [RDS-TMC] Grupp 3A System Information -> AID: {aid_disp} | LTN: {ltn_num} (Sverige) | Systemstatus: {status_disp}"
-        print(debug_3a_line, flush=True)
+        # Logga vid INFO-nivå när grupp 3A (TMC System Information) detekteras
+        info_3a_line = f"INFO: [RDS-TMC] TMC SYNK (Grupp 3A) → AID: {aid_disp} | LTN: {ltn_num} (Sverige) | Systemstatus: {status_disp}"
+        print(info_3a_line, flush=True)
 
         if not _group_3a_confirmed:
             _group_3a_confirmed = True
@@ -620,20 +628,30 @@ def parse_redsea_json_line(line_str):
     is_group_8a = ("tmc" in data or group_type == "8A")
     if is_group_8a:
         _current_channel_tmc_active = True
-        tmc = data.get("tmc") if isinstance(data.get("tmc"), dict) else data
+        tmc_root = data.get("tmc") if isinstance(data.get("tmc"), dict) else data
+        # Redsea kapslar in TMC-data inuti ett inre 'message'-objekt
+        if isinstance(tmc_root.get("message"), dict):
+            tmc = tmc_root.get("message")
+        else:
+            tmc = tmc_root
 
-        # Extrahera numeriskt plats-ID
-        loc_code = tmc.get("location") if tmc.get("location") is not None else data.get("location")
+        # Extrahera numeriskt plats-ID från tmc, tmc_root eller rotnivån
+        loc_code = tmc.get("location")
+        if loc_code is None:
+            loc_code = tmc_root.get("location")
+        if loc_code is None:
+            loc_code = data.get("location")
+
         if loc_code is not None:
             # Extrahera event_codes (lista med koder)
-            event_codes = tmc.get("event_codes") or data.get("event_codes") or []
+            event_codes = tmc.get("event_codes") or tmc_root.get("event_codes") or data.get("event_codes") or []
             if isinstance(event_codes, int):
                 event_codes = [event_codes]
             elif not isinstance(event_codes, list):
                 try:
                     event_codes = [int(event_codes)]
                 except (ValueError, TypeError):
-                    single_code = tmc.get("event_code") or data.get("event_code")
+                    single_code = tmc.get("event_code") or tmc_root.get("event_code") or data.get("event_code")
                     if single_code is not None:
                         try: event_codes = [int(single_code)]
                         except Exception: event_codes = []
@@ -641,16 +659,16 @@ def parse_redsea_json_line(line_str):
                         event_codes = []
 
             # Extrahera event_descriptions (klartext från redsea om tillgängligt)
-            event_descs = tmc.get("event_descriptions") or data.get("event_descriptions") or []
+            event_descs = tmc.get("event_descriptions") or tmc_root.get("event_descriptions") or data.get("event_descriptions") or []
             if isinstance(event_descs, str):
                 event_descs = [event_descs]
             elif not isinstance(event_descs, list):
                 event_descs = []
 
-            extent = tmc.get("extent", data.get("extent", 0))
-            direction = tmc.get("direction", data.get("direction", "+"))
-            urgency = tmc.get("urgency", data.get("urgency", "normal"))
-            duration = tmc.get("duration", data.get("duration", ""))
+            extent = tmc.get("extent", tmc_root.get("extent", data.get("extent", 0)))
+            direction = tmc.get("direction", tmc_root.get("direction", data.get("direction", "+")))
+            urgency = tmc.get("urgency", tmc_root.get("urgency", data.get("urgency", "normal")))
+            duration = tmc.get("duration", tmc_root.get("duration", data.get("duration", "")))
 
             # Hämta händelsebeskrivning på svenska
             fallback_txt = event_descs[0] if event_descs else ""
@@ -700,6 +718,13 @@ def parse_redsea_json_line(line_str):
                 duration=duration,
                 msg=event_desc
             )
+        else:
+            # Partiell 8A grupp (t.ex. fortsättningsblock eller rådata)
+            global _last_raw_8a_log
+            now = time.time()
+            if '_last_raw_8a_log' not in globals() or now - _last_raw_8a_log > 15.0:
+                _last_raw_8a_log = now
+                print("INFO: [RDS-TMC] ALERT-C Grupp 8A detekterad i luften (Inväntar komplett meddelandesekvens)", flush=True)
 
     # 3. Kontrollera vanlig RDS-metadata (PS / PI)
     # RadioText (låttitlar/artister/reklam) ignoreras helt för att undvika spam.
