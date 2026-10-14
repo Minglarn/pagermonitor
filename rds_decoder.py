@@ -608,15 +608,14 @@ def parse_redsea_json_line(line_str):
     oda_info = data.get("oda") or data.get("open_data_app") or {}
     raw_aid = data.get("aid") or (oda_info.get("aid") if isinstance(oda_info, dict) else "") or ""
     aid_str = str(raw_aid).upper().replace("0X", "").strip()
-    if aid_str in ("", "NONE", "NULL"):
-        aid_str = "CD46"
-    aid_disp = f"0x{aid_str}"
+    if aid_str in ("NONE", "NULL"):
+        aid_str = ""
 
     app_str = str(data.get("application", "") or (oda_info.get("application", "") or oda_info.get("app_name", "") if isinstance(oda_info, dict) else "")).upper()
     is_group_3a = (
         group_type == "3A" or 
-        "CD46" in aid_str or 
-        "TMC" in app_str or 
+        ("CD46" in aid_str and aid_str != "") or 
+        ("TMC" in app_str and app_str != "") or 
         ("oda" in data and isinstance(oda_info, dict) and "CD46" in str(oda_info).upper()) or
         ("open_data_app" in data and isinstance(oda_info, dict) and any(x in str(oda_info).upper() for x in ("TMC", "8A", "CD46")))
     )
@@ -625,6 +624,7 @@ def parse_redsea_json_line(line_str):
         global _group_3a_confirmed, _current_channel_tmc_active
         _current_channel_tmc_active = True
         ltn_num = data.get("ltn") or (oda_info.get("ltn") if isinstance(oda_info, dict) else 1) or 1
+        aid_disp = f"0x{aid_str}" if aid_str else "0xCD46"
         status_disp = "AKTIV"
 
         if not _group_3a_confirmed:

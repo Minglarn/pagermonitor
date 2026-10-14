@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.12] - Korrigerad Grupp 3A Matchning och Protokoll-Badge utan 'bps'
+
+### Fixed
+- **Protokoll-Badge i Webbgränssnittet (`index.html`, `larm.html`, `statistics.html`)**:
+  - Förhindrar att suffixet `bps` adderas till `RDS-TMC` och `TETRA`. Visas nu snyggt och korrekt som `RDS-TMC` istället för `RDS-TMCbps`.
+- **Korrekt Grupp 3A Detektering (`rds_decoder.py`)**:
+  - Säkerställt att `aid_str` inte tilldelas `"CD46"` i förväg på tomma paket, vilket förhindrar att vanliga RDS-grupper (0A, 2A, 14A) felaktigt matchas som 3A.
+
 ## [2026.10.14.11] - Strikt Deduplicering av TMC Grupp 3A Synk-loggar
 
 ### Fixed

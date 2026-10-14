@@ -922,7 +922,9 @@
             if (alarm.bitrate) {
                 let bStr = String(alarm.bitrate).trim();
                 if (bStr && bStr !== 'WATCHDOG') {
-                    if (/^POCSAG\s*\d+$/i.test(bStr)) {
+                    if (bStr.includes('RDS') || bStr.includes('TMC') || bStr.includes('TETRA')) {
+                        formattedBitrate = bStr;
+                    } else if (/^POCSAG\s*\d+$/i.test(bStr)) {
                         formattedBitrate = bStr.replace(/^POCSAG\s*/i, '') + 'bps';
                     } else if (/^\d+$/.test(bStr)) {
                         formattedBitrate = bStr + 'bps';
