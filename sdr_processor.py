@@ -300,6 +300,9 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                             locked_f = freq_match.group(1)
                             config['active_frequency'] = locked_f
                             logger.info(f"[{config['name']}] TETRA LOCK: Basstation låst på frekvens {locked_f} ({rest})")
+                            for cb in list(new_message_callbacks):
+                                try: cb({'type': 'telemetry', 'active_frequency': config.get('active_frequency'), 'sdr_name': config['name']})
+                                except Exception: pass
                         else:
                             logger.info(f"[{config['name']}] TETRA LOCK: {rest}")
                         continue
@@ -333,10 +336,12 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         mcc_val = mcc_match.group(1) if mcc_match else "240"
                         mnc_val = mnc_match.group(1) if mnc_match else "01"
                         net_prefix = "RAKEL" if (mcc_val == "240" and mnc_val in ("01", "1")) else "TETRA"
-                        if cell_match:
-                            address = f"{net_prefix}-C{cell_match.group(1)}"
+                        cell_raw = cell_match.group(1) if cell_match else ""
+                        if cell_raw and cell_raw.lower() != "auto":
+                            address = f"{net_prefix}-C{cell_raw}"
                         else:
-                            address = f"{net_prefix}-{mcc_val}-{mnc_val}"
+                            active_f = (config.get('active_frequency') or '').strip().replace(' ', '')
+                            address = f"{net_prefix}-{active_f}" if active_f else f"{net_prefix}-{mcc_val}-{mnc_val}"
                     else:
                         address = "TETRA"
 
@@ -344,7 +349,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     if tetra_type == "NET":
                         mcc_val = mcc_match.group(1) if mcc_match else "240"
                         mnc_val = mnc_match.group(1) if mnc_match else "01"
-                        net_label = "Sverige / Rakel (MSB)" if (mcc_val == "240" and mnc_val in ("01", "1")) else f"MCC: {mcc_val}, MNC: {mnc_val}"
+                        net_label = "Sverige / Rakel (MSB)" if (mcc_val == "240" and mnc_val in ("01", "1")) else f"Civilt TETRA (MCC: {mcc_val}, MNC: {mnc_val})"
                         if "MCC" not in message_text and "Nät:" not in message_text:
                             message = f"{message_text} | Nät: {net_label}"
                         else:
@@ -471,7 +476,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         if address.startswith("RAKEL"):
                             alias = "Rakel Basstation" if tetra_type == "NET" else "Rakel"
                         elif address.startswith("TETRA"):
-                            alias = "TETRA Basstation" if tetra_type == "NET" else "TETRA"
+                            alias = "Civilt TETRA Basstation" if (tetra_type == "NET" and ("civil" in message.lower() or "öppet" in message.lower())) else ("TETRA Basstation" if tetra_type == "NET" else "TETRA")
                     elif not alias and is_rds:
                         alias = parsed.get('alias', 'RDS-TMC')
                     

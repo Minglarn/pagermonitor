@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.01] - Återställd Visning av Låsta TETRA-basstationer i Meddelandeflödet
+
+### Fixed
+- **Basstationer Visas Korrekt vid Låsning i Flödet (`tetra_decoder.py`, `sdr_processor.py`)**:
+  - Åtgärdat felet där skannern låste på en basstations bärvåg (`TETRA LOCK: Basstation låst på frekvens 421.05M`) men ingen post skapades i meddelandeflödet trots att användaren valt \"Basstationer: Visas\".
+  - Orsaken var att `tetra_decoder.py` undertryckte utsändningen av `NET`-händelsen vid låsning om krypteringsfiltret (`skip_encrypted`) var aktivt och felaktigt antog att alla frekvenser var krypterade Rakel-master (MNC=01).
+  - Skannern skiljer nu korrekt på Rakel-bandet (380-385 / 390-395 MHz) och civila TETRA-band (t.ex. 410-430 MHz såsom 421.05 MHz).
+  - Vid låsning på en civil basstation genereras omedelbart en `NET`-händelse som sparas i databasen och skickas till realtidsflödet med adress (t.ex. `TETRA-421.05M`), alias (`Civilt TETRA Basstation`) och fullständig modulation/signalkvalitet (`[ÖPPET / CIVIL]`).
+  - Lade även till telemetriuppdatering vid `TETRA LOCK` i `sdr_processor.py` så att aktuell lyssnarfrekvens omedelbart syns i gränssnittet.
+
 ## [2026.10.13.36] - Stöd för Tomt Frekvensfält, Auto/Scan och Förtydligade Hjälptexter
 
 ### Added

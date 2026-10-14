@@ -1157,3 +1157,23 @@
 - **Verifiering**:
   - Samtliga 25 enhetstester passerar felfritt.
   - Versionsbump till CalVer `2026.10.13.36`.
+
+---
+
+### 34. Återställd Visning av Låsta TETRA-basstationer i Meddelandeflödet (v2026.10.14.01)
+- **Problembeskrivning**:
+  - Användaren rapporterade att fastän loggen visar att en basstation låsts (`[TETRA] TETRA LOCK: Basstation låst på frekvens 421.05M (TETRA bärvåg bekräftad, SNR: +4.0 dB, Score: 63%)`) och knappen `Basstationer: Visas` var aktiverad i användargränssnittet, visades ingen basstationshändelse alls i tabellen.
+- **Identifierade Orsaker**:
+  1. I `sdr_processor.py` hanterades `TETRA LOCK` enbart som intern telemetri för instansens aktiva frekvens med en direkt `continue`-sats. Händelsen genererade därför inget larm- eller basstationsmeddelande till databasen eller gränssnittet.
+  2. I hårdvaruskanningsslingan i `tetra_decoder.py` var anropet till `format_and_print_event("NET", ...)` villkorat med `if not self.skip_encrypted:`. Om krypteringsfiltret var påslaget skickades därför ingen `NET`-händelse alls vid låsning.
+  3. Dessutom hårdkodades nätverket till `Sverige / Rakel (MSB) (MCC: 240, MNC: 01)` oavsett frekvens. För frekvenser i 410–430 MHz (t.ex. 421.05 MHz) rör det sig i själva verket om civila TETRA-nätverk (t.ex. SL, industri, transport), vilket orsakade att filtret felaktigt antog att masten tillhörde det krypterade Rakel-nätet och undertryckte meddelandet.
+- **Teknisk Implementering**:
+  - **Frekvens- och Nätverksseparation ([tetra_decoder.py](file:///d:/antigravity/pager-monitor/tetra_decoder.py))**:
+    - Skannern kontrollerar nu om den detekterade frekvensen ligger i Rakel-bandet (380–385 / 390–395 MHz) eller i civila band (410–430 MHz).
+    - För civila frekvenser sätts nätverksdata till `Civilt TETRA [ÖPPET / CIVIL]` (`MCC: 240`, `MNC: 10`), och `NET`-händelsen genereras omedelbart även när `skip_encrypted` är aktiverat.
+  - **Adresstilldelning och Alias ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Vid mottagning av `NET`-händelse för civila master sätts adressen till `TETRA-<frekvens>` (t.ex. `TETRA-421.05M`) och alias till `Civilt TETRA Basstation`.
+    - Lade till realtidstelemetri på `TETRA LOCK` så att gränssnittet uppdaterar aktiv lyssnarfrekvens direkt.
+- **Verifiering**:
+  - Samtliga 25 enhetstester passerar felfritt.
+  - Versionsbump till CalVer `2026.10.14.01`.

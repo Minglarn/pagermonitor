@@ -585,9 +585,14 @@ class TetraScanner:
         # Single Frequency Mode ("Lax-test"): Direct lock without requirement to win sweep
         if len(self.hz_list) == 1:
             lock_f = self.str_list[0]
+            single_hz = self.hz_list[0]
+            is_rakel = (380000000 <= single_hz <= 385000000 or 390000000 <= single_hz <= 395000000)
+            mcc_val = "240"
+            mnc_val = "01" if is_rakel else "10"
+            net_label = "Sverige / Rakel (MSB) [KRYPTERAT]" if is_rakel else "Civilt TETRA [ÖPPET / CIVIL]"
             format_and_print_event("LOCK", msg=f"Freq: {lock_f} Status: LOCKED (Manuell frekvens låst för avkodning)")
-            if not self.skip_encrypted:
-                format_and_print_event("NET", mcc="240", mnc="01", msg=f"Manuell lyssning aktiv på {lock_f}")
+            if not (self.skip_encrypted and is_rakel):
+                format_and_print_event("NET", mcc=mcc_val, mnc=mnc_val, cell="Auto", msg=f"Aktiv Basstation på {lock_f} | Nät: {net_label}")
             if not has_rtl or os.environ.get("PAGERMONITOR_TEST_MODE", "").lower() == "true":
                 run_test_feed(locked_freq=lock_f, civil_mode=self.skip_encrypted)
             else:
@@ -703,12 +708,15 @@ class TetraScanner:
                                     "LOCK", 
                                     msg=lock_msg
                                 )
-                                # Om skip_encrypted är aktivt skickar vi INTE fejkad Rakel NET-händelse här.
-                                # Istället låter vi stream_continuous läsa ut den äkta basstationsidentiteten från styrsignalen.
-                                if not self.skip_encrypted:
+                                is_rakel = (380000000 <= cand_hz <= 385000000 or 390000000 <= cand_hz <= 395000000)
+                                mcc_val = "240"
+                                mnc_val = "01" if is_rakel else "10"
+                                net_label = "Sverige / Rakel (MSB) [KRYPTERAT]" if is_rakel else "Civilt TETRA [ÖPPET / CIVIL]"
+
+                                if not (self.skip_encrypted and is_rakel):
                                     net_msg = (
                                         f"Aktiv TETRA Basstation på {cand_str} | "
-                                        f"Nät: Sverige / Rakel (MSB) | "
+                                        f"Nät: {net_label} | "
                                         f"Status: LÅST | "
                                         f"Signal: SNR +{snr_db:.1f} dB | "
                                         f"Modulation: pi/4-DQPSK ({int(score*100)}%) | "
@@ -716,8 +724,9 @@ class TetraScanner:
                                     )
                                     format_and_print_event(
                                         "NET", 
-                                        mcc="240", 
-                                        mnc="01", 
+                                        mcc=mcc_val, 
+                                        mnc=mnc_val, 
+                                        cell="Auto",
                                         msg=net_msg
                                     )
                                 self.stream_continuous(cand_hz, cand_str)
