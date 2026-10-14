@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.21] - Omedelbar Låsning på SR P3/P4, Snabbavbrott (2.5s) och Full FM-Bandskanning
+
+### Fixed
+- **Direktlåsning på Bekräftad SR P3 eller SR P4 (`rds_decoder.py`)**:
+  - Åtgärdat det kritiska problemet där skannern övergav mottagna SR P3/P4-stationer efter 10 sekunder enbart för att inga larm skickades under just det tidsfönstret.
+  - Eftersom SR P3 och SR P4 är Sveriges officiella TMC-kanaler låser mottagaren nu omedelbart så fort stationen identifierats via PI/PS med giltig RDS-signal.
+  - Mottagaren stannar permanent kvar på frekvensen och avkodar kontinuerligt alla ALERT-C larm som sänds.
+- **Snabbavbrott på 2.5s för Tomma Bärvågor (`rds_decoder.py`)**:
+  - Frekvenser utan mottagen RDS-signal (döda frekvenser) avbryts nu efter 2.5 sekunder istället för 10 sekunder. Detta fyrdubblar skanningshastigheten förbi tomma kanaler.
+- **Fullständig FM-Bandskanning (`get_p4_candidates` i `rds_decoder.py`)**:
+  - Skanningen genererar nu hela FM-bandet (87.5–108.0 MHz med 200 kHz steg) för att fånga upp alla lokala sändare och repeatrar, med kända SR P3/P4-sändare prioriterade först i kön eller via RF-spektroskopering (`rtl_power`).
+
 ## [2026.10.14.20] - Inbyggd ALERT-C ISO 14819-1 Parser för SR P3 & P4 samt Utökade Snabbval
 
 ### Added

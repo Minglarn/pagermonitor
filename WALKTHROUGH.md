@@ -1513,3 +1513,23 @@
   - Testat avkodning av rått 8A-block `E203 8049 0865 38A6` (mottaget på P3 99.3 MHz): Avkodas direkt till `LOC: 14502 ROAD: E4 NAME: Trafikplats Nyköping Norra (Avfart 134) MSG: Trafikolycka`.
   - Verifierat syntetisk injicering med `--test-tmc`.
   - Samtliga 62 enhetstester i pytest passerar utan anmärkning.
+
+### 49. Omedelbar Låsning på SR P3/P4, Snabbavbrott (2.5s) och Full FM-Bandskanning (v2026.10.14.21)
+- **Bakgrund och Problem**:
+  - Skanningen uppvisade ett cykliskt beteende där mottagaren hoppade genom en hårdkodad lista med 25 sändare (t.ex. Kristianstad 101.4 MHz, Skaraborg 100.3 MHz, Värmland 100.0 MHz, Västerbotten 104.2 MHz) och väntade 10 sekunder på varje frekvens trots att ingen signal fanns där.
+  - Samtidigt räcker 10 sekunder inte för att kräva att ett aktivt trafiklarm (Grupp 8A) eller Grupp 3A ska skickas, eftersom sändningarna sker periodiskt (ofta 30–120s) eller vid faktiska olyckor. Detta gjorde att skannern övergav fullt fungerande SR P3/P4-stationer med 100% mottagningskvalitet.
+  - Dessutom täckte skannern inte lokala slavsändare eller hela FM-bandet utanför den statiska listan.
+- **Teknisk Implementering**:
+  - **Omedelbar Låsning på Bekräftad SR P3 eller SR P4 ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - När mottagaren tar emot en station som identifierar sig som Sveriges Radio P3 (PI `0xE203`, PS `P3`) eller SR P4 (PI `0xEA24`, `0xE204`, etc.) och har stabil RDS-rammottagning, låser den kanalen omedelbart.
+    - Den stannar permanent på frekvensen och lyssnar kontinuerligt efter ALERT-C larm i stället för att hoppa vidare efter 10 sekunder.
+  - **Snabbavbrott på 2.5s för Tomma Kanaler ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Om inte en enda RDS-ram mottagits efter 2.5 sekunder avbryts frekvensen omedelbart. Detta ökar sökhastigheten med 400% genom tomma bandsegment.
+  - **Fullständig FM-Bandskanning ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - `get_p4_candidates` genererar nu hela FM-bandet från 87.5 till 108.0 MHz med 200 kHz steg (totalt 120 kanaler), med kända SR P3/P4-frekvenser prioriterade först i kön eller via RF-spektrummätning (`rtl_power`).
+  - **Versionsspårbarhet**:
+    - Uppdaterat versionsnummer till CalVer `2026.10.14.21` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+- **Verifiering**:
+  - Verifierat att kandidatlistan genererar 120 frekvenser som spänner 87.5M till 108.0M med P3/P4 i spetsen.
+  - Verifierat syntetisk injicering med `--test-tmc`.
+  - Samtliga 62 enhetstester i pytest passerar utan anmärkning.

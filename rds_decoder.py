@@ -963,20 +963,34 @@ def get_p4_candidates(freq_arg, device="", min_hz=87500000, max_hz=108000000):
     Returnerar en prioriterad lista över kandidatfrekvenser att prova för RDS-TMC.
     Om användaren har ställt in en fast frekvens (inte auto/scan/intervall) gäller
     denna strikt utan att söka vidare till andra frekvenser.
+    Vid skanningsläge genereras kända SR-stationer följt av fullständig stegvis
+    genomsökning av hela FM-bandet (200 kHz raster).
     """
     is_scan = is_fm_scanning_range(freq_arg)
-    if is_scan:
-        min_hz, max_hz = parse_range_hz(freq_arg)
-        base_cands = [c for c in P4_STATIONS if min_hz <= c[1] <= max_hz]
-        if not base_cands:
-            base_cands = list(P4_STATIONS)
-    else:
+    if not is_scan:
         target_hz = parse_freq_to_hz(freq_arg)
         return [(str(freq_arg).strip(), target_hz, f"Fast frekvens {freq_arg}")]
 
+    min_hz, max_hz = parse_range_hz(freq_arg)
+
+    # 1. Kända primära SR P3 och P4 sändare i det angivna intervallet
+    known_cands = [c for c in SR_TMC_STATIONS if min_hz <= c[1] <= max_hz]
+    known_freqs_set = {c[1] for c in known_cands}
+
+    # 2. Utöka med hela FM-bandet (200 kHz steg) för att fånga alla lokala repeatrar och slavsändare
+    all_cands = list(known_cands)
+    curr = min_hz
+    while curr <= max_hz:
+        curr_round = int(round(curr / 100000.0) * 100000)
+        if curr_round not in known_freqs_set:
+            f_mhz = curr_round / 1e6
+            all_cands.append((f"{f_mhz:.1f}M", curr_round, f"FM {f_mhz:.1f} MHz"))
+            known_freqs_set.add(curr_round)
+        curr += 200000
+
     # Försök RF-effektsortera kandidater om rtl_power finns
     import shutil
-    if is_scan and shutil.which("rtl_power"):
+    if shutil.which("rtl_power"):
         import tempfile
         try:
             with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as tf:
@@ -999,7 +1013,7 @@ def get_p4_candidates(freq_arg, device="", min_hz=87500000, max_hz=108000000):
                                 db_vals = [float(x) for x in parts[6:] if x]
                                 for idx, db in enumerate(db_vals):
                                     freq_pt = f_low + idx * f_step
-                                    for cand in base_cands:
+                                    for cand in all_cands:
                                         if abs(freq_pt - cand[1]) <= 120000:
                                             if cand[0] not in cand_powers or db > cand_powers[cand[0]]:
                                                 cand_powers[cand[0]] = db
@@ -1009,14 +1023,14 @@ def get_p4_candidates(freq_arg, device="", min_hz=87500000, max_hz=108000000):
                 except Exception: pass
 
                 if cand_powers:
-                    sorted_cands = sorted(base_cands, key=lambda c: cand_powers.get(c[0], -999.0), reverse=True)
+                    sorted_cands = sorted(all_cands, key=lambda c: cand_powers.get(c[0], -999.0), reverse=True)
                     best_f = sorted_cands[0]
-                    format_and_print_scan(f"RF-spektrum identifierade starkaste P4-frekvens: {best_f[0]} ({best_f[2]}, {cand_powers.get(best_f[0], 0):.1f} dB)")
+                    format_and_print_scan(f"RF-spektrum identifierade starkaste FM-frekvens: {best_f[0]} ({best_f[2]}, {cand_powers.get(best_f[0], 0):.1f} dB)")
                     return sorted_cands
         except Exception:
             pass
 
-    return base_cands
+    return all_cands
 
 def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.0, is_scan=True):
     """
@@ -1098,20 +1112,36 @@ def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.
                         break
                 continue
 
-            # 2. Kontrollera om stationen är kommersiell (endast vid skanningsläge)
+            # 2. Bekräftad Sveriges Radio TMC-kanal (SR P3 eller SR P4):
+            # SR P3 distribuerar det nationella TMC-nätet och SR P4 regional TMC.
+            # När mottagaren identifierat stationen via PI/PS och tar emot giltiga RDS-ramar låser vi direkt!
+            if is_scan and _current_channel_p4_confirmed and not is_locked:
+                with _heartbeat_lock:
+                    has_frames = _heartbeat_stats.get('has_received_any_frame', False)
+                if has_frames:
+                    is_locked = True
+                    _current_channel_tmc_active = True
+                    stn_name = _last_reported_ps or "SR P3/P4"
+                    format_and_print_lock(chosen_freq_global, f"Bekräftad Sveriges Radio TMC-kanal ({stn_name}, PI: 0x{_last_reported_pi or '0000'})")
+                    continue
+
+            # 3. Kontrollera om stationen är kommersiell (endast vid skanningsläge)
             if is_scan and _current_channel_is_commercial:
                 format_and_print_scan(f"Frekvens {freq_str} sänder kommersiell radio utan RDS-TMC ({_last_reported_ps or 'FM'}). Söker vidare...")
                 return False
 
-            # 3. Kontrollera om tidsgränsen uppnåtts utan att RDS-TMC detekterats (endast vid skanningsläge)
-            if is_scan and not is_locked and (time.time() - start_time) > dwell_timeout:
-                groups_seen_now = _heartbeat_stats.get('groups_seen', set())
-                if _current_channel_p4_confirmed and "3A" in groups_seen_now:
-                    format_and_print_scan(f"P4-station identifierad på {freq_str} ({_last_reported_ps or 'SR P4'}), men sänder inte RDS-TMC (Grupp 3A är RadioText+, ej ALERT-C). Söker vidare...")
-                elif _current_channel_p4_confirmed:
-                    format_and_print_scan(f"P4-station identifierad på {freq_str} ({_last_reported_ps or 'SR P4'}), men ingen aktiv RDS-TMC (Grupp 3A) inom {int(dwell_timeout)}s. Söker vidare...")
-                else:
-                    format_and_print_scan(f"Ingen RDS-TMC detekterad på {freq_str} inom {int(dwell_timeout)}s. Söker vidare...")
+            # 4. Snabbavbrott på 2.5s om ingen RDS-signal alls detekteras (tom bärvåg/brus)
+            elapsed = time.time() - start_time
+            if is_scan and not is_locked and elapsed > 2.5:
+                with _heartbeat_lock:
+                    has_frames = _heartbeat_stats.get('has_received_any_frame', False)
+                if not has_frames:
+                    format_and_print_scan(f"Ingen RDS-signal detekterad på {freq_str} inom 2.5s. Söker vidare...")
+                    return False
+
+            # 5. Tidsgräns vid okänd signal som sänder RDS men inte identifierats som SR P3/P4
+            if is_scan and not is_locked and elapsed > dwell_timeout:
+                format_and_print_scan(f"Ingen bekräftad SR TMC-station på {freq_str} inom {int(dwell_timeout)}s. Söker vidare...")
                 return False
 
         return is_locked
