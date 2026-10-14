@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.11] - Strikt Deduplicering av TMC Grupp 3A Synk-loggar
+
+### Fixed
+- **Loggspam för Grupp 3A Synk (`rds_decoder.py`, `sdr_processor.py`)**:
+  - Flyttat loggutskriften `INFO: [RDS-TMC] TMC SYNK (Grupp 3A)` så att den enbart loggas en enda gång när handskakningen bekräftas, istället för vid varje enskild 3A-dataram.
+  - Lagt till deduplicering i `sdr_processor.py` som extra skydd för att eliminera upprepade rader i konsolloggen.
+
 ## [2026.10.14.10] - Förbättrad Redsea ODA/TMC-tolkning och Direkt Testlarm till Realtidsflödet
 
 ### Added

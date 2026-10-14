@@ -627,12 +627,11 @@ def parse_redsea_json_line(line_str):
         ltn_num = data.get("ltn") or (oda_info.get("ltn") if isinstance(oda_info, dict) else 1) or 1
         status_disp = "AKTIV"
 
-        # Logga vid INFO-nivå när grupp 3A (TMC System Information) detekteras
-        info_3a_line = f"INFO: [RDS-TMC] TMC SYNK (Grupp 3A) → AID: {aid_disp} | LTN: {ltn_num} (Sverige) | Systemstatus: {status_disp}"
-        print(info_3a_line, flush=True)
-
         if not _group_3a_confirmed:
             _group_3a_confirmed = True
+            # Logga vid INFO-nivå en gång när grupp 3A (TMC System Information) detekteras
+            info_3a_line = f"INFO: [RDS-TMC] TMC SYNK (Grupp 3A) → AID: {aid_disp} | LTN: {ltn_num} (Sverige) | Systemstatus: {status_disp}"
+            print(info_3a_line, flush=True)
             ecc_code = data.get("ecc") or (oda_info.get("ecc") if isinstance(oda_info, dict) else "E1") or "E1"
             info_line = f"RDS-INFO: TMC Handskakning (Grupp 3A): ALERT-C aktiv (AID: {aid_disp}, LTN: {ltn_num} Sverige, ECC: {ecc_code})"
             print(info_line, flush=True)

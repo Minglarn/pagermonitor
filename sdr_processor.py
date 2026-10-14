@@ -284,6 +284,10 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
 
             if line.startswith("INFO: [RDS-TMC]") or line.startswith("[RDS-TMC] LARM"):
                 cleaned_line = line[len("INFO: "):].strip() if line.startswith("INFO: ") else line
+                if "TMC SYNK" in cleaned_line:
+                    if config.get('_last_logged_tmc_synk') == cleaned_line:
+                        continue
+                    config['_last_logged_tmc_synk'] = cleaned_line
                 logger.info(f"[{config['name']}] {cleaned_line}")
                 continue
 
