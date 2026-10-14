@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.09] - TMC-statusindikator i Heartbeat och --save-db Testläge
+
+### Added
+- **TMC-status i Heartbeat (`rds_decoder.py`)**:
+  - Heartbeat-utskriften visar nu en explicit `TMC:`-status för att direkt förklara varför larm inte syns om det inte finns olyckor i etern:
+    - `TMC: Aktiv (ALERT-C larm mottagna)` vid mottagna Grupp 8A-larm.
+    - `TMC: Synkad (Grupp 3A aktiv, inga 8A-larm i luften)` när sändaren är synkad mot ALERT-C men inga olyckor rapporterats i regionen.
+    - `TMC: Söker handskakning (3A)` vid uppstart eller svag signal.
+- **Databas-injektion vid Testläge (`--test-tmc --save-db`)**:
+  - Flaggan `--save-db` tillåter direkt sparande av det syntetiska testlarmet i `messages.db` så att användaren omedelbart kan se och verifiera larmet i applikationens webbgränssnitt och på kartan.
+
 ## [2026.10.14.08] - Mottagna RDS-grupper i Heartbeat och 3A Synk på INFO-nivå
 
 ### Added

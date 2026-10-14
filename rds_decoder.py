@@ -135,12 +135,21 @@ def _heartbeat_worker():
             groups_seen = sorted(list(_heartbeat_stats.get('groups_seen', set())))
             groups_display = ", ".join(groups_seen) if groups_seen else "-"
 
+            # Tydlig indikator för TMC-status baserat på mottagna RDS-grupper
+            if "8A" in groups_seen:
+                tmc_status = "Aktiv (ALERT-C larm mottagna)"
+            elif "3A" in groups_seen:
+                tmc_status = "Synkad (Grupp 3A aktiv, inga 8A-larm i luften)"
+            else:
+                tmc_status = "Söker handskakning (3A)"
+
             station_str = ps if ps else "FM"
             pi_str = pi if pi else "0x0000"
             print(
                 f"RDS-HEARTBEAT: {hb_type} Station: {station_str} (PI: {pi_str}) | "
                 f"Status: {status_str} | Kvalitet: {quality_pct}% ({rate:.1f}/11.4 ramar/s - {qual_desc}) | "
                 f"RDS-grupper: {groups_display} | "
+                f"TMC: {tmc_status} | "
                 f"Gain: {gain_display} | Senaste aktivitet: {time_since_last_frame:.1f}s sedan",
                 flush=True
             )
@@ -977,7 +986,7 @@ def run_test_feed(freq="103.3M"):
         idx += 1
         time.sleep(4.0)
 
-def run_test_tmc():
+def run_test_tmc(save_db=False):
     """Injicerar syntetiska Grupp 3A och 8A JSON-meddelanden direkt i parse_redsea_json_line."""
     print("RDS-TMC: Startar syntetiskt testläge (--test-tmc)...", flush=True)
     
@@ -1013,6 +1022,27 @@ def run_test_tmc():
     print("[TEST] Injicerar Grupp 8A (ALERT-C Trafikmeddelande)...", flush=True)
     res_8a = parse_redsea_json_line(json.dumps(sample_8a))
 
+    if save_db:
+        try:
+            from database import save_message, init_db, DB_PATH
+            import os
+            db_dir = os.path.dirname(DB_PATH)
+            if os.path.exists(db_dir):
+                init_db()
+                save_message(
+                    address="E4:14502",
+                    message="Trafikolycka (Stationary traffic for 2 km) (Trafikplats Nyköping Norra (Avfart 134)) | Lat: 58.7612, Lon: 17.0211",
+                    alias="Trafikplats Nyköping Norra (Avfart 134)",
+                    function_code=3,
+                    bitrate="RDS-TMC",
+                    frequency="103.3M"
+                )
+                print("[TEST] Larmet har sparats i databasen messages.db och är nu synligt i applikationens gränssnitt!", flush=True)
+            else:
+                print(f"[TEST] Databasmapp hittades inte: {db_dir}", flush=True)
+        except Exception as e:
+            print(f"[TEST] Kunde inte spara i databas: {e}", flush=True)
+
     print("RDS-TMC: Testläge slutfört framgångsrikt.", flush=True)
     return res_8a
 
@@ -1024,13 +1054,14 @@ def main():
     parser.add_argument("--ppm", default="0", help="PPM error correction")
     parser.add_argument("--test-feed", action="store_true", help="Run synthetic test feed")
     parser.add_argument("--test-tmc", action="store_true", help="Kör syntetisk TMC-injektion (Grupp 3A och Grupp 8A) utan hårdvara")
+    parser.add_argument("--save-db", action="store_true", help="Spara syntetiskt testlarm i applikationens databas (messages.db)")
     parser.add_argument("--stdin", action="store_true", help="Read redsea JSON stream from standard input")
     parser.add_argument("--heartbeat-interval", type=float, default=10.0, help="Intervall i sekunder mellan pulskontroller (default: 10.0)")
     parser.add_argument("--heartbeat-timeout", type=float, default=5.0, help="Tidsgräns i sekunder innan puls anses förlorad (default: 5.0)")
     args = parser.parse_args()
 
     if args.test_tmc:
-        run_test_tmc()
+        run_test_tmc(save_db=args.save_db)
         return
 
     # Starta bakgrundstråd för realtidspuls
