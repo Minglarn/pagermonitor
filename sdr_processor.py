@@ -277,7 +277,10 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
 
             if line.startswith("RDS:") or line.startswith("RDS-INFO:"):
                 # Vanlig RDS stationsinformation (t.ex. PS eller PI)
-                # Detta är stationsidentifiering - logga som INFO så användaren ser vilken radiokanal som tas emot
+                # Deduplicera så att samma rad inte loggas upprepade gånger
+                if config.get('_last_logged_rds_info') == line:
+                    continue
+                config['_last_logged_rds_info'] = line
                 logger.info(f"[{config['name']}] {line}")
                 ps_match = re.search(r'PS:\s*([^P\n\r]+?)(?=\s+(?:PI:|RT:|$))', line)
                 if ps_match:
@@ -419,6 +422,9 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     continue
                 elif line.startswith('RDS-TMC: LOCK'):
                     rest = line[len('RDS-TMC: LOCK'):].strip()
+                    if config.get('_last_rds_lock_rest') == rest:
+                        continue
+                    config['_last_rds_lock_rest'] = rest
                     freq_match = re.search(r'Freq:\s*([0-9\.]+[kKMm]?)', rest)
                     if freq_match:
                         locked_f = freq_match.group(1)

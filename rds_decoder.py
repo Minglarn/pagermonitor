@@ -17,6 +17,7 @@ import signal
 import atexit
 import re
 import threading
+import queue
 
 _shutdown_requested = False
 _current_child_proc = None
@@ -380,15 +381,47 @@ def translate_alert_c_event(event_code, fallback_desc=""):
         return fallback_desc
     return f"Trafikhändelse (kod {event_code})"
 
+_last_locked_output = ""
+_last_scan_output = ""
+_last_reported_ps = ""
+_last_reported_pi = ""
+_channel_lock_printed = False
+_current_channel_tmc_active = False
+_current_channel_is_commercial = False
+_current_channel_p4_confirmed = False
+_group_3a_confirmed = False
+
+def reset_station_state():
+    """Nollställer stationsstatus och låsningsindikatorer inför ny frekvens."""
+    global _last_reported_ps, _last_reported_pi, _channel_lock_printed, _last_locked_output, _last_scan_output
+    global _current_channel_tmc_active, _current_channel_is_commercial, _current_channel_p4_confirmed, _group_3a_confirmed
+    _last_reported_ps = ""
+    _last_reported_pi = ""
+    _channel_lock_printed = False
+    _last_locked_output = ""
+    _last_scan_output = ""
+    _current_channel_tmc_active = False
+    _current_channel_is_commercial = False
+    _current_channel_p4_confirmed = False
+    _group_3a_confirmed = False
+
 def format_and_print_lock(freq_str, status_msg):
-    """Skriver ut låst frekvens för sdr_processor.py telemetri."""
+    """Skriver ut låst frekvens för sdr_processor.py telemetri (deduplicerad)."""
+    global _last_locked_output
     out_line = f"RDS-TMC: LOCK Freq: {freq_str} Status: LOCKED ({status_msg})"
+    if out_line == _last_locked_output:
+        return None
+    _last_locked_output = out_line
     print(out_line, flush=True)
     return out_line
 
 def format_and_print_scan(status_msg):
-    """Skriver ut skanningsstatus."""
+    """Skriver ut skanningsstatus (deduplicerad)."""
+    global _last_scan_output
     out_line = f"RDS-TMC: SCAN Status: {status_msg}"
+    if out_line == _last_scan_output:
+        return None
+    _last_scan_output = out_line
     print(out_line, flush=True)
     return out_line
 
@@ -417,41 +450,80 @@ def format_and_print_tmc(loc_code, road, name, lat, lon, extent, direction, urge
     print(out_line, flush=True)
     return out_line
 
-_last_reported_station = ""
+def is_sr_p4_station(ps_str, pi_str):
+    """Avgör om stationen är Sveriges Radio P4 (TMC-sändare)."""
+    ps_u = str(ps_str or "").upper().strip()
+    pi_clean = str(pi_str or "").upper().replace("0X", "").strip()
+
+    if "P4" in ps_u:
+        return True
+    if pi_clean.startswith("EA"): # T.ex. 0xEA24 för P4 Sörmland
+        return True
+    if pi_clean.startswith("E4"):
+        return True
+    if pi_clean == "E204":
+        return True
+    if pi_clean.startswith("E2") and not any(pi_clean == x for x in ("E201", "E202", "E203")):
+        if len(pi_clean) >= 4 and pi_clean[2:4].isalnum():
+            try:
+                if int(pi_clean[2:4], 16) < 0x40:
+                    return True
+            except ValueError:
+                pass
+    return False
+
+def is_commercial_station(ps_str, pi_str):
+    """Avgör om stationen är kommersiell radio som saknar RDS-TMC."""
+    ps_u = str(ps_str or "").upper().strip()
+    pi_clean = str(pi_str or "").upper().replace("0X", "").strip()
+
+    if any(ch in ps_u for ch in ("RIX", "MIX", "NRJ", "STAR", "BANDIT", "VINYL", "ROCK", "RETRO", "LUGNA")):
+        return True
+    if pi_clean.startswith("E2") and len(pi_clean) >= 4 and pi_clean[2:4].isalnum():
+        try:
+            if int(pi_clean[2:4], 16) >= 0x40:
+                return True
+        except ValueError:
+            pass
+    return False
 
 def format_and_print_rds(ps="", pi=""):
-    """Skriver ut identifierad radiostation som telemetri (ej larm)."""
-    global _last_reported_station, chosen_freq_global
-    cur = f"{ps}_{pi}"
-    if cur == _last_reported_station:
+    """Skriver ut identifierad radiostation som telemetri (ej larm, strikt deduplicerad mot spam)."""
+    global _last_reported_ps, _last_reported_pi, _channel_lock_printed, chosen_freq_global
+    global _current_channel_p4_confirmed, _current_channel_tmc_active, _current_channel_is_commercial
+
+    ps_str = str(ps or "").strip()
+    pi_str = str(pi or "").upper().replace("0X", "").strip()
+
+    has_new_info = False
+    if ps_str and ps_str != _last_reported_ps:
+        _last_reported_ps = ps_str
+        has_new_info = True
+    if pi_str and pi_str != _last_reported_pi:
+        _last_reported_pi = pi_str
+        has_new_info = True
+
+    # Om ingen ny information mottagits, avbryt direkt för att förhindra logg-spam
+    if not has_new_info:
         return None
-    _last_reported_station = cur
 
     parts = ["RDS-INFO:"]
-    if ps:
-        parts.append(f"PS: {ps}")
-    if pi:
-        parts.append(f"PI: {pi}")
+    if _last_reported_ps:
+        parts.append(f"PS: {_last_reported_ps}")
+    if _last_reported_pi:
+        parts.append(f"PI: 0x{_last_reported_pi}")
     out_line = " ".join(parts)
     print(out_line, flush=True)
 
-    pi_str = str(pi).upper().replace("0X", "").strip()
-    is_p4 = (
-        "P4" in ps.upper() or 
-        pi_str.startswith("E4") or 
-        (pi_str.startswith("E2") and not any(pi_str == x for x in ("E201", "E202", "E203")) and (
-            len(pi_str) >= 4 and pi_str[2:].isalnum() and int(pi_str[2:4], 16) < 0x40 if len(pi_str) >= 4 else False
-        ))
-    )
-    is_commercial = (
-        any(ch in ps.upper() for ch in ("RIX", "MIX", "NRJ", "STAR", "BANDIT", "VINYL", "ROCK")) or 
-        (pi_str.startswith("E2") and len(pi_str) >= 4 and pi_str[2:4] >= "40")
-    )
-
-    if is_p4:
-        format_and_print_lock(chosen_freq_global, f"Sveriges Radio P4 bekräftad (TMC-sändare {ps}, PI: {pi})")
-    elif is_commercial:
-        format_and_print_scan(f"Station {ps or 'FM'} (PI: {pi}) är en kommersiell station och sänder inte RDS-TMC. Leta efter SR P4.")
+    if is_sr_p4_station(_last_reported_ps, _last_reported_pi):
+        _current_channel_p4_confirmed = True
+        _current_channel_tmc_active = True
+        if not _channel_lock_printed:
+            _channel_lock_printed = True
+            format_and_print_lock(chosen_freq_global, f"Sveriges Radio P4 bekräftad (TMC-sändare {_last_reported_ps}, PI: 0x{_last_reported_pi})")
+    elif is_commercial_station(_last_reported_ps, _last_reported_pi):
+        _current_channel_is_commercial = True
+        format_and_print_scan(f"Station {_last_reported_ps or 'FM'} (PI: 0x{_last_reported_pi}) är en kommersiell station och sänder inte RDS-TMC.")
 
     return out_line
 
@@ -484,14 +556,19 @@ def parse_redsea_json_line(line_str):
     )
 
     if is_group_3a:
-        ltn_num = data.get("ltn") or (oda_info.get("ltn") if isinstance(oda_info, dict) else 1) or 1
-        ecc_code = data.get("ecc") or "E1"
-        info_line = f"RDS-INFO: TMC Handskakning (Grupp 3A): ALERT-C aktiv (AID: 0xCD46, LTN: {ltn_num} Sverige, ECC: {ecc_code})"
-        print(info_line, flush=True)
-        format_and_print_lock(chosen_freq_global, f"Aktiv RDS-TMC sändare bekräftad (Grupp 3A, AID: 0xCD46, LTN: {ltn_num})")
+        global _group_3a_confirmed, _current_channel_tmc_active
+        _current_channel_tmc_active = True
+        if not _group_3a_confirmed:
+            _group_3a_confirmed = True
+            ltn_num = data.get("ltn") or (oda_info.get("ltn") if isinstance(oda_info, dict) else 1) or 1
+            ecc_code = data.get("ecc") or "E1"
+            info_line = f"RDS-INFO: TMC Handskakning (Grupp 3A): ALERT-C aktiv (AID: 0xCD46, LTN: {ltn_num} Sverige, ECC: {ecc_code})"
+            print(info_line, flush=True)
+            format_and_print_lock(chosen_freq_global, f"Aktiv RDS-TMC sändare bekräftad (Grupp 3A, AID: 0xCD46, LTN: {ltn_num})")
 
     # 2. Kontrollera Grupp 8A: ALERT-C Trafikmeddelanden
     if "tmc" in data or group_type == "8A":
+        _current_channel_tmc_active = True
         tmc = data.get("tmc") or {}
         loc_code = tmc.get("location")
         if loc_code is not None:
@@ -550,42 +627,55 @@ def parse_redsea_json_line(line_str):
 
 chosen_freq_global = "103.3M"
 
-def find_best_fm_station(device="", gain="auto", ppm="0", min_hz=87500000, max_hz=108000000):
+P4_STATIONS = [
+    ("88.7M",   88700000, "SR P4 Sörmland (Nyköping/Kisa)"),
+    ("100.1M", 100100000, "SR P4 Sörmland"),
+    ("103.3M", 103300000, "SR P4 Stockholm / Västerbotten"),
+    ("93.8M",   93800000, "SR P4 Stockholm"),
+    ("102.5M", 102500000, "SR P4 Uppland"),
+    ("100.5M", 100500000, "SR P4 Västmanland / Norrbotten"),
+    ("102.8M", 102800000, "SR P4 Örebro / Västernorrland"),
+    ("99.8M",   99800000, "SR P4 Östergötland"),
+    ("102.2M", 102200000, "SR P4 Östergötland"),
+    ("101.9M", 101900000, "SR P4 Göteborg"),
+    ("102.0M", 102000000, "SR P4 Malmöhus / Gävleborg"),
+    ("87.9M",   87900000, "SR P4 Malmöhus"),
+    ("101.3M", 101300000, "SR P4 Dalarna / Halland"),
+    ("103.8M", 103800000, "SR P4 Halland"),
+    ("100.8M", 100800000, "SR P4 Jönköping"),
+    ("101.0M", 101000000, "SR P4 Kronoberg"),
+    ("100.2M", 100200000, "SR P4 Kalmar / Gotland"),
+    ("100.4M", 100400000, "SR P4 Blekinge / Jämtland"),
+    ("101.4M", 101400000, "SR P4 Kristianstad"),
+    ("100.3M", 100300000, "SR P4 Skaraborg"),
+    ("100.0M", 100000000, "SR P4 Värmland"),
+    ("104.2M", 104200000, "SR P4 Västerbotten"),
+    ("102.9M", 102900000, "SR P4 Norrbotten"),
+    ("99.4M",   99400000, "SR P4"),
+    ("98.3M",   98300000, "SR P4")
+]
+
+def get_p4_candidates(freq_arg, device="", min_hz=87500000, max_hz=108000000):
     """
-    Söker automatiskt efter aktiv Sveriges Radio P4-station inom angivet frekvensintervall.
-    TMC sänds uteslutande via SR P4 (och delvis P3) i Sverige.
+    Returnerar en prioriterad lista över kandidatfrekvenser att prova för RDS-TMC.
+    Om en specifik frekvens angetts (t.ex. 88.7M) prövas den först, men övriga
+    P4-frekvenser behålls som fallback om frekvensen saknar RDS-TMC.
     """
-    format_and_print_scan(f"Avsöker FM-bandet ({min_hz/1e6:.1f}–{max_hz/1e6:.1f} MHz) efter Sveriges Radio P4 (TMC)...")
+    is_scan = is_fm_scanning_range(freq_arg)
+    if is_scan:
+        min_hz, max_hz = parse_range_hz(freq_arg)
+        base_cands = [c for c in P4_STATIONS if min_hz <= c[1] <= max_hz]
+        if not base_cands:
+            base_cands = list(P4_STATIONS)
+    else:
+        target_hz = parse_freq_to_hz(freq_arg)
+        given_cand = (freq_arg, target_hz, f"Angiven frekvens {freq_arg}")
+        other_cands = [c for c in P4_STATIONS if abs(c[1] - target_hz) > 100000]
+        base_cands = [given_cand] + other_cands
 
-    # Primära P4 frekvenser i Sverige (Stockholm 103.3M, Sörmland 100.1M, Uppsala 102.5M, Göteborg 101.9M m.fl.)
-    p4_freqs = [
-        ("103.3M", 103300000, "SR P4 Stockholm / Västerbotten"),
-        ("100.1M", 100100000, "SR P4 Sörmland"),
-        ("102.5M", 102500000, "SR P4 Uppland"),
-        ("101.9M", 101900000, "SR P4 Göteborg"),
-        ("102.0M", 102000000, "SR P4 Malmöhus / Gävleborg"),
-        ("99.8M",   99800000, "SR P4 Östergötland"),
-        ("102.8M", 102800000, "SR P4 Örebro / Västernorrland"),
-        ("100.8M", 100800000, "SR P4 Jönköping"),
-        ("100.3M", 100300000, "SR P4 Skaraborg"),
-        ("100.0M", 100000000, "SR P4 Värmland"),
-        ("101.3M", 101300000, "SR P4 Dalarna / Halland"),
-        ("101.4M", 101400000, "SR P4 Kristianstad"),
-        ("100.2M", 100200000, "SR P4 Kalmar"),
-        ("101.0M", 101000000, "SR P4 Kronoberg"),
-        ("100.4M", 100400000, "SR P4 Blekinge / Jämtland"),
-        ("100.5M", 100500000, "SR P4 Norrbotten / Västmanland"),
-        ("99.4M",   99400000, "SR P4"),
-        ("98.3M",   98300000, "SR P4")
-    ]
-
-    valid_cands = [c for c in p4_freqs if min_hz <= c[1] <= max_hz]
-    if not valid_cands:
-        valid_cands = p4_freqs
-
-    # Snabb RF-effektmätning med rtl_power om tillgängligt (utan hängningar)
+    # Försök RF-effektsortera kandidater om rtl_power finns
     import shutil
-    if shutil.which("rtl_power"):
+    if is_scan and shutil.which("rtl_power"):
         import tempfile
         try:
             with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as tf:
@@ -597,8 +687,7 @@ def find_best_fm_station(device="", gain="auto", ppm="0", min_hz=87500000, max_h
 
             res = subprocess.run(p_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=2.5)
             if res.returncode == 0 and os.path.exists(tmp_csv):
-                best_cand_freq = None
-                best_power = -999.0
+                cand_powers = {}
                 with open(tmp_csv, 'r') as f:
                     for r in f:
                         parts = [p.strip() for p in r.split(',')]
@@ -609,26 +698,124 @@ def find_best_fm_station(device="", gain="auto", ppm="0", min_hz=87500000, max_h
                                 db_vals = [float(x) for x in parts[6:] if x]
                                 for idx, db in enumerate(db_vals):
                                     freq_pt = f_low + idx * f_step
-                                    for cand_str, cand_hz, cand_name in valid_cands:
-                                        if abs(freq_pt - cand_hz) <= 120000:
-                                            if db > best_power:
-                                                best_power = db
-                                                best_cand_freq = cand_str
+                                    for cand in base_cands:
+                                        if abs(freq_pt - cand[1]) <= 120000:
+                                            if cand[0] not in cand_powers or db > cand_powers[cand[0]]:
+                                                cand_powers[cand[0]] = db
                             except Exception:
                                 pass
                 try: os.remove(tmp_csv)
                 except Exception: pass
-                if best_cand_freq:
-                    format_and_print_scan(f"Starkaste P4-frekvens identifierad via RF-spektrum: {best_cand_freq} ({best_power:.1f} dB)")
-                    return best_cand_freq
+
+                if cand_powers:
+                    sorted_cands = sorted(base_cands, key=lambda c: cand_powers.get(c[0], -999.0), reverse=True)
+                    best_f = sorted_cands[0]
+                    format_and_print_scan(f"RF-spektrum identifierade starkaste P4-frekvens: {best_f[0]} ({best_f[2]}, {cand_powers.get(best_f[0], 0):.1f} dB)")
+                    return sorted_cands
         except Exception:
             pass
 
-    # Standard P4 inom intervallet (Stockholm 103.3 MHz SR P4)
-    chosen = valid_cands[0][0]
-    cand_name = valid_cands[0][2]
-    format_and_print_scan(f"Valde primär SR P4 frekvens: {chosen} ({cand_name})")
-    return chosen
+    return base_cands
+
+def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.0):
+    """
+    Kör rtl_fm | redsea på angiven frekvens.
+    - Avbryter omedelbart om en kommersiell station utan TMC detekteras.
+    - Avbryter om ingen RDS-TMC detekteras inom dwell_timeout sekunder.
+    - Låser och förblir aktiv så länge mottagningen har aktiv TMC-synk.
+    """
+    global _current_child_proc, chosen_freq_global
+    chosen_freq_global = freq_str
+    reset_station_state()
+
+    rtl_cmd = ["rtl_fm", "-M", "fm", "-s", "171k", "-r", "171k", "-f", freq_str]
+    if device:
+        rtl_cmd.extend(["-d", device])
+    if gain and gain != "auto":
+        rtl_cmd.extend(["-g", str(gain)])
+    if ppm and ppm != "0":
+        rtl_cmd.extend(["-p", str(ppm)])
+    rtl_cmd.append("-")
+
+    redsea_cmd = ["redsea", "-r", "171k"]
+
+    line_queue = queue.Queue()
+    reader_stop = threading.Event()
+    p1 = None
+    p2 = None
+
+    try:
+        p1 = subprocess.Popen(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        p2 = subprocess.Popen(redsea_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+        p1.stdout.close()
+        _current_child_proc = p2
+
+        def stdout_reader():
+            try:
+                for line in iter(p2.stdout.readline, ''):
+                    if reader_stop.is_set() or _shutdown_requested:
+                        break
+                    if line:
+                        line_queue.put(line)
+            except Exception:
+                pass
+
+        reader_t = threading.Thread(target=stdout_reader, daemon=True)
+        reader_t.start()
+
+        start_time = time.time()
+        is_locked = False
+
+        while not _shutdown_requested:
+            try:
+                line = line_queue.get(timeout=0.3)
+                parse_redsea_json_line(line)
+            except queue.Empty:
+                pass
+
+            if p2.poll() is not None or (p1 and p1.poll() is not None):
+                break
+
+            # 1. Kontrollera om aktiv TMC eller Sveriges Radio P4 bekräftats på denna frekvens
+            if _current_channel_tmc_active or _current_channel_p4_confirmed:
+                if not is_locked:
+                    is_locked = True
+                
+                # Om låst: övervaka om signalen varit borta i mer än 30s
+                with _heartbeat_lock:
+                    lost_for = time.time() - _heartbeat_stats['last_frame_time']
+                if lost_for > 30.0 and _heartbeat_stats['has_received_any_frame']:
+                    format_and_print_scan(f"RDS-signal förlorad på {freq_str} i {lost_for:.1f}s. Återupptar frekvenssökning...")
+                    break
+                continue
+
+            # 2. Kontrollera om stationen är kommersiell (RIX FM etc.) som saknar RDS-TMC
+            if _current_channel_is_commercial:
+                format_and_print_scan(f"Frekvens {freq_str} sänder kommersiell radio utan RDS-TMC ({_last_reported_ps or 'FM'}). Söker vidare...")
+                return False
+
+            # 3. Kontrollera om tidsgränsen uppnåtts utan att RDS-TMC detekterats
+            if not is_locked and (time.time() - start_time) > dwell_timeout:
+                format_and_print_scan(f"Ingen RDS-TMC detekterad på {freq_str} inom {int(dwell_timeout)}s. Söker vidare...")
+                return False
+
+        return is_locked
+    finally:
+        reader_stop.set()
+        if p2:
+            try:
+                p2.kill()
+                p2.wait(timeout=0.4)
+            except Exception:
+                pass
+        if p1:
+            try:
+                p1.kill()
+                p1.wait(timeout=0.4)
+            except Exception:
+                pass
+        _current_child_proc = None
+        time.sleep(0.3)
 
 def run_test_feed(freq="103.3M"):
     """Genererar syntetiska RDS och TMC-händelser för testning och demonstration."""
@@ -701,21 +888,8 @@ def main():
             pass
         return
 
-    # Kontrollera om användaren angett ett intervall (t.ex. 87.5M-108M), "auto", "scan" eller frekvens utanför FM-bandet
-    global chosen_freq_global
-    if is_fm_scanning_range(args.freq):
-        min_hz, max_hz = parse_range_hz(args.freq)
-        format_and_print_scan(f"Frekvenssökning begärd ({args.freq}). Söker aktiv Sveriges Radio P4 (TMC)...")
-        chosen_freq = find_best_fm_station(device=args.device, gain=args.gain, ppm=args.ppm, min_hz=min_hz, max_hz=max_hz)
-        chosen_freq_global = chosen_freq
-        format_and_print_lock(chosen_freq, f"Automatisk FM-sökning låst på SR P4 ({chosen_freq})")
-    else:
-        chosen_freq = args.freq
-        chosen_freq_global = chosen_freq
-        format_and_print_lock(chosen_freq, f"FM-frekvens låst ({chosen_freq})")
-
     if args.test_feed:
-        run_test_feed(chosen_freq)
+        run_test_feed(args.freq)
         return
 
     # Kontrollera om verktygen rtl_fm och redsea finns tillgängliga
@@ -725,48 +899,30 @@ def main():
 
     if not (has_rtl_fm and has_redsea):
         print(f"Hårdvaruverktyg saknas (rtl_fm={has_rtl_fm}, redsea={has_redsea}). Kör i simulerat läge.", file=sys.stderr, flush=True)
-        run_test_feed(chosen_freq)
+        run_test_feed(args.freq)
         return
 
-    # Kör RTL_FM | REDSEA i underprocesser
-    global _current_child_proc
-    rtl_cmd = ["rtl_fm", "-M", "fm", "-s", "171k", "-r", "171k", "-f", chosen_freq]
-    if args.device:
-        rtl_cmd.extend(["-d", args.device])
-    if args.gain and args.gain != "auto":
-        rtl_cmd.extend(["-g", str(args.gain)])
-    if args.ppm and args.ppm != "0":
-        rtl_cmd.extend(["-p", str(args.ppm)])
-    rtl_cmd.append("-")
+    # Skapa lista med kandidatfrekvenser
+    candidates = get_p4_candidates(args.freq, device=args.device)
+    candidate_idx = 0
 
-    redsea_cmd = ["redsea", "-r", "171k"]
+    format_and_print_scan(f"Startar RDS-TMC skanningsmotor ({len(candidates)} kandidatstationer i sökkön).")
 
-    try:
-        p1 = subprocess.Popen(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        p2 = subprocess.Popen(redsea_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
-        p1.stdout.close()
-        _current_child_proc = p2
+    while not _shutdown_requested:
+        cand = candidates[candidate_idx % len(candidates)]
+        cand_freq = cand[0]
+        cand_name = cand[2] if len(cand) > 2 else "SR P4"
 
-        for line in p2.stdout:
-            if _shutdown_requested:
-                break
-            parse_redsea_json_line(line)
+        format_and_print_scan(f"Avlyssnar frekvens {cand_freq} ({cand_name}). Kontrollerar RDS-TMC aktivitet...")
+        
+        # Kör session med 10 sekunders dwell-timeout för att bekräfta TMC
+        locked = run_rds_session(cand_freq, device=args.device, gain=args.gain, ppm=args.ppm, dwell_timeout=10.0)
+        
+        if _shutdown_requested:
+            break
             
-        if not _shutdown_requested:
-            err_out = ""
-            if p2.stderr:
-                err_out = p2.stderr.read().strip()
-            print(f"redsea avslutades ({err_out}). Startar fallback.", file=sys.stderr, flush=True)
-            run_test_feed(chosen_freq)
-    except Exception as e:
-        print(f"Fel vid körning av redsea-ström: {e}", file=sys.stderr, flush=True)
-        run_test_feed(chosen_freq)
-    finally:
-        if _current_child_proc:
-            try:
-                _current_child_proc.kill()
-            except Exception:
-                pass
+        candidate_idx += 1
+        time.sleep(0.5)
 
 if __name__ == "__main__":
     main()

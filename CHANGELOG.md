@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.05] - Kontinuerlig Frekvensskanning och Eliminering av RDS-loggspam
+
+### Added
+- **Automatisk Fortsatt Skanning vid Saknad RDS-TMC (`rds_decoder.py`)**:
+  - Om en frekvens saknar RDS-TMC (eller sänder kommersiell radio som RIX FM / Mix Megapol utan TMC), fastnar mottagaren inte längre på frekvensen.
+  - Skannern avbryter omedelbart vid detektering av kommersiell radio, eller efter 10 sekunder vid utebliven RDS-TMC, och provar nästa frekvens i kandidatlistan.
+  - Omfattande databas med 25 Sveriges Radio P4-sändare över hela landet (inklusive 88.7 MHz Sörmland, 100.1 MHz, 103.3 MHz m.fl.).
+  - Även när en fast frekvens anges (t.ex. 88.7M) prövas den först, men om TMC saknas fortsätter skannern automatiskt bland övriga P4-sändare.
+  - Om en låst station tappar signal under mer än 30 sekunder återupptas sökningen automatiskt.
+
+### Fixed
+- **Total Eliminering av Logg-spam vid Stationssynk (`rds_decoder.py`, `sdr_processor.py`)**:
+  - Åtgärdat felet där `RDS-INFO: PS: P4 Sörml PI: 0xEA24` och `RDS-TMC LOCK:` loggades om och om igen varje sekund.
+  - Orsaken var att `redsea` växlade mellan JSON-rader med enbart PI och rader med både PS och PI, vilket lurade den tidigare stationsjämförelsen.
+  - Implementerat strikt tillståndshantering och deduplicering i både avkodaren och processorn: stationsinformation och bärvågslåsning loggas nu exakt EN gång vid upptäckt och låsning.
+  - Fullständigt stöd för regionala P4 PI-koder med prefix `EA` (t.ex. `0xEA24` för SR P4 Sörmland).
+
 ## [2026.10.14.04] - Realtidspuls (Heartbeat) för RDS-mottagning och Stationssynk
 
 ### Added

@@ -1238,3 +1238,29 @@
   - Samtliga 26 enhetstester passerar felfritt, inklusive `test_rds_heartbeat_logging`.
   - Versionsbump till CalVer `2026.10.14.04`.
 
+---
+
+### 38. Kontinuerlig Frekvensskanning och Eliminering av RDS-loggspam (v2026.10.14.05)
+- **Problembeskrivning**:
+  1. Om en frekvens saknar RDS-TMC (t.ex. sänder kommersiell musik eller brus), stannade tidigare avkodaren kvar på frekvensen och sökte inte vidare.
+  2. När en station väl låstes (t.ex. P4 Sörmland på 88.7 MHz) spammades loggarna varje sekund med upprepade `RDS-INFO: PS: P4 Sörml PI: 0xEA24` och `RDS-TMC LOCK: Station låst på frekvens 88.7M...`.
+- **Teknisk Implementering**:
+  - **Eliminering av Logg-spam ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py), [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - `format_and_print_rds`: Uppdaterar internt minne och skriver enbart ut `RDS-INFO:` när ny information mottagits. Växlingar mellan rader med enbart PI och rader med både PS och PI filtreras bort.
+    - `format_and_print_lock`: Spärrad med tillståndsflagga så att bärvågslåsning för en radiostation endast skrivs ut exakt EN gång per kanal.
+    - `is_sr_p4_station`: Utökad med stöd för regionala PI-koder med prefix `EA` (t.ex. `0xEA24` för P4 Sörmland).
+    - `sdr_processor.py`: Tillagd deduplicering i `monitor_instance()` för både `RDS-INFO` och `RDS-TMC LOCK`.
+  - **Kontinuerlig Skanning och Frekvensbyte ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Skapade `P4_STATIONS` med 25 Sveriges Radio P4-sändare i Sverige (inklusive 88.7M, 100.1M, 103.3M etc.).
+    - `get_p4_candidates`: Bygger prioriterad kandidatkö. Om användaren angett en specifik frekvens prövas den först, men övriga P4-sändare behålls som fallback ifall den angivna frekvensen saknar RDS-TMC.
+    - `run_rds_session`: Kör `rtl_fm | redsea` med en icke-blockerande I/O-kö (`queue.Queue`) och 10 sekunders dwell-tid.
+      - Om kommersiell station utan TMC detekteras (RIX FM etc.): avbryter omedelbart och provar nästa frekvens.
+      - Om ingen RDS-TMC detekteras inom 10 sekunder: avbryter och provar nästa frekvens.
+      - Om P4 / TMC detekteras: låser frekvensen och fortsätter i dedikerat lyssningsläge.
+      - Om signalen förloras i över 30 sekunder återupptas sökningen automatiskt.
+- **Verifiering**:
+  - Verifierat att P4 Sörmland (PI 0xEA24) identifieras omedelbart och inte spamas vid upprepade anrop.
+  - Samtliga 26 enhetstester passerar felfritt.
+  - Versionsbump till CalVer `2026.10.14.05`.
+
+
