@@ -308,9 +308,9 @@
 
         table.dataTable.dashboard-dt th.col-meta,
         table.dataTable.dashboard-dt td.meta-cell {
-            width: 115px !important;
-            min-width: 105px !important;
-            max-width: 130px !important;
+            width: 105px !important;
+            min-width: 95px !important;
+            max-width: 120px !important;
             white-space: nowrap !important;
             padding: 0.5rem 0.55rem !important;
             vertical-align: middle !important;
@@ -318,9 +318,8 @@
 
         table.dataTable.dashboard-dt td.meta-cell .meta-wrapper {
             display: flex !important;
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: 3px !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
             width: 100% !important;
             max-width: 100% !important;
         }
@@ -641,7 +640,7 @@
                             <tr>
                                 <th class="col-id">#</th>
                                 <th class="col-time">Timestamp</th>
-                                <th class="col-meta">RF / Meta</th>
+                                <th class="col-meta">Protocol</th>
                                 <th class="col-addr">CapCode (Alias)</th>
                                 <th class="col-msg">Message</th>
                                 <th class="col-actions" data-orderable="false" title="Actions" aria-label="Actions"><i class="fas fa-ellipsis-v"></i></th>
@@ -942,8 +941,11 @@
             } else if (rawProto && rawProto !== 'UNKNOWN') {
                 protoName = rawProto;
                 protoClass = 'proto-generic';
+            } else {
+                protoName = 'POCSAG';
+                protoClass = 'proto-pocsag';
             }
-            const protoTag = protoName ? `<span class="badge meta badge-proto ${protoClass}">${protoName}</span>` : '';
+            const protoTag = `<span class="badge meta badge-proto ${protoClass}">${protoName}</span>`;
 
             let formattedBitrate = '';
             if (alarm.bitrate) {
@@ -977,14 +979,17 @@
             const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
             const repeatTag = (alarm.repeat_count && alarm.repeat_count > 1) ? `<span class="badge repeat-badge meta" title="Repeated ${alarm.repeat_count} times">${alarm.repeat_count}x</span>` : '';
 
+            const metaBarBadges = `${freqTag}${bitrateTag}${funcTag}${duplicateTag}${repeatTag}`;
+            const metaBarHtml = metaBarBadges ? `<div class="msg-meta-bar">${metaBarBadges}</div>` : '';
+
             tr.innerHTML = `
                 <td class="id-cell">${alarm.id}</td>
                 <td class="ts-cell" data-order="${alarm.timestamp}">${formattedTime}</td>
-                <td class="meta-cell"><div class="meta-wrapper">${freqTag}${protoTag}${bitrateTag}${funcTag}${duplicateTag}${repeatTag}</div></td>
+                <td class="meta-cell"><div class="meta-wrapper">${protoTag}</div></td>
                 <td class="addr-cell">
                     <span class="badge" title="${alarm.address}" onclick="openAliasModal('${alarm.address}')">${displayAddress}</span>
                 </td>
-                <td class="msg-cell">${formatMessage(alarm.message)}</td>
+                <td class="msg-cell"><div class="msg-text">${formatMessage(alarm.message)}</div>${metaBarHtml}</td>
                 <td class="actions-cell">
                     <div class="actions-wrapper">
                         <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">
@@ -1098,7 +1103,8 @@
             if (!tr) return;
             const msgCell = tr.querySelector('.msg-cell');
             if (!msgCell) return;
-            const text = msgCell.innerText || msgCell.textContent || '';
+            const textEl = msgCell.querySelector('.msg-text');
+            const text = textEl ? (textEl.innerText || textEl.textContent || '') : (msgCell.innerText || msgCell.textContent || '');
 
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
@@ -1301,13 +1307,19 @@
                     }
                     const rowEl = document.querySelector(`tr[data-id="${data.id}"]`);
                     if (rowEl) {
-                        const metaWrapper = rowEl.querySelector('.meta-cell .meta-wrapper');
-                        if (metaWrapper) {
-                            let badge = metaWrapper.querySelector('.repeat-badge');
+                        const msgCell = rowEl.querySelector('.msg-cell');
+                        if (msgCell) {
+                            let metaBar = msgCell.querySelector('.msg-meta-bar');
+                            if (!metaBar) {
+                                metaBar = document.createElement('div');
+                                metaBar.className = 'msg-meta-bar';
+                                msgCell.appendChild(metaBar);
+                            }
+                            let badge = metaBar.querySelector('.repeat-badge');
                             if (!badge) {
                                 badge = document.createElement('span');
                                 badge.className = 'badge repeat-badge meta';
-                                metaWrapper.appendChild(badge);
+                                metaBar.appendChild(badge);
                             }
                             badge.textContent = `${data.repeat_count}x`;
                             badge.title = `Repeated ${data.repeat_count} times`;

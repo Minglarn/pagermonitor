@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.16] - Dedikerat Protokoll i Tabellkolumn och Metadata Flyttad Längst Ner i Meddelanderutan
+
+### Changed
+- **Dedikerad Protokollvisning i Tabellkolumn (`index.html`, `larm.html`, `statistics.html`)**:
+  - Kolumnen `RF / META` har döpts om till `Protocol` och visar nu uteslutande det aktuella protokollet (`POCSAG`, `TETRA`, `RDS`, `AFSK`) som ett enskilt, rent piller.
+  - Eliminerat vertikal anhopning ("många piller") och optimerat cellbredden till 105px (min 95px, max 120px) med horisontell centrerad/vänsterjusterad anpassning.
+- **Metadata Flyttad till Botten av Meddelanderutan (`.msg-meta-bar`)**:
+  - Övrig sändningsmetadata (frekvens som `161.4375M`, överföringshastighet som `1200bps` / `TMC`, läge som `Alpha` / `Num`, repetitioner som `2x` samt eventuell `Duplicate`-flagga) visas nu horisontellt längst ner i meddelanderutan under själva meddelandetexten.
+  - `copyMessageText` kopierar nu uteslutande den faktiska meddelandetexten utan att inkludera underliggande tekniska metadatataggar.
+  - SSE-realtidsuppdateringar för sammanslagna dubbletter (`repeat_update`) uppdaterar automatiskt `2x`-märket i meddelanderutans metadatabalk.
+
 ## [2026.10.14.15] - Strikt Låsning vid Fast RDS-frekvens och Frekvens i Heartbeat-loggen
 
 ### Fixed

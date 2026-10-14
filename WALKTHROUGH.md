@@ -1401,3 +1401,21 @@
 - **Verifiering**:
   - Samtliga 27 enhetstester passerar.
   - Versionsbump till CalVer `2026.10.14.15`.
+
+### 44. Dedikerad Protokollkolumn och Metadata Längst Ner i Meddelanderutan (v2026.10.14.16)
+- **Bakgrund och Problem**:
+  - Kolumnen `RF / META` samlade upp till fem olika piller i samma smala kolumn (`Frekvens`, `Protokoll`, `Baudrate`, `Funktion`, `Repetitioner`). Detta skapade en hög, rörig vertikal stapel som tryckte ut radhöjden ("många piller").
+  - Användaren önskade att endast protokoll visas i denna kolumn, och att all övrig överföringsinformation (frekvens, bps, Alpha/Num, antal repetitioner osv.) placeras längst ner i meddelanderutan.
+- **Teknisk Implementering**:
+  - **Protokoll-kolumn ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+    - Ändrade tabellhuvudet från `RF / Meta` till `Protocol`.
+    - Justerade cellbredd till 105px (min 95px, max 120px) med horisontell centrering och rent layoutflöde.
+    - I `meta-cell` renderas nu uteslutande det färgkodade protokollpillret (`protoTag`: `POCSAG`, `TETRA`, `RDS`, `AFSK`).
+  - **Metadata i Botten av Meddelanderutan ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+    - `.msg-cell` innehåller nu `.msg-text` för själva meddelandeinnehållet och en horisontell flexrad `.msg-meta-bar` längst ner.
+    - `.msg-meta-bar` samlar `freqTag` (t.ex. `161.4375M`), `bitrateTag` (t.ex. `1200bps`, `TMC`), `funcTag` (`Alpha` / `Num`), `repeatTag` (`2x`, `3x`) samt `duplicateTag` (`Duplicate`).
+    - `copyMessageText` uppdaterat att extrahera text från `.msg-text` så att kopiering till urklipp enbart inkluderar meddelandets rena text.
+    - Dynamiska SSE-händelser för sammanslagna dubbletter (`repeat_update`) uppdaterar `.repeat-badge` direkt inuti `.msg-meta-bar`.
+- **Verifiering**:
+  - Alla tre tabeller (`index.html`, `larm.html`, `statistics.html`) och stilmallar uppdaterade.
+  - versionsspårbarhet synkad till CalVer `2026.10.14.16` i `app.py`, `README.md`, `CHANGELOG.md` och `WALKTHROUGH.md`.

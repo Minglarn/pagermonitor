@@ -665,6 +665,28 @@ tr:hover td {
     word-break: break-word;
 }
 
+.msg-cell .msg-text {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.45;
+}
+
+.msg-cell .msg-meta-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    margin-top: 6px;
+    padding-top: 3px;
+}
+
+.msg-cell .msg-meta-bar .badge {
+    margin: 0 !important;
+    font-size: 0.70rem !important;
+    padding: 0.12rem 0.42rem !important;
+    white-space: nowrap !important;
+}
+
 .ts-cell {
     color: var(--text-secondary);
     white-space: nowrap;
