@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.02] - RDS-TMC Grupp 3A Handskakning & Strikt Stationsvalidering (ALERT-C)
+
+### Added
+- **RDS Grupp 3A Handskakning och Systeminformation (`rds_decoder.py`)**:
+  - Implementerat detektering av RDS Grupp 3A med Application Identifier (AID) `0xCD46` (ALERT-C) och Location Table Number (LTN) `1` (Trafikverkets tabell `LTN 01`).
+  - När Grupp 3A tas emot verifieras TMC-stödet och loggas omedelbart med handskakningsbekräftelse (`TMC Handskakning (Grupp 3A): ALERT-C aktiv (AID: 0xCD46, LTN: 1 Sverige)`).
+- **Utökade ALERT-C Händelsekoder (`rds_decoder.py`)**:
+  - Utökat `ALERT_C_EVENTS` med standardkoder enligt ISO 14819-2 för trafikstockning, svår halka, snöfall, belysningsarbete m.m.
+
+### Fixed
+- **Strikt Stationsvalidering (SR P4 vs Kommersiella Stationer) (`rds_decoder.py`)**:
+  - Säkerställt att skannern skiljer mellan Sveriges Radio P4 (PI-kod `0xE2xx` / `0xE4xx`) och kommersiella stationer utan TMC (t.ex. RIX FM `0xE241`, Mix Megapol `0xE242`).
+  - Om en kommersiell station tas emot loggas detta tydligt som saknar TMC och skannern söker vidare efter en aktiv SR P4-sändare.
+
 ## [2026.10.14.01] - Återställd Visning av Låsta TETRA-basstationer i Meddelandeflödet
 
 ### Fixed

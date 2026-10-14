@@ -1177,3 +1177,22 @@
 - **Verifiering**:
   - Samtliga 25 enhetstester passerar felfritt.
   - Versionsbump till CalVer `2026.10.14.01`.
+
+---
+
+### 35. RDS-TMC Grupp 3A Handskakning, Strikt Stationsvalidering och ALERT-C (v2026.10.14.02)
+- **Problembeskrivning och Kravspecifikation**:
+  - Användaren tillhandahöll en teknisk genomgång av ALERT-C (ISO 14819):
+    1. Stationstest: TMC sänds enbart via Sveriges Radio P4 (PI-kod `0xE204..0xE23F` / `0xE4xx`). Kommersiella kanaler sänder inte TMC.
+    2. Grupp 3A (Systeminformation / Handskakning): Verifiera Application Identifier (AID) `0xCD46`, Location Table Number (LTN) `1` och ECC `0xE1`.
+    3. Grupp 8A (Trafikmeddelanden): Avkoda händelsekoder (1–2047), platskod (1–65535), riktning, utsträckning (extent), prioritet (urgency) och varaktighet.
+- **Teknisk Implementering**:
+  - **Grupp 3A Handskakning ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Implementerat tolkning av Grupp 3A i `parse_redsea_json_line`. När AID `0xCD46` och LTN `1` identifieras bekräftas TMC-stöd och låsning omedelbart.
+  - **Strikt Stationsvalidering ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - `format_and_print_rds` verifierar nu om kanalen är SR P4 eller en kommersiell station (t.ex. RIX FM, Mix Megapol). Kommersiella kanaler loggas med information om att de saknar TMC.
+  - **Utökade ALERT-C Händelsekoder ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Kompletterat `ALERT_C_EVENTS` med fler standardiserade ISO 14819-2 koder (köbildning, väglag, halka, broarbeten m.m.).
+- **Verifiering**:
+  - Samtliga 25 enhetstester passerar felfritt.
+  - Versionsbump till CalVer `2026.10.14.02`.

@@ -50,6 +50,10 @@ except Exception:
 # ALERT-C Händelsekoder (ISO 14819-2) översatta till svenska
 ALERT_C_EVENTS = {
     1: "Trafikproblem / Störning",
+    11: "Trafikstockning",
+    12: "Mycket långsam trafik",
+    13: "Köbildning",
+    22: "Risk för tvärstopp",
     101: "Trafikolycka",
     102: "Allvarlig trafikolycka",
     103: "Flerbilsolycka",
@@ -58,16 +62,20 @@ ALERT_C_EVENTS = {
     106: "Olycka med buss",
     107: "Olycka med farligt gods",
     108: "Kollision med vilt",
+    111: "Olycka i båda riktningar",
     201: "Stillastående kö",
     202: "Trafikkö",
     203: "Långsamtgående trafik",
     204: "Risk för köbildning",
     205: "Köer upplöses",
+    206: "Lång kö med lång väntetid",
     301: "Vägarbete",
     302: "Långvarigt vägarbete",
     303: "Akut reparationsarbete på vägbanan",
     304: "Asfaltering / Beläggningsarbete",
     305: "Underhållsarbete längs vägen",
+    306: "Belysningsarbete längs vägen",
+    307: "Broarbete",
     401: "Väg helt avstängd i båda riktningar",
     402: "Körfält avstängt",
     403: "Ett körfält blockerat",
@@ -76,16 +84,20 @@ ALERT_C_EVENTS = {
     406: "Påfart avstängd",
     407: "Bro avstängd",
     408: "Tunnel avstängd",
+    409: "Vägen åter öppen efter tidigare hinder",
+    410: "Körfält åter öppna",
     501: "Hinder på vägbanan",
     502: "Tappad last på vägen",
     503: "Havererat fordon på vägbanan",
     504: "Djur på vägen",
     505: "Personer på vägen",
     506: "Föremål på vägen",
+    510: "Halt väglag / Risk för olyckor",
     601: "Utryckningsfordon på väg",
     602: "Räddningsarbete pågår på platsen",
     701: "Hastighetsbegränsning nedsatt",
     702: "Variabel hastighet aktiverad",
+    703: "Rekommenderad lägre hastighet",
     801: "Halka / Risk för blixthalka",
     802: "Snömodd / Snöhinder",
     803: "Vattenplaning / Vattenmassor",
@@ -94,6 +106,9 @@ ALERT_C_EVENTS = {
     806: "Kraftigt regn / Skyfall",
     807: "Snöstorm / Drivbildning",
     808: "Hård sidvind över bro",
+    809: "Snöfall och nedsatt sikt",
+    810: "Svår halka",
+    811: "Underkylt regn / Farligt väglag",
     901: "Demonstration / Folksamling",
     902: "Större idrotts- eller folkevenemang",
     1001: "Broöppning",
@@ -328,9 +343,23 @@ def format_and_print_rds(ps="", pi=""):
     out_line = " ".join(parts)
     print(out_line, flush=True)
 
-    is_sr = "P4" in ps.upper() or "SR" in ps.upper() or str(pi).upper().startswith("0XE204") or str(pi).upper().startswith("0XE4")
-    if is_sr:
-        format_and_print_lock(chosen_freq_global, f"Sveriges Radio P4 bekräftad ({ps}, PI: {pi})")
+    pi_str = str(pi).upper().replace("0X", "").strip()
+    is_p4 = (
+        "P4" in ps.upper() or 
+        pi_str.startswith("E4") or 
+        (pi_str.startswith("E2") and not any(pi_str == x for x in ("E201", "E202", "E203")) and (
+            len(pi_str) >= 4 and pi_str[2:].isalnum() and int(pi_str[2:4], 16) < 0x40 if len(pi_str) >= 4 else False
+        ))
+    )
+    is_commercial = (
+        any(ch in ps.upper() for ch in ("RIX", "MIX", "NRJ", "STAR", "BANDIT", "VINYL", "ROCK")) or 
+        (pi_str.startswith("E2") and len(pi_str) >= 4 and pi_str[2:4] >= "40")
+    )
+
+    if is_p4:
+        format_and_print_lock(chosen_freq_global, f"Sveriges Radio P4 bekräftad (TMC-sändare {ps}, PI: {pi})")
+    elif is_commercial:
+        format_and_print_scan(f"Station {ps or 'FM'} (PI: {pi}) är en kommersiell station och sänder inte RDS-TMC. Leta efter SR P4.")
 
     return out_line
 
@@ -345,9 +374,28 @@ def parse_redsea_json_line(line_str):
     except json.JSONDecodeError:
         return None
 
-    # 1. Kontrollera om raden innehåller TMC (Grupp 8A eller liknande)
-    if "tmc" in data:
-        tmc = data["tmc"]
+    group_type = str(data.get("group", "")).upper()
+
+    # 1. Kontrollera Grupp 3A: Handskakning och Systeminformation (ALERT-C AID: 0xCD46, LTN: 1)
+    oda_info = data.get("oda") or {}
+    aid_str = str(data.get("aid") or (oda_info.get("aid") if isinstance(oda_info, dict) else "")).upper()
+    app_str = str(data.get("application", "")).upper()
+    is_group_3a = (
+        (group_type == "3A" and ("CD46" in aid_str or "TMC" in app_str or "TMC" in str(data).upper())) or
+        "CD46" in aid_str or 
+        app_str == "TMC"
+    )
+
+    if is_group_3a:
+        ltn_num = data.get("ltn") or (oda_info.get("ltn") if isinstance(oda_info, dict) else 1) or 1
+        ecc_code = data.get("ecc") or "E1"
+        info_line = f"RDS-INFO: TMC Handskakning (Grupp 3A): ALERT-C aktiv (AID: 0xCD46, LTN: {ltn_num} Sverige, ECC: {ecc_code})"
+        print(info_line, flush=True)
+        format_and_print_lock(chosen_freq_global, f"Aktiv RDS-TMC sändare bekräftad (Grupp 3A, AID: 0xCD46, LTN: {ltn_num})")
+
+    # 2. Kontrollera Grupp 8A: ALERT-C Trafikmeddelanden
+    if "tmc" in data or group_type == "8A":
+        tmc = data.get("tmc") or {}
         loc_code = tmc.get("location")
         if loc_code is not None:
             event_codes = tmc.get("event_codes", [])
@@ -392,8 +440,8 @@ def parse_redsea_json_line(line_str):
                 msg=event_swedish
             )
 
-    # 2. Kontrollera vanlig RDS-metadata (PS / PI)
-    # OBS: RadioText (låttitlar/artister/reklam) ignoreras helt för att undvika spam.
+    # 3. Kontrollera vanlig RDS-metadata (PS / PI)
+    # RadioText (låttitlar/artister/reklam) ignoreras helt för att undvika spam.
     # Endast stationsnamn (PS) och PI rapporteras en gång som stations-telemetri.
     ps = data.get("ps", "").strip()
     pi = data.get("pi", "")
