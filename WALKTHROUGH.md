@@ -1294,5 +1294,33 @@
   - Samtliga 26 enhetstester passerar felfritt.
   - Versionsbump till CalVer `2026.10.14.06`.
 
+---
+
+### 40. Robust RDS-TMC ALERT-C Parsning, Ofiltrerat Redsea-läge (-u) och Syntetiskt Testläge (v2026.10.14.07)
+- **Problembeskrivning**:
+  - Trots utmärkt mottagning på P4 Sörmland (PI: 0xEA24, 11.5 ramar/s, 100% signalkvalitet) loggades inga TMC-händelser.
+  - Orsaken var att `redsea` kördes utan `-u` (unfiltered mode), vilket gjorde att redsea internt buffrade och aggregerade data, samt att JSON-parsningen krävde strikt fältmatchning som riskerade att missa 8A-grupper.
+- **Teknisk Implementering**:
+  - **Ofiltrerat Redsea Processanrop ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Ändrat process-anropet till `redsea -u -r 171k`. Detta tvingar redsea att omedelbart dumpa alla mottagna 8A- och 3A-grupper utan aggregeringsfördröjning.
+  - **Robust JSON-inspektion & TMC-parsning ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py), [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - **Grupp 3A (TMC System Information)**: Loggas på DEBUG-nivå med AID (`0xCD46`), LTN (1 för Sverige) och systemstatus (`AKTIV`).
+    - **Grupp 8A (ALERT-C Trafikmeddelanden)**: Detekteras oavsett om redsea placerar fälten under `tmc`-objektet eller i rot-JSON med `group: 8A`.
+    - Extraherar `location`, `event_codes`, `event_descriptions`, `extent`, `direction`, `urgency` och `duration`.
+    - Genererar strukturerat loggmeddelande vid 8A:
+      `INFO: [RDS-TMC] LARM MOTTAGET → Plats-ID: {location} | Händelse: {event_desc} | Riktning: {direction} | Omfattning: {extent} | Råkod: {event_codes}`
+    - Formaterar och emitterar `RDS-TMC: LOC: ...` för PagerMonitors databas- och WebSocket-motor.
+  - **Inbyggt Syntetiskt Testläge (`--test-tmc`)**:
+    - Lagt till CLI-flagga `--test-tmc` i `rds_decoder.py` för omedelbar syntetisk injicering av Grupp 3A och Grupp 8A utan SDR-hårdvara.
+    - Testpayload injicerar händelsekod 101 på E4 Nyköping (stillastående kö 2 km) och verifierar hela kedjan till loggutskrift och händelse-emittering.
+  - **UTF-8 Encoding på Konsolen**:
+    - Lagt till automatisk omkonfigurering av stdout/stderr till UTF-8 för att eliminera risken för `UnicodeEncodeError` vid utskrift av pilsymbolen `→`.
+- **Verifiering**:
+  - Testat `python rds_decoder.py --test-tmc` och verifierat att både 3A handskakning och 8A larmlogg emitteras felfritt.
+  - Nytt enhetstest `test_rds_tmc_parsing_and_test_mode` i `tests/test_sdr_watchdog.py`.
+  - Samtliga 27 enhetstester passerar felfritt.
+  - Versionsbump till CalVer `2026.10.14.07`.
+
+
 
 

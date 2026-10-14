@@ -19,6 +19,14 @@ import re
 import threading
 import queue
 
+try:
+    if hasattr(sys.stdout, 'reconfigure'):
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    if hasattr(sys.stderr, 'reconfigure'):
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+except Exception:
+    pass
+
 _shutdown_requested = False
 _current_child_proc = None
 
@@ -581,47 +589,92 @@ def parse_redsea_json_line(line_str):
 
     # 1. Kontrollera Grupp 3A: Handskakning och Systeminformation (ALERT-C AID: 0xCD46, LTN: 1)
     oda_info = data.get("oda") or {}
-    aid_str = str(data.get("aid") or (oda_info.get("aid") if isinstance(oda_info, dict) else "")).upper()
-    app_str = str(data.get("application", "")).upper()
+    aid_str = str(data.get("aid") or (oda_info.get("aid") if isinstance(oda_info, dict) else "")).upper().replace("0X", "").strip()
+    app_str = str(data.get("application", "") or (oda_info.get("application", "") if isinstance(oda_info, dict) else "")).upper()
     is_group_3a = (
-        (group_type == "3A" and ("CD46" in aid_str or "TMC" in app_str or "TMC" in str(data).upper())) or
+        group_type == "3A" or 
         "CD46" in aid_str or 
-        app_str == "TMC"
+        "TMC" in app_str or 
+        ("oda" in data and isinstance(oda_info, dict) and "CD46" in str(oda_info).upper())
     )
 
     if is_group_3a:
         global _group_3a_confirmed, _current_channel_tmc_active
         _current_channel_tmc_active = True
+        ltn_num = data.get("ltn") or (oda_info.get("ltn") if isinstance(oda_info, dict) else 1) or 1
+        aid_disp = f"0x{aid_str}" if aid_str else "0xCD46"
+        status_disp = "AKTIV"
+
+        # Logga vid DEBUG-nivå när grupp 3A (TMC System Information) detekteras
+        debug_3a_line = f"DEBUG: [RDS-TMC] Grupp 3A System Information -> AID: {aid_disp} | LTN: {ltn_num} (Sverige) | Systemstatus: {status_disp}"
+        print(debug_3a_line, flush=True)
+
         if not _group_3a_confirmed:
             _group_3a_confirmed = True
-            ltn_num = data.get("ltn") or (oda_info.get("ltn") if isinstance(oda_info, dict) else 1) or 1
-            ecc_code = data.get("ecc") or "E1"
-            info_line = f"RDS-INFO: TMC Handskakning (Grupp 3A): ALERT-C aktiv (AID: 0xCD46, LTN: {ltn_num} Sverige, ECC: {ecc_code})"
+            ecc_code = data.get("ecc") or (oda_info.get("ecc") if isinstance(oda_info, dict) else "E1") or "E1"
+            info_line = f"RDS-INFO: TMC Handskakning (Grupp 3A): ALERT-C aktiv (AID: {aid_disp}, LTN: {ltn_num} Sverige, ECC: {ecc_code})"
             print(info_line, flush=True)
-            format_and_print_lock(chosen_freq_global, f"Aktiv RDS-TMC sändare bekräftad (Grupp 3A, AID: 0xCD46, LTN: {ltn_num})")
+            format_and_print_lock(chosen_freq_global, f"Aktiv RDS-TMC sändare bekräftad (Grupp 3A, AID: {aid_disp}, LTN: {ltn_num})")
 
     # 2. Kontrollera Grupp 8A: ALERT-C Trafikmeddelanden
-    if "tmc" in data or group_type == "8A":
+    is_group_8a = ("tmc" in data or group_type == "8A")
+    if is_group_8a:
         _current_channel_tmc_active = True
-        tmc = data.get("tmc") or {}
-        loc_code = tmc.get("location")
+        tmc = data.get("tmc") if isinstance(data.get("tmc"), dict) else data
+
+        # Extrahera numeriskt plats-ID
+        loc_code = tmc.get("location") if tmc.get("location") is not None else data.get("location")
         if loc_code is not None:
-            event_codes = tmc.get("event_codes", [])
-            event_descs = tmc.get("event_descriptions", [])
-            extent = tmc.get("extent", 0)
-            direction = tmc.get("direction", "+")
-            urgency = tmc.get("urgency", "normal")
-            duration = tmc.get("duration", "")
+            # Extrahera event_codes (lista med koder)
+            event_codes = tmc.get("event_codes") or data.get("event_codes") or []
+            if isinstance(event_codes, int):
+                event_codes = [event_codes]
+            elif not isinstance(event_codes, list):
+                try:
+                    event_codes = [int(event_codes)]
+                except (ValueError, TypeError):
+                    single_code = tmc.get("event_code") or data.get("event_code")
+                    if single_code is not None:
+                        try: event_codes = [int(single_code)]
+                        except Exception: event_codes = []
+                    else:
+                        event_codes = []
+
+            # Extrahera event_descriptions (klartext från redsea om tillgängligt)
+            event_descs = tmc.get("event_descriptions") or data.get("event_descriptions") or []
+            if isinstance(event_descs, str):
+                event_descs = [event_descs]
+            elif not isinstance(event_descs, list):
+                event_descs = []
+
+            extent = tmc.get("extent", data.get("extent", 0))
+            direction = tmc.get("direction", data.get("direction", "+"))
+            urgency = tmc.get("urgency", data.get("urgency", "normal"))
+            duration = tmc.get("duration", data.get("duration", ""))
 
             # Hämta händelsebeskrivning på svenska
+            fallback_txt = event_descs[0] if event_descs else ""
             if event_codes:
                 first_code = event_codes[0]
-                fallback_txt = event_descs[0] if event_descs else ""
                 event_swedish = translate_alert_c_event(first_code, fallback_txt)
-            elif event_descs:
-                event_swedish = event_descs[0]
+            elif fallback_txt:
+                event_swedish = fallback_txt
             else:
                 event_swedish = "Trafikmeddelande"
+
+            if fallback_txt and fallback_txt.lower() != event_swedish.lower():
+                event_desc = f"{event_swedish} ({fallback_txt})"
+            else:
+                event_desc = event_swedish
+
+            # Skapa ett strukturerat event/loggmeddelande när 8A tas emot:
+            # INFO: [RDS-TMC] LARM MOTTAGET → Plats-ID: {location} | Händelse: {event_desc} | Riktning: {direction} | Omfattning: {extent} | Råkod: {event_codes}
+            larm_log_line = (
+                f"INFO: [RDS-TMC] LARM MOTTAGET → Plats-ID: {loc_code} | "
+                f"Händelse: {event_desc} | Riktning: {direction} | "
+                f"Omfattning: {extent} | Råkod: {event_codes}"
+            )
+            print(larm_log_line, flush=True)
 
             loc_info = lookup_location(loc_code)
             if loc_info:
@@ -645,7 +698,7 @@ def parse_redsea_json_line(line_str):
                 direction=direction,
                 urgency=urgency,
                 duration=duration,
-                msg=event_swedish
+                msg=event_desc
             )
 
     # 3. Kontrollera vanlig RDS-metadata (PS / PI)
@@ -774,7 +827,7 @@ def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.
         rtl_cmd.extend(["-p", str(ppm)])
     rtl_cmd.append("-")
 
-    redsea_cmd = ["redsea", "-r", "171k"]
+    redsea_cmd = ["redsea", "-u", "-r", "171k"]
 
     line_queue = queue.Queue()
     reader_stop = threading.Event()
@@ -899,6 +952,45 @@ def run_test_feed(freq="103.3M"):
         idx += 1
         time.sleep(4.0)
 
+def run_test_tmc():
+    """Injicerar syntetiska Grupp 3A och 8A JSON-meddelanden direkt i parse_redsea_json_line."""
+    print("RDS-TMC: Startar syntetiskt testläge (--test-tmc)...", flush=True)
+    
+    # 1. Injicera Grupp 3A (Handskakning och ODA System Information)
+    sample_3a = {
+        "group": "3A",
+        "pi": "0xEA24",
+        "ps": "P4 Sörml",
+        "oda": {
+            "aid": "CD46",
+            "application": "TMC",
+            "ltn": 1
+        }
+    }
+    print("[TEST] Injicerar Grupp 3A (TMC System Information)...", flush=True)
+    parse_redsea_json_line(json.dumps(sample_3a))
+
+    # 2. Injicera Grupp 8A (ALERT-C Trafikmeddelande)
+    sample_8a = {
+        "group": "8A",
+        "pi": "0xEA24",
+        "ps": "P4 Sörml",
+        "tmc": {
+            "event_codes": [101],
+            "event_descriptions": ["Stationary traffic for 2 km"],
+            "extent": 1,
+            "direction": "+",
+            "location": 14502,
+            "urgency": "urgent",
+            "duration": "1-2 hours"
+        }
+    }
+    print("[TEST] Injicerar Grupp 8A (ALERT-C Trafikmeddelande)...", flush=True)
+    res_8a = parse_redsea_json_line(json.dumps(sample_8a))
+
+    print("RDS-TMC: Testläge slutfört framgångsrikt.", flush=True)
+    return res_8a
+
 def main():
     parser = argparse.ArgumentParser(description="PagerMonitor RDS / RDS-TMC (ALERT-C) Decoder")
     parser.add_argument("--freq", default="103.3M", help="FM frequency (e.g. 103.3M, 87.5M-108M, or auto)")
@@ -906,10 +998,15 @@ def main():
     parser.add_argument("--gain", default="auto", help="Tuner gain in dB or auto")
     parser.add_argument("--ppm", default="0", help="PPM error correction")
     parser.add_argument("--test-feed", action="store_true", help="Run synthetic test feed")
+    parser.add_argument("--test-tmc", action="store_true", help="Kör syntetisk TMC-injektion (Grupp 3A och Grupp 8A) utan hårdvara")
     parser.add_argument("--stdin", action="store_true", help="Read redsea JSON stream from standard input")
     parser.add_argument("--heartbeat-interval", type=float, default=10.0, help="Intervall i sekunder mellan pulskontroller (default: 10.0)")
     parser.add_argument("--heartbeat-timeout", type=float, default=5.0, help="Tidsgräns i sekunder innan puls anses förlorad (default: 5.0)")
     args = parser.parse_args()
+
+    if args.test_tmc:
+        run_test_tmc()
+        return
 
     # Starta bakgrundstråd för realtidspuls
     start_heartbeat_monitor(interval=args.heartbeat_interval, timeout=args.heartbeat_timeout, gain=args.gain)

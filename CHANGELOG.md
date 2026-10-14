@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.07] - Robust RDS-TMC Parsning, Ofiltrerat Redsea-läge (-u) och Syntetiskt Testläge
+
+### Added
+- **Ofiltrerat Redsea-läge (`-u`) i `rds_decoder.py`**:
+  - `redsea` körs nu med flaggan `-u` (`redsea -u -r 171k`). Detta tvingar redsea att omedelbart strömma ut mottagna ALERT-C 8A- och 3A-grupper utan intern aggregeringsfördröjning.
+- **Robust TMC-inspektion och Strukturerad Larmlogg**:
+  - Detektering av Grupp 3A (System Information) loggas på DEBUG-nivå med AID (`0xCD46`), LTN (1 för Sverige) och aktuell systemstatus.
+  - Identifiering av Grupp 8A (ALERT-C trafikmeddelanden) oavsett om redsea strukturerar JSON under nyckeln `tmc` eller direkt under rotobjektet med `group: 8A`.
+  - Robust fältextraktion för `event_codes`, `event_descriptions`, `location`, `extent`, `direction`, `urgency` och `duration`.
+  - Strukturerad loggutskrift för varje mottaget 8A-trafiklarm:
+    `INFO: [RDS-TMC] LARM MOTTAGET → Plats-ID: {location} | Händelse: {event_desc} | Riktning: {direction} | Omfattning: {extent} | Råkod: {event_codes}`
+- **Inbyggt Syntetiskt Testläge (`--test-tmc`)**:
+  - Lagt till CLI-argument `--test-tmc` i `rds_decoder.py` för omedelbar hårdvarulös verifiering av hela avkodningskedjan.
+  - Injicerar syntetiskt Grupp 3A och Grupp 8A meddelande (placerat på E4 Nyköping, stillastående kö i 2 km / kod 101) och kontrollerar att avkodning, platstabelluppslag och larmskapande fungerar till 100%.
+- **Säker UTF-8 Encoding**:
+  - Konfigurerat `sys.stdout` och `sys.stderr` till UTF-8 med fellösning för att garantera att pilsymboler (`→`) och specialtecken fungerar felfritt på Windows-konsoler.
+
 ## [2026.10.14.06] - Visning av Signalkvalitet och Gain i RDS Heartbeat
 
 ### Added

@@ -278,6 +278,15 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     logger.info(f"[{config['name']}] HEARTBEAT -> {payload}")
                 continue
 
+            if line.startswith("DEBUG: [RDS-TMC]") or line.startswith("[RDS-TMC] DEBUG:"):
+                logger.debug(f"[{config['name']}] {line}")
+                continue
+
+            if line.startswith("INFO: [RDS-TMC]") or line.startswith("[RDS-TMC] LARM"):
+                cleaned_line = line[len("INFO: "):].strip() if line.startswith("INFO: ") else line
+                logger.info(f"[{config['name']}] {cleaned_line}")
+                continue
+
             if line.startswith("RDS:") or line.startswith("RDS-INFO:"):
                 # Vanlig RDS stationsinformation (t.ex. PS eller PI)
                 # Deduplicera så att samma rad inte loggas upprepade gånger
