@@ -1533,3 +1533,32 @@
   - Verifierat att kandidatlistan genererar 120 frekvenser som spänner 87.5M till 108.0M med P3/P4 i spetsen.
   - Verifierat syntetisk injicering med `--test-tmc`.
   - Samtliga 62 enhetstester i pytest passerar utan anmärkning.
+
+### 50. Kraschfix för RDS-dekoder vid null-PS och Robustifiering av Underprocesser (v2026.10.14.22)
+- **Bakgrund och Problem**:
+  - Vid start av skanningsmotorn på 99.3 MHz kraschade RDS-dekoderprocessen omedelbart:
+    `[RDS] Processer avslutades ovantat! rtl PID=N/A exit=N/A, decoder PID=302 exit=1.`
+    vilket utlöste watchdogen i `sdr_processor`.
+  - Djupgående analys av stack trace och redsea-data visade:
+    1. När `redsea` tar emot RDS-block där stationsnamnet (PS) inte är komplett eller delvis förvrängt, returnerar redsea `"ps": null` i JSON.
+    2. Koden `ps = data.get("ps", "").strip()` orsakade `AttributeError: 'NoneType' object has no attribute 'strip'` eftersom `"ps"` existerade med värdet `None` (vilket inte träffade default-värdet `""`).
+    3. `parse_redsea_json_line` anropades inuti `run_rds_session` utan `try...except`, vilket gjorde att undantaget bubblade upp och avslutade hela Python-processen med exit-kod 1.
+    4. Experimentella flaggor (som `-R`) i anropet till `redsea` riskerade dessutom att få redsea att krascha vid start i miljöer med standardversioner av verktyget.
+- **Teknisk Implementering**:
+  - **Säker JSON-fältextrahering ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Ändrat utläsning av stationsnamn och PI till `raw_ps = data.get("ps")`, `ps = str(raw_ps).strip() if raw_ps is not None else ""` samt motsvarande för PI.
+    - Säkrat samtliga underobjekt (`oda`, `open_data_app`, `tmc`, `system_info`) så att typkontroll sker innan metodanrop som `.get()`.
+  - **Typoberoende rådata-avkodning i AlertCDecoder ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - `AlertCDecoder.decode_group` stöder nu både listor av hex-strängar (`["e203", "8000", ...]`) och enkla textsträngar, och fångar `(ValueError, TypeError)`.
+  - **Try-Except Skydd i Huvud- och Sessionsloopar ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Omgett `parse_redsea_json_line(line)` i `run_rds_session` med `try...except` så att en enskild skadad rad aldrig kan sänka processen.
+    - Omgett anropet till `run_rds_session` i `main()` med `try...except` så att frekvensskanningen fortsätter till nästa frekvens vid perifera fel.
+    - Återställt redsea-anropet till det stabila europeiska kommandot `["redsea", "-r", "171k"]`.
+    - I `reset_station_state()` nollställs nu även `has_received_any_frame = False`, `frames_since_last_pulse = 0` och tidsstämpeln för senaste ram uppdateras vid frekvensbyte.
+  - **Felspårbarhet i Processövervakaren ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - `monitor_instance` fångar och loggar alla rader som innehåller felindikatorer (`Traceback (most recent`, `AttributeError:`, etc.) med `logger.error`, så att felorsaker från underprocesser blir direkt synliga i terminalen och användargränssnittet.
+  - **Versionsspårbarhet**:
+    - Uppdaterat versionsnummer till CalVer `2026.10.14.22` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+- **Verifiering**:
+  - Verifierat kantfall med JSON `{"ps": null, "pi": null}` utan krasch.
+  - Samtliga enhetstester passerar utan fel.

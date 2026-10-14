@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.22] - Kraschfix för RDS-dekoder vid null-PS och Robustifiering av Underprocesser
+
+- **Åtgärdat krasch vid mottagning av ofullständiga RDS-ramar (`AttributeError`)**:
+  - `redsea` returnerar `"ps": null` i JSON när stationsnamn ännu inte är fullständigt mottaget eller under ackumulering. Att köra `data.get("ps", "").strip()` orsakade `AttributeError: 'NoneType' object has no attribute 'strip'` vilket ledde till att Python kraschade och avslutades med exit-kod 1 (`decoder PID exit=1`).
+  - Säkrat upp alla fältutläsningar (`ps`, `pi`, `oda`, `tmc`, etc.) i `parse_redsea_json_line` med typkontroll så att `null`-värden och oväntade datatyper aldrig kraschar processen.
+- **Typoberoende raw_data avkodning i AlertCDecoder**:
+  - `AlertCDecoder.decode_group` stöder nu både listor av hex-strängar (`["e203", "8000", ...]`) och enkla textsträngar, med skydd mot typ- och konverteringsfel.
+- **Kommando- och sessionsskydd**:
+  - Tog bort experimentella eller icke-standardiserade flaggor från redsea-anropet så att `redsea` alltid startar stabilt i standard europeiskt läge (`redsea -r 171k`).
+  - Lagt till `try...except` runt JSON-parsningen i `run_rds_session` samt runt sessionsanropet i `main()`, vilket garanterar att frekvensskanningen fortsätter utan att Python-processen dör vid enskilda defekta radiodata-paket.
+  - Förbättrat `reset_station_state()` så att pulsmätaren och ramräknaren nollställs korrekt vid byte av radiokandidat.
+- **Utökad felspårbarhet i sdr_processor**:
+  - `monitor_instance` fångar och loggar nu felrader och Python tracebacks från underprocessernas stdout/stderr med `logger.error`, så att felorsaker syns omedelbart i applikationsloggen.
+
 ## [2026.10.14.21] - Omedelbar Låsning på SR P3/P4, Snabbavbrott (2.5s) och Full FM-Bandskanning
 
 ### Fixed

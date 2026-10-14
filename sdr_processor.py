@@ -288,6 +288,10 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                 logger.debug(f"[{config['name']}] {line}")
                 continue
 
+            if any(err_kw in line for err_kw in ["Traceback (most recent", "AttributeError:", "NameError:", "TypeError:", "ValueError:", "SyntaxError:"]):
+                logger.error(f"[{config['name']}] SUBPROCESS FEL: {line}")
+                continue
+
             if line.startswith("INFO: [RDS-TMC]") or line.startswith("[RDS-TMC] LARM"):
                 cleaned_line = line[len("INFO: "):].strip() if line.startswith("INFO: ") else line
                 if "TMC SYNK" in cleaned_line:
