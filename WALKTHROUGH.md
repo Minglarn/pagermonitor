@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.14.28`
+- **CalVer**: `2026.10.14.29`
 - **Date**: 2026-10-14
 - **Language**: English / Swedish
 
@@ -1734,6 +1734,33 @@
   - XID Handover-stöd och ny inställning för att dölja periodiska ACARS-länktest (`Label Q0`).
 - **Verifiering**:
   - Samtliga 42 enhetstester godkända (`python -m unittest discover tests`).
+
+### 57. Fristående Modulär ACARS Human-Parser (v2026.10.14.29)
+- **Modulär Arkitektur ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Skapat en helt fristående modul som översätter råa och kryptiska ACARS/VDL2-meddelanden till naturlig svensk text utan emojis.
+  - Varje avkodningsmönster är definierat som en ren regelfunktion i `PARSER_RULES`, vilket gör det extremt enkelt att löpande lägga till nya regler för specifika flygbolag och telemetriformat utan att behöva modifiera mottagaren i `vdl2_receiver.py`.
+  - Bevarar automatiskt alla inledande prefix i hakparenteser (såsom `[H1: FMS / Färddator-rapport]` eller `[38]`) och faller tillbaka till originaltexten om inget mönster matchas.
+- **Implementerade Mönster**:
+  1. **Mönster 1: Label 38 (Finnair väder- och positionsrapport)**:
+     - Parsar `/AY8892/141026/E 17.655/N 59.387/37969/-------/      /- 57/33535/ 88 /46/`
+     - Översätter till: `Flight: AY8892 | Position: N 59.387, E 17.655 | Höjd: 37969 ft | Temp: -57 C | Vind: 335 deg (35 kt)`
+  2. **Mönster 2: Label H1 POSN (Färddator-rapport med rutt och väder)**:
+     - Parsar `POSN59197E017265,N55208E004569,201749,380,N60045E021311,203531,N60157E022414,M58,33488,10132A6 | Lat: 59.3283, Lon: 17.4417`
+     - Översätter till: `Färddator-rutt | Höjd: FL380 | Temp: -58 C | Vind: 334 deg (88 kt) | Nästa WP: N55208E004569 (kl 20:17:49 UTC) | Lat: 59.3283, Lon: 17.4417`
+  3. **Mönster 3: Label H1 RESREQ/AK (Systemkvittens)**:
+     - Parsar `RESREQ/AK,1158AF6`
+     - Översätter till: `Systemkvittens: Resursförfrågan bekräftad (ACK) [CRC: 1158AF6]`
+  4. **Mönster 4: Label 83 ETA-rapport (Gate/Ankomst)**:
+     - Parsar `V09CA032/ETA-30/2046/`
+     - Översätter till: `Ankomststatus: Beräknad ankomst (ETA) kl 20:46 UTC (Status: ETA-30, Kod: V09CA032)`
+  5. **Mönster 5: Label H1 MM-telemetrilogg (Matrislogg)**:
+     - Parsar fler-radiga loggar som inleds med `MM` (t.ex. `MM2014241014ACD` följt av mätpunkter).
+     - Extraherar antal mätpunkter och tidsspannet mellan första och sista mätpunkten: `Telemetrilogg (MM2014241014ACD): 6 mätpunkter mottagna (20:12:23 - 20:13:56 UTC)`
+- **Mottagarintegration ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - `vdl2_receiver.py` importerar `parse_human_acars` och kör meddelandetexten genom parsern under avkodningen.
+- **Verifiering**:
+  - Samtliga 53 enhetstester godkända (`python -m unittest discover tests`).
+
 
 
 

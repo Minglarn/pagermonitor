@@ -16,6 +16,12 @@ except ImportError:
     def publish_message(*args, **kwargs):
         pass
 
+try:
+    from acars_human_parser import parse_human_acars
+except ImportError:
+    def parse_human_acars(msg, label=None, metadata=None):
+        return msg
+
 logger = logging.getLogger(__name__)
 
 # Kända flygbolagsprefix (IATA & ICAO) för berikad visning i aliasfältet
@@ -270,7 +276,8 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
     if lbl == '_d' or not txt:
         return "Kvittens (ACK)" if not txt else f"Kvittens (ACK) | {txt}"
 
-    return txt
+    # 6. Modulär Human ACARS Parser för specialiserade mönster (Label 38, H1 POSN, H1 RESREQ, 83 ETA, MM m.fl.)
+    return parse_human_acars(txt, label=lbl, metadata=acars_dict)
 
 def find_nested_key(data, target_key):
     """Söker rekursivt efter en nyckel i ett nästlat JSON-objekt eller lista."""
@@ -859,6 +866,8 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
         coord_str = f"Lat: {lat:.4f}, Lon: {lon:.4f}"
         if coord_str not in full_message:
             full_message += f" | {coord_str}"
+
+    full_message = parse_human_acars(full_message, label=label, metadata=acars)
 
     bitrate_str = "VDL2-CPDLC" if cpdlc_text else ("VDL2-MIAM" if is_miam else ("VDL2-ACARS" if label else "VDL2"))
 

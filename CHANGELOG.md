@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.29] - Fristående Modulär ACARS Human-Parser (acars_human_parser.py)
+
+- **Fristående Modulär ACARS-parser (`acars_human_parser.py`)**:
+  - Skapat en separat regelbaserad parser för att översätta råa kryptiska ACARS- och VDL2-meddelanden till ren, professionell och lättläst svensk text utan emojis.
+  - Modulär arkitektur där varje avkodningsmönster är en fristående regelfunktion som enkelt kan utökas med nya flygbolag och protokoll utan att ändra kärnlogiken i `vdl2_receiver.py`.
+  - Bevarar automatiskt alla inledande prefix i hakparenteser (såsom `[H1: FMS / Färddator-rapport]` eller `[38]`) och faller mjukt tillbaka på originaltexten om inget mönster matchar.
+- **Implementerade Mönster i acars_human_parser.py**:
+  - **Mönster 1: Label 38 (Finnair väder- och positionsrapport)**: Avkodar flight (`AY8892`), latitud, longitud, höjd (`37969 ft`), temperatur (`-57 C`) samt vindriktning och hastighet (`335 deg (35 kt)`).
+  - **Mönster 2: Label H1 POSN (FMS / Färddator-rapport med rutt och väder)**: Avkodar flygnivå (`FL380`), temperatur (`-58 C`), vindriktning/hastighet (`334 deg (88 kt)`), nästa brytpunkt/waypoint med ankomsttid i UTC samt bevarar positionskoordinater.
+  - **Mönster 3: Label H1 RESREQ/AK (Systemkvittens)**: Översätter `RESREQ/AK` till `Systemkvittens: Resursförfrågan bekräftad (ACK)` med valfri CRC-summa.
+  - **Mönster 4: Label 83 ETA-rapport (Gate/Ankomst)**: Extraherar ankomststatus, beräknad ankomsttid i UTC samt statuskod (`ETA-30`).
+  - **Mönster 5: Label H1 MM-telemetrilogg (Matrislogg)**: Identifierar logg-headern, räknar antalet mätpunkter och extraherar tidsspannet mellan första och sista mätpunkten i UTC.
+- **Integration i Mottagaren (`vdl2_receiver.py`)**:
+  - Alla meddelanden passerar nu genom `parse_human_acars()` innan de sparas i databasen och skickas till klienter.
+- **Dedikerade Enhetstester (`tests/test_acars_human_parser.py`)**:
+  - 11 automatiserade tester som validerar alla 5 mönster, prefix-bevarande och fallback-beteende.
+
 ## [2026.10.14.28] - Humaniserad ACARS-avkodning, Dedikerad SNR-pill, Robust HTML-escaping och RF Activity Sonde-korrigering
 
 - **Dedikerad SNR-pill under meddelandetexten bredvid ACARS-märket**:
