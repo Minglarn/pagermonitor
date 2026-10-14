@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.31] - Global Referensdatabas (acars_reference_data.json), Libacars-tolkning och Airframes Decoder-mönster
+
+- **Global Referensdatabas (`acars_reference_data.json`)**:
+  - Automatiserad extrahering och aggregering av referensdata från ACARSHUB och Airframes GitHub-repon:
+    - `labels`: 183 standard ACARS-etiketter (`_d`, `H1`, `SA`, `80`-`89`, `10`-`5Z`, `Q0`, `QA`-`QZ`, `RA`, `B6` m.fl.).
+    - `airlines`: 1 711 flygbolagsmappningar (både IATA 2-bokstavs och ICAO 3-bokstavskoder till officiella flygbolagsnamn).
+    - `ground_stations`: 4 904 markstationer (SITA/ARINC i både hex- och decimalformat till flygplatsnamn och ICAO-koder, t.ex. `Arlanda Airport (ESSA)`).
+- **Direkt Libacars-tolkning ur Dumpvdl2 JSON**:
+  - Implementerat `format_libacars_data()` som direkt konsumerar färdigtolkade strukturer i dumpvdl2 (`arinc622.adsc`, `ats`, `cpdlc`, `miam`, `xid`) för presentation av telemetri (position, höjd, vind, temperatur och stationshandover).
+- **Portade Textmönster från Airframes ACARS-Decoder**:
+  - Label `H1`: Färdplaner (`FPN/RI`, ICAO FPL med automatisk ruttidentifiering `ESSA -> EKCH`), `INI` förberedelser, `RESREQ` kvittenser och `MM`/`DFB`/`CFB` telemetri.
+  - Label `10`-`4Z` & `80`-`89`: Finnair Label 38, Ethiopian Label 83 CSV-position, SAS Label 83 ETA, Airframes Variant 2 (`4DH3 ETAT2`) samt OOOI (`OUT`, `OFF`, `ON`, `IN`).
+  - Label `SA`: Fullständig Media Advisory-tolkning (upprättad/förlorad länk och tillgängliga länkar VHF, VDL2, SATCOM, HF).
+  - Label `Q0` / `5U` / `5Z` / `B6` / `RA`: Länktest, METAR/TAF väderbegäran, CPDLC klareringar och dispatch-kommandon.
+  - Generell fallback-extraktion: Identifierar automatiskt rutt (`ORIG/DEST`), `ETA`, flygnivå (`FL`) och koordinater ur okända meddelanden.
+- **Tester**:
+  - 67 enhetstester validerar databasladdning, libacars-data och alla avkodningsregler.
+
+## [2026.10.14.30] - ACARSHUB Metadata-extrahering och Label 83 CSV-positionsrapporter
+
+- **ACARSHUB-liknande Metadata-extrahering**:
+  - Extraherar rika metadata ur inkommande dumpvdl2/ACARS JSON (`avlc` och `acars`) och presenterar en kompakt header överst i meddelandet:
+    `[Reg: ET-ATK | Flight: ET0715 (Ethiopian Airlines) | ICAO: 040127 | To: 119AAA (Arlanda Airport ESSA) | On Ground: No | Mode: 2 | Msg: M37A]`.
+  - Inkluderar Tail/Reg (`reg`), Flight (`flight`), Flygbolagsuppslag via modulär prefix-tabell, ICAO Hex-adress (`src.addr`), Markstationsuppslag (`dst.addr`), markstatus (`On Ground: Yes / No`), länkmode (`mode`) och meddelandenummer (`msg_num` + `msg_num_seq`).
+- **Modulära Uppslagstabeller (`acars_human_parser.py`)**:
+  - Centraliserat `AIRLINE_MAP` och funktionen `lookup_airline()` med stöd för IATA 2-bokstavs och ICAO 3-bokstavskoder (inkl. Ethiopian Airlines, SAS, Finnair, Norwegian, Lufthansa, British Airways, KLM, Air France, Ryanair, Wizz Air, airBaltic, Qatar Airways, Emirates, Turkish Airlines m.fl.).
+  - Skapat `GROUND_STATIONS` och funktionen `lookup_ground_station()` för automatisk översättning av markstationer (t.ex. Arlanda Airport ESSA).
+- **Mönster för Label 83 CSV-positionsrapporter**:
+  - Implementerat `rule_label_83_csv_position` för avkodning av 9-fälts kommaseparerade rapporter (Avgång, Destination, Tid DDHHMM, Lat, Lon, Höjd i fot, Fart i knop, Kurs i grader, Bränsle/Vikt).
+  - Formaterar läsbart: `Rutt: ESSA -> HAAB | Tid: 20:29 UTC | Pos: 58.54, 18.94 | Höjd: 22605 ft | Fart: 305 kt | Kurs: 166.9 deg | Bränsle/Vikt: 43000`.
+  - Integrerat i `extract_position_and_telemetry()` i `vdl2_receiver.py` så att latitud (58.54), longitud (18.94), flyghöjd, fart och kurs extraheras som koordinater och telemetri för kartplottning.
+- **Tester**:
+  - Nya automatiserade tester i `tests/test_acars_human_parser.py` och end-to-end integrationstest i `tests/test_vdl2.py`.
+
 ## [2026.10.14.29] - Fristående Modulär ACARS Human-Parser (acars_human_parser.py)
 
 - **Fristående Modulär ACARS-parser (`acars_human_parser.py`)**:

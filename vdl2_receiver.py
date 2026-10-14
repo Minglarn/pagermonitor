@@ -17,108 +17,28 @@ except ImportError:
         pass
 
 try:
-    from acars_human_parser import parse_human_acars
+    from acars_human_parser import (
+        parse_human_acars, AIRLINE_MAP, GROUND_STATIONS, ACARS_LABELS as PARSER_ACARS_LABELS,
+        lookup_airline, lookup_ground_station, lookup_label, build_acars_metadata_header,
+        format_libacars_data
+    )
 except ImportError:
-    def parse_human_acars(msg, label=None, metadata=None):
-        return msg
+    AIRLINE_MAP = {}
+    GROUND_STATIONS = {}
+    PARSER_ACARS_LABELS = {}
+    def parse_human_acars(msg, label=None, metadata=None): return msg
+    def lookup_airline(f): return ""
+    def lookup_ground_station(a): return ""
+    def lookup_label(l): return ""
+    def build_acars_metadata_header(avlc=None, acars=None, vdl2_frame=None): return ""
+    def format_libacars_data(a=None, x=None, v=None): return ""
 
 logger = logging.getLogger(__name__)
 
-# Kända flygbolagsprefix (IATA & ICAO) för berikad visning i aliasfältet
-AIRLINE_MAP = {
-    'SAS': 'SAS Scandinavian Airlines',
-    'SK': 'SAS Scandinavian Airlines',
-    'NOZ': 'Norwegian Air Shuttle',
-    'NAX': 'Norwegian Air Shuttle',
-    'DY': 'Norwegian Air Shuttle',
-    'NSZ': 'Norwegian Air Sweden',
-    'D8': 'Norwegian Air Sweden',
-    'FIN': 'Finnair',
-    'AY': 'Finnair',
-    'BAW': 'British Airways',
-    'BA': 'British Airways',
-    'DLH': 'Lufthansa',
-    'LH': 'Lufthansa',
-    'KLM': 'KLM Royal Dutch',
-    'KL': 'KLM Royal Dutch',
-    'RYR': 'Ryanair',
-    'FR': 'Ryanair',
-    'WZZ': 'Wizz Air',
-    'W6': 'Wizz Air',
-    'EJU': 'easyJet Europe',
-    'EZY': 'easyJet',
-    'U2': 'easyJet',
-    'SWR': 'Swiss International',
-    'LX': 'Swiss International',
-    'AFR': 'Air France',
-    'AF': 'Air France',
-    'AUA': 'Austrian Airlines',
-    'OS': 'Austrian Airlines',
-    'BRX': 'Braathens Regional Airways',
-    'TF': 'Braathens Regional Airways',
-    'BTI': 'airBaltic',
-    'BT': 'airBaltic',
-    'THY': 'Turkish Airlines',
-    'TK': 'Turkish Airlines',
-    'QTR': 'Qatar Airways',
-    'QR': 'Qatar Airways',
-    'UAE': 'Emirates',
-    'EK': 'Emirates',
-    'ICE': 'Icelandair',
-    'FI': 'Icelandair',
-    'AMF': 'Amapola Flyg',
-    'VKG': 'Sunclass Airlines',
-    'TOM': 'TUI fly',
-    'BLX': 'TUI fly Nordic',
-    'UPS': 'UPS Airlines',
-    'FDX': 'FedEx Express',
-    'BCS': 'European Air Transport (DHL)',
-    'BOX': 'AeroLogic (DHL)',
-    'SWN': 'West Air Sweden',
-    'SRK': 'Swedflight',
-    'WIF': 'Widerøe'
-}
-
-# ACARS Label-koder och deras svenska förklaringar
-ACARS_LABELS = {
-    'SA': 'Länkstatus (Media Advisory)',
-    'B9': 'Begäran om flygplatsväder (ATIS)',
-    'A9': 'Flygplatsväder (ATIS)',
-    'B6': 'Begäran om färdtillstånd (PDC/DCL)',
-    'A6': 'Begäran om färdtillstånd (PDC/DCL)',
-    'BA': 'Oceanic Clearance',
-    'AA': 'Oceanic Clearance',
-    '10': 'Positionsrapport',
-    '14': 'ETA / Beräknad ankomst',
-    '15': 'Positionsrapport (Start / Takeoff)',
-    '16': 'Positionsrapport (Landning / Touchdown)',
-    '20': 'Positionsrapport (Bränsle & Prestanda)',
-    '21': 'Positionsrapport (Motorrapport)',
-    '4J': 'Positionsrapport',
-    'POS': 'Positionsrapport',
-    'H1': 'FMS / Färddator-rapport',
-    'MA': 'MIAM Komprimerad Telemetri',
-    '80': 'Operativt meddelande / Dispatch (OUT)',
-    '81': 'Operativt meddelande / Dispatch (OFF)',
-    '82': 'Operativt meddelande / Dispatch (ON)',
-    '83': 'Operativt meddelande / Dispatch (IN)',
-    'RA': 'Operativt meddelande / Driftrapport',
-    '5U': 'Väderbegäran / METAR',
-    '57': 'Väderbegäran / METAR',
-    'WX': 'Väderbegäran / METAR',
-    '30': 'Väder / METAR / TAF',
-    '44': 'Teknisk flygplansstatus',
-    '4A': 'Motorövervakning (ECM)',
-    '5D': 'Flygplatsväder (ATIS)',
-    '5Z': 'Flygbolagsdata (Airline Designated)',
-    'Q0': 'Länktest (ACARS Link Test)',
-    'Q1': 'Avgångsrapport (OOOI)',
-    'Q2': 'Ankomstrapport (OOOI)',
-    '_d': 'Tom kvittens (ACK)',
-    'SQ': 'Transponder / Squawk',
-    '_': 'Flygledning (ATC)'
-}
+# ACARS Label-koder och deras förklaringar från acars_reference_data.json
+ACARS_LABELS = dict(PARSER_ACARS_LABELS)
 LABEL_MAP = ACARS_LABELS
+
 
 # Kända ICAO-flygplatser och deras namn
 AIRPORT_MAP = {
@@ -313,6 +233,30 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
     }
 
     raw_text = text or ''
+
+    # --- Mönster 0: CSV-positionsrapport (t.ex. Label 83) ---
+    # Exempel: ESSA,HAAB,142029, 58.54,  18.94,22605,305, 166.9, 43000
+    if ',' in raw_text:
+        m_csv = re.search(
+            r'\b([A-Z]{3,4})\s*,\s*([A-Z]{3,4})\s*,\s*(\d{6})\s*,\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*,\s*(\d+)\s*,\s*(\d+\.?\d*)\s*,\s*(\d+\.?\d*)\s*,\s*(\d+)',
+            raw_text
+        )
+        if m_csv:
+            try:
+                res['lat'] = float(m_csv.group(4))
+                res['lon'] = float(m_csv.group(5))
+                res['alt_ft'] = int(m_csv.group(6))
+                spd = float(m_csv.group(7))
+                hdg = float(m_csv.group(8))
+                fuel = m_csv.group(9)
+                res['telemetry']['speed_kt'] = spd
+                res['telemetry']['heading'] = hdg
+                res['telemetry']['fuel_weight'] = fuel
+                fl = round(res['alt_ft'] / 100)
+                res['telemetry_summary'] = f"FL{fl} ({res['alt_ft']:,} ft) | Fart: {spd:.0f} kt | Kurs: {hdg:.0f}°"
+                return res
+            except (ValueError, TypeError):
+                pass
 
     # --- Mönster 1: Airbus MIAM / FDIMU semikolon-format ---
     # Exempel: ;PAALT,41001;PALAT,5.875309E+01;PALONG,1.543292E+01;PASAT,-6.347548E+01;...
@@ -824,16 +768,7 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
         address = "VDL2"
 
     # 6. Bestäm Alias (Flygbolagsnamn)
-    airline_name = ""
-    if flight:
-        p3 = flight[:3]
-        if p3 in AIRLINE_MAP:
-            airline_name = AIRLINE_MAP[p3]
-        else:
-            p2 = flight[:2]
-            if p2 in AIRLINE_MAP:
-                airline_name = AIRLINE_MAP[p2]
-
+    airline_name = lookup_airline(flight) if flight else ""
     alias = airline_name if airline_name else (reg if reg else (f"Flygplan {src_addr}" if src_addr else "VDL2 Flygplan"))
 
     # 7. Formatera meddelandesträng med etiketter och telemetri
@@ -857,17 +792,25 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
         formatted_msg_parts.append(f"{label_prefix}{humanized_msg}")
 
     if telemetry_summary:
-        if telemetry_summary not in humanized_msg:
+        if telemetry_summary not in humanized_msg and "Fart: " not in humanized_msg:
             formatted_msg_parts.append(f"[{telemetry_summary}]")
 
     full_message = " | ".join(formatted_msg_parts) if formatted_msg_parts else (humanized_msg or msg_text)
     
     if lat is not None and lon is not None:
         coord_str = f"Lat: {lat:.4f}, Lon: {lon:.4f}"
-        if coord_str not in full_message:
+        if coord_str not in full_message and "Pos: " not in full_message and "Position: " not in full_message:
             full_message += f" | {coord_str}"
 
     full_message = parse_human_acars(full_message, label=label, metadata=acars)
+
+    # Bygg kompakt ACARSHUB-metadata header för VDL2/ACARS-meddelanden
+    meta_header = build_acars_metadata_header(avlc=avlc, acars=acars, vdl2_frame=vdl2)
+    if meta_header:
+        if full_message:
+            full_message = f"{meta_header}\n{full_message}"
+        else:
+            full_message = meta_header
 
     bitrate_str = "VDL2-CPDLC" if cpdlc_text else ("VDL2-MIAM" if is_miam else ("VDL2-ACARS" if label else "VDL2"))
 

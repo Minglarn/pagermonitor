@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.14.29`
+- **CalVer**: `2026.10.14.31`
 - **Date**: 2026-10-14
 - **Language**: English / Swedish
 
@@ -1760,6 +1760,52 @@
   - `vdl2_receiver.py` importerar `parse_human_acars` och kör meddelandetexten genom parsern under avkodningen.
 - **Verifiering**:
   - Samtliga 53 enhetstester godkända (`python -m unittest discover tests`).
+
+### 58. ACARSHUB Metadata-extrahering och Label 83 CSV-positionsrapporter (v2026.10.14.30)
+- **ACARSHUB-liknande Metadata-extrahering ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Extraherar detaljerade fält ur `vdl2`-strukturen (`avlc`, `src`, `dst`, `acars`) och bygger en kompakt och elegant metadata-rad överst i varje meddelande:
+    `[Reg: ET-ATK | Flight: ET0715 (Ethiopian Airlines) | ICAO: 040127 | To: 119AAA (Arlanda Airport ESSA) | On Ground: No | Mode: 2 | Msg: M37A]`.
+  - Inkluderar:
+    - **Tail / Reg**: Rensar eventuella inledande punkter (`.ET-ATK` -> `ET-ATK`).
+    - **Flight / Callsign**: Kopplas automatiskt mot flygbolagsnamn via prefix-tabell (`ET0715 (Ethiopian Airlines)`).
+    - **ICAO Hex-adress**: Identifierar sändande flygplans ICAO-kod (`040127`).
+    - **Ground Station / To Address**: Slår upp kända markstationer i `GROUND_STATIONS` (`119AAA (Arlanda Airport ESSA)`).
+    - **On Ground status**: Visar tydligt `On Ground: Yes` eller `On Ground: No` baserat på `avlc.src.status`.
+    - **ACARS Länkdetaljer**: Visar `Mode`, `Block ID`, `Msg No` (`msg_num` + `msg_num_seq`) och `ACK`.
+- **Modulära Uppslagstabeller**:
+  - Samlat all flygbolags- och markstationslogik i `acars_human_parser.py`:
+    - `AIRLINE_MAP`: Prefix-karta med både 2-ställiga IATA- och 3-ställiga ICAO-koder (Ethiopian Airlines, SAS, Finnair, Norwegian, Lufthansa, British Airways, KLM, Air France, Ryanair, Wizz Air, airBaltic, Qatar Airways, Emirates, Turkish Airlines m.fl.).
+    - `GROUND_STATIONS`: Markstationstabell (t.ex. `119AAA` och `1153706` -> `Arlanda Airport ESSA`).
+    - Funktioner: `lookup_airline()`, `lookup_ground_station()`, `build_acars_metadata_header()`.
+- **Mönster för Label 83 CSV-positionsrapporter**:
+  - Implementerat `rule_label_83_csv_position` för 9-fälts kommaseparerade positionsrapporter:
+    - Råtext: `ESSA,HAAB,142029, 58.54,  18.94,22605,305, 166.9, 43000`
+    - Formateras till: `Rutt: ESSA -> HAAB | Tid: 20:29 UTC | Pos: 58.54, 18.94 | Höjd: 22605 ft | Fart: 305 kt | Kurs: 166.9 deg | Bränsle/Vikt: 43000`
+  - Koordinater och telemetri (`lat=58.54`, `lon=18.94`, `alt_ft=22605`, `speed_kt=305`, `heading=166.9`) extraheras direkt i `extract_position_and_telemetry()` så att planet plottas på kartan och visas i UI.
+- **Verifiering**:
+  - Samtliga 60 enhetstester godkända (`python -m unittest discover tests`).
+  - Verifierat att koden och meddelandetexterna är 100% fria från emojis.
+
+### 59. Global Referensdatabas (acars_reference_data.json), Libacars-tolkning och Airframes Decoder-mönster (v2026.10.14.31)
+- **Global Referensdatabas ([acars_reference_data.json](file:///d:/antigravity/pager-monitor/acars_reference_data.json))**:
+  - Automatiserad extrahering och aggregering av referensdata från ACARSHUB och Airframes GitHub-repon:
+    - **183 ACARS Labels**: Standardetiketter (`_d`, `H1`, `SA`, `80`-`89`, `10`-`5Z`, `Q0`, `QA`-`QZ`, `RA`, `B6` m.fl.) med beskrivande texter.
+    - **1 711 Flygbolag**: Fullständig koppling mellan IATA 2-bokstavs och ICAO 3-bokstavskoder till officiella flygbolagsnamn.
+    - **4 904 Markstationer**: SITA/ARINC-adresser i både hexadecimalt och decimalt format mappade till flygplatsnamn och ICAO-koder (t.ex. `Arlanda Airport (ESSA)`).
+- **Libacars Direkt-tolkning ur Dumpvdl2 JSON ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Funktionen `format_libacars_data()` extraherar strukturerad data som libacars redan har avkodat i `arinc622.adsc`, `ats`, `cpdlc`, `miam` och `xid`.
+  - Presenterar telemetri: position, höjd, vindhastighet/riktning, temperatur och VDL2 handover-status.
+- **Utökade Avkodningsmönster (Portade från Airframes ACARS-Decoder)**:
+  - **Label H1**: Färdplaner (`FPN/RI`, ICAO FPL med automatisk ruttidentifiering `ESSA -> EKCH`), `INI` flygförberedelser, `RESREQ` resurskvittenser och `MM`/`DFB`/`CFB` matrisloggar.
+  - **Label 10-4Z & 80-89**: Finnair Label 38, Ethiopian Label 83 CSV-position, SAS Label 83 ETA, Airframes Variant 2 (`4DH3 ETAT2`) samt OOOI (`OUT`, `OFF`, `ON`, `IN`).
+  - **Label SA**: Fullständig Media Advisory-tolkning (upprättad/förlorad länk och tillgängliga länkar VHF, VDL2, SATCOM, HF).
+  - **Label Q0 / 5U / 5Z / B6 / RA**: Länktest, METAR/TAF väderbegäran, CPDLC klareringar och dispatch-kommandon.
+  - **Generell Fallback-extraktion**: Extraherar automatiskt rutt (`ORIG/DEST`), `ETA`, flygnivå (`FL`) och koordinater ur okända meddelanden och sammanfattar dem före råtexten.
+- **Verifiering**:
+  - Samtliga 67 enhetstester godkända (`python -m unittest discover tests`).
+  - Verifierat att koden och meddelandetexterna är 100% fria från emojis.
+
+
 
 
 
