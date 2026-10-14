@@ -303,6 +303,34 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <!-- Subtle Divider -->
+                                    <div style="border-top: 1px solid var(--panel-border); margin: 0.85rem 0;"></div>
+
+                                    <!-- RDS Heartbeat Settings -->
+                                    <div>
+                                        <div style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; color: var(--text-primary); margin-bottom: 0.25rem;">
+                                            <i class="fas fa-heartbeat" style="color: var(--accent); font-size: 0.8rem;"></i>
+                                            RDS / FM Realtidspuls (Heartbeat)
+                                        </div>
+                                        <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.35; margin: 0 0 0.65rem 0;">
+                                            Periodisk loggning av stationssynk och blocktakt i bakgrunden även när inga TMC- eller textmeddelanden tas emot.
+                                        </p>
+                                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                            <div style="flex: 1; min-width: 140px;">
+                                                <label for="rds_heartbeat_interval" style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">
+                                                    Loggintervall (sekunder)
+                                                </label>
+                                                <input type="number" id="rds_heartbeat_interval" class="form-input" min="2" max="120" step="1" value="10">
+                                            </div>
+                                            <div style="flex: 1; min-width: 140px;">
+                                                <label for="rds_heartbeat_timeout" style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">
+                                                    Bortfallsgräns (sekunder)
+                                                </label>
+                                                <input type="number" id="rds_heartbeat_timeout" class="form-input" min="1" max="60" step="1" value="5">
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -954,6 +982,8 @@
             const tetraScanModeEl = document.getElementById('tetra_scan_mode');
             const tetraDwellEl = document.getElementById('tetra_dwell_time');
             const tetraSkipEncEl = document.getElementById('tetra_skip_encrypted');
+            const rdsHbIntEl = document.getElementById('rds_heartbeat_interval');
+            const rdsHbToEl = document.getElementById('rds_heartbeat_timeout');
             saveSettings({
                 message_font: fontSelect.value,
                 message_font_size: fontSlider.value,
@@ -964,7 +994,9 @@
                 log_tetra_basestations: (logTetraEl && logTetraEl.checked) ? 'true' : 'false',
                 tetra_scan_mode: tetraScanModeEl ? tetraScanModeEl.value : 'monitor',
                 tetra_dwell_time: tetraDwellEl ? tetraDwellEl.value : '60',
-                tetra_skip_encrypted: (tetraSkipEncEl && tetraSkipEncEl.checked) ? 'true' : 'false'
+                tetra_skip_encrypted: (tetraSkipEncEl && tetraSkipEncEl.checked) ? 'true' : 'false',
+                rds_heartbeat_interval: rdsHbIntEl ? rdsHbIntEl.value : '10',
+                rds_heartbeat_timeout: rdsHbToEl ? rdsHbToEl.value : '5'
             });
         }, 400);
 
@@ -1010,6 +1042,15 @@
                     const tetraSkipEncEl = document.getElementById('tetra_skip_encrypted');
                     if (tetraSkipEncEl) {
                         tetraSkipEncEl.checked = (data.tetra_skip_encrypted === 'true');
+                    }
+
+                    const rdsHbIntEl = document.getElementById('rds_heartbeat_interval');
+                    if (rdsHbIntEl && data.rds_heartbeat_interval) {
+                        rdsHbIntEl.value = data.rds_heartbeat_interval;
+                    }
+                    const rdsHbToEl = document.getElementById('rds_heartbeat_timeout');
+                    if (rdsHbToEl && data.rds_heartbeat_timeout) {
+                        rdsHbToEl.value = data.rds_heartbeat_timeout;
                     }
 
                     document.getElementById('filterSensitivityGroup').style.display =
@@ -1228,6 +1269,20 @@
             const tetraSkipEncEl = document.getElementById('tetra_skip_encrypted');
             if (tetraSkipEncEl) {
                 tetraSkipEncEl.addEventListener('change', () => {
+                    debouncedSaveAppearance();
+                });
+            }
+
+            const rdsHbIntEl = document.getElementById('rds_heartbeat_interval');
+            if (rdsHbIntEl) {
+                rdsHbIntEl.addEventListener('input', () => {
+                    debouncedSaveAppearance();
+                });
+            }
+
+            const rdsHbToEl = document.getElementById('rds_heartbeat_timeout');
+            if (rdsHbToEl) {
+                rdsHbToEl.addEventListener('input', () => {
                     debouncedSaveAppearance();
                 });
             }

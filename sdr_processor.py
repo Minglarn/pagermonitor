@@ -263,6 +263,18 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
             if int(config.get('multimon_verbosity', '1')) >= 2:
                 logger.debug(f"[{config['name']}] RAW_ALL: {line}")
 
+            if line.startswith("RDS-HEARTBEAT:"):
+                payload = line[len("RDS-HEARTBEAT:"):].strip()
+                if payload.startswith("OK"):
+                    hb_msg = payload[2:].strip()
+                    logger.info(f"[{config['name']}] HEARTBEAT -> {hb_msg}")
+                elif payload.startswith("LOST"):
+                    hb_msg = payload[4:].strip()
+                    logger.warning(f"[{config['name']}] HEARTBEAT FÖRLORAD -> {hb_msg}")
+                else:
+                    logger.info(f"[{config['name']}] HEARTBEAT -> {payload}")
+                continue
+
             if line.startswith("RDS:") or line.startswith("RDS-INFO:"):
                 # Vanlig RDS stationsinformation (t.ex. PS eller PI)
                 # Detta är stationsidentifiering - logga som INFO så användaren ser vilken radiokanal som tas emot
@@ -808,10 +820,15 @@ def start_instance(config):
     
     elif protocol == 'RDS-TMC':
         rds_script = os.path.join(os.path.dirname(__file__), 'rds_decoder.py')
+        current_settings = get_settings()
+        hb_interval = current_settings.get('rds_heartbeat_interval', '10')
+        hb_timeout = current_settings.get('rds_heartbeat_timeout', '5')
         decoder_cmd = [
             sys.executable, rds_script,
             '--freq', freq
         ]
+        if hb_interval: decoder_cmd.extend(['--heartbeat-interval', str(hb_interval)])
+        if hb_timeout: decoder_cmd.extend(['--heartbeat-timeout', str(hb_timeout)])
         if serial: decoder_cmd.extend(['--device', serial])
         if gain and gain != 'auto': decoder_cmd.extend(['--gain', str(gain)])
         if ppm and ppm != '0': decoder_cmd.extend(['--ppm', str(ppm)])

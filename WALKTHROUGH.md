@@ -1196,3 +1196,45 @@
 - **Verifiering**:
   - Samtliga 25 enhetstester passerar felfritt.
   - Versionsbump till CalVer `2026.10.14.02`.
+
+---
+
+### 36. Egen Bakgrundsfärg för Basstationer i Larm- och Meddelandeflödet (v2026.10.14.03)
+- **Problembeskrivning**:
+  - Användaren önskade att basstationsrader ska ha en egen, distinkt bakgrundsfärg i meddelandeflödet så att de omedelbart skiljer sig från vanliga personsökarlarm och utryckningar.
+- **Teknisk Implementering**:
+  - **CSS-färgprofil för `.basestation-row` ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+    - **Ljust tema:** Mjuk ljusblå/azur ton (`#f0fdfa` och `#e0f2fe`) med en markerad azurblå vertikal kantlist (`border-left: 4px solid #0284c7`).
+    - **Mörkt tema:** Diskret cyan ton (`rgba(6, 182, 212, 0.08..0.15)`) med en vertikal kantlist i cyan (`border-left: 4px solid #06b6d4`).
+    - Hover-effekt med mjukt ökad färgintensitet.
+  - **Radklassning i JavaScript ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+    - `createAlarmRowNode` kontrollerar om raden är en basstation (`TETRA-NET`, `RAKEL-`, `TETRA-`, alias innehållande `Basstation` eller meddelande med `Aktiv TETRA Basstation`).
+    - Basstationer tilldelas automatiskt klassen `basestation-row`.
+    - I larmlistan tilldelas basstationen en dedikerad ljusblå `BASE`-tagg istället för en röd larm-tagg.
+- **Verifiering**:
+  - Samtliga 25 enhetstester passerar felfritt.
+  - Versionsbump till CalVer `2026.10.14.03`.
+
+---
+
+### 37. Realtidspuls (Heartbeat) för RDS-mottagning och Stationssynk (v2026.10.14.04)
+- **Problembeskrivning**:
+  - RDS sänder bärvåg och grupper kontinuerligt (flera gånger i sekunden), men trafikmeddelanden (TMC) och radiotext inträffar sporadiskt. Det saknades visuell bekräftelse i loggarna på att radiomottagaren har aktiv synk och godkända RDS-block när inga användarmeddelanden sänds.
+- **Teknisk Implementering**:
+  - **Trådsäker Pulsmätare ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Skapade `record_rds_frame(pi, ps, count)` skyddad av `threading.Lock()`. Varje mottagen rad från `redsea` som avkodas korrekt betraktas som en rå puls och ökar ramräknaren samt uppdaterar senaste aktivitetstid och senast sedda PI/PS.
+    - Även testflödet simulerar kontinuerlig mottagning med ~11.2 ramar/s.
+  - **Bakgrundsövervakare ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Dedikerad bakgrundstråd (`_heartbeat_worker`) som kontrollerar status oberoende av I/O-blockeringar på `redsea`:s stdout.
+    - Konfigurerbart intervall via `--heartbeat-interval` (standard: 10s) och timeout via `--heartbeat-timeout` (standard: 5s).
+    - Vid godkänd signal matas `RDS-HEARTBEAT: OK Station: {ps} (PI: {pi}) | Status: SYNKERAD | Takt: {rate:.1f} ramar/s | Senaste aktivitet: {elapsed:.1f}s sedan` ut till stdout.
+    - Vid signalförlust (> timeout) matas `RDS-HEARTBEAT: LOST Ingen RDS-signal detekterad på {elapsed:.1f}s (Signalbortfall eller frekvens saknar RDS)` ut.
+  - **Processorns Loggning ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - I `monitor_instance()` fångas `RDS-HEARTBEAT:` upp och loggas med `logger.info` vid synk och `logger.warning` vid signalbortfall, vilket ger användaren tydliga loggrader:
+      `INFO: [RDS] HEARTBEAT -> Station: SR P4 (PI: 0xE204) | Status: SYNKERAD | Takt: 11.2 ramar/s | Senaste aktivitet: 0.1s sedan`
+  - **Webbgränssnitt ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+    - Lade till konfigurationsfält för `rds_heartbeat_interval` och `rds_heartbeat_timeout` under inställningar med omedelbar direktsparning.
+- **Verifiering**:
+  - Samtliga 26 enhetstester passerar felfritt, inklusive `test_rds_heartbeat_logging`.
+  - Versionsbump till CalVer `2026.10.14.04`.
+

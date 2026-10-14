@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.04] - Realtidspuls (Heartbeat) för RDS-mottagning och Stationssynk
+
+### Added
+- **Trådsäker Pulsmekanism för RDS (`rds_decoder.py`)**:
+  - Implementerat en kontinuerlig pulsmätare (`record_rds_frame`) som räknar varje giltig, checksum-validerad RDS-ram/grupp som levereras av `redsea` eller testflödet.
+  - Håller kontinuerlig koll på:
+    - Tidpunkt för senaste godkända ram (`last_frame_time`).
+    - Senast identifierade stationsnamn (PS, t.ex. `SR P4`) och programidentifieringskod (PI, t.ex. `0xE204`).
+    - Antal mottagna ramar sedan senaste pulskontroll.
+    - Beräknad blocktakt (ramar per sekund).
+- **Bakgrundsövervakare med Konfigurerbart Intervall (`rds_decoder.py`)**:
+  - Dedikerad bakgrundstråd (`_heartbeat_worker`) som kontrollerar status oberoende av I/O-blockeringar på `redsea`:s stdout.
+  - Stödjer CLI-argument `--heartbeat-interval` (standard: 10s) och `--heartbeat-timeout` (standard: 5s).
+- **Integrerad Logghantering i Processorn (`sdr_processor.py`)**:
+  - Fångar upp pulshändelser från avkodaren:
+    - Vid synk: `INFO: [RDS] HEARTBEAT -> Station: SR P4 (PI: 0xE204) | Status: SYNKERAD | Takt: 11.2 ramar/s | Senaste aktivitet: 0.1s sedan`
+    - Vid signalbortfall (> 5s): `WARNING: [RDS] HEARTBEAT FÖRLORAD -> Ingen RDS-signal detekterad på 5.2s (Signalbortfall eller frekvens saknar RDS)`
+- **Inställningar i Webbgränssnittet (`settings.html`, `database.py`)**:
+  - Lagt till styrning av loggintervall och bortfallsgräns direkt under fliken för signalinställningar med automatisk direktsparning.
+
+## [2026.10.14.03] - Egen Bakgrundsfärg för Basstationer i Larm- och Meddelandeflödet
+
+### Added
+- **Egen Färgprofil för Basstationsrader (`index.html`, `larm.html`)**:
+  - Implementerat en distinkt, mjuk cyan/himmelsblå bakgrundston för basstationsrader (`.basestation-row`) i både dashboarden och larmlistan:
+    - **Ljust tema:** Mjuk ljusblå/mint ton (`#f0fdfa` / `#e0f2fe`) med en vertikal accentkant i azurblått (`#0284c7`).
+    - **Mörkt tema:** Diskret cyan ton (`rgba(6, 182, 212, 0.08..0.15)`) med en vertikal accentkant i cyan (`#06b6d4`).
+  - I larmlistan visas basstationer med en dedikerad ljusblå `BASE`-tagg istället för generisk röd larm-tagg.
+  - Förbättrar överskådligheten och skiljer radioinfrastruktur/bärvågor från faktiska personsökar- och larmutryckningar.
+
 ## [2026.10.14.02] - RDS-TMC Grupp 3A Handskakning & Strikt Stationsvalidering (ALERT-C)
 
 ### Added

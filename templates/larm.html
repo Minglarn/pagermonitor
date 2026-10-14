@@ -190,6 +190,23 @@
             background: rgba(239, 68, 68, 0.24) !important;
         }
 
+        /* Base station row striping (TETRA / RAKEL basstationer) */
+        table.dataTable.larm-dt tbody tr.basestation-row td:first-child {
+            border-left: 4px solid #06b6d4 !important;
+        }
+        table.dataTable.larm-dt tbody tr.basestation-row td {
+            border-bottom-color: rgba(6, 182, 212, 0.2) !important;
+        }
+        table.dataTable.larm-dt tbody tr.basestation-row:nth-child(odd) td {
+            background: rgba(6, 182, 212, 0.08) !important;
+        }
+        table.dataTable.larm-dt tbody tr.basestation-row:nth-child(even) td {
+            background: rgba(6, 182, 212, 0.15) !important;
+        }
+        table.dataTable.larm-dt tbody tr.basestation-row:hover td {
+            background: rgba(6, 182, 212, 0.24) !important;
+        }
+
         /* Light Theme Table Striping */
         [data-theme="light"] table.dataTable.larm-dt thead th {
             background: #ffffff !important;
@@ -206,6 +223,23 @@
 
         [data-theme="light"] table.dataTable.larm-dt tbody tr:hover {
             background: #fecaca !important;
+        }
+
+        /* Light Theme Base station row striping */
+        [data-theme="light"] table.dataTable.larm-dt tbody tr.basestation-row td:first-child {
+            border-left: 4px solid #0284c7 !important;
+        }
+        [data-theme="light"] table.dataTable.larm-dt tbody tr.basestation-row td {
+            border-bottom-color: rgba(2, 132, 199, 0.25) !important;
+        }
+        [data-theme="light"] table.dataTable.larm-dt tbody tr.basestation-row:nth-child(odd) td {
+            background: #f0fdfa !important;
+        }
+        [data-theme="light"] table.dataTable.larm-dt tbody tr.basestation-row:nth-child(even) td {
+            background: #e0f2fe !important;
+        }
+        [data-theme="light"] table.dataTable.larm-dt tbody tr.basestation-row:hover td {
+            background: #bae6fd !important;
         }
 
         table.dataTable.larm-dt tbody td {
@@ -674,7 +708,19 @@
         function createAlarmRowNode(alarm) {
             const tr = document.createElement('tr');
             tr.setAttribute('data-id', alarm.id);
-            tr.className = 'alert-row';
+
+            const isBasestation = (
+                (alarm.bitrate && String(alarm.bitrate).includes('TETRA-NET')) ||
+                (alarm.address && (String(alarm.address).startsWith('RAKEL-') || String(alarm.address).startsWith('TETRA-'))) ||
+                (alarm.alias && (String(alarm.alias).includes('Basstation') || String(alarm.alias).includes('Basestation'))) ||
+                (alarm.message && (String(alarm.message).includes('Aktiv TETRA Basstation') || String(alarm.message).includes('Aktiv Basstation på') || String(alarm.message).includes('Aktiv Basstation')))
+            );
+
+            if (isBasestation) {
+                tr.className = 'basestation-row';
+            } else {
+                tr.className = 'alert-row';
+            }
 
             const match = findMatchingAlert(alarm.message);
             const hitWord = alarm.alert_word || (match ? match.word : 'ALARM');
@@ -715,7 +761,9 @@
             const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
             const repeatTag = (alarm.repeat_count && alarm.repeat_count > 1) ? `<span class="badge repeat-badge meta" title="Repeated ${alarm.repeat_count} times">${alarm.repeat_count}x</span>` : '';
 
-            const hitBadge = `<span class="badge" style="background: ${hitColor}22; color: ${hitColor}; border: 1px solid ${hitColor}66; font-weight: 700; text-transform: uppercase;"><i class="fas fa-tag" style="margin-right: 4px; font-size: 0.75rem;"></i>${hitWord}</span>`;
+            const hitBadge = isBasestation ?
+                `<span class="badge" style="background: rgba(6, 182, 212, 0.15); color: #0284c7; border: 1px solid rgba(6, 182, 212, 0.4); font-weight: 700; text-transform: uppercase;"><i class="fas fa-broadcast-tower" style="margin-right: 4px; font-size: 0.75rem;"></i>BASE</span>` :
+                `<span class="badge" style="background: ${hitColor}22; color: ${hitColor}; border: 1px solid ${hitColor}66; font-weight: 700; text-transform: uppercase;"><i class="fas fa-tag" style="margin-right: 4px; font-size: 0.75rem;"></i>${hitWord}</span>`;
 
             tr.innerHTML = `
                 <td class="id-cell">${alarm.id}</td>

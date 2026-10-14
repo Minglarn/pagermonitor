@@ -43,7 +43,9 @@ def get_default_settings():
         'log_tetra_basestations': 'true',
         'tetra_scan_mode': 'monitor',
         'tetra_dwell_time': '60',
-        'tetra_skip_encrypted': 'false'
+        'tetra_skip_encrypted': 'false',
+        'rds_heartbeat_interval': '10',
+        'rds_heartbeat_timeout': '5'
     }
 
 def init_db():

@@ -16,9 +16,101 @@ import subprocess
 import signal
 import atexit
 import re
+import threading
 
 _shutdown_requested = False
 _current_child_proc = None
+
+# Heartbeat / Pulsmätare för RDS-mottagning
+_heartbeat_lock = threading.Lock()
+_heartbeat_stats = {
+    'last_frame_time': time.time(),
+    'last_pi': None,
+    'last_ps': None,
+    'frames_since_last_pulse': 0,
+    'last_pulse_log_time': time.time(),
+    'heartbeat_interval': 10.0,
+    'heartbeat_timeout': 5.0,
+    'has_received_any_frame': False
+}
+_heartbeat_thread_started = False
+
+def record_rds_frame(pi=None, ps=None, count=1):
+    """
+    Registrerar en eller flera giltiga mottagna RDS-ramar med korrekt checksumma.
+    Uppdaterar timestamp för senaste aktivitet och sparar senaste kända PI och PS.
+    """
+    now = time.time()
+    with _heartbeat_lock:
+        _heartbeat_stats['last_frame_time'] = now
+        _heartbeat_stats['frames_since_last_pulse'] += count
+        _heartbeat_stats['has_received_any_frame'] = True
+        if pi:
+            pi_clean = str(pi).strip()
+            if not pi_clean.startswith("0x") and not pi_clean.startswith("0X"):
+                pi_clean = f"0x{pi_clean.upper()}"
+            _heartbeat_stats['last_pi'] = pi_clean
+        if ps:
+            ps_clean = str(ps).strip()
+            if ps_clean:
+                _heartbeat_stats['last_ps'] = ps_clean
+
+def _heartbeat_worker():
+    """
+    Trådsäker bakgrundsövervakare som periodiskt kontrollerar och loggar
+    RDS-mottagningens puls och synkstatus.
+    """
+    while not _shutdown_requested:
+        time.sleep(0.5)
+        now = time.time()
+        with _heartbeat_lock:
+            interval = _heartbeat_stats['heartbeat_interval']
+            timeout = _heartbeat_stats['heartbeat_timeout']
+            last_log = _heartbeat_stats['last_pulse_log_time']
+            last_frame = _heartbeat_stats['last_frame_time']
+            has_received = _heartbeat_stats['has_received_any_frame']
+            count = _heartbeat_stats['frames_since_last_pulse']
+            pi = _heartbeat_stats['last_pi']
+            ps = _heartbeat_stats['last_ps']
+
+            if (now - last_log) < interval:
+                continue
+
+            time_since_last_frame = now - last_frame
+            time_window = max(0.1, now - last_log)
+
+            # Nollställ räknare för nästa intervall
+            _heartbeat_stats['last_pulse_log_time'] = now
+            _heartbeat_stats['frames_since_last_pulse'] = 0
+
+        # Kontrollera mottagningens synk och aktivitet
+        if has_received and time_since_last_frame <= timeout:
+            rate = count / time_window
+            station_str = ps if ps else "FM"
+            pi_str = pi if pi else "0x0000"
+            print(
+                f"RDS-HEARTBEAT: OK Station: {station_str} (PI: {pi_str}) | "
+                f"Status: SYNKERAD | Takt: {rate:.1f} ramar/s | Senaste aktivitet: {time_since_last_frame:.1f}s sedan",
+                flush=True
+            )
+        else:
+            print(
+                f"RDS-HEARTBEAT: LOST Ingen RDS-signal detekterad på {time_since_last_frame:.1f}s (Signalbortfall eller frekvens saknar RDS)",
+                flush=True
+            )
+
+def start_heartbeat_monitor(interval=10.0, timeout=5.0):
+    """Startar bakgrundstråden för RDS-pulsövervakning."""
+    global _heartbeat_thread_started
+    with _heartbeat_lock:
+        _heartbeat_stats['heartbeat_interval'] = float(interval)
+        _heartbeat_stats['heartbeat_timeout'] = float(timeout)
+        _heartbeat_stats['last_pulse_log_time'] = time.time()
+        _heartbeat_stats['last_frame_time'] = time.time()
+        if not _heartbeat_thread_started:
+            t = threading.Thread(target=_heartbeat_worker, daemon=True)
+            t.start()
+            _heartbeat_thread_started = True
 
 def _cleanup_on_exit():
     global _current_child_proc
@@ -374,6 +466,11 @@ def parse_redsea_json_line(line_str):
     except json.JSONDecodeError:
         return None
 
+    # Registrera giltig mottagen RDS-ram/grupp i pulsmätaren
+    pi_val = data.get("pi")
+    ps_val = data.get("ps")
+    record_rds_frame(pi=pi_val, ps=ps_val, count=1)
+
     group_type = str(data.get("group", "")).upper()
 
     # 1. Kontrollera Grupp 3A: Handskakning och Systeminformation (ALERT-C AID: 0xCD46, LTN: 1)
@@ -538,6 +635,7 @@ def run_test_feed(freq="103.3M"):
     print(f"RDS-TMC Decoder: Testflöde aktivt på {freq} (Genererar ALERT-C trafikmeddelanden)...", file=sys.stderr, flush=True)
     format_and_print_lock(freq, "Testflöde / Simulering aktiv")
     format_and_print_rds(ps="SR P4", pi="0xE204")
+    record_rds_frame(pi="0xE204", ps="SR P4", count=1)
     time.sleep(1.0)
 
     sample_events = [
@@ -552,6 +650,8 @@ def run_test_feed(freq="103.3M"):
 
     idx = 0
     while not _shutdown_requested:
+        # Simulera kontinuerlig mottagen RDS-puls (t.ex. ~11.2 ramar/sekund över 4 sekunder = 45 ramar)
+        record_rds_frame(pi="0xE204", ps="SR P4", count=45)
         loc_code, ev_code, urgency, duration, extent, dir_val = sample_events[idx % len(sample_events)]
         loc_info = lookup_location(loc_code)
         ev_text = translate_alert_c_event(ev_code)
@@ -583,7 +683,12 @@ def main():
     parser.add_argument("--ppm", default="0", help="PPM error correction")
     parser.add_argument("--test-feed", action="store_true", help="Run synthetic test feed")
     parser.add_argument("--stdin", action="store_true", help="Read redsea JSON stream from standard input")
+    parser.add_argument("--heartbeat-interval", type=float, default=10.0, help="Intervall i sekunder mellan pulskontroller (default: 10.0)")
+    parser.add_argument("--heartbeat-timeout", type=float, default=5.0, help="Tidsgräns i sekunder innan puls anses förlorad (default: 5.0)")
     args = parser.parse_args()
+
+    # Starta bakgrundstråd för realtidspuls
+    start_heartbeat_monitor(interval=args.heartbeat_interval, timeout=args.heartbeat_timeout)
 
     # Om stdin skickas explicit via flagga --stdin
     if args.stdin:
