@@ -1491,3 +1491,25 @@
   - Testat rå 8A injicering mot P3 PI `0xE203`: Mottagaren rapporterar korrekt `sänder inte RDS-TMC` och låser inte (`tmc_active = False`).
   - Testat syntetisk ALERT-C injicering med `python rds_decoder.py --test-tmc`: Framgångsrik avkodning av Grupp 3A och Grupp 8A med korrekt generering av `RDS-TMC: LOC: 14502 ...`.
   - Samtliga 62 enhetstester passerar med 100% godkänt resultat.
+
+### 48. Inbyggd ALERT-C ISO 14819-1 Parser för SR P3 & P4 samt Utökade Snabbval (v2026.10.14.20)
+- **Bakgrund och Problem**:
+  - Sveriges Radio P3 (FM 99.3 MHz, m.fl.) är det officiella rikstäckande distributionsnätet för Trafikverkets RDS-TMC i Sverige (medan P4 sänder regional röstbaserad trafikinformation).
+  - Vid mottagning på 99.3 MHz togs faktiska Grupp 8A trafikmeddelanden emot i realtid, men visades inte i webbflödet eftersom redsea internt kräver en Grupp 3A ODA-handskakning innan den tillåter sin interna TMC-avkodare att producera JSON (`if (!is_initialized_) return;`). På sändare där Grupp 3A sänds med långa intervall kastades därmed alla 8A-block.
+- **Teknisk Implementering**:
+  - **Inbyggd ALERT-C Avkodare ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Skapat klassen `AlertCDecoder` som avkodar ALERT-C ISO 14819-1 direkt från råa RDS-block (asHex).
+    - Avkodar både single-group meddelanden (Block 2 F=1, Block 3 händelsekod/riktning/omfattning, Block 4 platskod) och multi-group sekvenser.
+    - Detta eliminerar helt beroendet av att redsea måste ha sett Grupp 3A först.
+  - **Rådataströmsflagga `-R` i Redsea ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Ändrat redsea-kommandot till `["redsea", "-r", "171k", "-R"]` vilket garanterar att `raw_data` alltid skickas med per rad.
+  - **Erkännande av SR P3 och Utökad Stationslista ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py), [templates/sdr_settings.html](file:///d:/antigravity/pager-monitor/templates/sdr_settings.html))**:
+    - Uppdaterat `is_sr_tmc_station` och pulsmätaren att erkänna både SR P3 (PI `0xE203`) och SR P4 som officiella TMC-källor.
+    - Endast SR P1 (`0xE201`) och SR P2 (`0xE202`) klassas som icke-TMC.
+    - Lagt till SR P3-sändare (Stockholm/Kisa 99.3 MHz, Göteborg 99.4 MHz, Hörby 97.0 MHz, Uppsala 96.6 MHz, Norrköping 94.8 MHz, Västerås 98.0 MHz, m.fl.) i `SR_TMC_STATIONS` och i snabbvalsdropdownen under SDR-inställningar.
+  - **Versionsspårbarhet**:
+    - Uppdaterat versionsnummer till CalVer `2026.10.14.20` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+- **Verifiering**:
+  - Testat avkodning av rått 8A-block `E203 8049 0865 38A6` (mottaget på P3 99.3 MHz): Avkodas direkt till `LOC: 14502 ROAD: E4 NAME: Trafikplats Nyköping Norra (Avfart 134) MSG: Trafikolycka`.
+  - Verifierat syntetisk injicering med `--test-tmc`.
+  - Samtliga 62 enhetstester i pytest passerar utan anmärkning.

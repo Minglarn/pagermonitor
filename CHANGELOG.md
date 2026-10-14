@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.20] - Inbyggd ALERT-C ISO 14819-1 Parser för SR P3 & P4 samt Utökade Snabbval
+
+### Added
+- **Inbyggd ALERT-C Parser (`AlertCDecoder` i `rds_decoder.py`)**:
+  - Implementerat en ISO 14819-1 avkodare som tolkar råa RDS-block (asHex) för Grupp 8A direkt i Python.
+  - Löser problemet med att `redsea` kastar 8A-trafikmeddelanden om den ännu inte tagit emot Grupp 3A ODA-handskakning.
+  - Stödjer både single-group och multi-group meddelanden och avkodar händelsekod, omfattning, riktning och numeriskt plats-ID direkt till svenska vägnamn och koordinater.
+- **Fullt Stöd för SR P3 som TMC-distributör (`rds_decoder.py`, `templates/sdr_settings.html`)**:
+  - Sveriges Radio P3 (PI `0xE203`, t.ex. 99.3 MHz Stockholm/Kisa, 99.4 MHz Göteborg, 97.0 MHz Hörby) är det officiella rikstäckande nätet för Trafikverkets RDS-TMC i Sverige.
+  - Både SR P3 och SR P4 erkänns nu fullt ut som giltiga TMC-kanaler i avkodaren och pulsmätaren.
+  - SDR-inställningarnas snabbvalsdropdown har utökats med grupperade val för både SR P3 (Rikstäckande TMC) och SR P4 (Regional TMC).
+- **Aktiverat Redsea Rådataström (`-R`) (`rds_decoder.py`)**:
+  - `redsea` anropas med `-R` för att garantera att råa blockdata (`raw_data`) alltid skickas med i JSON-strömmen för direkt tolkning.
+
 ## [2026.10.14.19] - Förhindrat Falsk TMC-låsning på Råa 8A-block och Identifiering av Icke-TMC Stationer
 
 ### Fixed

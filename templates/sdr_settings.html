@@ -215,35 +215,47 @@
                             <div class="row-group">
                                 <div class="col">
                                     <div class="form-group">
-                                        <label for="rds_station_preset">P4 Sändare & Frekvens (Snabbval)</label>
+                                        <label for="rds_station_preset">SR P3 / P4 Sändare & Frekvens (Snabbval)</label>
                                         <select id="rds_station_preset" onchange="applyRdsPreset(this.value)">
                                             <option value="">-- Välj sändare eller anpassad frekvens --</option>
                                             <option value="auto">Automatisk sökning (auto / scan)</option>
-                                            <option value="103.3M">P4 Stockholm (103.3 MHz)</option>
-                                            <option value="93.8M">P4 Södertälje (93.8 MHz)</option>
-                                            <option value="100.1M">P4 Sörmland (100.1 MHz)</option>
-                                            <option value="88.7M">P4 Sörmland - Nyköping / Kisa (88.7 MHz)</option>
-                                            <option value="102.5M">P4 Uppland (102.5 MHz)</option>
-                                            <option value="100.5M">P4 Västmanland (100.5 MHz)</option>
-                                            <option value="102.8M">P4 Örebro (102.8 MHz)</option>
-                                            <option value="99.8M">P4 Östergötland (99.8 MHz)</option>
-                                            <option value="102.2M">P4 Östergötland (102.2 MHz)</option>
-                                            <option value="101.9M">P4 Göteborg (101.9 MHz)</option>
-                                            <option value="102.0M">P4 Malmöhus (102.0 MHz)</option>
-                                            <option value="87.9M">P4 Malmöhus (87.9 MHz)</option>
-                                            <option value="101.3M">P4 Dalarna (101.3 MHz)</option>
-                                            <option value="103.8M">P4 Halland (103.8 MHz)</option>
-                                            <option value="100.8M">P4 Jönköping (100.8 MHz)</option>
-                                            <option value="101.0M">P4 Kronoberg (101.0 MHz)</option>
-                                            <option value="100.2M">P4 Kalmar / Gotland (100.2 MHz)</option>
-                                            <option value="100.4M">P4 Blekinge (100.4 MHz)</option>
-                                            <option value="101.4M">P4 Kristianstad (101.4 MHz)</option>
-                                            <option value="100.3M">P4 Skaraborg (100.3 MHz)</option>
-                                            <option value="100.0M">P4 Värmland (100.0 MHz)</option>
-                                            <option value="104.2M">P4 Västerbotten (104.2 MHz)</option>
-                                            <option value="102.9M">P4 Norrbotten (102.9 MHz)</option>
+                                            <optgroup label="Sveriges Radio P3 (Rikstäckande RDS-TMC nät)">
+                                                <option value="99.3M">P3 Riks - Stockholm Nacka & Kisa (99.3 MHz)</option>
+                                                <option value="99.4M">P3 Göteborg (99.4 MHz)</option>
+                                                <option value="97.0M">P3 Skåne / Hörby (97.0 MHz)</option>
+                                                <option value="96.6M">P3 Uppsala (96.6 MHz)</option>
+                                                <option value="94.8M">P3 Norrköping (94.8 MHz)</option>
+                                                <option value="98.0M">P3 Västerås (98.0 MHz)</option>
+                                                <option value="99.6M">P3 Örebro (99.6 MHz)</option>
+                                                <option value="96.5M">P3 Värmland (96.5 MHz)</option>
+                                            </optgroup>
+                                            <optgroup label="Sveriges Radio P4 (Regional RDS-TMC & Trafik)">
+                                                <option value="103.3M">P4 Stockholm (103.3 MHz)</option>
+                                                <option value="93.8M">P4 Södertälje (93.8 MHz)</option>
+                                                <option value="100.1M">P4 Sörmland (100.1 MHz)</option>
+                                                <option value="88.7M">P4 Sörmland - Nyköping / Kisa (88.7 MHz)</option>
+                                                <option value="102.5M">P4 Uppland (102.5 MHz)</option>
+                                                <option value="100.5M">P4 Västmanland (100.5 MHz)</option>
+                                                <option value="102.8M">P4 Örebro (102.8 MHz)</option>
+                                                <option value="99.8M">P4 Östergötland (99.8 MHz)</option>
+                                                <option value="102.2M">P4 Östergötland (102.2 MHz)</option>
+                                                <option value="101.9M">P4 Göteborg (101.9 MHz)</option>
+                                                <option value="102.0M">P4 Malmöhus (102.0 MHz)</option>
+                                                <option value="87.9M">P4 Malmöhus (87.9 MHz)</option>
+                                                <option value="101.3M">P4 Dalarna (101.3 MHz)</option>
+                                                <option value="103.8M">P4 Halland (103.8 MHz)</option>
+                                                <option value="100.8M">P4 Jönköping (100.8 MHz)</option>
+                                                <option value="101.0M">P4 Kronoberg (101.0 MHz)</option>
+                                                <option value="100.2M">P4 Kalmar / Gotland (100.2 MHz)</option>
+                                                <option value="100.4M">P4 Blekinge (100.4 MHz)</option>
+                                                <option value="101.4M">P4 Kristianstad (101.4 MHz)</option>
+                                                <option value="100.3M">P4 Skaraborg (100.3 MHz)</option>
+                                                <option value="100.0M">P4 Värmland (100.0 MHz)</option>
+                                                <option value="104.2M">P4 Västerbotten (104.2 MHz)</option>
+                                                <option value="102.9M">P4 Norrbotten (102.9 MHz)</option>
+                                            </optgroup>
                                         </select>
-                                        <small>Välj en känd P4-sändare med RDS-TMC eller välj Automatisk sökning för att skanna efter starkaste aktiva TMC-station.</small>
+                                        <small>Välj en känd SR P3/P4-sändare med RDS-TMC eller välj Automatisk sökning för att skanna efter starkaste aktiva TMC-station.</small>
                                     </div>
                                 </div>
                             </div>

@@ -144,7 +144,7 @@ def _heartbeat_worker():
             has_3a_tmc = _heartbeat_stats.get('has_seen_tmc_3a', False)
             clean_pi = str(pi if pi else "").upper().replace("0X", "").strip()
             station_u = str(ps if ps else "").upper()
-            is_non_tmc_sr = clean_pi in ("E201", "E202", "E203") or any(x in station_u for x in ("P1", "P2", "P3"))
+            is_non_tmc_sr = clean_pi in ("E201", "E202") or any(x in station_u for x in ("P1", "P2"))
 
             if has_8a_alarm:
                 tmc_status = "Aktiv (ALERT-C 8A-larm mottagna)"
@@ -153,12 +153,14 @@ def _heartbeat_worker():
                     tmc_status = "Synkad (Grupp 3A aktiv, tar emot 8A-paket)"
                 else:
                     tmc_status = "Synkad (Grupp 3A ALERT-C bekräftad, avvaktar 8A-larm)"
+            elif "8A" in groups_seen:
+                tmc_status = "Aktiv (Grupp 8A trafikdataström i luften)"
             elif is_non_tmc_sr:
-                tmc_status = f"Ej TMC-sändare ({station_str} sänder ej TMC, välj SR P4)"
+                tmc_status = f"Ej TMC-sändare ({station_str} sänder ej TMC, välj SR P3/P4)"
             elif "3A" in groups_seen:
                 tmc_status = "Ej TMC (Grupp 3A är RadioText+, ej ALERT-C)"
             else:
-                tmc_status = "Söker handskakning (3A ALERT-C)"
+                tmc_status = "Söker handskakning (3A/8A ALERT-C)"
 
             station_str = ps if ps else "FM"
             pi_str = pi if pi else "0x0000"
@@ -533,20 +535,99 @@ def format_and_print_tmc(loc_code, road, name, lat, lon, extent, direction, urge
     print(out_line, flush=True)
     return out_line
 
-def is_sr_p4_station(ps_str, pi_str):
-    """Avgör om stationen är Sveriges Radio P4 (TMC-sändare)."""
+class AlertCDecoder:
+    """
+    Inbyggd ALERT-C parser för ISO 14819-1 (Grupp 8A).
+    Avkodar både single-group och multi-group meddelanden direkt från råa RDS-block (asHex)
+    även om redsea ännu inte tagit emot Grupp 3A ODA handskakning.
+    """
+    def __init__(self):
+        self._multi_parts = {}
+
+    def decode_group(self, raw_data_str):
+        if not raw_data_str or not isinstance(raw_data_str, str):
+            return None
+        blocks = raw_data_str.strip().split()
+        if len(blocks) < 4:
+            return None
+        try:
+            b1 = int(blocks[0], 16)
+            b2 = int(blocks[1], 16)
+            b3 = int(blocks[2], 16)
+            b4 = int(blocks[3], 16)
+        except ValueError:
+            return None
+
+        # Validera att Block 2 är Grupp 8A (bits 15-11 == 1000 0)
+        group_num = (b2 >> 12) & 0xF
+        group_ver = (b2 >> 11) & 0x1
+        if group_num != 8 or group_ver != 0:
+            return None
+
+        # Bit 4: 0 = Användarmeddelande, 1 = Tuning info
+        if (b2 >> 4) & 1:
+            return None
+
+        is_single = bool((b2 >> 3) & 1)
+        if is_single:
+            direction = "-" if ((b3 >> 14) & 1) else "+"
+            extent = (b3 >> 11) & 0x7
+            event_code = b3 & 0x7FF
+            loc_code = b4
+            return {
+                "location": loc_code,
+                "event_codes": [event_code],
+                "extent": extent,
+                "direction": direction,
+                "urgency": "normal",
+                "duration": ""
+            }
+        else:
+            # Multi-group
+            continuity_index = b2 & 0x7
+            is_first = bool((b3 >> 15) & 1)
+            if is_first:
+                direction = "-" if ((b3 >> 14) & 1) else "+"
+                extent = (b3 >> 11) & 0x7
+                event_code = b3 & 0x7FF
+                loc_code = b4
+                msg_entry = {
+                    "location": loc_code,
+                    "event_codes": [event_code],
+                    "extent": extent,
+                    "direction": direction,
+                    "urgency": "normal",
+                    "duration": "",
+                    "first_seen": time.time()
+                }
+                self._multi_parts[continuity_index] = msg_entry
+                return msg_entry
+            else:
+                # Fortsättningsgrupp
+                entry = self._multi_parts.get(continuity_index)
+                if entry:
+                    gsi = (b3 >> 12) & 0x3
+                    if gsi == 0:
+                        self._multi_parts.pop(continuity_index, None)
+                    return None
+        return None
+
+_raw_alert_c_decoder = AlertCDecoder()
+
+def is_sr_tmc_station(ps_str, pi_str):
+    """Avgör om stationen är Sveriges Radio TMC-distributör (SR P3 eller SR P4)."""
     ps_u = str(ps_str or "").upper().strip()
     pi_clean = str(pi_str or "").upper().replace("0X", "").strip()
 
-    if "P4" in ps_u:
+    if "P3" in ps_u or "P4" in ps_u:
+        return True
+    if pi_clean == "E203": # SR P3 (Rikstäckande RDS-TMC nät)
         return True
     if pi_clean.startswith("EA"): # T.ex. 0xEA24 för P4 Sörmland
         return True
-    if pi_clean.startswith("E4"):
+    if pi_clean.startswith("E4") or pi_clean == "E204":
         return True
-    if pi_clean == "E204":
-        return True
-    if pi_clean.startswith("E2") and not any(pi_clean == x for x in ("E201", "E202", "E203")):
+    if pi_clean.startswith("E2") and not any(pi_clean == x for x in ("E201", "E202")):
         if len(pi_clean) >= 4 and pi_clean[2:4].isalnum():
             try:
                 if int(pi_clean[2:4], 16) < 0x40:
@@ -554,6 +635,9 @@ def is_sr_p4_station(ps_str, pi_str):
             except ValueError:
                 pass
     return False
+
+def is_sr_p4_station(ps_str, pi_str):
+    return is_sr_tmc_station(ps_str, pi_str)
 
 def is_commercial_station(ps_str, pi_str):
     """Avgör om stationen är kommersiell radio som saknar RDS-TMC."""
@@ -598,17 +682,18 @@ def format_and_print_rds(ps="", pi=""):
     out_line = " ".join(parts)
     print(out_line, flush=True)
 
-    if is_sr_p4_station(_last_reported_ps, _last_reported_pi):
+    if is_sr_tmc_station(_last_reported_ps, _last_reported_pi):
         _current_channel_p4_confirmed = True
-        # Stationsidentifiering av P4 är ett nödvändigt men inte tillräckligt villkor för att låsa vid skanning.
-        # Mottagaren inväntar bekräftad aktiv TMC-dataström (Grupp 3A eller 8A) innan kanallåsning sker.
+        stn_label = "SR P3" if ("P3" in (_last_reported_ps or "").upper() or _last_reported_pi == "E203") else "SR P4"
+        # Stationsidentifiering av P3/P4 är ett nödvändigt villkor vid skanning.
+        # Mottagaren inväntar aktiv TMC-dataström (Grupp 3A eller 8A) innan kanallåsning sker.
         if not _channel_lock_printed:
-            format_and_print_scan(f"Sveriges Radio P4 identifierad ({_last_reported_ps}, PI: 0x{_last_reported_pi}). Söker aktiv TMC-handskakning (Grupp 3A)...")
+            format_and_print_scan(f"Sveriges Radio {stn_label} identifierad ({_last_reported_ps}, PI: 0x{_last_reported_pi}). Söker aktiv TMC-handskakning (Grupp 3A/8A)...")
     elif is_commercial_station(_last_reported_ps, _last_reported_pi):
         _current_channel_is_commercial = True
         format_and_print_scan(f"Station {_last_reported_ps or 'FM'} (PI: 0x{_last_reported_pi}) är en kommersiell station och sänder inte RDS-TMC.")
-    elif _last_reported_pi in ("E201", "E202", "E203") or any(x in (_last_reported_ps or "").upper() for x in ("P1", "P2", "P3")):
-        format_and_print_scan(f"Station {_last_reported_ps or 'SR'} (PI: 0x{_last_reported_pi}) sänder inte RDS-TMC (TMC sänds enbart på SR P4).")
+    elif _last_reported_pi in ("E201", "E202") or any(x in (_last_reported_ps or "").upper() for x in ("P1", "P2")):
+        format_and_print_scan(f"Station {_last_reported_ps or 'SR'} (PI: 0x{_last_reported_pi}) sänder inte RDS-TMC (TMC sänds på SR P3 och SR P4).")
 
     return out_line
 
@@ -702,6 +787,13 @@ def parse_redsea_json_line(line_str):
         if loc_code is None:
             loc_code = data.get("location")
 
+        raw_parsed = None
+        raw_data_str = data.get("raw_data")
+        if loc_code is None and raw_data_str:
+            raw_parsed = _raw_alert_c_decoder.decode_group(raw_data_str)
+            if raw_parsed and raw_parsed.get("location") is not None:
+                loc_code = raw_parsed["location"]
+
         if loc_code is not None:
             global _channel_lock_printed
             _current_channel_tmc_active = True
@@ -713,48 +805,55 @@ def parse_redsea_json_line(line_str):
             event_codes = []
             event_descs = []
 
-            # Stöd både redseas events-array med objekt och generiska listor
-            raw_events = tmc.get("events") or tmc_root.get("events") or data.get("events") or []
-            if isinstance(raw_events, list):
-                for ev in raw_events:
-                    if isinstance(ev, dict):
-                        ec = ev.get("event_code") or ev.get("code") or ev.get("event")
-                        if ec is not None:
+            if raw_parsed:
+                event_codes = raw_parsed.get("event_codes", [])
+                extent = raw_parsed.get("extent", 0)
+                direction = raw_parsed.get("direction", "+")
+                urgency = raw_parsed.get("urgency", "normal")
+                duration = raw_parsed.get("duration", "")
+            else:
+                # Stöd både redseas events-array med objekt och generiska listor
+                raw_events = tmc.get("events") or tmc_root.get("events") or data.get("events") or []
+                if isinstance(raw_events, list):
+                    for ev in raw_events:
+                        if isinstance(ev, dict):
+                            ec = ev.get("event_code") or ev.get("code") or ev.get("event")
+                            if ec is not None:
+                                try: event_codes.append(int(ec))
+                                except Exception: pass
+                            desc = ev.get("description") or ev.get("event_description") or ev.get("text")
+                            if desc:
+                                event_descs.append(str(desc))
+                        elif isinstance(ev, int):
+                            event_codes.append(ev)
+                        elif isinstance(ev, str) and ev.isdigit():
+                            event_codes.append(int(ev))
+
+                raw_ec = tmc.get("event_codes") or tmc_root.get("event_codes") or data.get("event_codes")
+                if raw_ec:
+                    if isinstance(raw_ec, list):
+                        for ec in raw_ec:
                             try: event_codes.append(int(ec))
                             except Exception: pass
-                        desc = ev.get("description") or ev.get("event_description") or ev.get("text")
-                        if desc:
-                            event_descs.append(str(desc))
-                    elif isinstance(ev, int):
-                        event_codes.append(ev)
-                    elif isinstance(ev, str) and ev.isdigit():
-                        event_codes.append(int(ev))
+                    elif isinstance(raw_ec, int):
+                        event_codes.append(raw_ec)
 
-            raw_ec = tmc.get("event_codes") or tmc_root.get("event_codes") or data.get("event_codes")
-            if raw_ec:
-                if isinstance(raw_ec, list):
-                    for ec in raw_ec:
-                        try: event_codes.append(int(ec))
-                        except Exception: pass
-                elif isinstance(raw_ec, int):
-                    event_codes.append(raw_ec)
+                raw_ed = tmc.get("event_descriptions") or tmc_root.get("event_descriptions") or data.get("event_descriptions")
+                if raw_ed:
+                    if isinstance(raw_ed, list):
+                        event_descs.extend([str(x) for x in raw_ed if str(x)])
+                    elif isinstance(raw_ed, str):
+                        event_descs.append(raw_ed)
 
-            raw_ed = tmc.get("event_descriptions") or tmc_root.get("event_descriptions") or data.get("event_descriptions")
-            if raw_ed:
-                if isinstance(raw_ed, list):
-                    event_descs.extend([str(x) for x in raw_ed if str(x)])
-                elif isinstance(raw_ed, str):
-                    event_descs.append(raw_ed)
+                direct_desc = tmc.get("description") or tmc_root.get("description") or data.get("description")
+                if direct_desc and str(direct_desc) not in event_descs:
+                    event_descs.append(str(direct_desc))
 
-            direct_desc = tmc.get("description") or tmc_root.get("description") or data.get("description")
-            if direct_desc and str(direct_desc) not in event_descs:
-                event_descs.append(str(direct_desc))
-
-            extent = tmc.get("extent", tmc_root.get("extent", data.get("extent", 0)))
-            dir_raw = str(tmc.get("direction", tmc_root.get("direction", data.get("direction", "+")))).lower()
-            direction = "-" if ("neg" in dir_raw or "-" in dir_raw) else "+"
-            urgency = tmc.get("urgency", tmc_root.get("urgency", data.get("urgency", "normal")))
-            duration = tmc.get("duration", tmc_root.get("duration", data.get("duration", "")))
+                extent = tmc.get("extent", tmc_root.get("extent", data.get("extent", 0)))
+                dir_raw = str(tmc.get("direction", tmc_root.get("direction", data.get("direction", "+")))).lower()
+                direction = "-" if ("neg" in dir_raw or "-" in dir_raw) else "+"
+                urgency = tmc.get("urgency", tmc_root.get("urgency", data.get("urgency", "normal")))
+                duration = tmc.get("duration", tmc_root.get("duration", data.get("duration", "")))
 
             # Hämta händelsebeskrivning på svenska
             fallback_txt = event_descs[0] if event_descs else ""
@@ -827,9 +926,14 @@ def parse_redsea_json_line(line_str):
 
 chosen_freq_global = "103.3M"
 
-P4_STATIONS = [
+SR_TMC_STATIONS = [
+    ("99.3M",   99300000, "SR P3 Trafik / Riks (Stockholm Nacka & Kisa 60 kW)"),
     ("103.3M", 103300000, "SR P4 Stockholm / Västerbotten (Nacka 60 kW)"),
     ("100.1M", 100100000, "SR P4 Sörmland (60 kW)"),
+    ("99.4M",   99400000, "SR P3 Göteborg (60 kW)"),
+    ("97.0M",   97000000, "SR P3 Skåne / Hörby (60 kW)"),
+    ("96.6M",   96600000, "SR P3 Uppsala (20 kW)"),
+    ("94.8M",   94800000, "SR P3 Norrköping (60 kW)"),
     ("93.8M",   93800000, "SR P4 Södertälje"),
     ("102.5M", 102500000, "SR P4 Uppland (Uppsala 60 kW)"),
     ("101.9M", 101900000, "SR P4 Göteborg (60 kW)"),
@@ -850,10 +954,9 @@ P4_STATIONS = [
     ("100.3M", 100300000, "SR P4 Skaraborg"),
     ("100.0M", 100000000, "SR P4 Värmland"),
     ("104.2M", 104200000, "SR P4 Västerbotten"),
-    ("102.9M", 102900000, "SR P4 Norrbotten"),
-    ("99.4M",   99400000, "SR P4"),
-    ("98.3M",   98300000, "SR P4")
+    ("102.9M", 102900000, "SR P4 Norrbotten")
 ]
+P4_STATIONS = SR_TMC_STATIONS
 
 def get_p4_candidates(freq_arg, device="", min_hz=87500000, max_hz=108000000):
     """
@@ -941,8 +1044,8 @@ def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.
         rtl_cmd.extend(["-p", str(ppm)])
     rtl_cmd.append("-")
 
-    # Kör redsea i europeiskt RDS-läge (-r 171k). Flaggan -u aktiverar amerikanskt RBDS-läge och skall ej användas i Europa.
-    redsea_cmd = ["redsea", "-r", "171k"]
+    # Kör redsea i europeiskt RDS-läge (-r 171k) med -R (show_raw) för att tillhandahålla råa RDS-block (asHex) för inbyggd ALERT-C tolkning.
+    redsea_cmd = ["redsea", "-r", "171k", "-R"]
 
     line_queue = queue.Queue()
     reader_stop = threading.Event()
