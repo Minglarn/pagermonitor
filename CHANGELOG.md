@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.23] - Fix för UnboundLocalError i RDS Heartbeat, Prioritering av 88.7M och Robust Processhantering
+
+- **Åtgärdat `UnboundLocalError` i `_heartbeat_worker` (`rds_decoder.py`)**:
+  - `station_str` refererades i en kontroll före variabeldeklarationen, vilket orsakade ett omedelbart Python Traceback-undantag och avslutade dekodern (`exit=1`) så fort övervakningstråden startade eller en fast frekvens valdes.
+  - Flyttat variabelinitieringen av `station_str` och `pi_str` till trådens inledande iteration för att garantera giltiga värden.
+- **Direktlåsning och Full P4 PI-kodstäckning (`rds_decoder.py`)**:
+  - `is_sr_tmc_station` känner nu igen samtliga regionala P4-distrikt i Sverige (PI-prefix `0xEA`, `0xEB`, `0xEC`, `0xED`, `0xE4`, `0xE204`, etc.) samt P3 (`0xE203`).
+  - Mottagaren låser omedelbart vid detektering av en bekräftad Sveriges Radio-station (P3/P4) och förblir låst för att fånga upp periodiska ALERT-C trafikmeddelanden.
+- **Prioritering av 88.7 MHz (SR P4 Sörmland)**:
+  - 88.7M är nu placerad som position 1 i kandidatlistan, vilket innebär omedelbar kontroll och låsning vid autoläge.
+- **Rörbuffert och Felfångst i Underprocesser**:
+  - `stderr` för `rtl_fm` och `redsea` omdirigeras nu till `DEVNULL` för att förhindra buffertblockeringar och trasiga rör (BrokenPipe).
+  - Fast frekvenskörning skyddas av felåterhämtning i huvudloopen.
+- **Flerlinjers Felspårbarhet i sdr_processor**:
+  - Processövervakaren loggar nu kompletta Python tracebacks rad för rad till loggströmmen.
+
 ## [2026.10.14.22] - Kraschfix för RDS-dekoder vid null-PS och Robustifiering av Underprocesser
 
 - **Åtgärdat krasch vid mottagning av ofullständiga RDS-ramar (`AttributeError`)**:

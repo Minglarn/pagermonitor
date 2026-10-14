@@ -139,6 +139,9 @@ def _heartbeat_worker():
             groups_seen = sorted(list(_heartbeat_stats.get('groups_seen', set())))
             groups_display = ", ".join(groups_seen) if groups_seen else "-"
 
+            station_str = ps if ps else "FM"
+            pi_str = pi if pi else "0x0000"
+
             # Tydlig indikator för TMC-status baserat på mottagna RDS-grupper och validerad ALERT-C data
             has_8a_alarm = _heartbeat_stats.get('has_seen_tmc_8a', False)
             has_3a_tmc = _heartbeat_stats.get('has_seen_tmc_3a', False)
@@ -161,9 +164,6 @@ def _heartbeat_worker():
                 tmc_status = "Ej TMC (Grupp 3A är RadioText+, ej ALERT-C)"
             else:
                 tmc_status = "Söker handskakning (3A/8A ALERT-C)"
-
-            station_str = ps if ps else "FM"
-            pi_str = pi if pi else "0x0000"
             print(
                 f"RDS-HEARTBEAT: {hb_type} Station: {station_str} (PI: {pi_str}) | Frekvens: {freq_val} | "
                 f"Status: {status_str} | Kvalitet: {quality_pct}% ({rate:.1f}/11.4 ramar/s - {qual_desc}) | "
@@ -627,21 +627,15 @@ def is_sr_tmc_station(ps_str, pi_str):
     ps_u = str(ps_str or "").upper().strip()
     pi_clean = str(pi_str or "").upper().replace("0X", "").strip()
 
-    if "P3" in ps_u or "P4" in ps_u:
+    if "P3" in ps_u or "P4" in ps_u or "SR" in ps_u:
         return True
     if pi_clean == "E203": # SR P3 (Rikstäckande RDS-TMC nät)
         return True
-    if pi_clean.startswith("EA"): # T.ex. 0xEA24 för P4 Sörmland
-        return True
-    if pi_clean.startswith("E4") or pi_clean == "E204":
+    # P4 distriktskoder (Sörmland: 0xEA24, Uppland: 0xE404, m.fl.)
+    if any(pi_clean.startswith(pfx) for pfx in ("EA", "EB", "EC", "ED", "E4", "E204")):
         return True
     if pi_clean.startswith("E2") and not any(pi_clean == x for x in ("E201", "E202")):
-        if len(pi_clean) >= 4 and pi_clean[2:4].isalnum():
-            try:
-                if int(pi_clean[2:4], 16) < 0x40:
-                    return True
-            except ValueError:
-                pass
+        return True
     return False
 
 def is_sr_p4_station(ps_str, pi_str):
@@ -692,11 +686,10 @@ def format_and_print_rds(ps="", pi=""):
 
     if is_sr_tmc_station(_last_reported_ps, _last_reported_pi):
         _current_channel_p4_confirmed = True
+        _current_channel_tmc_active = True
         stn_label = "SR P3" if ("P3" in (_last_reported_ps or "").upper() or _last_reported_pi == "E203") else "SR P4"
-        # Stationsidentifiering av P3/P4 är ett nödvändigt villkor vid skanning.
-        # Mottagaren inväntar aktiv TMC-dataström (Grupp 3A eller 8A) innan kanallåsning sker.
-        if not _channel_lock_printed:
-            format_and_print_scan(f"Sveriges Radio {stn_label} identifierad ({_last_reported_ps}, PI: 0x{_last_reported_pi}). Söker aktiv TMC-handskakning (Grupp 3A/8A)...")
+        stn_name = _last_reported_ps or stn_label
+        format_and_print_lock(chosen_freq_global, f"Bekräftad Sveriges Radio TMC-kanal ({stn_name}, PI: 0x{_last_reported_pi or '0000'})")
     elif is_commercial_station(_last_reported_ps, _last_reported_pi):
         _current_channel_is_commercial = True
         format_and_print_scan(f"Station {_last_reported_ps or 'FM'} (PI: 0x{_last_reported_pi}) är en kommersiell station och sänder inte RDS-TMC.")
@@ -938,22 +931,22 @@ def parse_redsea_json_line(line_str):
 chosen_freq_global = "103.3M"
 
 SR_TMC_STATIONS = [
+    ("88.7M",   88700000, "SR P4 Sörmland (Nyköping / Kisa slavsändare)"),
+    ("100.1M", 100100000, "SR P4 Sörmland (60 kW)"),
     ("99.3M",   99300000, "SR P3 Trafik / Riks (Stockholm Nacka & Kisa 60 kW)"),
     ("103.3M", 103300000, "SR P4 Stockholm / Västerbotten (Nacka 60 kW)"),
-    ("100.1M", 100100000, "SR P4 Sörmland (60 kW)"),
-    ("99.4M",   99400000, "SR P3 Göteborg (60 kW)"),
-    ("97.0M",   97000000, "SR P3 Skåne / Hörby (60 kW)"),
-    ("96.6M",   96600000, "SR P3 Uppsala (20 kW)"),
-    ("94.8M",   94800000, "SR P3 Norrköping (60 kW)"),
     ("93.8M",   93800000, "SR P4 Södertälje"),
     ("102.5M", 102500000, "SR P4 Uppland (Uppsala 60 kW)"),
-    ("101.9M", 101900000, "SR P4 Göteborg (60 kW)"),
-    ("102.0M", 102000000, "SR P4 Malmöhus / Gävleborg"),
-    ("100.5M", 100500000, "SR P4 Västmanland / Norrbotten"),
-    ("102.8M", 102800000, "SR P4 Örebro / Västernorrland"),
+    ("96.6M",   96600000, "SR P3 Uppsala (20 kW)"),
+    ("94.8M",   94800000, "SR P3 Norrköping (60 kW)"),
     ("99.8M",   99800000, "SR P4 Östergötland"),
     ("102.2M", 102200000, "SR P4 Östergötland"),
-    ("88.7M",   88700000, "SR P4 Sörmland (Nyköping/Kisa slavsändare)"),
+    ("100.5M", 100500000, "SR P4 Västmanland / Norrbotten"),
+    ("102.8M", 102800000, "SR P4 Örebro / Västernorrland"),
+    ("99.4M",   99400000, "SR P3 Göteborg (60 kW)"),
+    ("101.9M", 101900000, "SR P4 Göteborg (60 kW)"),
+    ("97.0M",   97000000, "SR P3 Skåne / Hörby (60 kW)"),
+    ("102.0M", 102000000, "SR P4 Malmöhus / Gävleborg"),
     ("87.9M",   87900000, "SR P4 Malmöhus"),
     ("101.3M", 101300000, "SR P4 Dalarna / Halland"),
     ("103.8M", 103800000, "SR P4 Halland"),
@@ -1078,8 +1071,8 @@ def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.
     p2 = None
 
     try:
-        p1 = subprocess.Popen(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        p2 = subprocess.Popen(redsea_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1)
+        p1 = subprocess.Popen(rtl_cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        p2 = subprocess.Popen(redsea_cmd, stdin=p1.stdout, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, bufsize=1)
         p1.stdout.close()
         _current_child_proc = p2
 
@@ -1345,7 +1338,12 @@ def main():
     if not is_scan:
         format_and_print_lock(args.freq, f"Mottagare låst på fast inställd frekvens {args.freq} (Skanning inaktiv)")
         while not _shutdown_requested:
-            run_rds_session(args.freq, device=args.device, gain=args.gain, ppm=args.ppm, dwell_timeout=0, is_scan=False)
+            try:
+                run_rds_session(args.freq, device=args.device, gain=args.gain, ppm=args.ppm, dwell_timeout=0, is_scan=False)
+            except Exception as e:
+                import traceback
+                print(f"DEBUG: [RDS-TMC] Fel vid fast frekvens {args.freq}: {e}", file=sys.stderr, flush=True)
+                traceback.print_exc()
             if _shutdown_requested:
                 break
             time.sleep(1.0)
@@ -1377,4 +1375,11 @@ def main():
         time.sleep(0.5)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as fatal_e:
+        import traceback
+        print(f"FATAL: [RDS-DECODER] Ohanterat fel: {fatal_e}", file=sys.stderr, flush=True)
+        traceback.print_exc()
+        time.sleep(2.0)
+        sys.exit(1)

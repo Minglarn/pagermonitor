@@ -1562,3 +1562,34 @@
 - **Verifiering**:
   - Verifierat kantfall med JSON `{"ps": null, "pi": null}` utan krasch.
   - Samtliga enhetstester passerar utan fel.
+
+### 51. Fix för UnboundLocalError i RDS Heartbeat, Prioritering av 88.7M och Flerlinjers Felspårbarhet (v2026.10.14.23)
+- **Bakgrund och Problem**:
+  - Vid val av en specifik frekvens (t.ex. 99.3 MHz) avslutades dekoderprocessen direkt med felkod 1:
+    `[RDS] SUBPROCESS FEL: Traceback (most recent call last):`
+    `[RDS] Processer avslutades ovantat! rtl PID=N/A exit=N/A, decoder PID=1695 exit=1.`
+  - Dessutom sökte autoläget förbi fungerande RDS-stationer (som 88.7 MHz P4 Sörmland) utan att låsa.
+  - Orsaker:
+    1. I `_heartbeat_worker` i [rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py) användes `station_str` i `is_p3` innan variabeln tilldelats ett värde, vilket kastade ett `UnboundLocalError` så snart tråden exekverades.
+    2. Den tidigare skanningsmotorn krävde att ett aktivt Grupp 8A ALERT-C larm sändes under ett 10-sekundersfönster innan låsning godkändes. Eftersom larm sänds sporadiskt lämnades bekräftade SR-stationer.
+    3. Regionala P4 PI-koder (som `0xEA24` för P4 Sörmland) fångades inte av den strikta PI-kontrollen.
+    4. 88.7 MHz låg på plats 16 i skanningskön.
+- **Teknisk Implementering**:
+  - **Lösning av `UnboundLocalError` ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Flyttat initieringen av `station_str` och `pi_str` till trådens absoluta början före alla villkorssatser.
+  - **Fullständig Täckning av SR P4 PI-koder ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - `is_sr_tmc_station` kontrollerar nu alla svenska P4-prefix (`0xEA`, `0xEB`, `0xEC`, `0xED`, `0xE4`, `0xE204`), `0xE224` samt namnsökning på `"SR"`, `"P4"` och `"P3"`.
+  - **Omedelbar Låsning på SR Stationer ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Så fort en bekräftad SR P3/P4 tas emot låses frekvensen omedelbart (`_current_channel_p4_confirmed = True`, `_current_channel_tmc_active = True`), så att mottagaren stannar kvar och lyssnar på inkommande TMC-larm.
+  - **Prioriterad Skanningsordning ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - 88.7 MHz är nu position #1 i `SR_TMC_STATIONS`.
+  - **Flerlinjers Traceback-spårbarhet ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - `monitor_instance` fångar nu fullständiga tracebacks över flera rader så att felorsaker blir direkt synliga i konsolen.
+  - **Sessionsskydd och Buffertsäkerhet ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Omdirigerat `stderr` för `rtl_fm` och `redsea` till `DEVNULL` för att undvika fyllda rörbuffertar.
+    - Omgett fast frekvenskörning med felåterhämtning.
+  - **Versionsspårbarhet**:
+    - Uppdaterat version till CalVer `2026.10.14.23` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+- **Verifiering**:
+  - Samtliga 27 enhetstester passerar utan fel (`python -m unittest discover tests`).
+

@@ -288,7 +288,25 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                 logger.debug(f"[{config['name']}] {line}")
                 continue
 
-            if any(err_kw in line for err_kw in ["Traceback (most recent", "AttributeError:", "NameError:", "TypeError:", "ValueError:", "SyntaxError:"]):
+            if "Traceback (most recent" in line:
+                trace_lines = [line]
+                try:
+                    for _ in range(30):
+                        t_line = p2.stdout.readline()
+                        if not t_line:
+                            break
+                        t_str = t_line.strip()
+                        if t_str:
+                            trace_lines.append(t_str)
+                        if not t_line.startswith(" ") and not t_line.startswith("\t") and any(w in t_line for w in ["Error", "Exception"]):
+                            break
+                except Exception:
+                    pass
+                for tl in trace_lines:
+                    logger.error(f"[{config['name']}] SUBPROCESS FEL: {tl}")
+                continue
+
+            if any(err_kw in line for err_kw in ["Error:", "Exception:", "AttributeError", "NameError", "TypeError", "ValueError", "SyntaxError", "OSError"]):
                 logger.error(f"[{config['name']}] SUBPROCESS FEL: {line}")
                 continue
 
