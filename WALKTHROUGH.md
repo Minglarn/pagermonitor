@@ -1419,3 +1419,24 @@
 - **Verifiering**:
   - Alla tre tabeller (`index.html`, `larm.html`, `statistics.html`) och stilmallar uppdaterade.
   - versionsspårbarhet synkad till CalVer `2026.10.14.16` i `app.py`, `README.md`, `CHANGELOG.md` och `WALKTHROUGH.md`.
+
+### 45. Strikt ALERT-C TMC (Grupp 3A) Låsning och P4 Snabbval i SDR Inställningar (v2026.10.14.17)
+- **Bakgrund och Problem**:
+  - Vid automatisk sökning (`auto` eller frekvensintervall) i [rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py) började skanningsmotorn på den första P4-kandidaten i kön (`88.7M`).
+  - Mottagaren identifierade stationen som `P4 SR` (PI: `0xE224`), vilket felaktigt tolkades av logiken som ett godkännande att låsa kanalen direkt innan den ens kontrollerat om sändaren faktiskt sände aktiv ALERT-C TMC (Grupp 3A).
+  - Eftersom sändaren på 88.7 MHz inte sände Grupp 3A blev skannern stående kvar permanent och väntade på handskakning istället för att gå vidare till nästa kandidat (`100.1M`, `103.3M`, etc.).
+  - Dessutom saknades en bekväm snabbväljare för Sveriges Radio P4-sändare i SDR-inställningsgränssnittet.
+- **Teknisk Implementering**:
+  - **Krav på Aktiv Grupp 3A / 8A vid Skanningslåsning ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Ändrat `format_and_print_rds` så att stationsidentifiering av P4 (`is_sr_p4_station`) inte längre sätter `_current_channel_tmc_active = True` och inte längre anropar `format_and_print_lock`. Istället loggas en tydlig skanningsstatus: `Sveriges Radio P4 identifierad (...). Söker aktiv TMC-handskakning (Grupp 3A)...`.
+    - I `parse_redsea_json_line` sätts `_current_channel_tmc_active = True` och frekvenslåsning emitteras uteslutande när äkta Grupp 3A (ALERT-C ODA systeminformation) eller Grupp 8A (trafikmeddelanden) detekteras.
+    - I `run_rds_session` stramas låsvillkoret åt så att det uteslutande kontrollerar `_current_channel_tmc_active`.
+    - Om 10 sekunders dwell-timeout nås utan att Grupp 3A/8A mottagits rapporteras detta med en tydlig logg (`P4-station identifierad på ... men ingen aktiv RDS-TMC (Grupp 3A) inom 10s. Söker vidare...`) och skannern går direkt vidare till nästa kandidat i listan.
+  - **P4 Snabbvalsdropdown i SDR-inställningar ([templates/sdr_settings.html](file:///d:/antigravity/pager-monitor/templates/sdr_settings.html))**:
+    - Lagt till ett snabbval (`#rds_station_preset`) i `#rdsSettingsSection` med de vanligaste P4-sändarna i Sverige (Stockholm 103.3 MHz, Södertälje 93.8 MHz, Sörmland 100.1 MHz, Uppland 102.5 MHz, Göteborg 101.9 MHz, Malmöhus 102.0 MHz, m.fl.) samt valet för automatisk sökning (`auto`).
+    - Skapat JavaScript-funktionerna `applyRdsPreset` och `syncRdsPresetFromFreq` för full tvåvägssynkning mellan frekvensfältet och dropdownen.
+  - **Versionsspårbarhet**:
+    - Uppdaterat versionsnummer till CalVer `2026.10.14.17` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [README.md](file:///d:/antigravity/pager-monitor/README.md), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+- **Verifiering**:
+  - Testat syntetisk ALERT-C injicering med `python rds_decoder.py --test-tmc` och verifierat korrekt sekvens: P4 identifieras -> söker Grupp 3A -> låsning sker först vid detekterad Grupp 3A och Grupp 8A.
+  - Kört hela testsviten `python -m pytest` med 62 godkända tester.

@@ -211,6 +211,42 @@
                                     Avkodar trafikmeddelanden, olyckor, vägarbeten och köer från FM-radio (t.ex. SR P3/P4 98–104 MHz) enligt europeiska ALERT-C standarden (ISO 14819). Platser översätts automatiskt till svenska vägar och koordinater via Location Table LTN 01.
                                 </p>
                             </div>
+
+                            <div class="row-group">
+                                <div class="col">
+                                    <div class="form-group">
+                                        <label for="rds_station_preset">P4 Sändare & Frekvens (Snabbval)</label>
+                                        <select id="rds_station_preset" onchange="applyRdsPreset(this.value)">
+                                            <option value="">-- Välj sändare eller anpassad frekvens --</option>
+                                            <option value="auto">Automatisk sökning (auto / scan)</option>
+                                            <option value="103.3M">P4 Stockholm (103.3 MHz)</option>
+                                            <option value="93.8M">P4 Södertälje (93.8 MHz)</option>
+                                            <option value="100.1M">P4 Sörmland (100.1 MHz)</option>
+                                            <option value="88.7M">P4 Sörmland - Nyköping / Kisa (88.7 MHz)</option>
+                                            <option value="102.5M">P4 Uppland (102.5 MHz)</option>
+                                            <option value="100.5M">P4 Västmanland (100.5 MHz)</option>
+                                            <option value="102.8M">P4 Örebro (102.8 MHz)</option>
+                                            <option value="99.8M">P4 Östergötland (99.8 MHz)</option>
+                                            <option value="102.2M">P4 Östergötland (102.2 MHz)</option>
+                                            <option value="101.9M">P4 Göteborg (101.9 MHz)</option>
+                                            <option value="102.0M">P4 Malmöhus (102.0 MHz)</option>
+                                            <option value="87.9M">P4 Malmöhus (87.9 MHz)</option>
+                                            <option value="101.3M">P4 Dalarna (101.3 MHz)</option>
+                                            <option value="103.8M">P4 Halland (103.8 MHz)</option>
+                                            <option value="100.8M">P4 Jönköping (100.8 MHz)</option>
+                                            <option value="101.0M">P4 Kronoberg (101.0 MHz)</option>
+                                            <option value="100.2M">P4 Kalmar / Gotland (100.2 MHz)</option>
+                                            <option value="100.4M">P4 Blekinge (100.4 MHz)</option>
+                                            <option value="101.4M">P4 Kristianstad (101.4 MHz)</option>
+                                            <option value="100.3M">P4 Skaraborg (100.3 MHz)</option>
+                                            <option value="100.0M">P4 Värmland (100.0 MHz)</option>
+                                            <option value="104.2M">P4 Västerbotten (104.2 MHz)</option>
+                                            <option value="102.9M">P4 Norrbotten (102.9 MHz)</option>
+                                        </select>
+                                        <small>Välj en känd P4-sändare med RDS-TMC eller välj Automatisk sökning för att skanna efter starkaste aktiva TMC-station.</small>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- POCSAG / AFSK Multimon-ng and FM Settings -->
@@ -378,6 +414,35 @@
             if (srEl) srEl.value = val;
         }
 
+        function applyRdsPreset(val) {
+            if (!val) return;
+            const freqInput = document.getElementById('frequency');
+            if (freqInput) {
+                freqInput.value = val;
+            }
+        }
+
+        function syncRdsPresetFromFreq(freqVal) {
+            const presetEl = document.getElementById('rds_station_preset');
+            if (!presetEl) return;
+            const cleanVal = (freqVal || '').trim().toUpperCase();
+            if (!cleanVal || cleanVal === 'AUTO' || cleanVal === 'SCAN') {
+                presetEl.value = 'auto';
+                return;
+            }
+            let found = false;
+            for (let opt of presetEl.options) {
+                if (opt.value && opt.value.toUpperCase() === cleanVal) {
+                    presetEl.value = opt.value;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                presetEl.value = '';
+            }
+        }
+
         function updateProtocolUI() {
             const protoEl = document.getElementById('protocol');
             const proto = protoEl ? protoEl.value : 'POCSAG';
@@ -422,9 +487,10 @@
                 const freqEl = document.getElementById('frequency');
                 if (freqEl) {
                     freqEl.placeholder = 'auto (lämna tomt för automatisk P4-sökning)';
+                    syncRdsPresetFromFreq(freqEl.value);
                 }
                 if (freqHelp) {
-                    freqHelp.innerHTML = '<b>RDS-TMC Frekvens:</b> Ange <code>auto</code>, <code>scan</code> eller <b>lämna fältet helt tomt</b> så söks den starkaste Sveriges Radio P4-sändaren med TMC upp automatiskt. Du kan även ange en fast frekvens (t.ex. <code>103.3M</code> eller <code>100.1M</code>).';
+                    freqHelp.innerHTML = '<b>RDS-TMC Frekvens:</b> Ange <code>auto</code>, <code>scan</code> eller <b>lämna fältet helt tomt</b> så söks den starkaste Sveriges Radio P4-sändaren med TMC upp automatiskt. Du kan även välja en P4-sändare i snabbvalet ovan eller ange en fast frekvens (t.ex. <code>103.3M</code>).';
                 }
             } else {
                 if (tetraSection) tetraSection.style.display = 'none';
@@ -475,6 +541,15 @@
         const tetraModeSelect = document.getElementById('tetra_mode');
         if (tetraModeSelect) {
             tetraModeSelect.addEventListener('change', updateProtocolUI);
+        }
+        const freqInputEl = document.getElementById('frequency');
+        if (freqInputEl) {
+            freqInputEl.addEventListener('input', (e) => {
+                const protoEl = document.getElementById('protocol');
+                if (protoEl && protoEl.value === 'RDS-TMC') {
+                    syncRdsPresetFromFreq(e.target.value);
+                }
+            });
         }
 
         form.addEventListener('submit', (e) => {

@@ -581,10 +581,10 @@ def format_and_print_rds(ps="", pi=""):
 
     if is_sr_p4_station(_last_reported_ps, _last_reported_pi):
         _current_channel_p4_confirmed = True
-        _current_channel_tmc_active = True
+        # Stationsidentifiering av P4 är ett nödvändigt men inte tillräckligt villkor för att låsa vid skanning.
+        # Mottagaren inväntar bekräftad aktiv TMC-dataström (Grupp 3A eller 8A) innan kanallåsning sker.
         if not _channel_lock_printed:
-            _channel_lock_printed = True
-            format_and_print_lock(chosen_freq_global, f"Sveriges Radio P4 bekräftad (TMC-sändare {_last_reported_ps}, PI: 0x{_last_reported_pi})")
+            format_and_print_scan(f"Sveriges Radio P4 identifierad ({_last_reported_ps}, PI: 0x{_last_reported_pi}). Söker aktiv TMC-handskakning (Grupp 3A)...")
     elif is_commercial_station(_last_reported_ps, _last_reported_pi):
         _current_channel_is_commercial = True
         format_and_print_scan(f"Station {_last_reported_ps or 'FM'} (PI: 0x{_last_reported_pi}) är en kommersiell station och sänder inte RDS-TMC.")
@@ -644,7 +644,11 @@ def parse_redsea_json_line(line_str):
     # 2. Kontrollera Grupp 8A: ALERT-C Trafikmeddelanden
     is_group_8a = ("tmc" in data or group_type == "8A")
     if is_group_8a:
+        global _channel_lock_printed
         _current_channel_tmc_active = True
+        if not _channel_lock_printed:
+            _channel_lock_printed = True
+            format_and_print_lock(chosen_freq_global, "Aktiv RDS-TMC trafikdataström bekräftad (Grupp 8A)")
         tmc_root = data.get("tmc") if isinstance(data.get("tmc"), dict) else data
         # Redsea kapslar in TMC-data inuti ett inre 'message'- eller 'user_message'-objekt
         if isinstance(tmc_root.get("message"), dict):
@@ -926,8 +930,8 @@ def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.
             if p2.poll() is not None or (p1 and p1.poll() is not None):
                 break
 
-            # 1. Kontrollera om aktiv TMC eller Sveriges Radio P4 bekräftats på denna frekvens
-            if _current_channel_tmc_active or _current_channel_p4_confirmed:
+            # 1. Kontrollera om aktiv RDS-TMC (Grupp 3A eller 8A) bekräftats på denna frekvens
+            if _current_channel_tmc_active:
                 if not is_locked:
                     is_locked = True
                 
@@ -947,7 +951,10 @@ def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.
 
             # 3. Kontrollera om tidsgränsen uppnåtts utan att RDS-TMC detekterats (endast vid skanningsläge)
             if is_scan and not is_locked and (time.time() - start_time) > dwell_timeout:
-                format_and_print_scan(f"Ingen RDS-TMC detekterad på {freq_str} inom {int(dwell_timeout)}s. Söker vidare...")
+                if _current_channel_p4_confirmed:
+                    format_and_print_scan(f"P4-station identifierad på {freq_str} ({_last_reported_ps or 'SR P4'}), men ingen aktiv RDS-TMC (Grupp 3A) inom {int(dwell_timeout)}s. Söker vidare...")
+                else:
+                    format_and_print_scan(f"Ingen RDS-TMC detekterad på {freq_str} inom {int(dwell_timeout)}s. Söker vidare...")
                 return False
 
         return is_locked

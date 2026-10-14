@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.17] - Strikt ALERT-C (Grupp 3A) Låsning vid RDS-skanning och P4 Snabbval i SDR Inställningar
+
+### Added
+- **P4 Sändare & Frekvens Snabbval (`templates/sdr_settings.html`)**:
+  - Ny dropdown-snabbväljare under sektionen RDS-TMC i SDR-inställningarna med kända Sveriges Radio P4-sändare över hela Sverige (t.ex. Stockholm 103.3 MHz, Södertälje 93.8 MHz, Sörmland 100.1 MHz, Uppland 102.5 MHz, Göteborg 101.9 MHz, Malmöhus 102.0 MHz, m.fl.) samt valet för automatisk sökning (`auto`).
+  - Tvåvägssynkning: Att välja en station i listan uppdaterar frekvensfältet automatiskt, och manuell inmatning i frekvensfältet matchar automatiskt motsvarande sändare i dropdownen.
+
+### Fixed
+- **Strikt Krav på Aktiv ALERT-C TMC (Grupp 3A / 8A) för Kanallåsning (`rds_decoder.py`)**:
+  - Åtgärdat fel där mottagaren i skanningsläge (`auto` / frekvensintervall) låste frekvensen omedelbart enbart för att stationen identifierades som Sveriges Radio P4 (`is_sr_p4_station`), även om sändaren inte sände aktiv RDS-TMC.
+  - Skannern avvaktar nu dwell-tiden (10 sekunder) på kandidatkanaler och låser endast när äkta Grupp 3A (TMC System Information) eller Grupp 8A (ALERT-C trafikmeddelanden) tas emot.
+  - Om ingen Grupp 3A/8A detekteras inom 10 sekunder loggas en tydlig statusförklaring (`P4-station identifierad på ... men ingen aktiv RDS-TMC (Grupp 3A) inom 10s. Söker vidare...`) och skannern går automatiskt vidare till nästa kandidatfrekvens i kön.
+
 ## [2026.10.14.16] - Dedikerat Protokoll i Tabellkolumn och Metadata Flyttad Längst Ner i Meddelanderutan
 
 ### Changed
