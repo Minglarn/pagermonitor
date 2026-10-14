@@ -1332,10 +1332,28 @@
     - Heartbeat-raden listar alla mottagna grupper:
       `INFO: [RDS] HEARTBEAT -> Station: P4 Sörml (PI: 0xEA24) | Status: SYNKERAD | Kvalitet: 100% (11.5/11.4 ramar/s) | RDS-grupper: 0A, 2A, 3A | Gain: 26 dB | Senaste aktivitet: 0.0s sedan`
   - **3A Handskakning på INFO-nivå ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
-    - Ändrat loggnivån för Grupp 3A till INFO så att den alltid visas direkt i användarens konsol utan krav på debug-läge.
+---
+
+### 42. TMC-status i Heartbeat, Live Test-larm och Deduplicering (v2026.10.14.09 - v2026.10.14.12)
+- **Problembeskrivning**:
+  - Testlarm som sparades via databasen dök inte upp i webbläsarens realtidsflöde utan sidomladdning.
+  - Sändarens kontinuerliga utmatning av Grupp 3A orsakade loggspam i realtidsloggen.
+  - Protokollmärket för RDS-TMC visades som `RDS-TMCbps`.
+- **Teknisk Implementering**:
+  - **TMC-status i Heartbeat ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - Heartbeat-raden visar nu explicit om stationen sänder TMC (Grupp 3A aktiv) och om det finns aktiva 8A-larm i luften eller ej.
+  - **REST API och UI för Testlarm ([app.py](file:///d:/antigravity/pager-monitor/app.py), [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+    - Skapat `POST /api/test/tmc` som sparar testlarmet och emitterar det direkt över SSE (`/stream`) så att alla anslutna klienter uppdateras live.
+    - Lagt till knappen "Skicka Testlarm" under Inställningar -> Manuella databasåtgärder.
+  - **Deduplicering och Korrigerad Grupp 3A Matchning ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py), [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Flyttat utskriften av 3A handskakning innanför `_group_3a_confirmed` samt lagt till deduplicering i `sdr_processor.py` för att helt eliminera spam.
+    - Korrigerat `aid_str` så att icke-3A paket inte felaktigt tolkas som 3A.
+  - **Snygga Protokoll-Badges ([index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+    - Förhindrat tillägg av `bps` på protokoll som `RDS-TMC` och `TETRA`.
 - **Verifiering**:
-  - Samtliga 27 enhetstester passerar felfritt.
-  - Versionsbump till CalVer `2026.10.14.08`.
+  - Verifierat att testlarmet visas snyggt i tabellen med larmmarkering, platsnamn och koordinater.
+  - Alla 27 enhetstester passerar.
+  - Versionsbump till CalVer `2026.10.14.12`.
 
 
 
