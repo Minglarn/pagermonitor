@@ -238,6 +238,9 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
         stderr_thread = threading.Thread(target=log_p1_stderr, args=(p1.stderr,), daemon=True)
         stderr_thread.start()
 
+    if not config.get('active_frequency'):
+        config['active_frequency'] = config.get('frequency', 'Unknown')
+
     try:
         while not stop_event.is_set():
             line = p2.stdout.readline()
@@ -265,6 +268,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
 
             if line.startswith("RDS-HEARTBEAT:"):
                 payload = line[len("RDS-HEARTBEAT:"):].strip()
+                curr_f = config.get('active_frequency', config.get('frequency', ''))
                 if payload.startswith("OK"):
                     hb_msg = payload[2:].strip()
                     logger.info(f"[{config['name']}] HEARTBEAT -> {hb_msg}")
@@ -273,6 +277,8 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                     logger.warning(f"[{config['name']}] HEARTBEAT -> {hb_msg}")
                 elif payload.startswith("LOST"):
                     hb_msg = payload[4:].strip()
+                    if "Frekvens:" not in hb_msg and curr_f and curr_f != 'Unknown':
+                        hb_msg = f"{hb_msg} [Frekvens: {curr_f}]"
                     logger.warning(f"[{config['name']}] HEARTBEAT FÖRLORAD -> {hb_msg}")
                 else:
                     logger.info(f"[{config['name']}] HEARTBEAT -> {payload}")

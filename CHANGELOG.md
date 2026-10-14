@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.14.15] - Strikt Låsning vid Fast RDS-frekvens och Frekvens i Heartbeat-loggen
+
+### Fixed
+- **Strikt Låsning på Fast Frekvens för RDS (`rds_decoder.py`)**:
+  - När en specifik fast frekvens ställs in för RDS (t.ex. `103.3M`) låser mottagaren strikt på denna frekvens.
+  - Skanning och sökning vidare till andra stationer/kandidater är nu helt avaktiverat när frekvensen är en fast kanal. Skanningsmotorn och frekvenshopp aktiveras enbart om frekvensen explicit satts till `auto`, `scan` eller ett frekvensintervall (t.ex. `87.5M-108M`).
+  - Mottagaren avbryter inte längre efter 10 sekunders dwell-timeout eller vid kommersiella sändningar när fast frekvens är vald.
+- **Frekvens i Heartbeat-loggen (`rds_decoder.py`, `sdr_processor.py`)**:
+  - Både `HEARTBEAT FÖRLORAD` och aktiva `HEARTBEAT`-meddelanden anger nu alltid explicit vilken frekvens som avlyssnas (t.ex. `[RDS] HEARTBEAT FÖRLORAD -> Frekvens: 103.3M | Ingen RDS-signal detekterad på 10.0s (Signalbortfall eller frekvens saknar RDS)`).
+
 ## [2026.10.14.14] - Protokoll-Badge i RF/META, Fix för Test-TMC och Synkad Versionsspårbarhet
 
 ### Added

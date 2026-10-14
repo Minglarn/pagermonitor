@@ -1382,3 +1382,22 @@
 - **Verifiering**:
   - Samtliga 27 enhetstester passerar (`python -m unittest discover tests`).
   - Versionsbump till CalVer `2026.10.14.14`.
+
+---
+
+### 44. Strikt Låsning vid Fast RDS-frekvens och Frekvens i Heartbeat-loggen (v2026.10.14.15)
+- **Problembeskrivning**:
+  - När användaren ställde in en specifik RDS-frekvens (t.ex. `103.3M`) sökte mottagaren vidare till andra P4-kandidater om TMC inte detekterades inom 10 sekunder eller vid svag signal. Användaren krävde att inställd frekvens ska gälla strikt utan frekvenshopp såvida inte `auto` eller `scan` angetts.
+  - Heartbeat-raderna (särskilt vid `HEARTBEAT FÖRLORAD`) angav inte vilken frekvens mottagaren lyssnade på.
+- **Teknisk Implementering**:
+  - **Strikt Låsning på Fast Frekvens ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py))**:
+    - `get_p4_candidates`: Om frekvensen är en fast kanal (inte `auto`, `scan`, `fm`, `all` eller intervall) returneras enbart denna enda frekvens som kandidat.
+    - `run_rds_session`: Accepterar flaggan `is_scan`. Om `is_scan=False` avbryts aldrig sessionen vid 10 sekunders dwell-timeout, kommersiell sändning eller 30 sekunders signalbortfall. Mottagaren stannar kvar på frekvensen.
+    - `main`: Kör en dedikerad evighetsloop på fast frekvens utan att söka vidare bland P4-kandidater.
+  - **Frekvens i Heartbeat-loggen ([rds_decoder.py](file:///d:/antigravity/pager-monitor/rds_decoder.py), [sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - `_heartbeat_worker` inkluderar nu alltid `Frekvens: <freq> | ` i alla utskrifter (`OK`, `LOW` och `LOST`).
+    - `sdr_processor.py` garanterar att `Frekvens: <freq> | ` alltid visas i konsolloggen:
+      `[RDS] HEARTBEAT FÖRLORAD -> Frekvens: 103.3M | Ingen RDS-signal detekterad på 10.0s (Signalbortfall eller frekvens saknar RDS)`
+- **Verifiering**:
+  - Samtliga 27 enhetstester passerar.
+  - Versionsbump till CalVer `2026.10.14.15`.

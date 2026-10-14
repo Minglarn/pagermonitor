@@ -41,6 +41,7 @@ _heartbeat_stats = {
     'heartbeat_interval': 10.0,
     'heartbeat_timeout': 5.0,
     'gain': 'auto',
+    'freq': '103.3M',
     'has_received_any_frame': False,
     'groups_seen': set()
 }
@@ -87,6 +88,7 @@ def _heartbeat_worker():
             count = _heartbeat_stats['frames_since_last_pulse']
             pi = _heartbeat_stats['last_pi']
             ps = _heartbeat_stats['last_ps']
+            freq_val = _heartbeat_stats.get('freq') or chosen_freq_global or "FM"
             gain_val = _heartbeat_stats.get('gain', 'auto')
 
             if (now - last_log) < interval:
@@ -146,7 +148,7 @@ def _heartbeat_worker():
             station_str = ps if ps else "FM"
             pi_str = pi if pi else "0x0000"
             print(
-                f"RDS-HEARTBEAT: {hb_type} Station: {station_str} (PI: {pi_str}) | "
+                f"RDS-HEARTBEAT: {hb_type} Station: {station_str} (PI: {pi_str}) | Frekvens: {freq_val} | "
                 f"Status: {status_str} | Kvalitet: {quality_pct}% ({rate:.1f}/11.4 ramar/s - {qual_desc}) | "
                 f"RDS-grupper: {groups_display} | "
                 f"TMC: {tmc_status} | "
@@ -155,17 +157,19 @@ def _heartbeat_worker():
             )
         else:
             print(
-                f"RDS-HEARTBEAT: LOST Ingen RDS-signal detekterad på {time_since_last_frame:.1f}s (Signalbortfall eller frekvens saknar RDS)",
+                f"RDS-HEARTBEAT: LOST Ingen RDS-signal detekterad på {time_since_last_frame:.1f}s [Frekvens: {freq_val}] (Signalbortfall eller frekvens saknar RDS)",
                 flush=True
             )
 
-def start_heartbeat_monitor(interval=10.0, timeout=5.0, gain='auto'):
+def start_heartbeat_monitor(interval=10.0, timeout=5.0, gain='auto', freq='103.3M'):
     """Startar bakgrundstråden för RDS-pulsövervakning."""
     global _heartbeat_thread_started
     with _heartbeat_lock:
         _heartbeat_stats['heartbeat_interval'] = float(interval)
         _heartbeat_stats['heartbeat_timeout'] = float(timeout)
         _heartbeat_stats['gain'] = str(gain) if gain else 'auto'
+        if freq:
+            _heartbeat_stats['freq'] = str(freq).strip()
         _heartbeat_stats['last_pulse_log_time'] = time.time()
         _heartbeat_stats['last_frame_time'] = time.time()
         if not _heartbeat_thread_started:
@@ -800,8 +804,8 @@ P4_STATIONS = [
 def get_p4_candidates(freq_arg, device="", min_hz=87500000, max_hz=108000000):
     """
     Returnerar en prioriterad lista över kandidatfrekvenser att prova för RDS-TMC.
-    Om en specifik frekvens angetts (t.ex. 88.7M) prövas den först, men övriga
-    P4-frekvenser behålls som fallback om frekvensen saknar RDS-TMC.
+    Om användaren har ställt in en fast frekvens (inte auto/scan/intervall) gäller
+    denna strikt utan att söka vidare till andra frekvenser.
     """
     is_scan = is_fm_scanning_range(freq_arg)
     if is_scan:
@@ -811,9 +815,7 @@ def get_p4_candidates(freq_arg, device="", min_hz=87500000, max_hz=108000000):
             base_cands = list(P4_STATIONS)
     else:
         target_hz = parse_freq_to_hz(freq_arg)
-        given_cand = (freq_arg, target_hz, f"Angiven frekvens {freq_arg}")
-        other_cands = [c for c in P4_STATIONS if abs(c[1] - target_hz) > 100000]
-        base_cands = [given_cand] + other_cands
+        return [(str(freq_arg).strip(), target_hz, f"Fast frekvens {freq_arg}")]
 
     # Försök RF-effektsortera kandidater om rtl_power finns
     import shutil
@@ -859,17 +861,20 @@ def get_p4_candidates(freq_arg, device="", min_hz=87500000, max_hz=108000000):
 
     return base_cands
 
-def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.0):
+def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.0, is_scan=True):
     """
     Kör rtl_fm | redsea på angiven frekvens.
-    - Avbryter omedelbart om en kommersiell station utan TMC detekteras.
-    - Avbryter om ingen RDS-TMC detekteras inom dwell_timeout sekunder.
-    - Låser och förblir aktiv så länge mottagningen har aktiv TMC-synk.
+    - Vid fast frekvens (is_scan=False): Låser strikt på frekvensen och stannar kvar oavsett timeout eller signal.
+    - Vid skanningsläge (is_scan=True):
+      - Avbryter omedelbart om en kommersiell station utan TMC detekteras.
+      - Avbryter om ingen RDS-TMC detekteras inom dwell_timeout sekunder.
+      - Låser och förblir aktiv så länge mottagningen har aktiv TMC-synk.
     """
     global _current_child_proc, chosen_freq_global
     chosen_freq_global = freq_str
     reset_station_state()
     with _heartbeat_lock:
+        _heartbeat_stats['freq'] = str(freq_str)
         if gain:
             _heartbeat_stats['gain'] = str(gain)
 
@@ -926,21 +931,22 @@ def run_rds_session(freq_str, device="", gain="auto", ppm="0", dwell_timeout=10.
                 if not is_locked:
                     is_locked = True
                 
-                # Om låst: övervaka om signalen varit borta i mer än 30s
-                with _heartbeat_lock:
-                    lost_for = time.time() - _heartbeat_stats['last_frame_time']
-                if lost_for > 30.0 and _heartbeat_stats['has_received_any_frame']:
-                    format_and_print_scan(f"RDS-signal förlorad på {freq_str} i {lost_for:.1f}s. Återupptar frekvenssökning...")
-                    break
+                # Om låst och i skanningsläge: övervaka om signalen varit borta i mer än 30s
+                if is_scan:
+                    with _heartbeat_lock:
+                        lost_for = time.time() - _heartbeat_stats['last_frame_time']
+                    if lost_for > 30.0 and _heartbeat_stats['has_received_any_frame']:
+                        format_and_print_scan(f"RDS-signal förlorad på {freq_str} i {lost_for:.1f}s. Återupptar frekvenssökning...")
+                        break
                 continue
 
-            # 2. Kontrollera om stationen är kommersiell (RIX FM etc.) som saknar RDS-TMC
-            if _current_channel_is_commercial:
+            # 2. Kontrollera om stationen är kommersiell (endast vid skanningsläge)
+            if is_scan and _current_channel_is_commercial:
                 format_and_print_scan(f"Frekvens {freq_str} sänder kommersiell radio utan RDS-TMC ({_last_reported_ps or 'FM'}). Söker vidare...")
                 return False
 
-            # 3. Kontrollera om tidsgränsen uppnåtts utan att RDS-TMC detekterats
-            if not is_locked and (time.time() - start_time) > dwell_timeout:
+            # 3. Kontrollera om tidsgränsen uppnåtts utan att RDS-TMC detekterats (endast vid skanningsläge)
+            if is_scan and not is_locked and (time.time() - start_time) > dwell_timeout:
                 format_and_print_scan(f"Ingen RDS-TMC detekterad på {freq_str} inom {int(dwell_timeout)}s. Söker vidare...")
                 return False
 
@@ -1099,7 +1105,7 @@ def main():
         return
 
     # Starta bakgrundstråd för realtidspuls
-    start_heartbeat_monitor(interval=args.heartbeat_interval, timeout=args.heartbeat_timeout, gain=args.gain)
+    start_heartbeat_monitor(interval=args.heartbeat_interval, timeout=args.heartbeat_timeout, gain=args.gain, freq=args.freq)
 
     # Om stdin skickas explicit via flagga --stdin
     if args.stdin:
@@ -1126,7 +1132,18 @@ def main():
         run_test_feed(args.freq)
         return
 
-    # Skapa lista med kandidatfrekvenser
+    is_scan = is_fm_scanning_range(args.freq)
+
+    if not is_scan:
+        format_and_print_lock(args.freq, f"Mottagare låst på fast inställd frekvens {args.freq} (Skanning inaktiv)")
+        while not _shutdown_requested:
+            run_rds_session(args.freq, device=args.device, gain=args.gain, ppm=args.ppm, dwell_timeout=0, is_scan=False)
+            if _shutdown_requested:
+                break
+            time.sleep(1.0)
+        return
+
+    # Skapa lista med kandidatfrekvenser för automatisk sökning / skanning
     candidates = get_p4_candidates(args.freq, device=args.device)
     candidate_idx = 0
 
@@ -1140,7 +1157,7 @@ def main():
         format_and_print_scan(f"Avlyssnar frekvens {cand_freq} ({cand_name}). Kontrollerar RDS-TMC aktivitet...")
         
         # Kör session med 10 sekunders dwell-timeout för att bekräfta TMC
-        locked = run_rds_session(cand_freq, device=args.device, gain=args.gain, ppm=args.ppm, dwell_timeout=10.0)
+        locked = run_rds_session(cand_freq, device=args.device, gain=args.gain, ppm=args.ppm, dwell_timeout=10.0, is_scan=True)
         
         if _shutdown_requested:
             break
