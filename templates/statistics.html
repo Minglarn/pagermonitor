@@ -1100,7 +1100,7 @@
                 // Formatera parsedSummary rad för rad: dela upp på pipe-avdelare (|), framhäv fältetiketter och pilotmeddelanden
                 const lines = parsedSummary.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
                 const formattedLines = lines.map(line => {
-                    if (line.includes('💬')) {
+                    if (line.includes('Pilotmeddelande:')) {
                         let lineEscaped = escapeHtml(line);
                         return `<div class="pilot-freetext-highlight">${lineEscaped}</div>`;
                     }

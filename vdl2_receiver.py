@@ -450,6 +450,83 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
 
     raw_text = text or ''
 
+    # --- Mönster 00: Nyckel/värde-baserade POS-rapporter (t.ex. China Eastern Label 11) ---
+    # Exempel: POS - CAS 274,LAT N058.32,LON E016.90,ALT 37002,FOB 137088,UTC 115155,PD 41.15,WD -60,WS 50,TAT -56
+    m_pos_lat = re.search(r'\bLAT\s*([NS])(\d+\.?\d*)', raw_text, re.IGNORECASE)
+    m_pos_lon = re.search(r'\bLON\s*([EW])(\d+\.?\d*)', raw_text, re.IGNORECASE)
+    if m_pos_lat and m_pos_lon:
+        try:
+            ns = m_pos_lat.group(1).upper()
+            lat_f = float(m_pos_lat.group(2))
+            res['lat'] = -lat_f if ns == 'S' else lat_f
+
+            ew = m_pos_lon.group(1).upper()
+            lon_f = float(m_pos_lon.group(2))
+            res['lon'] = -lon_f if ew == 'W' else lon_f
+
+            m_alt = re.search(r'\bALT\s*(-?\d+)', raw_text, re.IGNORECASE)
+            if m_alt:
+                res['alt'] = int(m_alt.group(1))
+                res['alt_ft'] = res['alt']
+
+            m_cas = re.search(r'\bCAS\s*(\d+)', raw_text, re.IGNORECASE)
+            if m_cas:
+                res['telemetry']['speed_kt'] = int(m_cas.group(1))
+
+            m_fob = re.search(r'\bFOB\s*(\d+)', raw_text, re.IGNORECASE)
+            if m_fob:
+                res['telemetry']['fuel_weight'] = m_fob.group(1)
+
+            m_utc = re.search(r'\bUTC\s*(\d{2})(\d{2})(\d{2})', raw_text, re.IGNORECASE)
+            time_str = ""
+            if m_utc:
+                time_str = f"{m_utc.group(1)}:{m_utc.group(2)}:{m_utc.group(3)} UTC"
+                res['telemetry']['time'] = time_str
+
+            m_wd = re.search(r'\bWD\s*(-?\d+)', raw_text, re.IGNORECASE)
+            m_ws = re.search(r'\bWS\s*(\d+)', raw_text, re.IGNORECASE)
+            wind_dir = None
+            if m_wd:
+                wd_val = int(m_wd.group(1))
+                wind_dir = (360 + wd_val) % 360
+                res['telemetry']['wind_dir'] = wind_dir
+            if m_ws:
+                res['telemetry']['wind_kt'] = int(m_ws.group(1))
+
+            m_tat = re.search(r'\bTAT\s*(-?\d+)', raw_text, re.IGNORECASE)
+            if m_tat:
+                res['telemetry']['temp_c'] = int(m_tat.group(1))
+
+            row1_parts = ["[Positionsrapport]", f"Position: {res['lat']:.4f}, {res['lon']:.4f}"]
+            if time_str:
+                row1_parts.append(f"Tid: {time_str}")
+
+            row2_parts = []
+            if res.get('alt_ft') is not None:
+                alt_fmt = f"{res['alt_ft']:,} ft".replace(',', ' ')
+                row2_parts.append(f"Höjd: {alt_fmt}")
+            if m_cas:
+                row2_parts.append(f"Fart: {m_cas.group(1)} kt")
+            if m_tat:
+                row2_parts.append(f"Temp: {m_tat.group(1)}°C")
+            if wind_dir is not None and m_ws:
+                row2_parts.append(f"Vind: {wind_dir}° / {m_ws.group(1)} kt")
+            elif m_ws:
+                row2_parts.append(f"Vind: {m_ws.group(1)} kt")
+            if m_fob:
+                fob_val = int(m_fob.group(1))
+                fob_fmt = f"{fob_val:,} lbs".replace(',', ' ')
+                row2_parts.append(f"Bränsle (FOB): {fob_fmt}")
+
+            summary_rows = [" | ".join(row1_parts)]
+            if row2_parts:
+                summary_rows.append(" | ".join(row2_parts))
+            res['telemetry_summary'] = "\n".join(summary_rows)
+
+            return res
+        except (ValueError, TypeError):
+            pass
+
     # --- Mönster 0a: AMDAR meteorologiska rapporter (Label H2 m.fl.) ---
     # Exempel: 02E15LOWWESSAN55287E01618406503096M407353048G   QN56167...
     amdar_matches = re.findall(

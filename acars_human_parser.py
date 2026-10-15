@@ -799,6 +799,9 @@ def rule_label_h1_posn_fms(text: str, label: str = None, metadata: dict = None) 
     if not (base_text.startswith("POSN") or base_text.startswith("POS") or base_text.startswith("*POS")):
         return None
 
+    if base_text.startswith("POS -") or ('LAT ' in base_text and 'LON ' in base_text):
+        return None
+
     tokens = [t.strip() for t in base_text.split(',')]
     if len(tokens) < 4:
         return None
@@ -1472,6 +1475,79 @@ def rule_label_83_eta_report(text: str, label: str = None, metadata: dict = None
 
 
 
+def rule_pos_key_value_report(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    POS-rapporter med nyckel/värdepar (t.ex. China Eastern Label 11).
+    Exempel: POS - CAS 274,LAT N058.32,LON E016.90,ALT 37002,FOB 137088,UTC 115155,PD 41.15,WD -60,WS 50,TAT -56
+    """
+    stripped = text.strip()
+    m_lat = re.search(r'\bLAT\s*([NS])(\d+\.?\d*)', stripped, re.IGNORECASE)
+    m_lon = re.search(r'\bLON\s*([EW])(\d+\.?\d*)', stripped, re.IGNORECASE)
+    if not (m_lat and m_lon):
+        return None
+
+    try:
+        ns = m_lat.group(1).upper()
+        lat_f = float(m_lat.group(2))
+        lat = -lat_f if ns == 'S' else lat_f
+
+        ew = m_lon.group(1).upper()
+        lon_f = float(m_lon.group(2))
+        lon = -lon_f if ew == 'W' else lon_f
+
+        m_alt = re.search(r'\bALT\s*(-?\d+)', stripped, re.IGNORECASE)
+        alt_val = int(m_alt.group(1)) if m_alt else None
+
+        m_cas = re.search(r'\bCAS\s*(\d+)', stripped, re.IGNORECASE)
+        cas_val = m_cas.group(1) if m_cas else None
+
+        m_fob = re.search(r'\bFOB\s*(\d+)', stripped, re.IGNORECASE)
+        fob_val = int(m_fob.group(1)) if m_fob else None
+
+        m_utc = re.search(r'\bUTC\s*(\d{2})(\d{2})(\d{2})', stripped, re.IGNORECASE)
+        time_str = f"{m_utc.group(1)}:{m_utc.group(2)}:{m_utc.group(3)} UTC" if m_utc else ""
+
+        m_wd = re.search(r'\bWD\s*(-?\d+)', stripped, re.IGNORECASE)
+        m_ws = re.search(r'\bWS\s*(\d+)', stripped, re.IGNORECASE)
+        wind_dir = None
+        if m_wd:
+            wd_raw = int(m_wd.group(1))
+            wind_dir = (360 + wd_raw) % 360
+        ws_val = m_ws.group(1) if m_ws else None
+
+        m_tat = re.search(r'\bTAT\s*(-?\d+)', stripped, re.IGNORECASE)
+        tat_val = m_tat.group(1) if m_tat else None
+
+        row1 = ["[Positionsrapport]", f"Position: {lat:.4f}, {lon:.4f}"]
+        if time_str:
+            row1.append(f"Tid: {time_str}")
+
+        row2 = []
+        if alt_val is not None:
+            alt_fmt = f"{alt_val:,} ft".replace(',', ' ')
+            row2.append(f"Höjd: {alt_fmt}")
+        if cas_val:
+            row2.append(f"Fart: {cas_val} kt")
+        if tat_val:
+            row2.append(f"Temp: {tat_val}°C")
+        if wind_dir is not None and ws_val:
+            row2.append(f"Vind: {wind_dir}° / {ws_val} kt")
+        elif ws_val:
+            row2.append(f"Vind: {ws_val} kt")
+        if fob_val is not None:
+            fob_fmt = f"{fob_val:,} lbs".replace(',', ' ')
+            row2.append(f"Bränsle (FOB): {fob_fmt}")
+
+        lines = [" | ".join(row1)]
+        if row2:
+            lines.append(" | ".join(row2))
+
+        summary = "\n".join(lines)
+        return f"{summary}\nRådata: {stripped}"
+    except Exception:
+        return None
+
+
 def rule_lsconf_loadsheet(text: str, label: str = None, metadata: dict = None) -> str:
     """
     LSCONF (Loadsheet Confirmation / Lastbesked)
@@ -1584,12 +1660,27 @@ def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: di
         if any(l.upper().startswith(p.upper()) for p in TECH_PREFIXES):
             continue
 
+        # Krav 4: Exkluderingsregler mot telemetri och nyckel/värdepar (POS, LAT, LON etc.)
+        l_upper = l.upper()
+        # 4a. Börjar med POS eller innehåller telemetrimönster som LAT, LON, ALT, FOB, CAS, UTC, TAT
+        if l_upper.startswith('POS') or re.search(r'\b(?:LAT|LON|ALT|FOB|CAS|UTC|TAT)\s+[A-Z0-9\-]', l_upper):
+            continue
+
+        # 4b. Innehåller 2 eller fler kommatecken (,) i kombination med siffror (t.ex. ,LAT N058, ,ALT 37002)
+        if comma_count >= 2 and re.search(r',\s*[A-Z0-9_\-]*\d+', l):
+            continue
+
+        # 4c. Består till mer än 25% av siffror
+        digit_count = sum(1 for c in l if c.isdigit())
+        if (digit_count / max(len(l), 1)) > 0.25:
+            continue
+
         freetext_lines.append(l)
 
     pilot_msg = ""
     if freetext_lines:
         joined_free = " — ".join(freetext_lines)
-        pilot_msg = f'💬 Pilotmeddelande: "{joined_free}"'
+        pilot_msg = f'Pilotmeddelande: "{joined_free}"'
 
     summary_items = [item for item in [route_str, eta_str, fob_str] if item]
     if not summary_items and not pilot_msg:
@@ -1835,6 +1926,7 @@ PARSER_RULES = [
     rule_boeing_fms_weather_log,
     rule_aoc_airline_designated,
     rule_label_h1_fpn_flight_plan,
+    rule_pos_key_value_report,
     rule_label_h1_posn_fms,
     rule_label_h1_resreq_ack,
     rule_label_h1_mm_telemetry,

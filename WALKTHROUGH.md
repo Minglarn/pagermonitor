@@ -2202,3 +2202,23 @@
   - `test_finnair_fms_posn_formatting`: Verifierar FMS POSN formatering med `|`, enheter `°C`, `°` och koordinatkonvertering.
   - Samtliga 87 enhetstester passerar utan anmärkning.
   - Versionsbump till CalVer `2026.10.15.19` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
+### 80. Totalförbud mot Emojis, Nyckel/Värde POS-Telemetri och Skärpt Pilotfritext-Filter (v2026.10.15.20)
+- **Totalförbud mot Emojis i Hela Kodbasen ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Raderat samtliga förekomster av pratbubblan `💬` (U+1F4AC) och alla övriga emojis.
+  - Meddelandeprefix är nu uteslutande `Pilotmeddelande:` i ren text och filtermeny/chips visar `Pilotmeddelanden`.
+  - Automatisk unicode-skanning bekräftar 0 otillåtna emojis i hela systemet.
+- **Avkodning av Nyckel/Värde-baserade `POS`-rapporter ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Implementerat `rule_pos_key_value_report` samt stöd i `extract_position_and_telemetry()` för kommaseparerade telemetrimeddelanden (t.ex. China Eastern `B-308E`, `MU0250`, `Label: 11`: `POS - CAS 274,LAT N058.32,LON E016.90,ALT 37002,FOB 137088,UTC 115155,PD 41.15,WD -60,WS 50,TAT -56`).
+  - Extraherar latitud (`LAT N058.32` -> `58.32`), longitud (`LON E016.90` -> `16.90`) och höjd (`ALT 37002` -> `37002 ft`) direkt till paketmetadata för kartor och databas.
+  - Avkodar övrig telemetri: fart (`CAS 274` -> `274 kt`), bränsle (`FOB 137088` -> `137 088 lbs`), tid (`UTC 115155` -> `11:51:55 UTC`), vindriktning med normalisering (`WD -60` -> `(360 + (-60)) % 360` = `300°`), vindstyrka (`WS 50` -> `50 kt`) och temperatur (`TAT -56` -> `-56°C`).
+  - Presenterar meddelandet i en ren och strukturerad tvåradersvy med ` | ` och rådata bakom `</> Rådata`-badgen.
+- **Skärpt Exkludering mot Siffer- och Telemetridata i Pilotfritext ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Förhindrar att maskintelemetri med mellanslag klassas som pilotmeddelande genom tre nya spärrar:
+    1. Blockerar rader som startar med `POS` eller innehåller parametermönster som `LAT `, `LON `, `ALT `, `FOB `, `CAS `, `UTC `, `TAT `.
+    2. Blockerar rader med 2 eller fler kommatecken i kombination med siffror.
+    3. Blockerar rader som består till mer än 25% av siffror (vanlig mänsklig pilotfritext består av ord, inte parametersträngar).
+- **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
+  - Tillagt `test_china_eastern_pos_key_value_telemetry`: Verifierar position (`58.32`, `16.90`), höjd (`37 002 ft`), telemetri (`274 kt`, `-56°C`, `300° / 50 kt`, `137 088 lbs`) och att meddelandet INTE flaggas som pilotmeddelande.
+  - Samtliga 88 enhetstester passerar utan anmärkning.
+  - Versionsbump till CalVer `2026.10.15.20` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).

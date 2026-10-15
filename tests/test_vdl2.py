@@ -720,7 +720,7 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertIn('ETA: 09:25 UTC', res['message'])
         self.assertNotIn('45:05', res['message'])
         self.assertIn('Bränsle (FOB): 4 280 kg', res['message'])
-        self.assertIn('💬 Pilotmeddelande: "HI BER — REQ FUEL 5.6T"', res['message'])
+        self.assertIn('Pilotmeddelande: "HI BER — REQ FUEL 5.6T"', res['message'])
         self.assertIn('Rådata:', res['message'])
         self.assertIn('HI BER', res['message'])
 
@@ -928,6 +928,42 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertIn('Höjd: FL360 (36 000 ft) | Temp: -54°C | Vind: 314° / 45 kt', res['message'])
         self.assertIn('Nästa brytpunkt: 59.1683, 20.6933 (kl 11:37:29 UTC)', res['message'])
         self.assertIn('Position: 58.6600, 19.1350', res['message'])
+        self.assertIn('Rådata:', res['message'])
+        self.assertIn(raw_msg, res['message'])
+
+    def test_china_eastern_pos_key_value_telemetry(self):
+        """Verifiera China Eastern B-308E (MU0250) Label 11 POS nyckel/värde telemetri."""
+        raw_msg = "POS - CAS 274,LAT N058.32,LON E016.90,ALT 37002,FOB 137088,UTC 115155,PD 41.15,WD -60,WS 50,TAT -56"
+        frame = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '780E8E'},
+                    'acars': {
+                        'reg': 'B-308E',
+                        'flight': 'MU0250',
+                        'label': '11',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertAlmostEqual(res['lat'], 58.32, places=2)
+        self.assertAlmostEqual(res['lon'], 16.90, places=2)
+        self.assertEqual(res['alt'], 37002)
+        self.assertEqual(res['alt_ft'], 37002)
+
+        self.assertIn('[Positionsrapport]', res['message'])
+        self.assertIn('Position: 58.3200, 16.9000', res['message'])
+        self.assertIn('Tid: 11:51:55 UTC', res['message'])
+        self.assertIn('37 002 ft', res['message'])
+        self.assertIn('274 kt', res['message'])
+        self.assertIn('-56°C', res['message'])
+        self.assertIn('300° / 50 kt', res['message'])
+        self.assertIn('137 088 lbs', res['message'])
+        self.assertNotIn('Pilotmeddelande', res['message'])
         self.assertIn('Rådata:', res['message'])
         self.assertIn(raw_msg, res['message'])
 

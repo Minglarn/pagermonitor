@@ -1477,7 +1477,7 @@
                     labelBtn.classList.remove('active-filter-select');
                 } else if (count === 1) {
                     const singleVal = Array.from(activeFilters.labels)[0];
-                    const disp = (singleVal === '__PILOT_FREETEXT__') ? '💬 Pilotmeddelanden' : singleVal;
+                    const disp = (singleVal === '__PILOT_FREETEXT__') ? 'Pilotmeddelanden' : singleVal;
                     labelText.textContent = `Label: ${disp}`;
                     labelBtn.classList.add('active-filter-select');
                 } else {
@@ -1524,7 +1524,7 @@
             activeFilters.labels.forEach(lbl => {
                 let disp = lbl;
                 if (lbl === '__PILOT_FREETEXT__') {
-                    disp = '💬 Pilotmeddelanden';
+                    disp = 'Pilotmeddelanden';
                 } else if (LABEL_DESCRIPTIONS[lbl]) {
                     disp = `${lbl} (${LABEL_DESCRIPTIONS[lbl]})`;
                 }
@@ -1660,7 +1660,7 @@
                             labelCounts[lbl] = (labelCounts[lbl] || 0) + 1;
                         }
                         const msg = a.message || '';
-                        if (msg.includes('💬')) {
+                        if (msg.includes('Pilotmeddelande')) {
                             pilotMsgCount++;
                         }
                     }
@@ -1679,7 +1679,7 @@
                     html += `
                         <label class="filter-menu-item" onclick="event.stopPropagation()">
                             <input type="checkbox" ${isPilotChecked ? 'checked' : ''} onchange="toggleFilterValue('labels', '__PILOT_FREETEXT__', this.checked)">
-                            <span class="filter-menu-label">💬 Pilotmeddelanden</span>
+                            <span class="filter-menu-label">Pilotmeddelanden</span>
                             <span class="filter-menu-count">(${pilotMsgCount})</span>
                         </label>
                     `;
@@ -1913,7 +1913,7 @@
             // Formatera parsedSummary rad för rad: dela upp på pipe-avdelare (|), framhäv fältetiketter och pilotmeddelanden
             const lines = parsedSummary.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
             const formattedLines = lines.map(line => {
-                if (line.includes('💬')) {
+                if (line.includes('Pilotmeddelande:')) {
                     let lineEscaped = escapeHtml(line);
                     let highlighted = highlightMessage(lineEscaped);
                     return `<div class="pilot-freetext-highlight">${highlighted}</div>`;
@@ -2235,7 +2235,7 @@
             tr.setAttribute('data-label', labelVal || '');
             tr.setAttribute('data-airport', stationVal || alarm.dst_airport || '');
             tr.setAttribute('data-airport-code', cleanAirportCode);
-            tr.setAttribute('data-has-pilot', (cleanMsg.includes('💬') || (alarm.message && alarm.message.includes('💬'))) ? '1' : '0');
+            tr.setAttribute('data-has-pilot', (cleanMsg.includes('Pilotmeddelande') || (alarm.message && alarm.message.includes('Pilotmeddelande'))) ? '1' : '0');
             tr.setAttribute('data-address', alarm.address || '');
             tr.setAttribute('data-alias', alarm.alias || '');
             tr.setAttribute('data-reg', regVal || '');
