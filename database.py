@@ -67,7 +67,10 @@ def get_default_settings():
         'vdl2_filter_links': 'false',
         'sonde_enabled': 'true',
         'sonde_udp_port': '55673',
-        'sonde_db_interval': '5'
+        'sonde_db_interval': '5',
+        'satc_enabled': 'true',
+        'satc_port': '5558',
+        'satc_only_messages': 'true'
     }
 
 def init_db():
@@ -469,6 +472,12 @@ def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, 
                 msg['protocol'] = 'TETRA'
             elif 'RDS' in b_val or 'TMC' in b_val or str(msg['address']).startswith('E4:') or str(msg['address']).startswith('TMC-'):
                 msg['protocol'] = 'RDS-TMC'
+            elif 'VDL' in b_val or 'ACARS' in b_val:
+                msg['protocol'] = 'VDL2'
+            elif 'SONDE' in b_val:
+                msg['protocol'] = 'SONDE'
+            elif 'SATC' in b_val or 'INMARSAT' in b_val or str(msg['address']).startswith('SATC') or str(msg['address']).startswith('LES:'):
+                msg['protocol'] = 'SATC'
             elif 'AFSK' in b_val or 'UFSK' in b_val or msg['address'] == 'AFSK':
                 msg['protocol'] = 'AFSK'
             elif 'POCSAG' in b_val or b_val.isdigit() or str(msg['address']).isdigit():

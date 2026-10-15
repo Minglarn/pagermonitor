@@ -443,6 +443,10 @@ window.WaterfallManager = (function () {
                           (msg.bitrate && msg.bitrate.toUpperCase().includes('VDL')) ||
                           (msg.sdr_name && msg.sdr_name.toUpperCase().includes('VDL'));
 
+        const isSatcMsg = (msg.protocol && (msg.protocol.toUpperCase().includes('SATC') || msg.protocol.toUpperCase().includes('INMARSAT'))) ||
+                          (msg.bitrate && (msg.bitrate.toUpperCase().includes('SATC') || msg.bitrate.toUpperCase().includes('INMARSAT'))) ||
+                          (msg.sdr_name && (msg.sdr_name.toUpperCase().includes('SATC') || msg.sdr_name.toUpperCase().includes('INMARSAT')));
+
         let ch = null;
         if (isRdsMsg) {
             // Leta efter befintlig RDS-kanal (t.ex. 'RDS' med frekvens 'auto')
@@ -465,6 +469,8 @@ window.WaterfallManager = (function () {
                     sdrName = `Radiosond ${freq}`;
                 } else if (isVdl2Msg) {
                     sdrName = `VDL2 ${freq}`;
+                } else if (isSatcMsg) {
+                    sdrName = `Inmarsat ${freq}`;
                 } else {
                     sdrName = msg.frequency ? `Freq ${msg.frequency}` : 'Receiver';
                 }

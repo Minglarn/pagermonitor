@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.23] - Inmarsat STD-C / EGC / SafetyNET / SAR Mottagare från SatDump
+
+- **Ny Mottagarmodul ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Implementerat en mottagarmodul som stöder både UDP-lyssnare och TCP-server på `0.0.0.0:<satc_port>` (standard 5558) för direkt intag av radseparerad JSON från SatDump (`inmarsat_std_c` via `JSON_OUT`).
+  - Automatisk filtrering av tomma TDM-signalerings- och synkramar (Bulletin Board, Signalling channel descriptor etc.) via inställningen `satc_only_messages` (standard `true`), så att endast relevanta meddelanden och SafetyNET/SAR-händelser släpps igenom.
+  - Automatisk avkodning och igenkänning av jordstationer (LES - Land Earth Stations, t.ex. Burum, Eik, Thermopylae) från ID och namn.
+  - Robust geografisk koordinatparsning för alla standardiserade sjöfarts- och SAR-format (`58-34.2N 016-12.5E`, `58 34N 016 12E`, `5834N 01612E`, `LAT/LONG` samt decimalgrader) som konverteras till decimalgrader för kartor och databas.
+  - Svensk sammanfattningsrad överst (`[Inmarsat SafetyNET / Sjöfartsvarning] Område: NAVAREA I | Prioritet: Safety`) följt av meddelandetext och hela det råa JSON-paketet bakom `</> Rådata`-badgen.
+- **Konfigurations- och Inställningsstöd ([app.py](file:///d:/antigravity/pager-monitor/app.py), [database.py](file:///d:/antigravity/pager-monitor/database.py), [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+  - Lagt till inställningarna `satc_enabled`, `satc_port` (default 5558) och `satc_only_messages` (default true) i SQLite och backend.
+  - Ny dedikerad flik i Settings (`Inmarsat STD-C / EGC`) med statusmätare för inkomna paket, avkodade meddelanden, senaste tjänst och aktivitet samt testknappar för SafetyNET och Distress/SAR.
+- **Frontend och Gränssnitt ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css), [static/waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js))**:
+  - Integrerat protokollnamnet `SATC` i filtermenyn (`Alla protokoll`), som döljs helt om `satc_enabled` är avstängt i inställningarna.
+  - Click-to-Filter på samtliga SATC-badgar (Prioritet, NAVAREA, LES, Frekvens, Tjänst).
+  - Larmrader för `DISTRESS` och `URGENCY` markeras som kritiska larm med röd bakgrund och animation (`alert-row`, `alert-pulse-bg`).
+  - Frekvensvisning (t.ex. `1537.700M`) integrerad i RF Activity-vattenfallet och frekvensfilter.
+- **Enhetstester och Emojiförbud ([tests/test_satc.py](file:///d:/antigravity/pager-monitor/tests/test_satc.py))**:
+  - Skapat 7 nya enhetstester som verifierar parsning av SafetyNET- och Distress/SAR-meddelanden, koordinatkonverteringar, filtrering av tomma TDM-ramar och strikt avsaknad av emojis.
+  - Samtliga 136 enhetstester passerar felfritt och 0 emojis förekommer på hela webbplatsen.
+
 ## [2026.10.15.22] - Fix för Flödesuppdatering i Realtid, Återanslutning av SSE och Fallback-Polling
 
 - **Realtidsflöde och Dynamisk Sortering i DataTables ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:

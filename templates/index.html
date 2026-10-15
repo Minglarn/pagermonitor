@@ -1274,6 +1274,8 @@
                 return 'VDL2';
             } else if (rawProto.includes('SONDE') || rawBitrate.toUpperCase().includes('SONDE') || msgUpper.includes('VÄDERBALLONG') || msgUpper.includes('RADIOSOND')) {
                 return 'SONDE';
+            } else if (rawProto.includes('SATC') || rawProto.includes('INMARSAT') || rawBitrate.toUpperCase().includes('SATC') || rawBitrate.toUpperCase().includes('INMARSAT') || addrUpper.startsWith('LES') || msgUpper.includes('INMARSAT') || msgUpper.includes('SAFETYNET') || msgUpper.includes('FLEETNET')) {
+                return 'SATC';
             } else if (rawProto.includes('AFSK') || rawProto.includes('UFSK') || rawBitrate.toUpperCase().includes('AFSK') || rawBitrate.toUpperCase().includes('UFSK') || addrUpper === 'AFSK') {
                 return 'AFSK';
             } else if (rawProto.includes('POCSAG') || rawBitrate.toUpperCase().includes('POCSAG') || /^\d+$/.test(rawBitrate) || /^\d+$/.test(addrUpper)) {
@@ -1563,6 +1565,7 @@
 
         function populateFilterDropdowns() {
             const isVdl2Enabled = (appSettings.vdl2_enabled !== 'false');
+            const isSatcEnabled = (appSettings.satc_enabled !== 'false');
 
             // Show or hide VDL2 dropdown wrappers based on Settings
             const vdl2Wrappers = document.querySelectorAll('.vdl2-only-filter');
@@ -1570,9 +1573,18 @@
                 el.style.display = isVdl2Enabled ? 'inline-flex' : 'none';
             });
 
+            // Show or hide SATC dropdown wrappers based on Settings
+            const satcWrappers = document.querySelectorAll('.satc-only-filter');
+            satcWrappers.forEach(el => {
+                el.style.display = isSatcEnabled ? 'inline-flex' : 'none';
+            });
+
             if (!isVdl2Enabled) {
                 if (activeFilters.labels.size > 0) activeFilters.labels.clear();
                 if (activeFilters.airports.size > 0) activeFilters.airports.clear();
+            }
+            if (!isSatcEnabled) {
+                if (activeFilters.protocols.has('SATC')) activeFilters.protocols.delete('SATC');
             }
 
             // 1. Protocol options
@@ -1586,13 +1598,16 @@
 
             const protoMenu = document.getElementById('filterProtoMenu');
             if (protoMenu) {
-                const preferredOrder = ['POCSAG', 'VDL2', 'SONDE', 'TETRA', 'RDS', 'AFSK'];
+                const preferredOrder = ['POCSAG', 'VDL2', 'SATC', 'SONDE', 'TETRA', 'RDS', 'AFSK'];
                 let activeProtos = preferredOrder.filter(p => protoCounts[p]);
                 Object.keys(protoCounts).forEach(p => {
                     if (!activeProtos.includes(p)) activeProtos.push(p);
                 });
                 if (!isVdl2Enabled) {
                     activeProtos = activeProtos.filter(p => p !== 'VDL2');
+                }
+                if (!isSatcEnabled) {
+                    activeProtos = activeProtos.filter(p => p !== 'SATC');
                 }
                 const hasSelected = activeFilters.protocols.size > 0;
                 let html = `
@@ -2065,6 +2080,9 @@
             } else if (rawProto.includes('SONDE') || rawBitrate.toUpperCase().includes('SONDE') || msgUpper.includes('VÄDERBALLONG') || msgUpper.includes('RADIOSOND')) {
                 protoName = 'SONDE';
                 protoClass = 'proto-sonde';
+            } else if (rawProto.includes('SATC') || rawProto.includes('INMARSAT') || rawBitrate.toUpperCase().includes('SATC') || rawBitrate.toUpperCase().includes('INMARSAT') || addrUpper.startsWith('LES') || msgUpper.includes('INMARSAT') || msgUpper.includes('SAFETYNET') || msgUpper.includes('FLEETNET')) {
+                protoName = 'SATC';
+                protoClass = 'proto-satc';
             } else if (rawProto.includes('AFSK') || rawProto.includes('UFSK') || rawBitrate.toUpperCase().includes('AFSK') || rawBitrate.toUpperCase().includes('UFSK') || addrUpper === 'AFSK') {
                 protoName = 'AFSK';
                 protoClass = 'proto-afsk';
@@ -2099,6 +2117,10 @@
                     } else if (bStr.toUpperCase().startsWith('SONDE-')) {
                         formattedBitrate = bStr.substring(6);
                     } else if (bStr.toUpperCase() === 'SONDE') {
+                        formattedBitrate = '';
+                    } else if (bStr.toUpperCase().startsWith('SATC-')) {
+                        formattedBitrate = bStr.substring(5);
+                    } else if (bStr.toUpperCase() === 'SATC') {
                         formattedBitrate = '';
                     } else if (/^POCSAG\s*\d+$/i.test(bStr)) {
                         formattedBitrate = bStr.replace(/^POCSAG\s*/i, '') + 'bps';
@@ -2232,6 +2254,59 @@
                 vdl2BadgesHtml = `${regTag}${flightTag}${icaoTag}${stationTag}${statusTag}${labelTag}`;
             }
 
+            // SATC Metadata Badges (Inmarsat STD-C / EGC / SafetyNET)
+            let satcBadgesHtml = '';
+            const isSatc = protoName === 'SATC';
+            let satcPriorityVal = alarm.satc_priority || alarm.priority || '';
+            let satcNavareaVal = alarm.navarea || alarm.area || '';
+            let satcLesVal = alarm.les_name || alarm.les || '';
+            let satcServiceVal = alarm.satc_service || alarm.service_name || '';
+
+            if (isSatc) {
+                if (!satcPriorityVal && cleanMsg) {
+                    const pM = cleanMsg.match(/\bPrioritet:\s*([A-Za-z]+)/i) || cleanMsg.match(/\bPriority:\s*([A-Za-z]+)/i);
+                    if (pM) satcPriorityVal = pM[1];
+                }
+                if (!satcNavareaVal && cleanMsg) {
+                    const aM = cleanMsg.match(/\b(NAVAREA\s+[A-Z0-9]+|METAREA\s+[A-Z0-9]+)\b/i) || cleanMsg.match(/\bOmråde:\s*([^|\]\n]+)/i);
+                    if (aM) satcNavareaVal = aM[1].trim();
+                }
+                if (!satcLesVal && alarm.address && alarm.address.startsWith('LES:')) {
+                    satcLesVal = alarm.address.substring(4).trim();
+                }
+
+                let priorityTag = '';
+                if (satcPriorityVal) {
+                    const pUpper = satcPriorityVal.toUpperCase();
+                    let pClass = 'badge-routine';
+                    if (pUpper === 'DISTRESS') {
+                        pClass = 'badge-distress';
+                    } else if (pUpper === 'URGENCY') {
+                        pClass = 'badge-urgency';
+                    } else if (pUpper === 'SAFETY') {
+                        pClass = 'badge-safety';
+                    }
+                    priorityTag = `<span class="badge meta badge-satc-priority ${pClass} filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcPriorityVal)}')" title="Klicka för att söka prioritet: ${escapeHtml(satcPriorityVal)}">Priority: ${escapeHtml(satcPriorityVal)}</span>`;
+                }
+
+                const navareaTag = satcNavareaVal ? `<span class="badge meta badge-navarea filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcNavareaVal)}')" title="Klicka för att söka område: ${escapeHtml(satcNavareaVal)}">${escapeHtml(satcNavareaVal)}</span>` : '';
+                const lesTag = satcLesVal ? `<span class="badge meta badge-les filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcLesVal)}')" title="Klicka för att söka jordstation: ${escapeHtml(satcLesVal)}">LES: ${escapeHtml(satcLesVal)}</span>` : '';
+                const serviceTag = satcServiceVal ? `<span class="badge meta badge-service filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcServiceVal)}')" title="Klicka för att filtrera: ${escapeHtml(satcServiceVal)}">${escapeHtml(satcServiceVal)}</span>` : '';
+
+                let coordTag = '';
+                let latVal = alarm.lat;
+                let lonVal = alarm.lon;
+                if (latVal !== undefined && lonVal !== undefined && latVal !== null && lonVal !== null) {
+                    const latNum = Number(latVal);
+                    const lonNum = Number(lonVal);
+                    if (!isNaN(latNum) && !isNaN(lonNum)) {
+                        coordTag = `<span class="badge meta badge-coord" title="Geografisk position">Pos: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}</span>`;
+                    }
+                }
+
+                satcBadgesHtml = `${priorityTag}${navareaTag}${lesTag}${serviceTag}${coordTag}`;
+            }
+
             // Sätt filterattribut på raden
             tr.setAttribute('data-proto-name', protoName);
             tr.setAttribute('data-frequency', alarm.frequency || '');
@@ -2244,19 +2319,28 @@
             tr.setAttribute('data-reg', regVal || '');
             tr.setAttribute('data-flight', flightVal || '');
             tr.setAttribute('data-icao', icaoVal || '');
+            tr.setAttribute('data-priority', satcPriorityVal || '');
+            tr.setAttribute('data-navarea', satcNavareaVal || '');
+            tr.setAttribute('data-les', satcLesVal || '');
 
-            // Ordbevakning (Krav 3): Kontrolleras ENDAST på själva meddelandetexten (cleanMsg), med hela ord
+            // Ordbevakning och SATC Distress/Urgency-larm
             if (isBasestation) {
                 tr.classList.add('basestation-row');
             } else {
                 const hasAlert = alertWords.some(aw => aw.is_active && checkAlertWordMatch(aw.word, cleanMsg));
-                if (hasAlert) {
+                const isSatcCritical = isSatc && (
+                    alarm.is_alert ||
+                    (satcPriorityVal && (satcPriorityVal.toUpperCase() === 'DISTRESS' || satcPriorityVal.toUpperCase() === 'URGENCY')) ||
+                    cleanMsg.includes('Prioritet: DISTRESS') || cleanMsg.includes('Prioritet: URGENCY') ||
+                    cleanMsg.includes('DISTRESS ALERT')
+                );
+                if (hasAlert || isSatcCritical) {
                     tr.classList.add('alert-row', 'alert-pulse-bg');
                 }
             }
 
-            // Dölj Alpha/Num för VDL2
-            const funcLabel = (!isVdl2 && alarm.function !== undefined) ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
+            // Dölj Alpha/Num för VDL2 och SATC
+            const funcLabel = (!isVdl2 && !isSatc && alarm.function !== undefined) ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
             const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
             const freqTag = alarm.frequency ? `<span class="badge meta badge-freq filterable-badge" onclick="filterByFrequency('${escapeHtml(alarm.frequency)}')" title="Klicka för att filtrera på frekvens: ${escapeHtml(alarm.frequency)}">${escapeHtml(alarm.frequency)}</span>` : '';
             const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
@@ -2266,7 +2350,7 @@
             const rawToggleBadge = msgObj.rawText ? `<span class="badge badge-raw-toggle" onclick="toggleRawData(this)" title="Visa eller dölj rådata">&lt;/&gt; Rådata</span>` : '';
             const rawBoxHtml = msgObj.rawText ? `<div class="raw-data-box" style="display: none;">${escapeHtml(msgObj.rawText)}</div>` : '';
 
-            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
+            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${satcBadgesHtml}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
             const metaBarHtml = metaBarBadges ? `<div class="msg-meta-bar">${metaBarBadges}</div>` : '';
 
             tr.innerHTML = `

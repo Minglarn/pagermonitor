@@ -1,13 +1,28 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.22`
+- **CalVer**: `2026.10.15.23`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 0. Inmarsat STD-C / EGC / SafetyNET / SAR Mottagare (SatDump JSON_OUT)
+- **Arkitektur och Multi-Protokoll Socket ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Startar både en UDP-lyssnare och en TCP-server på `0.0.0.0:<satc_port>` (standardport `5558`).
+  - Tar emot realtidsströmmar från `docker-satdump` (`inmarsat_std_c`) konfigurerad med `JSON_OUT`.
+  - Stöder automatisk filtrering av tomma TDM- och synkpaket via `satc_only_messages=True` för att förhindra spammande av signaleringskanaler.
+- **Svensk Avkodning, Sammanfattning och Geografisk Position**:
+  - Extraherar metadata till badges: Prioritet (`DISTRESS`, `URGENCY`, `Safety`, `Routine`), NAVAREA/METAREA-områden, jordstationsnamn (LES, t.ex. Burum, Eik, Thermopylae) och kategorietiketter.
+  - Robust koordinatkonvertering för sjöfartsformat (`58-34.2N 016-12.5E`, `58 34N 016 12E`, `5834N 01612E`, m.fl.) till decimalgrader för kartor och databas.
+  - Genererar svensk sammanfattning överst (`[Inmarsat SafetyNET / Sjöfartsvarning] Område: NAVAREA I | Prioritet: Safety`) och placerar hela det råa JSON-paketet bakom `</> Rådata`-badgen.
+- **Settings och UI-Integration**:
+  - Konfigurationsflik `Inmarsat STD-C / EGC` i Settings med telemetrimätare och testknappar.
+  - Protokollnamnet `SATC` visas i filtermenyn när `satc_enabled` är aktivt och döljs helt om inaktiverat.
+  - Kritiska nödmeddelanden (`DISTRESS` / `URGENCY`) färgas i rött med larmpuls.
+  - Frekvenser (t.ex. `1537.700M`) integreras sömlöst i RF Activity-vattenfallet.
 
 ### 1. Dedicated Alarms Page & Dashboard with DataTables 2
 - **DataTables 2 in Alarms and Dashboard**: Both the live Dashboard (`/`) and Alarms view (`/alarms`) are powered by DataTables 2 for instant client-side sorting, pagination, search, and real-time SSE row additions.

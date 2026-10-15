@@ -1,9 +1,12 @@
 import unittest
+from database import init_db
 from sonde_receiver import (
     SondeState, SondeReceiver, format_sonde_model, format_frequency
 )
 
 class TestSondeReceiver(unittest.TestCase):
+    def setUp(self):
+        init_db()
     def test_format_sonde_model(self):
         self.assertEqual(format_sonde_model('RS41-SG'), 'Vaisala RS41-SG')
         self.assertEqual(format_sonde_model('DFM09'), 'GRAW DFM-09')

@@ -210,7 +210,7 @@ def test_alert_word_unicode_case_insensitive_matching(client):
     database.save_alert_word("STÖLD", "#ef4444", True)
     database.save_alert_word("SKADA", "#ef4444", True)
     database.save_message("1234567", "Larm om stöld i butik")
-    database.save_message("1234568", "Trafikolycka med personskada")
+    database.save_message("1234568", "Trafikolycka med skada på person")
 
     res = client.get('/api/messages?alerts_only=1')
     assert res.status_code == 200

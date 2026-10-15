@@ -954,6 +954,9 @@
             } else if (rawProto.includes('SONDE') || rawBitrate.toUpperCase().includes('SONDE') || msgUpper.includes('VÄDERBALLONG') || msgUpper.includes('RADIOSOND')) {
                 protoName = 'SONDE';
                 protoClass = 'proto-sonde';
+            } else if (rawProto.includes('SATC') || rawProto.includes('INMARSAT') || rawBitrate.toUpperCase().includes('SATC') || rawBitrate.toUpperCase().includes('INMARSAT') || addrUpper.startsWith('LES') || msgUpper.includes('INMARSAT') || msgUpper.includes('SAFETYNET') || msgUpper.includes('FLEETNET')) {
+                protoName = 'SATC';
+                protoClass = 'proto-satc';
             } else if (rawProto.includes('AFSK') || rawProto.includes('UFSK') || rawBitrate.toUpperCase().includes('AFSK') || rawBitrate.toUpperCase().includes('UFSK') || addrUpper === 'AFSK') {
                 protoName = 'AFSK';
                 protoClass = 'proto-afsk';
