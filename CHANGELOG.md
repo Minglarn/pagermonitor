@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.21] - Avkodning av KLM POS, Airbus/Finnair FMS-delblock, H1/H2/DF-fallback och Freetext-restriktioner
+
+- **Begränsning av `Pilotmeddelande:` till Konversations-Labels och `.FREE` / `FTX/` ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - `Pilotmeddelande:` utbrytning är nu strikt begränsad till konversations-labels (`80`, `81`, `82`, `83`, `RA`, `AA`, `10`, `12`, `13`, `15`) samt meddelanden som explicit innehåller `.FREE` eller `FTX/`.
+  - Förhindrar att teknisk maskintelemetri på andra labels (`11`, `H1`, `H2`, `MA`, `5Z`, `16` m.fl.) någonsin kan misstas för pilotmeddelanden.
+  - Korrigerat loop-indrag i `rule_operational_eta_fob_freetext` så att alla uteslutningsregler appliceras korrekt på varje rad.
+- **Avkodning av `.FREE`-headers ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Implementerat `rule_free_text_header` för dispatch-headermeddelanden som matchar `^/[A-Z0-9]+\.FREE\s*$` (t.ex. Hainan Airlines `Label: 80`: `/HAKDPHU.FREE\nETP WX COPIED THX`).
+  - Tolkar efterföljande rader som `Pilotmeddelande: "ETP WX COPIED THX"` med den fullständiga rådatan prydligt bakom `</> Rådata`-badgen.
+- **Avkodning av ICAO / KLM Positionsrapporter (`(POS-...`) ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Implementerat `rule_icao_klm_pos_report` och mönster 00b i `extract_position_and_telemetry()`.
+  - Matchar standardformatet `(POS-KLM20H-5834N01553E/101429 F310\nRMK/FUEL 5.4 M0.80)`.
+  - Beräknar latitud (`5834N` -> `58.5667`), longitud (`01553E` -> `15.8833`), flygnivå (`F310` -> `31 000 ft`), tid (`10:14:29 UTC`), bränsle (`5.4 ton (5 400 kg)`) och fart (`Mach 0.80`).
+  - Uppdaterar paketets geografiska koordinater och höjd i metadata för kartvy och databas.
+- **Avkodning av Airbus/Finnair/Lufthansa Fortsättningsblock i `Label: H1` ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Implementerat `rule_fms_telemetry_continuation_block` och mönster 00c i `extract_position_and_telemetry()`.
+  - Fångar telemetridelblock som börjar med `,` eller `-,` eller innehåller `/X\d+`, `/V\d+`, `/2[NSTV]\d+` (t.ex. `,0305/X72353,E0175,N577,057,321,0030,XXXX/`).
+  - Extraherar koordinater som `E0175,N577` (`57.7°N, 17.5°E`) och formaterar som `[FMS Telemetri / Delblock] Kompletterande färd- och sensordata (Position: 57.70, 17.50)` med rådatan bakom `</> Rådata`-badgen.
+- **Generell Fallback för Oidentifierad Maskindata i `Label: H1` / `H2` / `DF` / `5Z` ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Säkerställer att råa tekniska FMS-strängar (som Lufthansas `*,82:8YYB3 )RE 13J/ )1,,Y`) aldrig dumpas oformaterade i tabellen.
+  - Kapslar dem som `[FMS/Systemtelemetri] Kodat datapaket (X tecken)` med rådata bakom `</> Rådata`-badgen.
+- **Fullständig Sanering av Pratbubblor i UI och Databas ([database.py](file:///d:/antigravity/pager-monitor/database.py), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Frontend-funktioner (`formatMessage` och `cleanMsg`) strippar nu automatiskt alla varianter av speech bubble emojis och unicode-koder så att varken aktiva eller historiskt sparade meddelanden visar emojin i den gröna `.pilot-freetext-highlight`-brickan.
+  - `database.py` rensar vid uppstart och vid sparande av nya meddelanden bort eventuella kvarvarande pratbubbel-tecken ur databasen.
+- **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
+  - Tillagt `test_hainan_airlines_free_text_header`, `test_klm_icao_pos_report`, `test_finnair_fms_delblock_continuation` och `test_lufthansa_fms_system_fallback`.
+  - Samtliga 92 enhetstester i hela testsviten passerar felfritt och 0 otillåtna emojis finns i kodbasen.
+
 ## [2026.10.15.20] - Totalförbud mot Emojis, Nyckel/Värde POS-Telemetri och Skärpt Pilotfritext-Filter
 
 - **Totalförbud mot Emojis i Hela Kodbasen**:

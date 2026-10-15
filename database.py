@@ -202,6 +202,13 @@ def init_db():
     except Exception:
         pass
 
+    # Rensa bort eventuella sparade pratbubbel-emojis i meddelandetext
+    try:
+        c.execute("UPDATE messages SET message = REPLACE(message, '\U0001f4ac ', '') WHERE message LIKE '%\U0001f4ac%'")
+        c.execute("UPDATE messages SET message = REPLACE(message, '\U0001f4ac', '') WHERE message LIKE '%\U0001f4ac%'")
+    except Exception:
+        pass
+
     # Migration: If sdr_instances is empty, create the first instance from current settings
     c.execute('SELECT COUNT(*) FROM sdr_instances')
     if c.fetchone()[0] == 0:
@@ -261,6 +268,8 @@ def init_db():
     conn.close()
 
 def save_message(address, message, alias='', function_code=0, bitrate='', frequency='', is_duplicate=False, is_protected=False, repeat_count=1, last_timestamp=None, metadata=None):
+    if message:
+        message = str(message).replace('\U0001f4ac ', '').replace('\U0001f4ac', '')
     if is_duplicate:
         settings = get_settings()
         save_dups = settings.get('save_duplicates', 'true') in ('true', '1', True)

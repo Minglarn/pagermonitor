@@ -967,6 +967,119 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertIn('Rådata:', res['message'])
         self.assertIn(raw_msg, res['message'])
 
+    def test_hainan_airlines_free_text_header(self):
+        """Verifiera Hainan Airlines (Label 80) .FREE header utbrytning till Pilotmeddelande utan emojis."""
+        raw_msg = "/HAKDPHU.FREE\nETP WX COPIED THX"
+        frame = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '780DEF'},
+                    'acars': {
+                        'reg': 'B-1234',
+                        'flight': 'CHH7991',
+                        'label': '80',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertIn('Pilotmeddelande: "ETP WX COPIED THX"', res['message'])
+        self.assertIn('Rådata:', res['message'])
+        self.assertIn(raw_msg, res['message'])
+        self.assertNotIn('\U0001f4ac', res['message'])
+
+        # Testa även humanize_acars_message direkt
+        humanized = humanize_acars_message('80', raw_msg)
+        self.assertIn('Pilotmeddelande: "ETP WX COPIED THX"', humanized)
+        self.assertNotIn('\U0001f4ac', humanized)
+
+    def test_klm_icao_pos_report(self):
+        """Verifiera KLM / ICAO Standard Positionsrapport ((POS-...) med koordinater, alt, bränsle och Mach."""
+        raw_msg = "(POS-KLM20H-5834N01553E/101429 F310\nRMK/FUEL 5.4 M0.80)"
+        frame = {
+            'vdl2': {
+                'freq': 136875000,
+                'avlc': {
+                    'src': {'addr': '4844C6'},
+                    'acars': {
+                        'reg': 'PH-BXV',
+                        'flight': 'KLM20H',
+                        'label': 'H1',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertAlmostEqual(res['lat'], 58.5667, places=4)
+        self.assertAlmostEqual(res['lon'], 15.8833, places=4)
+        self.assertEqual(res['alt'], 31000)
+        self.assertEqual(res['alt_ft'], 31000)
+        self.assertIn('5.4 ton', res['message'])
+        self.assertIn('Mach 0.80', res['message'])
+        self.assertIn('FL310', res['message'])
+        self.assertIn('10:14:29 UTC', res['message'])
+        self.assertIn('Rådata:', res['message'])
+        self.assertIn(raw_msg, res['message'])
+        self.assertNotIn('\U0001f4ac', res['message'])
+
+    def test_finnair_fms_delblock_continuation(self):
+        """Verifiera Finnair fortsättningsblock / delblock med koordinater E0175,N577 och Rådata-kapsling."""
+        raw_msg = ",0305/X72353,E0175,N577,057,321,0030,XXXX/"
+        frame = {
+            'vdl2': {
+                'freq': 136725000,
+                'avlc': {
+                    'src': {'addr': '461FAC'},
+                    'acars': {
+                        'reg': 'OH-LXK',
+                        'flight': 'AY0957',
+                        'label': 'H1',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertAlmostEqual(res['lat'], 57.7, places=1)
+        self.assertAlmostEqual(res['lon'], 17.5, places=1)
+        self.assertIn('[FMS Telemetri / Delblock]', res['message'])
+        self.assertIn('57.70', res['message'])
+        self.assertIn('17.50', res['message'])
+        self.assertIn('Rådata:', res['message'])
+        self.assertIn(raw_msg, res['message'])
+        self.assertNotIn('\U0001f4ac', res['message'])
+
+    def test_lufthansa_fms_system_fallback(self):
+        """Verifiera Lufthansa oidentifierad kodad FMS-sträng under Label H1 kapslas med [FMS/Systemtelemetri]."""
+        raw_msg = "*,82:8YYB3 )RE 13J/ )1,,Y"
+        frame = {
+            'vdl2': {
+                'freq': 136875000,
+                'avlc': {
+                    'src': {'addr': '3C6653'},
+                    'acars': {
+                        'reg': 'D-AIRS',
+                        'flight': 'LH01YY',
+                        'label': 'H1',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertIn('[FMS/Systemtelemetri]', res['message'])
+        self.assertIn('Kodat datapaket', res['message'])
+        self.assertIn('Rådata:', res['message'])
+        self.assertIn(raw_msg, res['message'])
+        self.assertNotIn('\U0001f4ac', res['message'])
+
 if __name__ == '__main__':
     unittest.main()
 

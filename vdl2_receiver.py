@@ -412,7 +412,10 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
         return "Kvittens (ACK)" if not txt else f"Kvittens (ACK) | {txt}"
 
     # 6. Modulär Human ACARS Parser för specialiserade mönster (Label 38, H1 POSN, H1 RESREQ, 83 ETA, MM m.fl.)
-    return parse_human_acars(txt, label=lbl, metadata=acars_dict)
+    res = parse_human_acars(txt, label=lbl, metadata=acars_dict)
+    if res == txt and '\nRådata:' not in res and lbl in ('H1', 'H2', 'DF', '5Z') and txt:
+        return f"[FMS/Systemtelemetri] Kodat datapaket ({len(txt)} tecken)\nRådata: {txt}"
+    return res
 
 def find_nested_key(data, target_key):
     """Söker rekursivt efter en nyckel i ett nästlat JSON-objekt eller lista."""
@@ -523,6 +526,92 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
                 summary_rows.append(" | ".join(row2_parts))
             res['telemetry_summary'] = "\n".join(summary_rows)
 
+            return res
+        except (ValueError, TypeError):
+            pass
+
+    # --- Mönster 00b: ICAO / KLM Positionsrapport ((POS-...) ---
+    # Exempel: (POS-KLM20H-5834N01553E/101429 F310\nRMK/FUEL 5.4 M0.80)
+    m_klm_pos = re.search(
+        r'\(POS-([A-Z0-9]+)-(\d{2})(\d{2})([NS])(\d{3})(\d{2})([EW])/(\d{2})(\d{2})(\d{2})\s+F(\d{3})'
+        r'(?:[\s\S]*?RMK/FUEL\s+(\d+(?:\.\d+)?))?'
+        r'(?:[\s\S]*?M(0\.\d+))?',
+        raw_text,
+        re.IGNORECASE
+    )
+    if m_klm_pos:
+        try:
+            cs = m_klm_pos.group(1).upper()
+            lat_d = int(m_klm_pos.group(2))
+            lat_m = int(m_klm_pos.group(3))
+            ns = m_klm_pos.group(4).upper()
+            lat_val = lat_d + (lat_m / 60.0)
+            if ns == 'S':
+                lat_val = -lat_val
+
+            lon_d = int(m_klm_pos.group(5))
+            lon_m = int(m_klm_pos.group(6))
+            ew = m_klm_pos.group(7).upper()
+            lon_val = lon_d + (lon_m / 60.0)
+            if ew == 'W':
+                lon_val = -lon_val
+
+            res['lat'] = round(lat_val, 4)
+            res['lon'] = round(lon_val, 4)
+
+            fl_val = int(m_klm_pos.group(11))
+            alt_ft = fl_val * 100
+            res['alt'] = alt_ft
+            res['alt_ft'] = alt_ft
+
+            hh, mm, ss = m_klm_pos.group(8), m_klm_pos.group(9), m_klm_pos.group(10)
+            t_str = f"{hh}:{mm}:{ss} UTC"
+            res['telemetry']['time'] = t_str
+
+            fuel_s = m_klm_pos.group(12)
+            if fuel_s:
+                res['telemetry']['fuel_ton'] = float(fuel_s)
+            mach_s = m_klm_pos.group(13)
+            if mach_s:
+                res['telemetry']['mach'] = f"Mach {mach_s}"
+
+            row1 = [f"[Positionsrapport / KLM]" if cs.startswith('KLM') else "[Positionsrapport]", f"Flight: {cs}", f"Position: {res['lat']:.4f}, {res['lon']:.4f}"]
+            row2 = [f"Höjd: FL{fl_val} ({alt_ft:,} ft)".replace(',', ' '), f"Tid: {t_str}"]
+            if fuel_s:
+                f_ton = float(fuel_s)
+                f_kg = int(f_ton * 1000)
+                row2.append(f"Bränsle (FOB): {fuel_s} ton ({f_kg:,} kg)".replace(',', ' '))
+            if mach_s:
+                row2.append(f"Fart: Mach {mach_s}")
+
+            res['telemetry_summary'] = " | ".join(row1) + "\n" + " | ".join(row2)
+            return res
+        except (ValueError, TypeError):
+            pass
+
+    # --- Mönster 00c: Finnair / Airbus FMS fortsättningsblock koordinater ---
+    # Exempel: ,0305/X72353,E0175,N577,057,321,0030,XXXX/
+    cont_matches = list(re.finditer(r',([EW])(\d{3})(\d),([NS])(\d{2})(\d),', raw_text))
+    if cont_matches:
+        try:
+            last_m = cont_matches[-1]
+            ew = last_m.group(1).upper()
+            lon_d = int(last_m.group(2))
+            lon_dec = int(last_m.group(3))
+            lon_val = lon_d + (lon_dec / 10.0)
+            if ew == 'W':
+                lon_val = -lon_val
+
+            ns = last_m.group(4).upper()
+            lat_d = int(last_m.group(5))
+            lat_dec = int(last_m.group(6))
+            lat_val = lat_d + (lat_dec / 10.0)
+            if ns == 'S':
+                lat_val = -lat_val
+
+            res['lat'] = round(lat_val, 4)
+            res['lon'] = round(lon_val, 4)
+            res['telemetry_summary'] = f"[FMS Telemetri / Delblock] Position: {res['lat']:.2f}, {res['lon']:.2f}"
             return res
         except (ValueError, TypeError):
             pass
@@ -1492,6 +1581,8 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
         else:
             # Parsa genom acars_human_parser med strip_prefix=True för ren text
             parsed_human = parse_human_acars(msg_text, label=label, metadata=acars, strip_prefix=True)
+            if lbl_clean in ('H1', 'H2', 'DF', '5Z') and parsed_human == msg_text and '\nRådata:' not in parsed_human:
+                parsed_human = f"[FMS/Systemtelemetri] Kodat datapaket ({len(msg_text)} tecken)\nRådata: {msg_text}"
         if parsed_human:
             message_lines.append(parsed_human)
 

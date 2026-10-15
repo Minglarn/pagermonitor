@@ -1892,7 +1892,9 @@
 
         function formatMessage(msgStr) {
             if (!msgStr) return { summaryHtml: '', rawText: '' };
-            let text = String(msgStr).replace(/<CR><LF>/gi, '\n');
+            let text = String(msgStr)
+                .replace(/<CR><LF>/gi, '\n')
+                .replace(/[\u{1F4AC}\u{1F4AD}\u{1F5E8}]\s*/gu, '');
 
             let parsedSummary = text;
             let rawText = '';
@@ -1913,8 +1915,9 @@
             // Formatera parsedSummary rad för rad: dela upp på pipe-avdelare (|), framhäv fältetiketter och pilotmeddelanden
             const lines = parsedSummary.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
             const formattedLines = lines.map(line => {
-                if (line.includes('Pilotmeddelande:')) {
-                    let lineEscaped = escapeHtml(line);
+                let cleanLine = line.replace(/[\u{1F4AC}\u{1F4AD}\u{1F5E8}]\s*/gu, '').trim();
+                if (cleanLine.includes('Pilotmeddelande:')) {
+                    let lineEscaped = escapeHtml(cleanLine);
                     let highlighted = highlightMessage(lineEscaped);
                     return `<div class="pilot-freetext-highlight">${highlighted}</div>`;
                 }

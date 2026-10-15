@@ -1548,6 +1548,127 @@ def rule_pos_key_value_report(text: str, label: str = None, metadata: dict = Non
         return None
 
 
+def rule_icao_klm_pos_report(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    Avkodar ICAO / KLM Positionsrapporter (POS-...):
+    Exempel:
+      (POS-KLM20H-5834N01553E/101429 F310
+      RMK/FUEL 5.4 M0.80)
+    """
+    stripped = text.strip()
+    m = re.search(
+        r'\(POS-([A-Z0-9]+)-(\d{2})(\d{2})([NS])(\d{3})(\d{2})([EW])/(\d{2})(\d{2})(\d{2})\s+F(\d{3})'
+        r'(?:[\s\S]*?RMK/FUEL\s+(\d+(?:\.\d+)?))?'
+        r'(?:[\s\S]*?M(0\.\d+))?',
+        stripped,
+        re.IGNORECASE
+    )
+    if not m:
+        return None
+
+    callsign = m.group(1).upper()
+    lat_d = int(m.group(2))
+    lat_m = int(m.group(3))
+    lat_ns = m.group(4).upper()
+    lat = lat_d + (lat_m / 60.0)
+    if lat_ns == 'S':
+        lat = -lat
+
+    lon_d = int(m.group(5))
+    lon_m = int(m.group(6))
+    lon_ew = m.group(7).upper()
+    lon = lon_d + (lon_m / 60.0)
+    if lon_ew == 'W':
+        lon = -lon
+
+    hh, mm, ss = m.group(8), m.group(9), m.group(10)
+    time_str = f"{hh}:{mm}:{ss} UTC"
+
+    fl_num = int(m.group(11))
+    alt_ft = fl_num * 100
+    alt_fmt = f"{alt_ft:,} ft".replace(',', ' ')
+    alt_str = f"FL{fl_num} ({alt_fmt})"
+
+    fuel_raw = m.group(12)
+    mach_raw = m.group(13)
+
+    if isinstance(metadata, dict):
+        metadata['lat'] = round(lat, 4)
+        metadata['lon'] = round(lon, 4)
+        metadata['alt'] = alt_ft
+        metadata['alt_ft'] = alt_ft
+        if not metadata.get('flight'):
+            metadata['flight'] = callsign
+        if callsign.startswith('KLM') and not metadata.get('airline'):
+            metadata['airline'] = 'KLM Royal Dutch Airlines'
+
+    parts = [f"Flight: {callsign}", f"Position: {lat:.4f}, {lon:.4f}", f"Höjd: {alt_str}", f"Tid: {time_str}"]
+    if fuel_raw:
+        fuel_ton = float(fuel_raw)
+        fuel_kg = int(fuel_ton * 1000)
+        fuel_kg_fmt = f"{fuel_kg:,} kg".replace(',', ' ')
+        parts.append(f"Bränsle (FOB): {fuel_raw} ton ({fuel_kg_fmt})")
+    if mach_raw:
+        parts.append(f"Fart: Mach {mach_raw}")
+
+    prefix = "[Positionsrapport / KLM]" if callsign.startswith('KLM') else "[Positionsrapport / ICAO]"
+    summary = f"{prefix} " + " | ".join(parts)
+    return f"{summary}\nRådata: {stripped}"
+
+
+def rule_fms_telemetry_continuation_block(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    Avkodar Airbus/Finnair/Lufthansa fortsättningsblock i Label: H1 (eller DF/H2)
+    som börjar med komma (,), bindestreck (-,) eller innehåller /X\\d+, /V\\d+, /2[NS]\\d+.
+    Exempel:
+      ,0305/X72353,E0175,N577,057,321,0030,XXXX/
+      ,182,006,000,038,0/2N0858,0913,53,092,006,000,035,0/2S3956...
+      -,----/X30000,0802,0088,0005,N008,N003,N000/X40000...
+    """
+    lbl = (label or '').strip().upper()
+    stripped = text.strip()
+    if not stripped:
+        return None
+
+    # Kontrollera om det är ett fortsättningsblock
+    is_cont_pattern = bool(
+        stripped.startswith((',', '-,')) or
+        re.search(r'/(?:X\d+|V\d+|2[NSTV]\d+|T\d+)', stripped) or
+        (lbl in ('H1', 'H2', 'DF') and (stripped.startswith(',') or stripped.endswith('XXXX/')))
+    )
+    if not is_cont_pattern:
+        return None
+
+    # Sök efter koordinatpar som E0175,N577 i blocket
+    # Mönster: ,([EW])(\d{3})(\d),([NS])(\d{2})(\d),
+    coord_matches = list(re.finditer(r',([EW])(\d{3})(\d),([NS])(\d{2})(\d),', stripped))
+    pos_str = ""
+    if coord_matches:
+        last_m = coord_matches[-1]
+        ew = last_m.group(1).upper()
+        lon_deg = int(last_m.group(2))
+        lon_dec = int(last_m.group(3))
+        lon = lon_deg + (lon_dec / 10.0)
+        if ew == 'W':
+            lon = -lon
+
+        ns = last_m.group(4).upper()
+        lat_deg = int(last_m.group(5))
+        lat_dec = int(last_m.group(6))
+        lat = lat_deg + (lat_dec / 10.0)
+        if ns == 'S':
+            lat = -lat
+
+        if isinstance(metadata, dict):
+            metadata['lat'] = round(lat, 4)
+            metadata['lon'] = round(lon, 4)
+
+        pos_str = f" (Position: {lat:.2f}, {lon:.2f})"
+
+    summary = f"[FMS Telemetri / Delblock] Kompletterande färd- och sensordata{pos_str}"
+    return f"{summary}\nRådata: {stripped}"
+
+
 def rule_lsconf_loadsheet(text: str, label: str = None, metadata: dict = None) -> str:
     """
     LSCONF (Loadsheet Confirmation / Lastbesked)
@@ -1578,6 +1699,27 @@ def rule_lsconf_loadsheet(text: str, label: str = None, metadata: dict = None) -
     return f"{summary}\nRådata: {stripped}"
 
 
+def rule_free_text_header(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    Hanterar .FREE-headers (t.ex. /HAKDPHU.FREE\nETP WX COPIED THX från Hainan Airlines Label 80).
+    Första raden matchar ^/[A-Z0-9]+\.FREE\s*$
+    Tolkar efterföljande rad(er) som Pilotmeddelande: "..."
+    """
+    stripped = text.strip()
+    lines = [l.strip() for l in stripped.splitlines() if l.strip()]
+    if len(lines) < 2:
+        return None
+
+    first_line = lines[0]
+    if not re.match(r'^/[A-Z0-9]+\.FREE\s*$', first_line, re.IGNORECASE):
+        return None
+
+    content_lines = lines[1:]
+    joined_msg = " — ".join(content_lines)
+    summary = f'Pilotmeddelande: "{joined_msg}"'
+    return f"{summary}\nRådata: {stripped}"
+
+
 def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: dict = None) -> str:
     """
     Operativa meddelanden (Label 80, RA, 10–4Z m.fl.) med rutt, /ETA, /FOB och pilotfritext.
@@ -1591,7 +1733,12 @@ def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: di
     has_eta_fob = bool(re.search(r'/(?:ETA|FOB)\s*\d+', stripped) or re.search(r'\bFOB\s*\d+', stripped))
     has_route = bool(re.search(r'\b([A-Z]{4})/([A-Z]{4})\b', stripped))
 
-    if not (has_eta_fob or (label in ('80', 'RA', '82') and (has_route or 'ETA' in stripped))):
+    # Krav 1: Begränsa Pilotmeddelande: till ENDAST konversations-labels (eller .FREE / FTX/)
+    PILOT_ALLOWED_LABELS = {"80", "81", "82", "83", "RA", "AA", "10", "12", "13", "15"}
+    lbl_clean = (label or '').strip().upper()
+    is_freetext_allowed = (lbl_clean in PILOT_ALLOWED_LABELS) or ('.FREE' in stripped.upper()) or ('FTX/' in stripped.upper())
+
+    if not (has_eta_fob or (is_freetext_allowed and (has_route or 'ETA' in stripped or len(stripped.splitlines()) > 0))):
         return None
 
     # 1. Rutt
@@ -1627,55 +1774,56 @@ def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: di
         fob_formatted = f"{fob_kg:,} kg".replace(',', ' ')
         fob_str = f"Bränsle (FOB): {fob_formatted}"
 
-    # 4. Extrahera pilot-fritext med skärpta filterregler
-    TECH_PREFIXES = (
-        'V09', 'PLF ', 'FDE ', 'MSG ', '/ETA', '/FOB', 'PRG/', 'INI/', 'FTX/',
-        'POS', 'REP', '02E', '#DFB', '#CFB', '#M1B'
-    )
-    lines = [l.strip() for l in stripped.splitlines() if l.strip()]
+    # 4. Extrahera pilot-fritext med skärpta filterregler (endast på tillåtna labels eller .FREE / FTX/)
     freetext_lines = []
-    for l in lines:
-        if re.search(r'\b[A-Z]{4}/[A-Z]{4}\b', l) and (re.search(r'\bETA\b', l) or re.search(r'\.[A-Z0-9-]{3,}', l)):
-            continue
-        if l.startswith('/') or l.startswith('#') or l.startswith(';'):
-            continue
-        if re.match(r'^(?:OUT|OFF|ON|IN)\b', l, re.IGNORECASE):
-            continue
+    if is_freetext_allowed:
+        TECH_PREFIXES = (
+            'V09', 'PLF ', 'FDE ', 'MSG ', '/ETA', '/FOB', 'PRG/', 'INI/', 'FTX/',
+            'POS', 'REP', '02E', '#DFB', '#CFB', '#M1B'
+        )
+        lines = [l.strip() for l in stripped.splitlines() if l.strip()]
+        for l in lines:
+            if re.search(r'\b[A-Z]{4}/[A-Z]{4}\b', l) and (re.search(r'\bETA\b', l) or re.search(r'\.[A-Z0-9-]{3,}', l)):
+                continue
+            if l.startswith('/') or l.startswith('#') or l.startswith(';'):
+                continue
+            if re.match(r'^(?:OUT|OFF|ON|IN)\b', l, re.IGNORECASE):
+                continue
 
-        # Krav 1: Måste innehålla minst ett mellanslag mellan ord
-        if ' ' not in l:
-            continue
+            # Krav 1: Måste innehålla minst ett mellanslag mellan ord
+            if ' ' not in l:
+                continue
 
-        # Krav 2: Inte fler än 1 snedstreck per 15 tecken, och ej strukturerad kommaseparerad telemetri
-        slash_count = l.count('/')
-        comma_count = l.count(',')
-        if slash_count > 1 and (slash_count / len(l) > 1.0 / 15.0):
-            continue
-        if comma_count > 1 and (comma_count / len(l) > 1.0 / 15.0):
-            continue
-        if slash_count >= 3 or comma_count >= 3:
-            continue
+            # Krav 2: Inte fler än 1 snedstreck per 15 tecken, och ej strukturerad kommaseparerad telemetri
+            slash_count = l.count('/')
+            comma_count = l.count(',')
+            if slash_count > 1 and (slash_count / len(l) > 1.0 / 15.0):
+                continue
+            if comma_count > 1 and (comma_count / len(l) > 1.0 / 15.0):
+                continue
+            if slash_count >= 3 or comma_count >= 3:
+                continue
 
-        # Krav 3: Får inte börja med kända tekniska prefix
-        if any(l.upper().startswith(p.upper()) for p in TECH_PREFIXES):
-            continue
+            # Krav 3: Får inte börja med kända tekniska prefix
+            if any(l.upper().startswith(p.upper()) for p in TECH_PREFIXES):
+                continue
 
-        # Krav 4: Exkluderingsregler mot telemetri och nyckel/värdepar (POS, LAT, LON etc.)
-        l_upper = l.upper()
-        # 4a. Börjar med POS eller innehåller telemetrimönster som LAT, LON, ALT, FOB, CAS, UTC, TAT
-        if l_upper.startswith('POS') or re.search(r'\b(?:LAT|LON|ALT|FOB|CAS|UTC|TAT)\s+[A-Z0-9\-]', l_upper):
-            continue
+            # Krav 4: Exkluderingsregler mot telemetri och nyckel/värdepar (POS, LAT, LON etc.)
+            l_upper = l.upper()
+            # 4a. Börjar med POS eller innehåller telemetrimönster som LAT, LON, ALT, FOB, CAS, UTC, TAT
+            if l_upper.startswith('POS') or re.search(r'\b(?:LAT|LON|ALT|FOB|CAS|UTC|TAT)\s+[A-Z0-9\-]', l_upper):
+                continue
 
-        # 4b. Innehåller 2 eller fler kommatecken (,) i kombination med siffror (t.ex. ,LAT N058, ,ALT 37002)
-        if comma_count >= 2 and re.search(r',\s*[A-Z0-9_\-]*\d+', l):
-            continue
+            # 4b. Innehåller 2 eller fler kommatecken (,) i kombination med siffror (t.ex. ,LAT N058, ,ALT 37002)
+            if comma_count >= 2 and re.search(r',\s*[A-Z0-9_\-]*\d+', l):
+                continue
 
-        # 4c. Består till mer än 25% av siffror
-        digit_count = sum(1 for c in l if c.isdigit())
-        if (digit_count / max(len(l), 1)) > 0.25:
-            continue
+            # 4c. Består till mer än 25% av siffror
+            digit_count = sum(1 for c in l if c.isdigit())
+            if (digit_count / max(len(l), 1)) > 0.25:
+                continue
 
-        freetext_lines.append(l)
+            freetext_lines.append(l)
 
     pilot_msg = ""
     if freetext_lines:
@@ -1910,6 +2058,24 @@ def rule_generic_fallback_telemetry(text: str, label: str = None, metadata: dict
     return None
 
 
+def rule_h1_h2_df_fallback(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    Generell fallback för oidentifierad maskindata under Label: H1, H2, DF eller 5Z.
+    Garanterar att rådata alltid döljs bakom Rådata:
+    Exempel: *,82:8YYB3 )RE 13J/ )1,,Y
+    """
+    lbl = (label or '').strip().upper()
+    if lbl not in ('H1', 'H2', 'DF', '5Z'):
+        return None
+    stripped = text.strip()
+    if not stripped:
+        return None
+    if '\nRådata:' in stripped:
+        return stripped
+
+    return f"[FMS/Systemtelemetri] Kodat datapaket ({len(stripped)} tecken)\nRådata: {stripped}"
+
+
 # Lista av regler som exekveras i prioritetsordning
 PARSER_RULES = [
     rule_libacars_structured,
@@ -1926,7 +2092,9 @@ PARSER_RULES = [
     rule_boeing_fms_weather_log,
     rule_aoc_airline_designated,
     rule_label_h1_fpn_flight_plan,
+    rule_icao_klm_pos_report,
     rule_pos_key_value_report,
+    rule_fms_telemetry_continuation_block,
     rule_label_h1_posn_fms,
     rule_label_h1_resreq_ack,
     rule_label_h1_mm_telemetry,
@@ -1934,6 +2102,7 @@ PARSER_RULES = [
     rule_label_83_csv_position,
     rule_label_83_eta_report,
     rule_lsconf_loadsheet,
+    rule_free_text_header,
     rule_operational_eta_fob_freetext,
     rule_label_80_oooi_report,
     rule_label_10_through_22_pos,
