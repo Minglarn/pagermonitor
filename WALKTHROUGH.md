@@ -2176,15 +2176,29 @@
   - Samtliga 85 enhetstester passerar utan anmärkning.
   - Versionsbump till CalVer `2026.10.15.18` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
 
-
-
-
-
-
-
-
-
-
-
-
-
+### 79. LSCONF Lastbesked, Skärpt Pilotfritext och Förfinad FMS/Telemetri-Rendering (v2026.10.15.19)
+- **Avkodning av LSCONF Lastbesked ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Meddelande `190315` från SAS (`SE-DOZ`, `SK053C`, `Label: 82`): `V09CA032/LSCONF/SK1423/ESSA/EKCH/11859/--/` klassades tidigare felaktigt som ett pilotmeddelande.
+  - Implementerat `rule_lsconf_loadsheet` som matchar `(?:[A-Z0-9]+/)?LSCONF/([A-Z0-9]+)/([A-Z]{4})/([A-Z]{4})/(\d+|--)`.
+  - Översätter flygplatskoder (`ESSA` -> `ESSA (Stockholm/Arlanda)`, `EKCH` -> `EKCH (Köpenhamn/Kastrup)`), uppdaterar metadata `dst_airport` och flightnummer, samt formaterar som:
+    `[Lastbesked / Loadsheet (LSCONF)] Kvittens av last- och viktbesked för flight SK1423 | Rutt: ESSA (Stockholm/Arlanda) → EKCH (Köpenhamn/Kastrup)`.
+- **Skärpta Regler för `💬 Pilotmeddelande:` ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - För att förhindra att maskinell telemetri misstas för pilotfritext måste varje fritextrad uppfylla tre strikta villkor:
+    1. **Mellanslagskrav**: Raden måste innehålla minst ett mellanslag mellan ord (`' ' in l`). Sammanhängande maskinkoder utan mellanslag blockeras alltid.
+    2. **Snedstrecks- och teckentäthetskrav**: Raden får inte innehålla fler än 1 snedstreck per 15 tecken, och blockerar strukturerade data med >= 3 snedstreck eller kommatecken.
+    3. **Tekniska prefixfilter**: Blockerar rader med kända maskinprefix (`V09`, `PLF `, `FDE `, `MSG `, `/ETA`, `/FOB`, `PRG/`, `INI/`, `FTX/`, `POS`, `REP`, `02E`, `#DFB`, `#CFB`, `#M1B`).
+  - Verifierat att genuina pilotmeddelanden med mellanslag (t.ex. `HI BER\nREQ FUEL 5.6T`) bevaras och presenteras med `💬 Pilotmeddelande:`.
+- **Förbättrad FMS & Vädertelemetri med Enheter och Avdelare ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - För Finnair `OH-LZP`, `AY04PE` (`Label: H1`) och andra FMS/väder-meddelanden:
+    - Lagt till fältavdelare ` | ` och riktiga fysikaliska enheter: `Höjd: FL360 (36 000 ft) | Temp: -54°C | Vind: 314° / 45 kt`.
+    - Skapat `format_waypoint_or_coord()` för att konvertera råa FMS-koordinater i "Nästa brytpunkt" (`N59101E020416`) till decimalgrader (`59.1683, 20.6933`).
+    - Enhetlig struktur: Rad 1 rubrik `[FMS Färddator-rapport]` och rutt, Rad 2 `Position:` och `Nästa brytpunkt:`, Rad 3 telemetri (`Höjd:`, `Temp:`, `Vind:`), följt av `\nRådata:` för att aktivera `</> Rådata`-badgen.
+- **Frontend Visuell Förfining ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Byt ut hårdkodade mellanslag mot en luftad separator `<span class="msg-sep">|</span>` (`margin: 0 8px; color: #cbd5e1;` / mörkt läge `#64748b;`).
+  - Framhäver fältetiketter (`Rutt:`, `Position:`, `Höjd:`, `Temp:`, `Vind:`, `ETA:`, `Fart:`, `Bränsle:`, `Nästa brytpunkt:`) med `<strong class="msg-label">` (`font-weight: 600; color: #334155;` / mörkt läge `#e2e8f0;`).
+  - Tillagt klassen `.msg-summary` på meddelandecellerna för enhetlig typografi.
+- **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py), [tests/test_acars_human_parser.py](file:///d:/antigravity/pager-monitor/tests/test_acars_human_parser.py))**:
+  - `test_sas_lsconf_loadsheet_and_no_pilot_freetext`: Verifierar att LSCONF avkodas korrekt och inte flaggas som pilotmeddelande.
+  - `test_finnair_fms_posn_formatting`: Verifierar FMS POSN formatering med `|`, enheter `°C`, `°` och koordinatkonvertering.
+  - Samtliga 87 enhetstester passerar utan anmärkning.
+  - Versionsbump till CalVer `2026.10.15.19` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).

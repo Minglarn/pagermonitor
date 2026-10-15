@@ -873,6 +873,64 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertIn('-010760 9388', res['message'])
         self.assertIn('6780018CE0000000003494300000100007F00100000', res['message'])
 
+    def test_sas_lsconf_loadsheet_and_no_pilot_freetext(self):
+        """Verifiera att SAS LSCONF avkodas som lastbesked och INTE som pilotmeddelande."""
+        raw_msg = "V09CA032/LSCONF/SK1423/ESSA/EKCH/11859/--/"
+        frame = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '468A2E'},
+                    'acars': {
+                        'reg': 'SE-DOZ',
+                        'flight': 'SK053C',
+                        'label': '82',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertIn('[Lastbesked / Loadsheet (LSCONF)]', res['message'])
+        self.assertIn('Kvittens av last- och viktbesked för flight SK1423', res['message'])
+        self.assertIn('Rutt: ESSA (Stockholm/Arlanda) → EKCH (Köpenhamn/Kastrup)', res['message'])
+        self.assertNotIn('Pilotmeddelande', res['message'])
+        self.assertEqual(res['dst_airport'], 'EKCH')
+        self.assertIn('Rådata:', res['message'])
+        self.assertIn(raw_msg, res['message'])
+
+        # Verifiera även humanize_acars_message direkt
+        humanized = humanize_acars_message('82', raw_msg)
+        self.assertIn('[Lastbesked / Loadsheet (LSCONF)]', humanized)
+        self.assertNotIn('Pilotmeddelande', humanized)
+
+    def test_finnair_fms_posn_formatting(self):
+        """Verifiera Finnair OH-LZP (AY04PE) FMS POSN formatering med |, °C, ° och koordinatkonvertering."""
+        raw_msg = "POSN58396E019081,N59101E020416,113729,360,N59419E022134,115509,N60027E023477,M54,31445,10132A6"
+        frame = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '461F58'},
+                    'acars': {
+                        'reg': 'OH-LZP',
+                        'flight': 'AY04PE',
+                        'label': 'H1',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertIn('[FMS Färddator-rapport]', res['message'])
+        self.assertIn('Höjd: FL360 (36 000 ft) | Temp: -54°C | Vind: 314° / 45 kt', res['message'])
+        self.assertIn('Nästa brytpunkt: 59.1683, 20.6933 (kl 11:37:29 UTC)', res['message'])
+        self.assertIn('Position: 58.6600, 19.1350', res['message'])
+        self.assertIn('Rådata:', res['message'])
+        self.assertIn(raw_msg, res['message'])
+
 if __name__ == '__main__':
     unittest.main()
 

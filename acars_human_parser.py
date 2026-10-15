@@ -742,17 +742,53 @@ def rule_label_h1_fpn_flight_plan(text: str, label: str = None, metadata: dict =
 
 
 
+def format_waypoint_or_coord(wp_raw: str) -> str:
+    """
+    Om wp_raw är en rå koordinat (t.ex. N59101E020416 eller 58396E019081),
+    konvertera den till decimalgrader ('59.1683, 20.6933').
+    Annars returnera fix/waypoint-namnet oförändrat (t.ex. 'MC624', 'HAPIS').
+    """
+    if not wp_raw:
+        return ""
+    clean = wp_raw.strip().replace(' ', '')
+    # Mönster 1: N59101E020416 eller S12345W012345
+    m = re.match(r'^([NS])(\d{2})(\d{2})(\d?)([EW])(\d{3})(\d{2})(\d?)$', clean, re.IGNORECASE)
+    if not m:
+        # Mönster 2: 58396E019081 (saknar inledande N/S)
+        m = re.match(r'^([NS]?)(\d{2})(\d{2})(\d?)([EW])(\d{3})(\d{2})(\d?)$', clean, re.IGNORECASE)
+    if m:
+        try:
+            lat_ns = (m.group(1) or 'N').upper()
+            lat_d = int(m.group(2))
+            lat_m_int = int(m.group(3))
+            lat_m_dec = int(m.group(4)) if m.group(4) else 0
+            lat_m = lat_m_int + (lat_m_dec / 10.0 if m.group(4) else 0.0)
+            lat = (lat_d + lat_m / 60.0) * (-1 if lat_ns == 'S' else 1)
+
+            lon_ew = m.group(5).upper()
+            lon_d = int(m.group(6))
+            lon_m_int = int(m.group(7))
+            lon_m_dec = int(m.group(8)) if m.group(8) else 0
+            lon_m = lon_m_int + (lon_m_dec / 10.0 if m.group(8) else 0.0)
+            lon = (lon_d + lon_m / 60.0) * (-1 if lon_ew == 'W' else 1)
+
+            return f"{lat:.4f}, {lon:.4f}"
+        except Exception:
+            pass
+    return wp_raw.strip()
+
+
 def rule_label_h1_posn_fms(text: str, label: str = None, metadata: dict = None) -> str:
     """
-    Label H1 POSN: FMS / Färddator-rapport med rutt och väder.
-    Exempel: POSN59197E017265,N55208E004569,201749,380,N60045E021311,203531,N60157E022414,M58,33488,10132A6
+    Label H1 POSN: FMS / Färddator-rapport med rutt, waypoint och väder.
+    Exempel: POSN58396E019081,N59101E020416,113729,360,N59419E022134,115509,N60027E023477,M54,31445,10132A6
     """
     stripped = text.strip()
     pos_suffix = ""
     if " | " in stripped:
         p = stripped.split(" | ", 1)
         base_text = p[0].strip()
-        pos_suffix = p[1].strip().replace(" | ", "  ")
+        pos_suffix = p[1].strip()
     elif "\n" in stripped:
         p = stripped.split("\n", 1)
         base_text = p[0].strip()
@@ -774,12 +810,21 @@ def rule_label_h1_posn_fms(text: str, label: str = None, metadata: dict = None) 
         next_time = f"{hh}:{mm}:{ss} UTC"
 
     fl_str = None
+    alt_ft_val = None
     if len(tokens) > 3 and tokens[3]:
         raw_fl = tokens[3].upper()
         if raw_fl.startswith('FL'):
             fl_str = raw_fl
+            try:
+                alt_ft_val = int(raw_fl[2:]) * 100
+            except Exception:
+                pass
         elif re.match(r'^\d{2,3}$', raw_fl):
             fl_str = f"FL{raw_fl}"
+            try:
+                alt_ft_val = int(raw_fl) * 100
+            except Exception:
+                pass
 
     temp_str = None
     temp_idx = -1
@@ -787,7 +832,8 @@ def rule_label_h1_posn_fms(text: str, label: str = None, metadata: dict = None) 
         m_temp = re.match(r'^([MP])(\d{2})$', tok)
         if m_temp:
             sign = '-' if m_temp.group(1) == 'M' else '+'
-            temp_str = f"{sign}{m_temp.group(2)} C"
+            temp_val = int(m_temp.group(2))
+            temp_str = f"{sign}{temp_val}°C"
             temp_idx = i
             break
 
@@ -799,31 +845,58 @@ def rule_label_h1_posn_fms(text: str, label: str = None, metadata: dict = None) 
             wdir = int(m_wind.group(1))
             wspd = int(m_wind.group(2))
             if 0 <= wdir <= 360 and wspd < 300:
-                wind_str = f"{wdir} deg ({wspd} kt)"
+                wind_str = f"{wdir}° / {wspd} kt"
                 break
 
     lines = []
-    line1_items = []
-    if fl_str:
-        line1_items.append(f"Höjd: {fl_str}")
-    if temp_str:
-        line1_items.append(f"Temperatur: {temp_str}")
-    if wind_str:
-        line1_items.append(f"Vind: {wind_str}")
 
-    if line1_items:
-        lines.append("   ".join(line1_items))
+    # Rad 1: [Typ av rapport] + Rutt / Flygplan (om känt)
+    row1 = ["[FMS Färddator-rapport]"]
+    if isinstance(metadata, dict):
+        if metadata.get('route'):
+            row1.append(f"Rutt: {metadata['route']}")
+        elif metadata.get('flight'):
+            row1.append(f"Flight: {metadata['flight']}")
+    lines.append(" | ".join(row1))
 
-    if next_wp and next_time:
-        lines.append(f"Nästa brytpunkt: {next_wp} (kl {next_time})")
-    elif next_wp:
-        lines.append(f"Nästa brytpunkt: {next_wp}")
-
+    # Rad 2: Position: ... / Nästa brytpunkt: ... / ETA: ...
+    row2 = []
+    pos_val = None
     if pos_suffix:
-        clean_p = pos_suffix.replace('Lat: ', '').replace('Lon: ', '')
-        lines.append(f"Position: {clean_p}")
+        p_clean = re.sub(r'\b(?:Lat|Lon):\s*', '', pos_suffix).strip()
+        pos_val = p_clean
+    elif len(tokens) > 0:
+        c_raw = re.sub(r'^\*?POSN?', '', tokens[0])
+        parsed_c = format_waypoint_or_coord(c_raw)
+        if parsed_c != c_raw:
+            pos_val = parsed_c
+    if pos_val:
+        row2.append(f"Position: {pos_val}")
 
-    return "\n".join(lines) if lines else None
+    if next_wp:
+        wp_disp = format_waypoint_or_coord(next_wp)
+        if next_time:
+            row2.append(f"Nästa brytpunkt: {wp_disp} (kl {next_time})")
+        else:
+            row2.append(f"Nästa brytpunkt: {wp_disp}")
+    if row2:
+        lines.append(" | ".join(row2))
+
+    # Rad 3: Höjd: ... | Fart: ... | Temp: ... | Vind: ... | Bränsle: ...
+    row3 = []
+    if fl_str:
+        alt_fmt = f"{alt_ft_val:,} ft".replace(',', ' ') if alt_ft_val else ""
+        row3.append(f"Höjd: {fl_str} ({alt_fmt})" if alt_fmt else f"Höjd: {fl_str}")
+    if temp_str:
+        row3.append(f"Temp: {temp_str}")
+    if wind_str:
+        row3.append(f"Vind: {wind_str}")
+    if row3:
+        lines.append(" | ".join(row3))
+
+    summary = "\n".join(lines)
+    return f"{summary}\nRådata: {stripped}"
+
 
 
 def rule_label_h1_resreq_ack(text: str, label: str = None, metadata: dict = None) -> str:
@@ -1296,22 +1369,24 @@ def rule_label_38_finnair_weather(text: str, label: str = None, metadata: dict =
     if flight:
         lines.append(f"Flight: {flight}")
 
-    w_items = []
-    if alt:
-        w_items.append(f"Höjd: {alt} ft")
-    if temp:
-        w_items.append(f"Temperatur: {temp} C")
-    if wind_dir is not None and wind_spd is not None:
-        w_items.append(f"Vind: {wind_dir} deg ({wind_spd} kt)")
-    if w_items:
-        lines.append("   ".join(w_items))
-
     if lat and lon:
         lines.append(f"Position: {lat}, {lon}")
     elif lat or lon:
         lines.append(f"Position: {lat or lon}")
 
-    return "\n".join(lines)
+    w_items = []
+    if alt:
+        w_items.append(f"Höjd: {alt} ft")
+    if temp:
+        w_items.append(f"Temp: {temp}°C")
+    if wind_dir is not None and wind_spd is not None:
+        w_items.append(f"Vind: {wind_dir}° / {wind_spd} kt")
+    if w_items:
+        lines.append(" | ".join(w_items))
+
+    summary = "\n".join(lines)
+    stripped = text.strip()
+    return f"{summary}\nRådata: {stripped}"
 
 
 def rule_label_83_csv_position(text: str, label: str = None, metadata: dict = None) -> str:
@@ -1397,6 +1472,36 @@ def rule_label_83_eta_report(text: str, label: str = None, metadata: dict = None
 
 
 
+def rule_lsconf_loadsheet(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    LSCONF (Loadsheet Confirmation / Lastbesked)
+    Matchar mönstret (?:[A-Z0-9]+/)?LSCONF/([A-Z0-9]+)/([A-Z]{4})/([A-Z]{4})/(\d+|--)
+    Exempel: V09CA032/LSCONF/SK1423/ESSA/EKCH/11859/--/
+    """
+    stripped = text.strip()
+    m = re.search(r'(?:[A-Z0-9]+/)?LSCONF/([A-Z0-9]+)/([A-Z]{4})/([A-Z]{4})/(\d+|--)', stripped, re.IGNORECASE)
+    if not m:
+        return None
+
+    flight_no = m.group(1).upper()
+    dep_icao = m.group(2).upper()
+    arr_icao = m.group(3).upper()
+
+    dep_fmt = format_airport(dep_icao)
+    arr_fmt = format_airport(arr_icao)
+
+    if isinstance(metadata, dict):
+        metadata['dst_airport'] = arr_icao
+        if not metadata.get('flight'):
+            metadata['flight'] = flight_no
+
+    summary = (
+        f"[Lastbesked / Loadsheet (LSCONF)] Kvittens av last- och viktbesked för flight {flight_no} | "
+        f"Rutt: {dep_fmt} → {arr_fmt}"
+    )
+    return f"{summary}\nRådata: {stripped}"
+
+
 def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: dict = None) -> str:
     """
     Operativa meddelanden (Label 80, RA, 10–4Z m.fl.) med rutt, /ETA, /FOB och pilotfritext.
@@ -1446,7 +1551,11 @@ def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: di
         fob_formatted = f"{fob_kg:,} kg".replace(',', ' ')
         fob_str = f"Bränsle (FOB): {fob_formatted}"
 
-    # 4. Extrahera pilot-fritext
+    # 4. Extrahera pilot-fritext med skärpta filterregler
+    TECH_PREFIXES = (
+        'V09', 'PLF ', 'FDE ', 'MSG ', '/ETA', '/FOB', 'PRG/', 'INI/', 'FTX/',
+        'POS', 'REP', '02E', '#DFB', '#CFB', '#M1B'
+    )
     lines = [l.strip() for l in stripped.splitlines() if l.strip()]
     freetext_lines = []
     for l in lines:
@@ -1456,6 +1565,25 @@ def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: di
             continue
         if re.match(r'^(?:OUT|OFF|ON|IN)\b', l, re.IGNORECASE):
             continue
+
+        # Krav 1: Måste innehålla minst ett mellanslag mellan ord
+        if ' ' not in l:
+            continue
+
+        # Krav 2: Inte fler än 1 snedstreck per 15 tecken, och ej strukturerad kommaseparerad telemetri
+        slash_count = l.count('/')
+        comma_count = l.count(',')
+        if slash_count > 1 and (slash_count / len(l) > 1.0 / 15.0):
+            continue
+        if comma_count > 1 and (comma_count / len(l) > 1.0 / 15.0):
+            continue
+        if slash_count >= 3 or comma_count >= 3:
+            continue
+
+        # Krav 3: Får inte börja med kända tekniska prefix
+        if any(l.upper().startswith(p.upper()) for p in TECH_PREFIXES):
+            continue
+
         freetext_lines.append(l)
 
     pilot_msg = ""
@@ -1518,69 +1646,75 @@ def rule_miam_airbus_telemetry(text: str, label: str = None, metadata: dict = No
             kv[k] = v
 
     lines = []
-    # Rad 1: Höjd, Temp, Vind
-    row1 = []
+    # Rad 1: [Typ av rapport]
+    lines.append("[Airbus FDIMU Färdtelemetri]")
+
+    # Rad 2: Position & Nästa brytpunkt
+    row2 = []
+    if 'PALAT' in kv and 'PALONG' in kv:
+        try:
+            lat = float(kv['PALAT'])
+            lon = float(kv['PALONG'])
+            row2.append(f"Position: {lat:.4f}, {lon:.4f}")
+        except (ValueError, TypeError):
+            pass
+    if 'PAFMSAWID' in kv and kv['PAFMSAWID'].strip():
+        wp_name = kv['PAFMSAWID'].strip()
+        wp_fmt = format_waypoint_or_coord(wp_name)
+        row2.append(f"Nästa brytpunkt: {wp_fmt}")
+    if row2:
+        lines.append(" | ".join(row2))
+
+    # Rad 3: Höjd, Temp, Vind, Kurs, Mach, Bränsle
+    row3 = []
     if 'PAALT' in kv:
         try:
             alt_ft = int(float(kv['PAALT']))
             fl = round(alt_ft / 100)
-            row1.append(f"Höjd: FL{fl} ({alt_ft} ft)")
+            alt_fmt = f"{alt_ft:,} ft".replace(',', ' ')
+            row3.append(f"Höjd: FL{fl} ({alt_fmt})")
         except (ValueError, TypeError):
             pass
 
     if 'PASAT' in kv:
         try:
             sat = round(float(kv['PASAT']))
-            row1.append(f"Temperatur: {sat} C")
+            row3.append(f"Temp: {sat}°C")
         except (ValueError, TypeError):
             pass
 
     if 'PAWS' in kv:
         try:
             ws = round(float(kv['PAWS']))
-            row1.append(f"Vind: {ws} kt")
+            row3.append(f"Vind: {ws} kt")
         except (ValueError, TypeError):
             pass
 
-    if row1:
-        lines.append("   ".join(row1))
-
-    # Rad 2: Nästa brytpunkt, Kurs, Mach, Bränsle
-    row2 = []
-    if 'PAFMSAWID' in kv and kv['PAFMSAWID'].strip():
-        row2.append(f"Nästa brytpunkt: {kv['PAFMSAWID'].strip()}")
     if 'PATHDG' in kv:
         try:
             hdg = round(float(kv['PATHDG']))
-            row2.append(f"Kurs: {hdg} deg")
+            row3.append(f"Kurs: {hdg}°")
         except (ValueError, TypeError):
             pass
     if 'PAMN' in kv:
         try:
             mach = float(kv['PAMN'])
-            row2.append(f"Mach: {mach:.2f}")
+            row3.append(f"Mach: {mach:.2f}")
         except (ValueError, TypeError):
             pass
     if 'PAFOB' in kv:
         try:
             fob = int(float(kv['PAFOB']))
-            row2.append(f"Bränsle: {fob} kg")
+            row3.append(f"Bränsle: {fob:,} kg".replace(',', ' '))
         except (ValueError, TypeError):
             pass
 
-    if row2:
-        lines.append("   ".join(row2))
+    if row3:
+        lines.append(" | ".join(row3))
 
-    # Rad 3: Position
-    if 'PALAT' in kv and 'PALONG' in kv:
-        try:
-            lat = float(kv['PALAT'])
-            lon = float(kv['PALONG'])
-            lines.append(f"Position: {lat:.4f}, {lon:.4f}")
-        except (ValueError, TypeError):
-            pass
-
-    return "\n".join(lines) if lines else None
+    summary = "\n".join(lines)
+    stripped = text.strip()
+    return f"{summary}\nRådata: {stripped}"
 
 
 def rule_label_10_through_22_pos(text: str, label: str = None, metadata: dict = None) -> str:
@@ -1707,6 +1841,7 @@ PARSER_RULES = [
     rule_label_38_finnair_weather,
     rule_label_83_csv_position,
     rule_label_83_eta_report,
+    rule_lsconf_loadsheet,
     rule_operational_eta_fob_freetext,
     rule_label_80_oooi_report,
     rule_label_10_through_22_pos,

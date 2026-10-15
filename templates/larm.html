@@ -397,6 +397,27 @@
             padding: 0;
         }
 
+        .msg-sep {
+            display: inline-block;
+            margin: 0 8px;
+            color: #cbd5e1;
+            font-weight: normal;
+            user-select: none;
+        }
+        [data-theme="dark"] .msg-sep,
+        body.dark-mode .msg-sep {
+            color: #64748b;
+        }
+
+        .msg-label {
+            font-weight: 600;
+            color: #334155;
+        }
+        [data-theme="dark"] .msg-label,
+        body.dark-mode .msg-label {
+            color: #e2e8f0;
+        }
+
         /* Rådata box och toggle-badge */
         .raw-data-box {
             font-family: inherit;
@@ -830,18 +851,25 @@
                 }
             }
 
-            // Ersätt eventuella pipe-tecken i sammanfattningen med mjuka mellanrum
-            parsedSummary = parsedSummary.replace(/\s*\|\s*/g, '   ');
-
-            // Formatera parsedSummary rad för rad för att hantera 💬
+            // Formatera parsedSummary rad för rad: dela upp på pipe-avdelare (|), framhäv fältetiketter och pilotmeddelanden
             const lines = parsedSummary.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
             const formattedLines = lines.map(line => {
-                let lineEscaped = escapeHtml(line);
-                let highlighted = highlightMessage(lineEscaped);
                 if (line.includes('💬')) {
+                    let lineEscaped = escapeHtml(line);
+                    let highlighted = highlightMessage(lineEscaped);
                     return `<div class="pilot-freetext-highlight">${highlighted}</div>`;
                 }
-                return highlighted;
+                const rawSegments = line.split(/\s*\|\s*/);
+                const formattedSegments = rawSegments.map(seg => {
+                    let segTrimmed = seg.trim();
+                    if (!segTrimmed) return '';
+                    let segEscaped = escapeHtml(segTrimmed);
+                    // Framhäv fältetiketter (ord/fraser som börjar med bokstav och slutar med kolon vid segmentstart)
+                    let withLabel = segEscaped.replace(/^([A-Za-zåäöÅÄÖ][A-Za-zåäöÅÄÖ\s/()\-]*[A-Za-zåäöÅÄÖ/()]:)(\s*)/, '<strong class="msg-label">$1</strong>$2');
+                    return highlightMessage(withLabel);
+                }).filter(s => s.length > 0);
+
+                return formattedSegments.join('<span class="msg-sep">|</span>');
             });
             const summaryHtml = formattedLines.join('<br>');
 
@@ -1109,7 +1137,7 @@
                 <td class="addr-cell">
                     <span class="badge" title="${escapeHtml(alarm.address)}" onclick="openAliasModal('${escapeHtml(alarm.address)}')">${escapeHtml(displayAddress)}</span>
                 </td>
-                <td class="msg-cell"><div class="msg-content-wrapper"><div class="msg-text">${msgObj.summaryHtml}</div>${rawBoxHtml}${metaBarHtml}</div></td>
+                <td class="msg-cell"><div class="msg-content-wrapper"><div class="msg-text msg-summary">${msgObj.summaryHtml}</div>${rawBoxHtml}${metaBarHtml}</div></td>
 
                 <td class="hit-cell">${hitBadge}</td>
                 <td class="actions-cell">

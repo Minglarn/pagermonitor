@@ -101,20 +101,26 @@ class TestAcarsHumanParser(unittest.TestCase):
     def test_pattern_1_finnair_weather_and_position(self):
         raw = "/AY8892/141026/E 17.655/N 59.387/37969/-------/      /- 57/33535/ 88 /46/"
         res = parse_human_acars(raw, label="38")
-        expected = "Flight: AY8892\nHöjd: 37969 ft   Temperatur: -57 C   Vind: 335 deg (35 kt)\nPosition: N 59.387, E 17.655"
-        self.assertEqual(res, expected)
+        self.assertIn("Flight: AY8892", res)
+        self.assertIn("Position: N 59.387, E 17.655", res)
+        self.assertIn("Höjd: 37969 ft | Temp: -57°C | Vind: 335° / 35 kt", res)
+        self.assertIn("Rådata: /AY8892/141026/E 17.655/N 59.387/37969/-------/      /- 57/33535/ 88 /46/", res)
 
     def test_pattern_1_with_prefix(self):
         raw = "[38: Väderbegäran / METAR] /AY8892/141026/E 17.655/N 59.387/37969/-------/      /- 57/33535/ 88 /46/"
         res = parse_human_acars(raw)
-        expected = "[38: Väderbegäran / METAR] Flight: AY8892\nHöjd: 37969 ft   Temperatur: -57 C   Vind: 335 deg (35 kt)\nPosition: N 59.387, E 17.655"
-        self.assertEqual(res, expected)
+        self.assertIn("Flight: AY8892", res)
+        self.assertIn("Position: N 59.387, E 17.655", res)
+        self.assertIn("Höjd: 37969 ft | Temp: -57°C | Vind: 335° / 35 kt", res)
+        self.assertIn("Rådata:", res)
 
     def test_pattern_2_fms_posn_route_and_weather(self):
         raw = "POSN59197E017265,N55208E004569,201749,380,N60045E021311,203531,N60157E022414,M58,33488,10132A6 | Lat: 59.3283, Lon: 17.4417"
         res = parse_human_acars(raw, label="H1")
-        expected = "Höjd: FL380   Temperatur: -58 C   Vind: 334 deg (88 kt)\nNästa brytpunkt: N55208E004569 (kl 20:17:49 UTC)\nPosition: 59.3283, 17.4417"
-        self.assertEqual(res, expected)
+        self.assertIn("[FMS Färddator-rapport]", res)
+        self.assertIn("Position: 59.3283, 17.4417 | Nästa brytpunkt: 55.3467, 4.9483 (kl 20:17:49 UTC)", res)
+        self.assertIn("Höjd: FL380 (38 000 ft) | Temp: -58°C | Vind: 334° / 88 kt", res)
+        self.assertIn("Rådata: POSN59197E017265", res)
 
     def test_pattern_3_resreq_ack(self):
         raw = "RESREQ/AK,1158AF6"

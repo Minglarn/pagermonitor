@@ -380,6 +380,27 @@
             padding: 0;
         }
 
+        .msg-sep {
+            display: inline-block;
+            margin: 0 8px;
+            color: #cbd5e1;
+            font-weight: normal;
+            user-select: none;
+        }
+        [data-theme="dark"] .msg-sep,
+        body.dark-mode .msg-sep {
+            color: #64748b;
+        }
+
+        .msg-label {
+            font-weight: 600;
+            color: #334155;
+        }
+        [data-theme="dark"] .msg-label,
+        body.dark-mode .msg-label {
+            color: #e2e8f0;
+        }
+
         /* Rådata box och toggle-badge */
         .raw-data-box {
             font-family: inherit;
@@ -1076,14 +1097,23 @@
                         rawText = text.substring(fallbackIdx).replace(/^Rådata:\s*/i, '').trim();
                     }
                 }
-                parsedSummary = parsedSummary.replace(/\s*\|\s*/g, '   ');
+                // Formatera parsedSummary rad för rad: dela upp på pipe-avdelare (|), framhäv fältetiketter och pilotmeddelanden
                 const lines = parsedSummary.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
                 const formattedLines = lines.map(line => {
-                    let lineEscaped = escapeHtml(line);
                     if (line.includes('💬')) {
+                        let lineEscaped = escapeHtml(line);
                         return `<div class="pilot-freetext-highlight">${lineEscaped}</div>`;
                     }
-                    return lineEscaped;
+                    const rawSegments = line.split(/\s*\|\s*/);
+                    const formattedSegments = rawSegments.map(seg => {
+                        let segTrimmed = seg.trim();
+                        if (!segTrimmed) return '';
+                        let segEscaped = escapeHtml(segTrimmed);
+                        // Framhäv fältetiketter (ord/fraser som börjar med bokstav och slutar med kolon vid segmentstart)
+                        return segEscaped.replace(/^([A-Za-zåäöÅÄÖ][A-Za-zåäöÅÄÖ\s/()\-]*[A-Za-zåäöÅÄÖ/()]:)(\s*)/, '<strong class="msg-label">$1</strong>$2');
+                    }).filter(s => s.length > 0);
+
+                    return formattedSegments.join('<span class="msg-sep">|</span>');
                 });
                 summaryHtml = formattedLines.join('<br>');
                 if (rawText) {
@@ -1112,7 +1142,7 @@
                 <td class="ts-cell" data-order="${m.timestamp}">${timeDisplay}</td>
                 <td class="meta-cell"><div class="meta-wrapper">${protoTag}</div></td>
                 <td class="addr-cell"><span class="badge" title="${m.address}">${displayAddress}</span></td>
-                <td class="msg-cell"><div class="msg-content-wrapper"><div class="msg-text">${summaryHtml}</div>${rawBoxHtml}${metaBarHtml}</div></td>
+                <td class="msg-cell"><div class="msg-content-wrapper"><div class="msg-text msg-summary">${summaryHtml}</div>${rawBoxHtml}${metaBarHtml}</div></td>
 
                 <td class="actions-cell">
                     <div class="actions-wrapper">

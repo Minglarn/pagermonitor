@@ -378,6 +378,20 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
         summary = f"[Airbus FDIMU/Systemrapport #{rep_num}] {' | '.join(parts)}"
         return f"{summary}\nRådata: {txt}"
 
+    # 2e. Loadsheet Confirmation (LSCONF / Lastbesked)
+    m_lsconf = re.search(r'(?:[A-Z0-9]+/)?LSCONF/([A-Z0-9]+)/([A-Z]{4})/([A-Z]{4})/(\d+|--)', txt, re.IGNORECASE)
+    if m_lsconf:
+        flight_no = m_lsconf.group(1).upper()
+        dep_icao = m_lsconf.group(2).upper()
+        arr_icao = m_lsconf.group(3).upper()
+        dep_fmt = format_airport(dep_icao)
+        arr_fmt = format_airport(arr_icao)
+        if isinstance(acars_dict, dict):
+            acars_dict['dst_airport'] = arr_icao
+            if not acars_dict.get('flight'):
+                acars_dict['flight'] = flight_no
+        return f"[Lastbesked / Loadsheet (LSCONF)] Kvittens av last- och viktbesked för flight {flight_no} | Rutt: {dep_fmt} → {arr_fmt}\nRådata: {txt}"
+
     # 3. Boeing / Honeywell FMS & CMC prefix
     if txt.startswith('#M1B'):
         if not txt.startswith('[Boeing/Honeywell FMS]'):

@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.19] - LSCONF Lastbesked, Skärpt Pilotfritext och Förfinad FMS/Telemetri-Rendering
+
+- **LSCONF Avkodning (Loadsheet Confirmation / Lastbesked)**:
+  - Implementerat `rule_lsconf_loadsheet` i `acars_human_parser.py` och direkt hantering i `humanize_acars_message()` i `vdl2_receiver.py`.
+  - Matchar mönstret `(?:[A-Z0-9]+/)?LSCONF/([A-Z0-9]+)/([A-Z]{4})/([A-Z]{4})/(\d+|--)` (t.ex. `V09CA032/LSCONF/SK1423/ESSA/EKCH/11859/--/`).
+  - Översätter flygplatskoder med `format_airport()`, uppdaterar `dst_airport` i metadata och formaterar som:
+    `[Lastbesked / Loadsheet (LSCONF)] Kvittens av last- och viktbesked för flight SK1423 | Rutt: ESSA (Stockholm/Arlanda) → EKCH (Köpenhamn/Kastrup)` med rådata bifogad bakom `</> Rådata`-badgen.
+- **Skärpta Regler för `💬 Pilotmeddelande:` i `acars_human_parser.py`**:
+  - Maskinell telemetri och Loadsheet-bekräftelser förhindras från att klassas som pilotmeddelanden genom tre strikta krav:
+    1. Raden **måste** innehålla minst ett mellanslag mellan riktiga ord.
+    2. Raden får **inte** innehålla fler än 1 snedstreck per 15 tecken, och blockerar strukturerad komma-/snedstrecks-telemetri (>= 3 avskiljare).
+    3. Raden får **inte** inledas med kända tekniska prefix (`V09`, `PLF `, `FDE `, `MSG `, `/ETA`, `/FOB`, `PRG/`, `INI/`, `FTX/`, `POS`, `REP`, `02E`, `#DFB`, `#CFB`, `#M1B`).
+  - Riktig mänsklig fritext (t.ex. `HI BER\nREQ FUEL 5.6T`) bevaras och formateras korrekt som `💬 Pilotmeddelande: "HI BER — REQ FUEL 5.6T"`.
+- **Enhetlig Struktur och Riktiga Enheter för FMS- och Väderrapporter**:
+  - `rule_label_h1_posn_fms` och `rule_label_38_finnair_weather`: Använder alltid ` | ` mellan fält samt riktiga enheter (`Höjd: FL360 (36 000 ft) | Temp: -54°C | Vind: 314° / 45 kt`).
+  - Koordinatkonvertering för "Nästa brytpunkt" via `format_waypoint_or_coord()`: Råa koordinater (`N59101E020416`) konverteras nu automatiskt till decimalgrader (`59.1683, 20.6933`).
+  - Konsekvent radstruktur: Rad 1 rubrik `[FMS Färddator-rapport]` + eventuell rutt, Rad 2 `Position:` och `Nästa brytpunkt:`, Rad 3 telemetri (`Höjd:`, `Temp:`, `Vind:`), följt av `\nRådata:` för rådatabadge.
+- **Visuell Framhävning i Frontend (`index.html`, `larm.html`, `statistics.html`)**:
+  - Ersätter ` | ` med en luftad visuell separator `<span class="msg-sep">|</span>` (`margin: 0 8px; color: #cbd5e1;` / mörkt läge `#64748b;`).
+  - Framhäver fältetiketter vid rad- och segmentstart (`Rutt:`, `Position:`, `Höjd:`, `Temp:`, `Vind:`, `ETA:`, `Fart:`, `Bränsle:`, `Nästa brytpunkt:`, etc.) med `<strong class="msg-label">` (`font-weight: 600; color: #334155;` / mörkt läge `#e2e8f0;`).
+  - Tillagt klassen `.msg-summary` på meddelandecellerna i tabellerna för enhetlig typografi.
+- **Enhetstester (`tests/test_vdl2.py` & `tests/test_acars_human_parser.py`)**:
+  - Tillagt `test_sas_lsconf_loadsheet_and_no_pilot_freetext` och `test_finnair_fms_posn_formatting`.
+  - Uppdaterat `test_pattern_1_finnair_weather_and_position` och `test_pattern_2_fms_posn_route_and_weather`.
+  - Samtliga 87 enhetstester passerar.
+
 ## [2026.10.15.18] - Rättad Reassembly-ordning och Rådatabuffring för MIAM och ACARS
 
 - **Reassembly Före Avkodning och Formatering (`vdl2_receiver.py`)**:
