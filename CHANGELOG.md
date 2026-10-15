@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.12] - Kollapsbar Rådata i UI och Förbättrad Label 80 ETA/FOB/Fritext
+
+- **Kollapsbar Rådata i Gränssnittet (`index.html`, `larm.html`, `statistics.html`)**:
+  - Meddelandecellen (`MESSAGE`) separerar nu automatiskt tolkad sammanfattning (`parsedSummary`) och rådatasträng (`rawText`).
+  - Rådata visas nu snyggt inuti en kollapsbar `<details class="raw-data-details"><summary>Visa rådata</summary><pre class="raw-data-content">...</pre></details>` under sammanfattningen men ovanför metadata-badgarna.
+  - Snygg och diskret styling för knappen "Visa rådata" med monospace, ljusgrå bakgrund och mörkt läge-stöd.
+  - Pilot-fritext framhävs visuellt med en distinkt grön/kontrasterande stilbricka (`.pilot-freetext-highlight`).
+- **Backend: Rättad ETA-validering, /FOB och Pilotfritext (`vdl2_receiver.py`, `acars_human_parser.py`)**:
+  - Strikt validering av ETA: Kräver timmar `00–23` och minuter `00–59` (`(?:[01]\d|2[0-3])[0-5]\d`), vilket förhindrar att flightnummer (som `4505` i `3401 ETA 4505/15`) felaktigt tolkas som `45:05 UTC`.
+  - Parsar `/ETA` -> `ETA: 09:25 UTC` och `/FOB` -> `Bränsle (FOB): 4 280 kg`.
+  - Extraherar mänsklig pilotfritext (t.ex. `HI BER` / `REQ FUEL 5.6T`) till `💬 Pilotmeddelande: "HI BER — REQ FUEL 5.6T"`.
+  - Standardiserat rådatamarkören till `\nRådata: <original_msg>` utan onödig trunkering.
+- **Enhetstester (`tests/test_vdl2.py`, `tests/test_acars_human_parser.py`)**:
+  - Lagt till `test_norwegian_label_80_eta_fob_and_pilot_freetext` och uppdaterat `test_boeing_dfdau_engine_telemetry`.
+  - Samtliga 80 enhetstester passerar felfritt.
+
 ## [2026.10.15.11] - Airbus FDIMU / AIDS-rapport (Label H1, /REP & /CC)
 
 - **Airbus FDIMU & AIDS-systemrapporter (`vdl2_receiver.py`, `acars_human_parser.py`)**:

@@ -217,7 +217,7 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
             avail_part = f" | Tillgängliga länkar: {', '.join(avail_names)}" if avail_names else ""
             return f"{status_w} på {curr_link} kl {hh}:{mm}:{ss} UTC{avail_part} ({txt})"
         elif lbl == 'SA' and txt:
-            return f"Länkstatus (Media Advisory) | Rådata: {txt}"
+            return f"Länkstatus (Media Advisory)\nRådata: {txt}"
 
     # 2. Begäran om ATIS och starttillstånd (/XXXX.TI2, /XXXX.DC1, /XXXX.OC1)
     m_action = re.search(r'/([A-Z]{4})\.(TI2|DC1|OC1)/?', txt, re.IGNORECASE)
@@ -240,7 +240,7 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
             desc = f"Begär Oceanic Clearance via {ap_disp}"
         else:
             desc = f"Flygplatsanrop för {ap_disp}"
-        return f"{desc} | Rådata: {txt}"
+        return f"{desc}\nRådata: {txt}"
 
     # 2b. Label B9 eller A9 med flygplatskod
     if lbl in ('B9', 'A9') and txt:
@@ -249,7 +249,7 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
             icao = m_icao.group(1).upper()
             ap_disp = format_airport(icao)
             if lbl == 'B9':
-                return f"Begär flygplatsväder (ATIS) för {ap_disp} | Rådata: {txt}"
+                return f"Begär flygplatsväder (ATIS) för {ap_disp}\nRådata: {txt}"
             else:
                 return f"Flygplatsväder (ATIS) för {ap_disp} | {txt}"
 
@@ -258,7 +258,7 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
     is_aoc_label = bool(lbl == '1L' or re.match(r'^[1-4][A-Z]$', lbl))
     if lbl == '1L' or (is_aoc_label and m_aoc_seq):
         seq_part = f", Seq: {m_aoc_seq.group(1)[:6]}" if m_aoc_seq else ""
-        return f"[AOC Flygbolagsdata] Intern kodad drift-/telemetrirapport (Lufthansa Group{seq_part}) | Rådata: {txt}"
+        return f"[AOC Flygbolagsdata] Intern kodad drift-/telemetrirapport (Lufthansa Group{seq_part})\nRådata: {txt}"
 
     # 2d. Airbus AIDS / FDIMU-rapporter (/REP och /CC headers)
     m_airbus = re.search(r'^(A\d{3})[^/]*/REP(\d+)[^/]*/CC([A-Z0-9-]+),([A-Z]{3}\d{2}),(\d{6}),([A-Z]{4}),([A-Z]{4})', txt)
@@ -293,7 +293,7 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
                 acars_dict['alt'] = alt_val
 
         summary = f"[Airbus FDIMU/Systemrapport #{rep_num}] {' | '.join(parts)}"
-        return f"{summary} | Rådata: {txt}"
+        return f"{summary}\nRådata: {txt}"
 
     # 3. Boeing / Honeywell FMS & CMC prefix
     if txt.startswith('#M1B'):
@@ -308,7 +308,7 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
 
     # 4. Label Q0 (Link Test Ping)
     if lbl == 'Q0':
-        return f"ACARS Länktest (Link Test Ping) | Rådata: {txt}" if txt else "ACARS Länktest (Link Test Ping)"
+        return f"ACARS Länktest (Link Test Ping)\nRådata: {txt}" if txt else "ACARS Länktest (Link Test Ping)"
 
     # 5. Label _d (ACK)
     if lbl == '_d' or not txt:

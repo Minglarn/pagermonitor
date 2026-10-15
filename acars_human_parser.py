@@ -854,10 +854,8 @@ def rule_fms_progress_destination(text: str, label: str = None, metadata: dict =
         parts.append(f"Temp: {temp_str}")
     parts.append(f"Landningsbränsle: {fuel_str}")
 
-    raw_preview = (stripped[:35].strip() + '...') if len(stripped) > 35 else stripped
-    parts.append(f"Rådata: {raw_preview}")
-
-    return f"[FMS Färdrapport] {' | '.join(parts)}"
+    summary = f"[FMS Färdrapport] {' | '.join(parts)}"
+    return f"{summary}\nRådata: {stripped}"
 
 
 def rule_boeing_dfdau_engine_telemetry(text: str, label: str = None, metadata: dict = None) -> str:
@@ -924,10 +922,8 @@ def rule_boeing_dfdau_engine_telemetry(text: str, label: str = None, metadata: d
 
     parts.append(f"({total_groups} mätvärden)")
 
-    raw_preview = (stripped[:35].strip() + '...') if len(stripped) > 35 else stripped
-    parts.append(f"Rådata: {raw_preview}")
-
-    return f"[Boeing Motortelemetri / DFDAU] {' | '.join(parts)}"
+    summary = f"[Boeing Motortelemetri / DFDAU] {' | '.join(parts)}"
+    return f"{summary}\nRådata: {stripped}"
 
 
 def rule_amdar_weather_report(text: str, label: str = None, metadata: dict = None) -> str:
@@ -1103,7 +1099,7 @@ def rule_boeing_plf_fault_report(text: str, label: str = None, metadata: dict = 
     parts = [p for p in [route_str, fde_str, msg_str] if p]
     summary = f"[Underhålls-/Felrapport (PLF)] {' | '.join(parts)}"
 
-    return f"{summary}\n{stripped}"
+    return f"{summary}\nRådata: {stripped}"
 
 
 def rule_airbus_aids_fdimu_report(text: str, label: str = None, metadata: dict = None) -> str:
@@ -1150,7 +1146,7 @@ def rule_airbus_aids_fdimu_report(text: str, label: str = None, metadata: dict =
             metadata['alt'] = alt_val
 
     summary = f"[Airbus FDIMU/Systemrapport #{rep_num}] {' | '.join(parts)}"
-    return f"{summary} | Rådata: {stripped}"
+    return f"{summary}\nRådata: {stripped}"
 
 
 def rule_aoc_airline_designated(text: str, label: str = None, metadata: dict = None) -> str:
@@ -1161,7 +1157,7 @@ def rule_aoc_airline_designated(text: str, label: str = None, metadata: dict = N
     is_aoc_label = bool(lbl == '1L' or re.match(r'^[1-4][A-Z]$', lbl))
     if lbl == '1L' or (is_aoc_label and m_aoc_seq):
         seq_part = f", Seq: {m_aoc_seq.group(1)[:6]}" if m_aoc_seq else ""
-        return f"[AOC Flygbolagsdata] Intern kodad drift-/telemetrirapport (Lufthansa Group{seq_part}) | Rådata: {stripped}"
+        return f"[AOC Flygbolagsdata] Intern kodad drift-/telemetrirapport (Lufthansa Group{seq_part})\nRådata: {stripped}"
     return None
 
 
@@ -1308,6 +1304,85 @@ def rule_label_83_eta_report(text: str, label: str = None, metadata: dict = None
             return f"Ankomstrapport: Rutt {orig} -> {dest}   ETA: {eta_fmt}"
 
     return None
+
+
+def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    Operativa meddelanden (Label 80, RA, 10–4Z m.fl.) med rutt, /ETA, /FOB och pilotfritext.
+    Exempel:
+      3401 ETA 4505/15 ESSA/EDDB .SE-RYC
+      /ETA 0925/FOB 0428
+      HI BER
+      REQ FUEL 5.6T
+    """
+    stripped = text.strip()
+    has_eta_fob = bool(re.search(r'/(?:ETA|FOB)\s*\d+', stripped) or re.search(r'\bFOB\s*\d+', stripped))
+    has_route = bool(re.search(r'\b([A-Z]{4})/([A-Z]{4})\b', stripped))
+
+    if not (has_eta_fob or (label in ('80', 'RA', '82') and (has_route or 'ETA' in stripped))):
+        return None
+
+    # 1. Rutt
+    route_str = ""
+    m_route = re.search(r'\b([A-Z]{4})/([A-Z]{4})\b', stripped)
+    if m_route:
+        orig = m_route.group(1).upper()
+        dest = m_route.group(2).upper()
+        orig_fmt = format_airport(orig)
+        dest_fmt = format_airport(dest)
+        route_str = f"Rutt: {orig_fmt} → {dest_fmt}"
+        if isinstance(metadata, dict):
+            metadata['dst_airport'] = dest
+
+    # 2. Giltig ETA (HHMM med 00-23 och 00-59)
+    eta_str = ""
+    m_eta = re.search(r'(?:/ETA\s*|\bETA\s*[:=]?\s*)([01]\d|2[0-3])([0-5]\d)\b', stripped)
+    if m_eta:
+        eta_str = f"ETA: {m_eta.group(1)}:{m_eta.group(2)} UTC"
+
+    # 3. FOB (Bränsle ombord)
+    fob_str = ""
+    m_fob = re.search(r'(?:/FOB\s*|\bFOB\s*[:=]?\s*)(\d{3,5})\b', stripped)
+    if m_fob:
+        fob_raw = m_fob.group(1)
+        val = int(fob_raw)
+        if len(fob_raw) == 3:
+            fob_kg = val * 100
+        elif len(fob_raw) == 4:
+            fob_kg = val * 10
+        else:
+            fob_kg = val
+        fob_formatted = f"{fob_kg:,} kg".replace(',', ' ')
+        fob_str = f"Bränsle (FOB): {fob_formatted}"
+
+    # 4. Extrahera pilot-fritext
+    lines = [l.strip() for l in stripped.splitlines() if l.strip()]
+    freetext_lines = []
+    for l in lines:
+        if re.search(r'\b[A-Z]{4}/[A-Z]{4}\b', l) and (re.search(r'\bETA\b', l) or re.search(r'\.[A-Z0-9-]{3,}', l)):
+            continue
+        if l.startswith('/') or l.startswith('#') or l.startswith(';'):
+            continue
+        if re.match(r'^(?:OUT|OFF|ON|IN)\b', l, re.IGNORECASE):
+            continue
+        freetext_lines.append(l)
+
+    pilot_msg = ""
+    if freetext_lines:
+        joined_free = " — ".join(freetext_lines)
+        pilot_msg = f'💬 Pilotmeddelande: "{joined_free}"'
+
+    summary_items = [item for item in [route_str, eta_str, fob_str] if item]
+    if not summary_items and not pilot_msg:
+        return None
+
+    summary_line = " | ".join(summary_items) if summary_items else "Operativ rapport"
+    if pilot_msg:
+        full_summary = f"{summary_line}\n{pilot_msg}"
+    else:
+        full_summary = summary_line
+
+    return f"{full_summary}\nRådata: {stripped}"
 
 
 def rule_label_80_oooi_report(text: str, label: str = None, metadata: dict = None) -> str:
@@ -1477,10 +1552,18 @@ def rule_generic_fallback_telemetry(text: str, label: str = None, metadata: dict
         if m_route3:
             extracted.append(f"Rutt: {format_airport(m_route3.group(1))} → {format_airport(m_route3.group(2))}")
 
-    # 2. ETA: t.ex. ETA 1234 eller ETA:1234
-    m_eta = re.search(r'\bETA\s*[:=]?\s*(\d{2})(\d{2})\b', stripped, re.IGNORECASE)
+    # 2. ETA: Giltig tid (timmar 00-23 och minuter 00-59, undvik flightnummer som ETA 4505)
+    m_eta = re.search(r'(?:/ETA\s*|\bETA\s*[:=]?\s*)([01]\d|2[0-3])([0-5]\d)\b', stripped, re.IGNORECASE)
     if m_eta:
         extracted.append(f"ETA: {m_eta.group(1)}:{m_eta.group(2)} UTC")
+
+    # 2b. FOB (Bränsle ombord)
+    m_fob = re.search(r'(?:/FOB\s*|\bFOB\s*[:=]?\s*)(\d{3,5})\b', stripped, re.IGNORECASE)
+    if m_fob:
+        fob_raw = m_fob.group(1)
+        val = int(fob_raw)
+        fob_kg = val * 100 if len(fob_raw) == 3 else (val * 10 if len(fob_raw) == 4 else val)
+        extracted.append(f"Bränsle (FOB): {fob_kg:,} kg".replace(',', ' '))
 
     # 3. Höjd / Flygnivå: t.ex. FL360 eller FL 360
     m_fl = re.search(r'\bFL\s*(\d{2,3})\b', stripped, re.IGNORECASE)
@@ -1506,7 +1589,7 @@ def rule_generic_fallback_telemetry(text: str, label: str = None, metadata: dict
 
     if extracted:
         summary = "   ".join(extracted)
-        return f"{summary}\n{stripped}"
+        return f"{summary}\nRådata: {stripped}"
 
     return None
 
@@ -1533,6 +1616,7 @@ PARSER_RULES = [
     rule_label_38_finnair_weather,
     rule_label_83_csv_position,
     rule_label_83_eta_report,
+    rule_operational_eta_fob_freetext,
     rule_label_80_oooi_report,
     rule_label_10_through_22_pos,
     rule_label_44_eta_pos,

@@ -357,6 +357,60 @@
             padding: 0.6rem 0.85rem !important;
         }
 
+        /* Rådata collapsible details styling */
+        .raw-data-details {
+            margin-top: 4px;
+        }
+        .raw-data-details summary {
+            font-size: 0.75rem;
+            color: #64748b;
+            cursor: pointer;
+            user-select: none;
+            outline: none;
+            transition: color 0.15s ease;
+            display: inline-block;
+        }
+        .raw-data-details summary:hover {
+            color: #94a3b8;
+        }
+        .raw-data-content {
+            font-family: var(--msg-font, 'JetBrains Mono', monospace);
+            font-size: 0.75rem;
+            background: #f8fafc;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+            padding: 6px 8px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin-top: 4px;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+        [data-theme="dark"] .raw-data-content,
+        body.dark-mode .raw-data-content {
+            background: #0f172a;
+            color: #cbd5e1;
+            border-color: #334155;
+        }
+
+        /* Pilot freetext highlight */
+        .pilot-freetext-highlight {
+            font-weight: 600;
+            color: #0f5132;
+            background: #d1e7dd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 4px;
+        }
+        [data-theme="dark"] .pilot-freetext-highlight,
+        body.dark-mode .pilot-freetext-highlight {
+            color: #75b798;
+            background: rgba(25, 135, 84, 0.2);
+            border: 1px solid rgba(25, 135, 84, 0.3);
+        }
+
         /* System Event Row Styling */
         tr.system-event-row {
             background: rgba(245, 158, 11, 0.05) !important;
@@ -938,11 +992,6 @@
                     if (lblPrefixMatch) {
                         if (!labelVal) labelVal = lblPrefixMatch[1].toUpperCase();
                         if (!labelDescVal && lblPrefixMatch[2]) labelDescVal = lblPrefixMatch[2].trim();
-                        cleanMsg = cleanMsg.replace(/^\[[A-Z0-9_]{1,4}(?::\s*[^\]]+)?\]\s*/i, '').trim();
-                    }
-
-                    if (cleanMsg.includes(' | ')) {
-                        cleanMsg = cleanMsg.replace(/\s*\|\s*/g, '   ');
                     }
                 }
 
@@ -965,7 +1014,43 @@
                 vdl2BadgesHtml = `${regTag}${flightTag}${icaoTag}${stationTag}${statusTag}${labelTag}`;
             }
 
-            const safeMsgClean = cleanMsg ? cleanMsg.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+            let safeMsgClean = '';
+            if (cleanMsg) {
+                let text = String(cleanMsg).replace(/<CR><LF>/gi, '\n');
+                let parsedSummary = text;
+                let rawText = '';
+                const matchIndex = text.search(/(?:\r?\n| \| )Rådata:/i);
+                if (matchIndex !== -1) {
+                    parsedSummary = text.substring(0, matchIndex).trim();
+                    rawText = text.substring(matchIndex).replace(/^(?:\r?\n| \| )?Rådata:\s*/i, '').trim();
+                } else {
+                    const fallbackIdx = text.search(/\bRådata:/i);
+                    if (fallbackIdx !== -1) {
+                        parsedSummary = text.substring(0, fallbackIdx).trim();
+                        rawText = text.substring(fallbackIdx).replace(/^Rådata:\s*/i, '').trim();
+                    }
+                }
+                parsedSummary = parsedSummary.replace(/\s*\|\s*/g, '   ');
+                const lines = parsedSummary.split(/\r?\n/);
+                const formattedLines = lines.map(line => {
+                    let lineEscaped = escapeHtml(line);
+                    if (line.includes('💬')) {
+                        return `<div class="pilot-freetext-highlight">${lineEscaped}</div>`;
+                    }
+                    return lineEscaped;
+                });
+                const summaryHtml = formattedLines.join('<br>');
+                let rawDetailsHtml = '';
+                if (rawText) {
+                    rawDetailsHtml = `
+                        <details class="raw-data-details">
+                            <summary>Visa rådata</summary>
+                            <pre class="raw-data-content">${escapeHtml(rawText)}</pre>
+                        </details>
+                    `;
+                }
+                safeMsgClean = `<div class="msg-summary">${summaryHtml}</div>${rawDetailsHtml}`;
+            }
 
             const funcLabel = (!isVdl2 && m.function !== undefined && m.function !== null) ? ((m.function === 0 || m.function === 3) ? "Alpha" : "Num") : "";
             const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';

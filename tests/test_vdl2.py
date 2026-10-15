@@ -444,8 +444,8 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertIn('EGT: 591°C', res['message'])
         self.assertIn('(37 mätvärden)', res['message'])
         self.assertIn('Rådata: 07336019 8991 9536', res['message'])
-        # Kontrollera att den enorma sifferväggen är trunkerad och inte läcker ut till UI
-        self.assertNotIn('0256400672166766750', res['message'])
+        # Fullständig rådata bevaras nu i meddelandet för kollapsbar visning
+        self.assertIn('0256400672166766750', res['message'])
 
     def test_austrian_aoc_1l_telemetry(self):
         """Verifiera Austrian Airlines (OE-LBS, OS096F) Label 1L AOC intern telemetrirapport."""
@@ -627,6 +627,39 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertIn('301 kt', res['message'])
         self.assertIn('08:13:23 UTC', res['message'])
         self.assertIn('Rutt: LTFJ (Istanbul/Sabiha Gökçen) → ESSA (Stockholm/Arlanda)', res['message'])
+
+    def test_norwegian_label_80_eta_fob_and_pilot_freetext(self):
+        """Verifiera Norwegian (SE-RYC, D84505) Label: 80 med /ETA, /FOB och pilotfritext."""
+        raw_msg = (
+            "3401 ETA 4505/15 ESSA/EDDB .SE-RYC\n"
+            "/ETA 0925/FOB 0428\n"
+            "HI BER\n"
+            "REQ FUEL 5.6T"
+        )
+        frame = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '4AC999'},
+                    'acars': {
+                        'reg': '.SE-RYC',
+                        'flight': 'D84505',
+                        'label': '80',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertEqual(res['dst_airport'], 'EDDB')
+        self.assertIn('Berlin/Brandenburg', res['station'])
+        self.assertIn('ETA: 09:25 UTC', res['message'])
+        self.assertNotIn('45:05', res['message'])
+        self.assertIn('Bränsle (FOB): 4 280 kg', res['message'])
+        self.assertIn('💬 Pilotmeddelande: "HI BER — REQ FUEL 5.6T"', res['message'])
+        self.assertIn('Rådata:', res['message'])
+        self.assertIn('HI BER', res['message'])
 
 if __name__ == '__main__':
     unittest.main()

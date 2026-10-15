@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.11`
+- **CalVer**: `2026.10.15.12`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
@@ -2007,6 +2007,37 @@
   - Samtliga 79 enhetstester passerar felfritt.
 - **Emoji-granskning**:
   - 100% fri från emojis i alla ändrade och tillagda filer.
+
+### 72. Kollapsbar Rådata i UI och Förbättrad Label 80 ETA/FOB/Fritext (v2026.10.15.12)
+- **Strikt ETA-validering & Parsing av /ETA och /FOB ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Infört strikt timvalidering (`(?:[01]\d|2[0-3])[0-5]\d`) för ETA i `acars_human_parser.py` och `vdl2_receiver.py`, så att fyrsiffriga flightnummer (t.ex. `4505` i `3401 ETA 4505/15`) inte felaktigt tolkas som klockslaget `45:05 UTC`.
+  - Parsar `/ETA\s*(\d{4})` till `ETA: HH:MM UTC` (t.ex. `/ETA 0925` -> `ETA: 09:25 UTC`).
+  - Parsar `/FOB\s*(\d{3,5})` till bränslemängd i kg (`Bränsle (FOB): X kg`), med automatisk skalning beroende på om FOB anges i hundratal kg/lbs eller hela kg.
+  - Extraherar och formaterar flygplatser via `format_airport()` och uppdaterar automatiskt `dst_airport`-metadatat (t.ex. `EDDB` -> `Berlin/Brandenburg`).
+- **Framhävning av Mänsklig Pilot-fritext ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Extraherar fritextrader under tekniska headers i operativa meddelanden (t.ex. `Label: 80`, `RA`) och sammanfogar dem till en tydlig rad:
+    `💬 Pilotmeddelande: "HI BER — REQ FUEL 5.6T"`.
+- **Standardisering av Rådata-avgränsare ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Standardiserat all rådata till `\nRådata: <original_text>` i slutet av meddelandet.
+  - Tagit bort godtycklig avkortning med `[:35] + '...'` i Python-reglerna så att full rådata bevaras för visning i gränssnittet.
+- **Kollapsbar `<details>`-sektion i Frontend ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Uppdaterat `formatMessage()` i Dashboard, Alarms och Statistics så att meddelanden med `\nRådata:` eller `| Rådata:` delas upp i `parsedSummary` och `rawText`.
+  - Båda delarna XSS-skyddas med `escapeHtml()`.
+  - Rader som innehåller pilotfritext (`💬`) ges en framträdande stil via CSS-klassen `.pilot-freetext-highlight`.
+  - `rawText` renderas som en kollapsbar sektion:
+    ```html
+    <details class="raw-data-details">
+      <summary>Visa rådata</summary>
+      <pre class="raw-data-content">${escapedRawText}</pre>
+    </details>
+    ```
+  - Stylad med diskret länktext och mörk/ljus anpassad monospace-ruta (`.raw-data-content`).
+- **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
+  - Tillagt `test_norwegian_label_80_eta_fob_and_pilot_freetext` för att verifiera Norwegian `3401 ETA 4505/15 ESSA/EDDB .SE-RYC`, `ETA: 09:25 UTC`, `Bränsle (FOB): 4 280 kg` samt `💬 Pilotmeddelande: "HI BER — REQ FUEL 5.6T"`.
+  - Samtliga 80 tester passerar felfritt.
+- **Emoji-granskning**:
+  - Strikt granskad. Endast den begärda pilotfritext-indikatorn `💬` tillåten i meddelandeparsningen. Inga övriga emojis.
+
 
 
 
