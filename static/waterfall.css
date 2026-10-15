@@ -151,6 +151,29 @@
     align-items: center;
 }
 
+.ribbon-clear-btn {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    border-radius: 6px;
+    padding: 0.2rem 0.55rem;
+    color: #fca5a5;
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    transition: all 0.15s ease;
+    margin-right: 0.5rem;
+}
+
+.ribbon-clear-btn:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: #ef4444;
+    color: #ffffff;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+}
+
 .ribbon-toggle-btn {
     background: transparent;
     border: 1px solid var(--panel-border, #1f2937);
@@ -216,7 +239,7 @@
 /* Channel Waterfall Row */
 .channel-waterfall-row {
     display: grid;
-    grid-template-columns: 160px 1fr 65px;
+    grid-template-columns: 180px 1fr 65px;
     align-items: center;
     gap: 0.75rem;
     padding: 0.25rem 0.5rem;
@@ -233,8 +256,35 @@
 }
 
 .channel-waterfall-row.active-filter {
-    background: rgba(56, 189, 248, 0.08);
+    background: rgba(56, 189, 248, 0.09);
     border-color: var(--accent, #38bdf8);
+    box-shadow: 0 0 8px rgba(56, 189, 248, 0.12);
+}
+
+.channel-check-box {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1px solid var(--panel-border, #334155);
+    background: rgba(15, 23, 42, 0.6);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    color: transparent;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.channel-waterfall-row:hover .channel-check-box {
+    border-color: var(--accent, #38bdf8);
+}
+
+.channel-waterfall-row.active-filter .channel-check-box {
+    background: var(--accent, #38bdf8);
+    border-color: var(--accent, #38bdf8);
+    color: #0f172a;
+    box-shadow: 0 0 6px rgba(56, 189, 248, 0.4);
 }
 
 .channel-info-cell {
@@ -316,7 +366,7 @@
 /* Timeline Scale */
 .waterfall-timeline-scale {
     display: grid;
-    grid-template-columns: 160px 1fr 65px;
+    grid-template-columns: 180px 1fr 65px;
     align-items: center;
     gap: 0.75rem;
     padding: 0.3rem 0.5rem 0 0.5rem;

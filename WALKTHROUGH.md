@@ -1,8 +1,8 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.14.32`
-- **Date**: 2026-10-14
+- **CalVer**: `2026.10.15.3`
+- **Date**: 2026-10-15
 - **Language**: English / Swedish
 
 ---
@@ -1827,6 +1827,52 @@
 - **Verifiering**:
   - Samtliga 68 enhetstester godkända (`python -m unittest discover tests`).
   - Verifierat att koden och meddelandetexterna är 100% fria från emojis.
+
+### 61. Multi-val och Filtrering på Flera RF Activity-kanaler i Vattenfallet (v2026.10.15.1)
+- **Multi-val av SDR-kanaler ([static/waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/waterfall.css](file:///d:/antigravity/pager-monitor/static/waterfall.css))**:
+  - Infört multi-val så att användaren kan klicka på och kombinera 1 eller flera radiokanaler samtidigt (t.ex. flera VDL2-mätfrekvenser, RIKS 1, POCSAG och RDS).
+  - Ersatt den tidigare enkelvalsvariabeln med en `Set` (`activeFilterChannels`).
+  - Varje kanalrad i RF Activity har försetts med en kryssruta (`.channel-check-box`) med FontAwesome-bock (`fas fa-check`) vid aktiv markering.
+  - Varje klick på en kanalrad eller sammanfattningspiller (`.ribbon-summary-pill`) växlar nu kanalens aktiva status på/av.
+- **Integrerad DataTables-filtrering och Samtidig Textsökning ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Implementerat en dedikerad DataTables-sökfunktion (`$.fn.dataTable.ext.search.push`) som matchar rader mot samtliga valda kanaler via `data-channel-key`, `data-frequency` och protokoll.
+  - Textsökfältet (`#searchInput`) är nu helt oberoende och kan användas samtidigt för att filtrera fram specifika anrop, flygnummer eller ord inom de valda kanalerna.
+- **Rensaknapp i Ribbon-panelen**:
+  - Lagt till en "Rensa filter (N)"-knapp (`#ribbonClearFilterBtn`) som visas automatiskt när minst en kanal är vald och återställer tabellen till normalläge med ett klick.
+- **Verifiering**:
+  - Samtliga 70 enhetstester godkända (`python -m unittest discover tests`).
+  - Verifierat att koden och gränssnittet är 100% fria från emojis.
+
+### 62. MIAM Fallback-dekoder (RFC 1924 Base85 + Deflate) och Fragmenthantering (v2026.10.15.2)
+- **Fördjupad sökning i dumpvdl2:s MIAM-träd ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Kontrollerar samtliga fält under `miam.single_transfer.miam_core.data` (`acars.msg_text`, `raw`, `text`), `miam_core.raw`, `single_transfer.data` och rot-`miam`.
+- **Egen Fallback-dekoder `decode_miam_base85()` ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Avkodar RFC 1924 Base85-strängar (`base64.b85decode`) och dekomprimerar med `zlib` (stödjer standard zlib-header, raw deflate `wbits=-zlib.MAX_WBITS` och gzip/auto).
+  - Skannar dynamiska MIAM Single Transfer-offsets (3 till 8 tecken) efter `T01`/`T02` och extraherar läsbar ASCII-telemetri samt kör geolokalisering (`extract_position_and_telemetry`).
+  - Strukturerad presentation av binära Airbus SAR/FDIMU-paket med utvunna ASCII-parametrar: `[MIAM Binär Flygdata] Airbus komprimerat telemetripaket (<X> bytes uppackat)`.
+- **Snygg Presentation av Fragmenterade/Krypterade Delpaket ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Eliminerat oläsliga Base85-teckenväggar i gränssnittet vid fragmentering eller saknade block (`acars.more == True`).
+  - Ersatt med informativ ren statusrad:
+    `[MIAM Komprimerad Telemetri] Krypterat/fragmenterat Airbus-datapaket (<X> B, delpaket) (<preview>...)`.
+  - Skyddat `[MIAM ...]`-taggar från prefix-strippning i `acars_human_parser.py`.
+### 63. FMS Färdrapport & Destination samt Boeing DFDAU Motortelemetri (v2026.10.15.3)
+- **FMS Progress & Destination Report ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Implementerat `rule_fms_progress_destination` för avkodning av rapporter under `Label: H1` (`PRG/DT...`, `INI/DT...`, `FTX/DT...`).
+  - Extraherar destination (`EGLL`), landningsbana (`27L`), beräknat landningsbränsle (`6 500 kg`), beräknad ankomsttid (`08:31 UTC`), marschhöjd (`FL380`) och temperatur (`-56°C`).
+  - Slår upp destinationsflygplats i `AIRPORTS`-tabellen (`EGLL` -> `London/Heathrow`).
+  - Uppdaterar paketets `dst_airport` samt `station` med den utvunna flygplatsen och skyddar den från att skrivas över av XID-data från avgångsflygplatsen, vilket gör att den gröna destinations-badgen i UI visar rätt destination.
+  - Snygg presentation: `[FMS Färdrapport] Dest: EGLL (London/Heathrow) Bana 27L | ETA: 08:31 UTC | Marschhöjd: FL380 | Temp: -56°C | Landningsbränsle: 6 500 kg | Rådata: PRG/DTEGLL...`.
+- **Boeing DFDAU / ACMS Numerisk Motortelemetri ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Implementerat `rule_boeing_dfdau_engine_telemetry` för meddelanden under `Label: H1`, `DF` eller prefix `#DFB` med minst 85% siffror och mellanslag samt minst 10 siffergrupper.
+  - Extraherar motorvarvtal N1/N2 ur 4-siffriga grupper i hundradels procent (t.ex. `89.2%–95.4%`) med adaptiv skanning av cruise/climb-intervall.
+  - Extraherar avgastemperatur EGT ur 3-siffriga mätvärden (400–850) direkt efter varvtalsblocken (t.ex. `591°C`).
+  - Trunkerar råa sifferväggar till de första 35 tecknen så att tabellen och liveflödet hålls rent och överskådligt.
+  - Snygg presentation: `[Boeing Motortelemetri / DFDAU] N1/N2 Varvtal: 89.2%–95.4% | EGT: 591°C | (37 mätvärden) | Rådata: 07336019 8991 9536...`.
+- **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
+  - Lagt till `test_fms_progress_and_destination_report` och `test_boeing_dfdau_engine_telemetry`.
+  - Samtliga 72 enhetstester i hela testsviten passerar felfritt.
+- **Emoji-granskning**:
+  - 100% fri från emojis i alla ändrade och tillagda filer.
 
 
 

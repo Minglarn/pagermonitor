@@ -4,6 +4,8 @@ import threading
 import time
 import logging
 import re
+import base64
+import zlib
 from datetime import datetime
 from database import (
     save_message, get_alias_info, check_alert_words, 
@@ -477,6 +479,21 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
             else:
                 res['telemetry_summary'] = r_str
 
+    # Sök efter FMS Destination och bana (PRG/DT..., INI/DT..., FTX/DT...)
+    m_fms_dst = re.search(r'(?:PRG|INI|FTX)/DT([A-Z]{4})(?:,([0-9]{2}[LRC]?))?', raw_text)
+    if m_fms_dst:
+        dst_code = m_fms_dst.group(1).upper()
+        res['dst_airport'] = dst_code
+        rwy = m_fms_dst.group(2)
+        ap_name = AIRPORT_MAP.get(dst_code, '')
+        rwy_part = f" Bana {rwy}" if rwy else ""
+        dst_str = f"Dest: {dst_code} ({ap_name}){rwy_part}" if ap_name else f"Dest: {dst_code}{rwy_part}"
+        if res['telemetry_summary']:
+            if dst_str not in res['telemetry_summary']:
+                res['telemetry_summary'] = f"{dst_str} | {res['telemetry_summary']}"
+        else:
+            res['telemetry_summary'] = dst_str
+
     # --- Mönster 4: Fallback till XID / GSIF / ADS-C struktur ur JSON ---
     if isinstance(vdl2_obj, dict):
         avlc = vdl2_obj.get('avlc', {}) if isinstance(vdl2_obj, dict) else {}
@@ -497,10 +514,10 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
                 except (ValueError, TypeError):
                     pass
 
-            # XID vdl_params -> dst_airport
+            # XID vdl_params -> dst_airport (endast om inte redan satt av t.ex. FMS)
             vdl_params = xid.get('vdl_params', {}) if isinstance(xid.get('vdl_params'), dict) else {}
             dst_ap = vdl_params.get('dst_airport') or xid.get('dst_airport')
-            if dst_ap:
+            if dst_ap and not res.get('dst_airport'):
                 dst_code = str(dst_ap).strip().upper()
                 res['dst_airport'] = dst_code
                 ap_name = AIRPORT_MAP.get(dst_code, '')
@@ -596,6 +613,93 @@ def format_cpdlc(cpdlc_obj):
         
     return " ".join(parts).strip()
 
+def decode_miam_base85(raw_text: str):
+    """
+    Försöker Base85-avkoda (RFC 1924) och dekomprimera (zlib / raw deflate)
+    en komprimerad MIAM Single Transfer payload (Label: MA / T01 / T02).
+    
+    Returnerar:
+      - Uppackad ASCII-textsträng om framgångsrik och läsbar text
+      - Formaterad '[MIAM Binär Flygdata] ...' om uppackat men binär telemetri
+      - None om avkodning/dekomprimering misslyckas (t.ex. fragment/ofullständig)
+    """
+    if not raw_text or not isinstance(raw_text, str):
+        return None
+
+    clean = re.sub(r'[\r\n\s]+', '', raw_text)
+    if not clean:
+        return None
+
+    # MIAM Single Transfer header kan vara 3-8 tecken lång (t.ex. T02!, T01, T02## etc.)
+    # Testa kandidatoffset från 3 till 8 samt 0-2 vid trunkerad/ren Base85
+    if clean.startswith(('T01', 'T02', 'T')):
+        offsets = [4, 3, 5, 6, 7, 8, 0, 1, 2]
+    else:
+        offsets = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+
+    decompressed_bytes = None
+    for off in offsets:
+        if off >= len(clean):
+            continue
+        sub = clean[off:]
+        try:
+            raw_bytes = base64.b85decode(sub.encode('ascii', errors='ignore'))
+        except Exception:
+            continue
+
+        if not raw_bytes:
+            continue
+
+        # Prova dekomprimering:
+        # 1. Standard zlib header (wbits=0 default)
+        # 2. Raw deflate utan zlib wrapper (wbits=-zlib.MAX_WBITS)
+        # 3. Gzip/auto wrapper (wbits=32 + zlib.MAX_WBITS)
+        for wbits in [0, -zlib.MAX_WBITS, 32 + zlib.MAX_WBITS]:
+            try:
+                if wbits == 0:
+                    decomp = zlib.decompress(raw_bytes)
+                else:
+                    decomp = zlib.decompress(raw_bytes, wbits)
+                if decomp:
+                    decompressed_bytes = decomp
+                    break
+            except Exception:
+                pass
+        if decompressed_bytes:
+            break
+
+    if not decompressed_bytes:
+        return None
+
+    # Undersök om uppackade bytes är läsbar text eller binär Airbus SAR/FDIMU-telemetri
+    text_cand = None
+    try:
+        text_cand = decompressed_bytes.decode('utf-8')
+    except UnicodeDecodeError:
+        try:
+            text_cand = decompressed_bytes.decode('latin-1')
+        except Exception:
+            pass
+
+    if text_cand:
+        # Kontrollera andelen utskrivbara tecken
+        printable_count = sum(1 for c in text_cand if c.isprintable() or c in '\r\n\t')
+        ratio = printable_count / max(len(text_cand), 1)
+        if ratio >= 0.80:
+            return text_cand.strip('\x00\r\n\t ')
+
+    # Om det är binär Airbus SAR/FDIMU-telemetri:
+    size_bytes = len(decompressed_bytes)
+    raw_latin = decompressed_bytes.decode('latin-1', errors='ignore')
+    ascii_matches = re.findall(r'[A-Za-z0-9.,/:;_\-]{4,}', raw_latin)
+    readable_strings = [m.strip() for m in ascii_matches if len(m.strip()) >= 4]
+
+    header_line = f"[MIAM Binär Flygdata] Airbus komprimerat telemetripaket ({size_bytes} bytes uppackat)"
+    if readable_strings:
+        parts = ", ".join(readable_strings[:6])
+        return f"{header_line}\nParametrar: {parts}"
+    return header_line
+
 def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
     """
     Parsar ett JSON-paket från dumpvdl2 eller acars_router och returnerar ett strukturerat meddelande.
@@ -669,6 +773,7 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
         reg = str(acars.get('reg') or '').strip()
         label = str(acars.get('label') or '').strip()
 
+        # 1. Undersök alla fält i dumpvdl2:s miam-träd
         miam_obj = acars.get('miam')
         if isinstance(miam_obj, dict):
             st = miam_obj.get('single_transfer')
@@ -679,7 +784,7 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
                     if isinstance(m_data, dict):
                         sub_acars = m_data.get('acars')
                         if isinstance(sub_acars, dict):
-                            miam_text = sub_acars.get('msg_text')
+                            miam_text = sub_acars.get('msg_text') or sub_acars.get('text')
                             if miam_text:
                                 msg_text = str(miam_text).strip()
                                 is_miam = True
@@ -689,12 +794,80 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
                                     reg = str(sub_acars.get('reg')).strip()
                                 if sub_acars.get('label'):
                                     label = str(sub_acars.get('label')).strip()
+                        if not msg_text:
+                            raw_val = m_data.get('raw') or m_data.get('text') or m_data.get('msg_text')
+                            if raw_val:
+                                msg_text = str(raw_val).strip()
+                                is_miam = True
+                    elif isinstance(m_data, str) and m_data.strip():
+                        msg_text = m_data.strip()
+                        is_miam = True
 
-        # B) Om ingen MIAM-text hittades: Använd vanlig ACARS
+                    if not msg_text:
+                        raw_core = core.get('raw') or core.get('text')
+                        if raw_core:
+                            msg_text = str(raw_core).strip()
+                            is_miam = True
+
+                if not msg_text:
+                    st_data = st.get('data') or st.get('raw') or st.get('text')
+                    if isinstance(st_data, str) and st_data.strip():
+                        msg_text = st_data.strip()
+                        is_miam = True
+                    elif isinstance(st_data, dict):
+                        sub_text = st_data.get('msg_text') or st_data.get('text') or st_data.get('raw')
+                        if sub_text:
+                            msg_text = str(sub_text).strip()
+                            is_miam = True
+
+            if not msg_text:
+                miam_fallback = miam_obj.get('data') or miam_obj.get('raw') or miam_obj.get('text')
+                if isinstance(miam_fallback, str) and miam_fallback.strip():
+                    msg_text = miam_fallback.strip()
+                    is_miam = True
+
+        # B) Om ingen MIAM-text hittades: Hämta rå ACARS-text
         if not msg_text:
             raw_acars_text = acars.get('msg_text') or acars.get('text')
             if raw_acars_text:
                 msg_text = str(raw_acars_text).strip()
+
+    # Fallback till rotnivå (t.ex. normaliserad JSON från router)
+    if not flight:
+        flight = str(data.get('flight') or '').strip().upper()
+    if not reg:
+        reg = str(data.get('tail') or data.get('reg') or '').strip()
+    if not msg_text:
+        msg_text = str(data.get('text') or data.get('msg_text') or '').strip()
+    if not label and data.get('label'):
+        label = str(data.get('label') or '').strip()
+
+    # C) Kontroll och avkodning av råa MIAM Base85-strängar (Label: MA eller T01/T02 Single Transfer)
+    is_miam_packet = (
+        (label.upper() == 'MA') or 
+        msg_text.startswith('T01') or 
+        msg_text.startswith('T02') or
+        (isinstance(acars, dict) and bool(acars.get('miam')))
+    )
+    if is_miam_packet and msg_text:
+        is_already_decoded = (
+            is_miam and 
+            not msg_text.startswith(('T01', 'T02', 'z!')) and 
+            (';' in msg_text or 'PALAT' in msg_text or msg_text.startswith('[MIAM'))
+        )
+        if not is_already_decoded:
+            decoded_try = decode_miam_base85(msg_text)
+            if decoded_try:
+                msg_text = decoded_try
+                is_miam = True
+            else:
+                # Ofullständigt/fragmenterat paket (eller acars.more == True)
+                # Krav 3: Ersätt Base85-vägg med snygg statusrad
+                clean_raw = msg_text.strip()
+                raw_len = len(clean_raw)
+                preview = clean_raw[:16] + ('...' if raw_len > 16 else '')
+                msg_text = f"[MIAM Komprimerad Telemetri] Krypterat/fragmenterat Airbus-datapaket ({raw_len} B, delpaket) ({preview})"
+                is_miam = True
 
     # Fallback till rotnivå (t.ex. normaliserad JSON från router)
     if not flight:
@@ -788,10 +961,22 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
         message_lines.append(f"CPDLC: {cpdlc_text}")
 
     if msg_text:
-        # Parsa genom acars_human_parser med strip_prefix=True för ren text
-        parsed_human = parse_human_acars(msg_text, label=label, metadata=acars, strip_prefix=True)
+        if msg_text.startswith('[MIAM'):
+            parsed_human = msg_text
+        else:
+            # Parsa genom acars_human_parser med strip_prefix=True för ren text
+            parsed_human = parse_human_acars(msg_text, label=label, metadata=acars, strip_prefix=True)
         if parsed_human:
             message_lines.append(parsed_human)
+
+    # Om FMS eller en regel extraherade eller uppdaterade dst_airport i acars-metadata
+    if not dst_airport and isinstance(acars, dict) and acars.get('dst_airport'):
+        dst_airport = str(acars['dst_airport']).strip().upper()
+
+    # Om en destinationsflygplats är känd (FMS eller XID), uppdatera station_name så den gröna badgen visar rätt destination
+    if dst_airport:
+        ap_desc = AIRPORT_MAP.get(dst_airport, '')
+        station_name = f"{dst_airport} ({ap_desc})" if ap_desc else dst_airport
 
     # Om ingen text genererades, men telemetrisammanfattning finns
     if not message_lines:
@@ -839,7 +1024,8 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
         'snr': snr_str,
         'snr_db': snr_db,
         'is_miam': is_miam,
-        'telemetry': telemetry_data
+        'telemetry': telemetry_data,
+        'dst_airport': dst_airport
     }
 
 

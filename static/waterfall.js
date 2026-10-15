@@ -9,7 +9,7 @@ window.WaterfallManager = (function () {
     let sdrInstances = [];
     let isCollapsed = false;
     let onFilterCallback = null;
-    let activeFilterChannel = null;
+    let activeFilterChannels = new Set();
     let rollTimer = null;
     let tooltipEl = null;
 
@@ -107,14 +107,16 @@ window.WaterfallManager = (function () {
         if (summaryContainer) summaryContainer.innerHTML = '';
 
         Object.values(channels).forEach(ch => {
+            const isSelected = activeFilterChannels.has(ch.id);
+
             // Render row in waterfall
             const row = document.createElement('div');
-            row.className = 'channel-waterfall-row';
+            row.className = 'channel-waterfall-row' + (isSelected ? ' active-filter' : '');
             row.id = `waterfall-row-${ch.id}`;
-            if (activeFilterChannel === ch.id) row.classList.add('active-filter');
 
             row.innerHTML = `
                 <div class="channel-info-cell">
+                    <span class="channel-check-box" id="check-${ch.id}" title="${isSelected ? 'Avmarkera filter' : 'Filtrera på denna kanal'}"><i class="fas fa-check"></i></span>
                     <div class="channel-indicator-dot" id="dot-${ch.id}"></div>
                     <div class="channel-text">
                         <span class="channel-name" title="${ch.name}">${ch.name}</span>
@@ -129,7 +131,7 @@ window.WaterfallManager = (function () {
                 </div>
             `;
 
-            // Click row to filter
+            // Click row to toggle filter
             row.addEventListener('click', (e) => {
                 toggleChannelFilter(ch);
             });
@@ -143,9 +145,8 @@ window.WaterfallManager = (function () {
             // Render summary pill in ribbon header
             if (summaryContainer) {
                 const pill = document.createElement('div');
-                pill.className = 'ribbon-summary-pill';
+                pill.className = 'ribbon-summary-pill' + (isSelected ? ' active-filter' : '');
                 pill.id = `summary-pill-${ch.id}`;
-                if (activeFilterChannel === ch.id) pill.classList.add('active-filter');
                 pill.innerHTML = `
                     <span class="ribbon-summary-dot" id="summary-dot-${ch.id}"></span>
                     <span>${ch.name}: <strong><span id="summary-count-${ch.id}">${ch.total60m}</span></strong></span>
@@ -158,35 +159,142 @@ window.WaterfallManager = (function () {
             }
         });
 
+        updateFilterUI();
         drawAllCanvases();
     }
 
-    function toggleChannelFilter(ch) {
-        if (activeFilterChannel === ch.id) {
-            activeFilterChannel = null;
-            if (onFilterCallback) onFilterCallback('');
-        } else {
-            activeFilterChannel = ch.id;
-            let filterTerm = ch.frequency;
-            // Om kanalen är RDS, filtrera alltid på 'RDS' (matchar 'RDS-TMC' i flödet istället för 'auto')
-            if (ch.name && (ch.name.toUpperCase() === 'RDS' || ch.name.toUpperCase().includes('RDS') || ch.name.toUpperCase().includes('TMC'))) {
-                filterTerm = 'RDS';
-            } else if (!filterTerm || filterTerm.toLowerCase() === 'auto' || filterTerm.toLowerCase() === 'scan' || filterTerm.toLowerCase() === 'unknown') {
-                filterTerm = ch.name;
+    function updateFilterUI() {
+        Object.values(channels).forEach(ch => {
+            const row = document.getElementById(`waterfall-row-${ch.id}`);
+            const pill = document.getElementById(`summary-pill-${ch.id}`);
+            const chk = document.getElementById(`check-${ch.id}`);
+            const isSelected = activeFilterChannels.has(ch.id);
+
+            if (row) row.classList.toggle('active-filter', isSelected);
+            if (pill) pill.classList.toggle('active-filter', isSelected);
+            if (chk) chk.title = isSelected ? 'Avmarkera filter' : 'Filtrera på denna kanal';
+        });
+
+        // Uppdatera rensaknappen i ribbongruppens åtgärdsfält
+        const clearBtn = document.getElementById('ribbonClearFilterBtn');
+        const clearText = document.getElementById('ribbonClearFilterText');
+        if (clearBtn) {
+            if (activeFilterChannels.size > 0) {
+                clearBtn.style.display = 'inline-flex';
+                if (clearText) {
+                    clearText.textContent = `Rensa filter (${activeFilterChannels.size})`;
+                }
+            } else {
+                clearBtn.style.display = 'none';
             }
-            if (onFilterCallback) onFilterCallback(filterTerm || ch.name);
+        }
+    }
+
+    function toggleChannelFilter(ch) {
+        if (!ch || !ch.id) return;
+        if (activeFilterChannels.has(ch.id)) {
+            activeFilterChannels.delete(ch.id);
+        } else {
+            activeFilterChannels.add(ch.id);
         }
 
-        // Update UI highlights
-        document.querySelectorAll('.channel-waterfall-row').forEach(r => r.classList.remove('active-filter'));
-        document.querySelectorAll('.ribbon-summary-pill').forEach(p => p.classList.remove('active-filter'));
+        updateFilterUI();
 
-        if (activeFilterChannel) {
-            const activeRow = document.getElementById(`waterfall-row-${activeFilterChannel}`);
-            if (activeRow) activeRow.classList.add('active-filter');
-            const activePill = document.getElementById(`summary-pill-${activeFilterChannel}`);
-            if (activePill) activePill.classList.add('active-filter');
+        if (onFilterCallback) {
+            onFilterCallback(activeFilterChannels);
         }
+    }
+
+    function clearAllFilters() {
+        activeFilterChannels.clear();
+        updateFilterUI();
+        if (onFilterCallback) {
+            onFilterCallback(activeFilterChannels);
+        }
+    }
+
+    function hasActiveFilter() {
+        return activeFilterChannels.size > 0;
+    }
+
+    function getActiveFilters() {
+        return Array.from(activeFilterChannels);
+    }
+
+    function isRowMatchingFilter(tr) {
+        if (!tr || activeFilterChannels.size === 0) return true;
+
+        // 1. Snabb matchning via data-channel-key
+        const chKey = tr.getAttribute('data-channel-key') || (tr.dataset ? tr.dataset.channelKey : '');
+        if (chKey && activeFilterChannels.has(chKey)) {
+            return true;
+        }
+
+        // 2. Extrahera frekvens och protokoll ur data-attribut eller child badges
+        let rawFreq = tr.getAttribute('data-frequency') || (tr.dataset ? tr.dataset.frequency : '');
+        let rawProto = tr.getAttribute('data-protocol') || (tr.dataset ? tr.dataset.protocol : '');
+        let rawBitrate = tr.getAttribute('data-bitrate') || (tr.dataset ? tr.dataset.bitrate : '');
+
+        if (!rawFreq) {
+            const freqBadge = tr.querySelector('.badge-freq');
+            if (freqBadge) rawFreq = freqBadge.textContent || '';
+        }
+        if (!rawProto) {
+            const protoBadge = tr.querySelector('.badge-proto');
+            if (protoBadge) rawProto = protoBadge.textContent || '';
+        }
+
+        const rowNormFreq = normalizeFrequency(rawFreq);
+        const rowProtoUpper = (rawProto || '').toUpperCase();
+        const rowBitrateUpper = (rawBitrate || '').toUpperCase();
+
+        for (const actKey of activeFilterChannels) {
+            const ch = channels[actKey];
+            if (!ch) continue;
+
+            // Om aktiv kanal är RDS
+            const isChRds = (ch.name && (ch.name.toUpperCase() === 'RDS' || ch.name.toUpperCase().includes('RDS') || ch.name.toUpperCase().includes('TMC')));
+            if (isChRds) {
+                if (rowProtoUpper.includes('RDS') || rowProtoUpper.includes('TMC') || rowBitrateUpper.includes('RDS') || rowBitrateUpper.includes('TMC')) {
+                    return true;
+                }
+            }
+
+            // Normaliserad numerisk frekvensmatchning
+            const chNormFreq = normalizeFrequency(ch.frequency);
+            if (chNormFreq && chNormFreq !== 'Unknown' && chNormFreq !== 'auto' && rowNormFreq && rowNormFreq !== 'Unknown') {
+                if (chNormFreq === rowNormFreq) {
+                    return true;
+                }
+            }
+
+            // Fallback mot delsträngsmatchning i frekvenstext
+            if (rawFreq && ch.frequency && ch.frequency !== 'auto' && ch.frequency !== 'Unknown') {
+                const cleanCh = ch.frequency.replace(/MHz|M|Hz/gi, '').trim();
+                const cleanRow = rawFreq.replace(/MHz|M|Hz/gi, '').trim();
+                if (cleanCh && (cleanRow === cleanCh || cleanRow.startsWith(cleanCh) || cleanCh.startsWith(cleanRow))) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    function getChannelKeyForMessage(msg) {
+        if (!msg) return null;
+        const freq = msg.frequency || 'Unknown';
+        if (freq === 'RESTART' || freq === 'Unknown') return null;
+
+        const isRdsMsg = (msg.bitrate && (msg.bitrate.includes('RDS') || msg.bitrate.includes('TMC'))) || 
+                         (msg.protocol && msg.protocol.includes('RDS')) ||
+                         (msg.sdr_name && msg.sdr_name.toUpperCase().includes('RDS'));
+        if (isRdsMsg) {
+            const rdsKey = Object.keys(channels).find(k => channels[k].name && (channels[k].name.toUpperCase() === 'RDS' || channels[k].name.toUpperCase().includes('RDS')));
+            if (rdsKey) return rdsKey;
+        }
+
+        return getChannelKey(freq);
     }
 
     function setupCanvasInteraction(canvas, channel) {
@@ -511,6 +619,12 @@ window.WaterfallManager = (function () {
         init: init,
         recordMessage: recordMessage,
         toggleCollapse: toggleCollapse,
-        drawAllCanvases: drawAllCanvases
+        drawAllCanvases: drawAllCanvases,
+        toggleChannelFilter: toggleChannelFilter,
+        clearAllFilters: clearAllFilters,
+        hasActiveFilter: hasActiveFilter,
+        getActiveFilters: getActiveFilters,
+        isRowMatchingFilter: isRowMatchingFilter,
+        getChannelKeyForMessage: getChannelKeyForMessage
     };
 })();

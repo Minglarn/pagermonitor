@@ -598,6 +598,10 @@
                         <!-- Dynamic channel summary pills -->
                     </div>
                     <div class="ribbon-actions">
+                        <button class="ribbon-clear-btn" id="ribbonClearFilterBtn" onclick="window.WaterfallManager && window.WaterfallManager.clearAllFilters()" title="Rensa alla valda kanalfilter" style="display: none;">
+                            <i class="fas fa-times-circle"></i>
+                            <span id="ribbonClearFilterText">Rensa filter</span>
+                        </button>
                         <button class="ribbon-toggle-btn" id="ribbonToggleBtn" onclick="toggleActivityRibbon()" title="Toggle RF Activity Ribbon">
                             <i class="fas fa-chevron-down" id="ribbonToggleIcon"></i>
                             <span class="ribbon-toggle-label">Show</span>
@@ -887,6 +891,13 @@
         function createAlarmRowNode(alarm) {
             const tr = document.createElement('tr');
             tr.setAttribute('data-id', alarm.id);
+            tr.setAttribute('data-frequency', alarm.frequency || '');
+            tr.setAttribute('data-protocol', alarm.protocol || '');
+            tr.setAttribute('data-bitrate', alarm.bitrate || '');
+            if (window.WaterfallManager && window.WaterfallManager.getChannelKeyForMessage) {
+                const k = window.WaterfallManager.getChannelKeyForMessage(alarm);
+                if (k) tr.setAttribute('data-channel-key', k);
+            }
 
             const isSystem = alarm.address === 'SYSTEM' || alarm.frequency === 'RESTART' || alarm.is_system;
 
@@ -1038,7 +1049,7 @@
                 let regVal = alarm.reg || '';
                 let flightVal = alarm.flight || '';
                 let icaoVal = alarm.icao || '';
-                let stationVal = alarm.station || '';
+                let stationVal = alarm.station || alarm.dst_airport || '';
                 let statusVal = alarm.ground_status || '';
                 let labelVal = alarm.label || '';
                 let labelDescVal = alarm.label_desc || '';
@@ -1310,6 +1321,15 @@
                 return true;
             });
 
+            // Multi-channel RF Activity filter
+            $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                if (settings.nTable && settings.nTable.id !== 'alarmsTable') return true;
+                if (!window.WaterfallManager || !window.WaterfallManager.hasActiveFilter()) return true;
+                const rowNode = settings.aoData[dataIndex] ? settings.aoData[dataIndex].nTr : null;
+                if (!rowNode) return true;
+                return window.WaterfallManager.isRowMatchingFilter(rowNode);
+            });
+
             updateBasestationBtnUI();
 
             // Initialize DataTables
@@ -1394,10 +1414,9 @@
 
                 // Initialize Waterfall Manager with initial messages
                 if (window.WaterfallManager) {
-                    window.WaterfallManager.init(allAlarms, (filterStr) => {
-                        if (searchInput) {
-                            searchInput.value = filterStr;
-                            dataTable.search(filterStr).draw();
+                    window.WaterfallManager.init(allAlarms, () => {
+                        if (dataTable) {
+                            dataTable.draw();
                         }
                     });
                 }

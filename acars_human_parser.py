@@ -120,12 +120,76 @@ FALLBACK_LABELS = {
     '_': 'Flygledning (ATC)'
 }
 
+FALLBACK_AIRPORTS = {
+    'ESSA': 'Stockholm/Arlanda',
+    'ESSB': 'Stockholm/Bromma',
+    'ESKN': 'Stockholm/Skavsta',
+    'ESGG': 'Göteborg/Landvetter',
+    'ESMS': 'Malmö',
+    'ESSV': 'Visby',
+    'ESOW': 'Västerås',
+    'ESCF': 'Linköping/Malmen',
+    'ESNN': 'Sundsvall',
+    'ESNU': 'Umeå',
+    'ESPA': 'Luleå',
+    'ESNZ': 'Åre/Östersund',
+    'ESMQ': 'Kalmar',
+    'ESNX': 'Arvidsjaur',
+    'ESOE': 'Örebro',
+    'ESOK': 'Karlstad',
+    'EKCH': 'Köpenhamn/Kastrup',
+    'EKBI': 'Billund',
+    'EKYT': 'Aalborg',
+    'ENGM': 'Oslo/Gardermoen',
+    'ENBR': 'Bergen/Flesland',
+    'ENZV': 'Stavanger/Sola',
+    'ENVA': 'Trondheim/Værnes',
+    'EFHK': 'Helsingfors/Vanda',
+    'EFOU': 'Uleåborg',
+    'EFRO': 'Rovaniemi',
+    'EFTU': 'Åbo/Turku',
+    'EETN': 'Tallinn',
+    'EVRA': 'Riga',
+    'EYVI': 'Vilnius',
+    'EPWA': 'Warszawa/Chopin',
+    'EPGD': 'Gdansk',
+    'EDDF': 'Frankfurt',
+    'EDDM': 'München',
+    'EDDB': 'Berlin',
+    'EDDH': 'Hamburg',
+    'EHAM': 'Amsterdam/Schiphol',
+    'EBBR': 'Bryssel',
+    'EGLL': 'London/Heathrow',
+    'EGKK': 'London/Gatwick',
+    'EGSS': 'London/Stansted',
+    'EGGW': 'London/Luton',
+    'EGCC': 'Manchester',
+    'EIDW': 'Dublin',
+    'LFPG': 'Paris/CDG',
+    'LFPO': 'Paris/Orly',
+    'LFMN': 'Nice',
+    'LSZH': 'Zürich',
+    'LSGG': 'Genève',
+    'LOWW': 'Wien',
+    'LIRF': 'Rom/Fiumicino',
+    'LIMC': 'Milano/Malpensa',
+    'LEMD': 'Madrid/Barajas',
+    'LEBL': 'Barcelona',
+    'LEPA': 'Palma de Mallorca',
+    'LPPT': 'Lissabon',
+    'LGAV': 'Aten',
+    'LTFM': 'Istanbul'
+}
+
+AIRPORTS = dict(FALLBACK_AIRPORTS)
+
 def load_reference_data():
     """Laddar referensdata från acars_reference_data.json med fallback till inbäddade data."""
-    global AIRLINE_MAP, GROUND_STATIONS, ACARS_LABELS
+    global AIRLINE_MAP, GROUND_STATIONS, ACARS_LABELS, AIRPORTS
     AIRLINE_MAP = dict(FALLBACK_AIRLINES)
     GROUND_STATIONS = dict(FALLBACK_GROUND_STATIONS)
     ACARS_LABELS = dict(FALLBACK_LABELS)
+    AIRPORTS = dict(FALLBACK_AIRPORTS)
 
     if os.path.exists(DATA_FILE):
         try:
@@ -137,11 +201,20 @@ def load_reference_data():
                     GROUND_STATIONS.update(data['ground_stations'])
                 if 'labels' in data and isinstance(data['labels'], dict):
                     ACARS_LABELS.update(data['labels'])
+                if 'airports' in data and isinstance(data['airports'], dict):
+                    AIRPORTS.update(data['airports'])
         except Exception:
             pass
 
 # Ladda vid import
 load_reference_data()
+
+def lookup_airport(icao_code: str) -> str:
+    """Slår upp flygplatsnamn utifrån ICAO-kod (4 tecken)."""
+    if not icao_code:
+        return ""
+    code = str(icao_code).strip().upper()
+    return AIRPORTS.get(code, "")
 
 def lookup_airline(flight_code: str) -> str:
     """Slår upp flygbolagsnamn utifrån callsign/flight via ICAO (3 tecken) eller IATA (2 tecken)."""
@@ -635,6 +708,134 @@ def rule_label_h1_mm_telemetry(text: str, label: str = None, metadata: dict = No
     return None
 
 
+def rule_fms_progress_destination(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    FMS Progress & Destination Report (PRG/DT..., INI/DT..., FTX/DT...).
+    Exempel: PRG/DTEGLL,27L,65,083100,/PR1479,322,380,147,,0,20,,M56,50,,,P0,P0,36090,,1332,3372A88
+    """
+    stripped = text.strip()
+    m = re.search(r'(?:PRG|INI|FTX)/DT([A-Z]{4}),([0-9]{2}[LRC]?),(\d+),(\d{6})', stripped)
+    if not m:
+        return None
+
+    dst_code = m.group(1).upper()
+    rwy = m.group(2).upper()
+    fuel_raw = m.group(3)
+    eta_raw = m.group(4)
+
+    # Uppdatera även paketets dst_airport-metadata om metadata skickats in
+    if isinstance(metadata, dict):
+        metadata['dst_airport'] = dst_code
+
+    ap_name = lookup_airport(dst_code)
+    dst_desc = f"{dst_code} ({ap_name})" if ap_name else dst_code
+
+    rwy_part = f" Bana {rwy}" if rwy else ""
+    eta_str = f"{eta_raw[:2]}:{eta_raw[2:4]} UTC"
+
+    try:
+        fuel_kg = int(fuel_raw) * 100
+        fuel_str = f"{fuel_kg:,}".replace(',', ' ') + " kg"
+    except (ValueError, TypeError):
+        fuel_str = f"{fuel_raw}00 kg"
+
+    alt_str = None
+    temp_str = None
+
+    # Matcha efterföljande /PR-sektion
+    m_pr = re.search(r'/PR([^,\s\n\r]*),([^,\s\n\r]*),([1-4]\d{2})\b', stripped)
+    if m_pr:
+        alt_val = int(m_pr.group(3))
+        alt_str = f"FL{alt_val}"
+
+    m_temp = re.search(r'/PR[^\n\r]*\b([MP])(\d{2})\b', stripped)
+    if m_temp:
+        sign = "-" if m_temp.group(1).upper() == 'M' else "+"
+        temp_str = f"{sign}{int(m_temp.group(2))}°C"
+
+    parts = [f"Dest: {dst_desc}{rwy_part}", f"ETA: {eta_str}"]
+    if alt_str:
+        parts.append(f"Marschhöjd: {alt_str}")
+    if temp_str:
+        parts.append(f"Temp: {temp_str}")
+    parts.append(f"Landningsbränsle: {fuel_str}")
+
+    raw_preview = (stripped[:35].strip() + '...') if len(stripped) > 35 else stripped
+    parts.append(f"Rådata: {raw_preview}")
+
+    return f"[FMS Färdrapport] {' | '.join(parts)}"
+
+
+def rule_boeing_dfdau_engine_telemetry(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    Boeing DFDAU / ACMS numerisk motortelemetri (Label H1, DF eller prefix #DFB).
+    Exempel: 07336019 8991 9536 9158 9204 9700  533131 00 7858 8423 8589 8926...
+    """
+    stripped = text.strip()
+    lbl = (label or '').strip().upper()
+    has_dfb_prefix = stripped.startswith('#DFB')
+
+    body = stripped[4:].strip() if has_dfb_prefix else stripped
+    if not body:
+        return None
+
+    is_target_label = (lbl in ('H1', 'DF', 'H', 'D') or has_dfb_prefix)
+    if not is_target_label:
+        return None
+
+    # Minst 85% siffror och mellanslag
+    digits_and_spaces = sum(1 for c in body if c.isdigit() or c.isspace())
+    if digits_and_spaces / len(body) < 0.85:
+        return None
+
+    tokens = body.split()
+    num_tokens = [t for t in tokens if t.isdigit()]
+    if len(num_tokens) < 10:
+        return None
+
+    total_groups = len(num_tokens)
+
+    def scan_quads(min_lim):
+        rpm_vals = []
+        egt = None
+        i = 0
+        while i < len(tokens):
+            if i + 4 <= len(tokens):
+                quad = tokens[i:i+4]
+                if all(len(t) == 4 and t.isdigit() and min_lim <= int(t) <= 10500 for t in quad):
+                    vals = [int(t) for t in quad]
+                    rpm_vals.extend(vals)
+                    if i + 4 < len(tokens):
+                        nxt = tokens[i+4]
+                        if len(nxt) == 3 and nxt.isdigit() and 400 <= int(nxt) <= 850:
+                            egt = int(nxt)
+                    i += 4
+                    continue
+            i += 1
+        return rpm_vals, egt
+
+    # Skanna först efter cruise/climb varvtal (>= 8500) för att filtrera bort oljetryck/övriga parametrar
+    rpm_values, egt_val = scan_quads(min_lim=8500)
+    if not rpm_values:
+        rpm_values, egt_val = scan_quads(min_lim=7500)
+
+    parts = []
+    if rpm_values:
+        min_rpm = min(rpm_values) / 100.0
+        max_rpm = max(rpm_values) / 100.0
+        parts.append(f"N1/N2 Varvtal: {min_rpm:.1f}%–{max_rpm:.1f}%")
+
+    if egt_val is not None:
+        parts.append(f"EGT: {egt_val}°C")
+
+    parts.append(f"({total_groups} mätvärden)")
+
+    raw_preview = (stripped[:35].strip() + '...') if len(stripped) > 35 else stripped
+    parts.append(f"Rådata: {raw_preview}")
+
+    return f"[Boeing Motortelemetri / DFDAU] {' | '.join(parts)}"
+
+
 def rule_label_38_finnair_weather(text: str, label: str = None, metadata: dict = None) -> str:
     """Label 38: Finnair väder- och positionsrapport."""
     stripped = text.strip()
@@ -977,6 +1178,8 @@ PARSER_RULES = [
     rule_label_b6_cpdlc,
     rule_label_5u_weather_request,
     rule_label_q0_link_test,
+    rule_fms_progress_destination,
+    rule_boeing_dfdau_engine_telemetry,
     rule_label_h1_fpn_flight_plan,
     rule_label_h1_posn_fms,
     rule_label_h1_resreq_ack,
@@ -1000,6 +1203,10 @@ def parse_human_acars(message: str, label: str = None, metadata: dict = None, st
     """
     if not message:
         return ""
+
+    # Behåll redan formaterade informativa taggar som [MIAM ...]
+    if message.startswith('[MIAM'):
+        return message
 
     # Separera eventuella inledande prefix i hakparenteser
     prefix = ""
