@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.7] - Boeing PLF Underhållsrapport och Global Flygplatsuppslagning i Rutter
+
+- **Boeing PLF Central Maintenance / Felkodsrapport (`vdl2_receiver.py`, `acars_human_parser.py`)**:
+  - Implementerat parserstod for PLF-rapporter (Present Leg Faults / Post-Flight Report) fran t.ex. Boeing 737 MAX.
+  - Extraherar flygrutt (`EPWA/ESSA`), raknar och klassificerar cockpit-varningar (FDE) och underhallskoder (MSG).
+  - Integrerat ATA-kapiteluppslagning (t.ex. `ATA 34: Navigation`) utifran kodernas tva forsta siffror.
+  - Snygg presentation: `[Underhålls-/Felrapport (PLF)] Rutt: EPWA (Warszawa/Chopin) → ESSA (Stockholm/Arlanda) | Cockpit-varningar (FDE): 2 st (ATA 34: Navigation) | Underhållskoder (MSG): 1 st`.
+- **Global Flygplatsformatering (`format_airport`) i Alla Rutter (`vdl2_receiver.py`, `acars_human_parser.py`)**:
+  - Samtliga ruttutskrifter (`Rutt: ...`) och extraherade ICAO-koder slas nu konsekvent upp via `format_airport(icao)`.
+  - Formatet anvander pil `→` och fullstandiga flygplatsnamn: `Rutt: EPWA (Warszawa/Chopin) → ESSA (Stockholm/Arlanda)`.
+- **Utokat Flygplatsregister (`AIRPORT_MAP` / `FALLBACK_AIRPORTS`)**:
+  - Utokat med over 80 flygplatser i Norden, Baltikum, Polen, Europa och resten av varlden (inkl. Warszawa/Chopin, Wien/Schwechat, Bromma, Skavsta, Vasteras, Malmo/Sturup, Visby, Ronneby, Saab m.fl.).
+- **Enhetstester (`tests/test_vdl2.py`, `tests/test_acars_human_parser.py`)**:
+  - Lagt till `test_lot_boeing_plf_fault_report` och uppdaterat befintliga rutt-tester for fullstandiga flygplatsnamn och pilar.
+  - Samtliga 77 enhetstester i hela testsviten passerar felfritt.
+
 ## [2026.10.15.6] - AMDAR Väderrapport (Label H2) och Boeing CSV FMS/Väderlogg (Label H1)
 
 - **AMDAR Meteorologiska Rapporter (`vdl2_receiver.py`, `acars_human_parser.py`)**:

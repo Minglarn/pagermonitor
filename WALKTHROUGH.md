@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.6`
+- **CalVer**: `2026.10.15.7`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
@@ -1919,6 +1919,23 @@
 - **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
   - Lagt till `test_amdar_weather_report` (Austrian Airlines `OE-LBS`) och `test_lot_boeing_fms_weather_log` (LOT `SP-LYM`).
   - Samtliga 76 enhetstester i hela testsviten passerar felfritt.
+- **Emoji-granskning**:
+  - 100% fri från emojis i alla ändrade och tillagda filer.
+
+### 67. Boeing PLF Underhållsrapport och Global Flygplatsuppslagning i Rutter (v2026.10.15.7)
+- **Boeing PLF Central Maintenance / Felkodsrapport ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Implementerat parserstöd för PLF-rapporter (Present Leg Faults / Post-Flight Report) från Boeing-flygplan.
+  - Extraherar flygrutt (`EPWA/ESSA`), uppdaterar `dst_airport`, räknar cockpit-varningar (FDE) och underhållskoder (MSG).
+  - Integrerat automatisk ATA-kapiteluppslagning (t.ex. `ATA 34: Navigation`) utifrån felkodernas inledande två siffror.
+  - Snygg presentation: `[Underhålls-/Felrapport (PLF)] Rutt: EPWA (Warszawa/Chopin) → ESSA (Stockholm/Arlanda) | Cockpit-varningar (FDE): 2 st (ATA 34: Navigation) | Underhållskoder (MSG): 1 st`.
+- **Global Flygplatsformatering (`format_airport`) i Alla Rutter ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Samtliga ruttutskrifter (`Rutt: ...`) och extraherade ICAO-koder slås nu konsekvent upp via `format_airport(icao)`.
+  - Formatet använder pil `→` och fullständiga flygplatsnamn: `Rutt: EPWA (Warszawa/Chopin) → ESSA (Stockholm/Arlanda)`.
+- **Utökat Flygplatsregister (`AIRPORT_MAP` / `FALLBACK_AIRPORTS`)**:
+  - Utökat med över 80 flygplatser i Norden, Baltikum, Polen, Europa och resten av världen (inkl. Warszawa/Chopin, Wien/Schwechat, Bromma, Skavsta, Västerås, Malmö/Sturup, Visby, Ronneby, Saab m.fl.).
+- **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py), [tests/test_acars_human_parser.py](file:///d:/antigravity/pager-monitor/tests/test_acars_human_parser.py))**:
+  - Lagt till `test_lot_boeing_plf_fault_report` och uppdaterat befintliga rutt-tester för fullständiga flygplatsnamn och pilar.
+  - Samtliga 77 enhetstester i hela testsviten passerar felfritt.
 - **Emoji-granskning**:
   - 100% fri från emojis i alla ändrade och tillagda filer.
 

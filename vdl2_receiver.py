@@ -46,65 +46,122 @@ LABEL_MAP = ACARS_LABELS
 
 # Kända ICAO-flygplatser och deras namn
 AIRPORT_MAP = {
+    # Norden:
     'ESSA': 'Stockholm/Arlanda',
     'ESSB': 'Stockholm/Bromma',
     'ESKN': 'Stockholm/Skavsta',
+    'ESOW': 'Stockholm/Västerås',
     'ESGG': 'Göteborg/Landvetter',
-    'ESMS': 'Malmö',
+    'ESMS': 'Malmö/Sturup',
     'ESSV': 'Visby',
-    'ESOW': 'Västerås',
+    'ESDF': 'Ronneby/Kallinge',
     'ESCF': 'Linköping/Malmen',
-    'ESNN': 'Sundsvall',
-    'ESNU': 'Umeå',
-    'ESPA': 'Luleå',
-    'ESNZ': 'Åre/Östersund',
+    'ESSL': 'Linköping/Saab',
     'ESMQ': 'Kalmar',
-    'ESNX': 'Arvidsjaur',
+    'ESMX': 'Växjö',
+    'ESTA': 'Ängelholm',
+    'ESMT': 'Halmstad',
+    'ESGJ': 'Jönköping',
+    'ESGT': 'Trollhättan',
     'ESOE': 'Örebro',
     'ESOK': 'Karlstad',
-    'ESDF': 'Ronneby/Kallinge',
+    'ESSD': 'Borlänge',
+    'ESNN': 'Sundsvall',
+    'ESNZ': 'Östersund/Åre',
+    'ESNU': 'Umeå',
+    'ESNK': 'Kramfors',
+    'ESNS': 'Skellefteå',
+    'ESPA': 'Luleå/Kallax',
+    'ESPE': 'Vidsel',
+    'ESNQ': 'Kiruna',
+    'ESNG': 'Gällivare',
     'EKCH': 'Köpenhamn/Kastrup',
     'EKBI': 'Billund',
     'EKYT': 'Aalborg',
     'ENGM': 'Oslo/Gardermoen',
+    'ENTO': 'Oslo/Torp',
     'ENBR': 'Bergen/Flesland',
-    'ENZV': 'Stavanger/Sola',
     'ENVA': 'Trondheim/Værnes',
+    'ENZV': 'Stavanger/Sola',
+    'ENTC': 'Tromsø',
+    'ENBO': 'Bodø',
     'EFHK': 'Helsingfors/Vanda',
+    'EFTU': 'Åbo',
+    'EFTP': 'Tammerfors',
     'EFOU': 'Uleåborg',
     'EFRO': 'Rovaniemi',
-    'EFTU': 'Åbo/Turku',
+    'EFVA': 'Vasa',
+    'BIKF': 'Reykjavik/Keflavik',
+
+    # Baltikum & Polen:
     'EETN': 'Tallinn',
     'EVRA': 'Riga',
     'EYVI': 'Vilnius',
-    'EPWA': 'Warszawa',
+    'EYKA': 'Kaunas',
+    'EPWA': 'Warszawa/Chopin',
+    'EPMO': 'Warszawa/Modlin',
     'EPGD': 'Gdansk',
+    'EPKK': 'Krakow',
+    'EPWR': 'Wroclaw',
+    'EPPO': 'Poznan',
+    'EPKT': 'Katowice',
+
+    # Övriga Europa & Världen:
     'EDDF': 'Frankfurt',
     'EDDM': 'München',
-    'EDDB': 'Berlin',
+    'EDDB': 'Berlin/Brandenburg',
+    'EDDL': 'Düsseldorf',
     'EDDH': 'Hamburg',
+    'EDDK': 'Köln/Bonn',
+    'EDDS': 'Stuttgart',
+    'EDDP': 'Leipzig',
     'EHAM': 'Amsterdam/Schiphol',
+    'EHEH': 'Eindhoven',
     'EBBR': 'Bryssel',
+    'EBCI': 'Charleroi',
+    'ELLX': 'Luxemburg',
     'EGLL': 'London/Heathrow',
     'EGKK': 'London/Gatwick',
     'EGSS': 'London/Stansted',
     'EGGW': 'London/Luton',
+    'EGLC': 'London/City',
     'EGCC': 'Manchester',
+    'EGPH': 'Edinburgh',
     'EIDW': 'Dublin',
-    'LFPG': 'Paris/CDG',
+    'LFPG': 'Paris/Charles de Gaulle',
     'LFPO': 'Paris/Orly',
     'LFMN': 'Nice',
+    'LFLL': 'Lyon',
     'LSZH': 'Zürich',
     'LSGG': 'Genève',
-    'LOWW': 'Wien',
-    'LIRF': 'Rom/Fiumicino',
-    'LIMC': 'Milano/Malpensa',
+    'LOWW': 'Wien/Schwechat',
+    'LOWI': 'Innsbruck',
+    'LKPR': 'Prag',
+    'LHBP': 'Budapest',
+    'LROP': 'Bukarest/Otopeni',
+    'LBSF': 'Sofia',
+    'LGAV': 'Aten',
+    'LTFM': 'Istanbul',
+    'LTFJ': 'Istanbul/Sabiha Gökçen',
+    'LTAI': 'Antalya',
     'LEMD': 'Madrid/Barajas',
-    'LEBL': 'Barcelona',
+    'LEBL': 'Barcelona/El Prat',
+    'LEMG': 'Málaga',
     'LEPA': 'Palma de Mallorca',
     'LPPT': 'Lissabon',
-    'LGAV': 'Aten',
-    'LTFM': 'Istanbul'
+    'LIRF': 'Rom/Fiumicino',
+    'LIMC': 'Milano/Malpensa',
+    'LIME': 'Milano/Bergamo',
+    'LIPZ': 'Venedig',
+    'OMDB': 'Dubai',
+    'OTHH': 'Doha/Hamad',
+    'KJFK': 'New York/JFK',
+    'KEWR': 'New York/Newark',
+    'KORD': "Chicago/O'Hare",
+    'ZBAA': 'Peking/Capital',
+    'ZSPD': 'Shanghai/Pudong',
+    'RJTT': 'Tokyo/Haneda',
+    'VTBS': 'Bangkok/Suvarnabhumi'
 }
 
 def format_airport(icao: str) -> str:
@@ -301,7 +358,7 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
                 orig_fmt = format_airport(orig_icao)
                 dest_fmt = format_airport(dest_icao)
                 res['telemetry_summary'] = (
-                    f"Rutt: {orig_fmt} -> {dest_fmt} | "
+                    f"Rutt: {orig_fmt} → {dest_fmt} | "
                     f"Senaste ({time_str}): Pos {res['lat']:.4f}, {res['lon']:.4f} | "
                     f"Höjd: {alt_fmt} | Temp: {temp_sign_char}{temp_val:.1f}°C | "
                     f"Vind: {wind_dir_val}° / {wind_spd_val} kt ({len(amdar_matches)} mätpunkter)"
@@ -362,7 +419,7 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
                 orig_fmt = format_airport(orig_icao)
                 dest_fmt = format_airport(dest_icao)
                 res['telemetry_summary'] = (
-                    f"Flygplan: {ac_type} | Rutt: {orig_fmt} -> {dest_fmt} | "
+                    f"Flygplan: {ac_type} | Rutt: {orig_fmt} → {dest_fmt} | "
                     f"Senaste ({time_str}): Pos {res['lat']:.4f}, {res['lon']:.4f} | "
                     f"Höjd: {alt_fmt} | Temp: {temp_val:.1f}°C | "
                     f"Vind: {wind_dir_val}° / {wind_spd_val} kt ({len(lot_matches)} mätpunkter)"
@@ -615,12 +672,14 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
         dest = m_route.group(2).upper()
         if orig not in ('MIN', 'SEC', 'DEG', 'KMH') and dest not in ('MIN', 'SEC', 'DEG', 'KMH'):
             res['telemetry']['route'] = f"{orig} -> {dest}"
-            r_str = f"Rutt: {orig} -> {dest}"
+            r_str = f"Rutt: {format_airport(orig)} → {format_airport(dest)}"
             if res['telemetry_summary']:
                 if r_str not in res['telemetry_summary']:
                     res['telemetry_summary'] += f" | {r_str}"
             else:
                 res['telemetry_summary'] = r_str
+            if not res.get('dst_airport'):
+                res['dst_airport'] = dest
 
     # Sök efter FMS Destination och bana (PRG/DT..., INI/DT..., FTX/DT...)
     m_fms_dst = re.search(r'(?:PRG|INI|FTX)/DT([A-Z]{4})(?:,([0-9]{2}[LRC]?))?', raw_text)

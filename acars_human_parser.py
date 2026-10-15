@@ -123,65 +123,122 @@ FALLBACK_LABELS = {
 }
 
 FALLBACK_AIRPORTS = {
+    # Norden:
     'ESSA': 'Stockholm/Arlanda',
     'ESSB': 'Stockholm/Bromma',
     'ESKN': 'Stockholm/Skavsta',
+    'ESOW': 'Stockholm/Västerås',
     'ESGG': 'Göteborg/Landvetter',
-    'ESMS': 'Malmö',
+    'ESMS': 'Malmö/Sturup',
     'ESSV': 'Visby',
-    'ESOW': 'Västerås',
+    'ESDF': 'Ronneby/Kallinge',
     'ESCF': 'Linköping/Malmen',
-    'ESNN': 'Sundsvall',
-    'ESNU': 'Umeå',
-    'ESPA': 'Luleå',
-    'ESNZ': 'Åre/Östersund',
+    'ESSL': 'Linköping/Saab',
     'ESMQ': 'Kalmar',
-    'ESNX': 'Arvidsjaur',
+    'ESMX': 'Växjö',
+    'ESTA': 'Ängelholm',
+    'ESMT': 'Halmstad',
+    'ESGJ': 'Jönköping',
+    'ESGT': 'Trollhättan',
     'ESOE': 'Örebro',
     'ESOK': 'Karlstad',
-    'ESDF': 'Ronneby/Kallinge',
+    'ESSD': 'Borlänge',
+    'ESNN': 'Sundsvall',
+    'ESNZ': 'Östersund/Åre',
+    'ESNU': 'Umeå',
+    'ESNK': 'Kramfors',
+    'ESNS': 'Skellefteå',
+    'ESPA': 'Luleå/Kallax',
+    'ESPE': 'Vidsel',
+    'ESNQ': 'Kiruna',
+    'ESNG': 'Gällivare',
     'EKCH': 'Köpenhamn/Kastrup',
     'EKBI': 'Billund',
     'EKYT': 'Aalborg',
     'ENGM': 'Oslo/Gardermoen',
+    'ENTO': 'Oslo/Torp',
     'ENBR': 'Bergen/Flesland',
-    'ENZV': 'Stavanger/Sola',
     'ENVA': 'Trondheim/Værnes',
+    'ENZV': 'Stavanger/Sola',
+    'ENTC': 'Tromsø',
+    'ENBO': 'Bodø',
     'EFHK': 'Helsingfors/Vanda',
+    'EFTU': 'Åbo',
+    'EFTP': 'Tammerfors',
     'EFOU': 'Uleåborg',
     'EFRO': 'Rovaniemi',
-    'EFTU': 'Åbo/Turku',
+    'EFVA': 'Vasa',
+    'BIKF': 'Reykjavik/Keflavik',
+
+    # Baltikum & Polen:
     'EETN': 'Tallinn',
     'EVRA': 'Riga',
     'EYVI': 'Vilnius',
-    'EPWA': 'Warszawa',
+    'EYKA': 'Kaunas',
+    'EPWA': 'Warszawa/Chopin',
+    'EPMO': 'Warszawa/Modlin',
     'EPGD': 'Gdansk',
+    'EPKK': 'Krakow',
+    'EPWR': 'Wroclaw',
+    'EPPO': 'Poznan',
+    'EPKT': 'Katowice',
+
+    # Övriga Europa & Världen:
     'EDDF': 'Frankfurt',
     'EDDM': 'München',
-    'EDDB': 'Berlin',
+    'EDDB': 'Berlin/Brandenburg',
+    'EDDL': 'Düsseldorf',
     'EDDH': 'Hamburg',
+    'EDDK': 'Köln/Bonn',
+    'EDDS': 'Stuttgart',
+    'EDDP': 'Leipzig',
     'EHAM': 'Amsterdam/Schiphol',
+    'EHEH': 'Eindhoven',
     'EBBR': 'Bryssel',
+    'EBCI': 'Charleroi',
+    'ELLX': 'Luxemburg',
     'EGLL': 'London/Heathrow',
     'EGKK': 'London/Gatwick',
     'EGSS': 'London/Stansted',
     'EGGW': 'London/Luton',
+    'EGLC': 'London/City',
     'EGCC': 'Manchester',
+    'EGPH': 'Edinburgh',
     'EIDW': 'Dublin',
-    'LFPG': 'Paris/CDG',
+    'LFPG': 'Paris/Charles de Gaulle',
     'LFPO': 'Paris/Orly',
     'LFMN': 'Nice',
+    'LFLL': 'Lyon',
     'LSZH': 'Zürich',
     'LSGG': 'Genève',
-    'LOWW': 'Wien',
-    'LIRF': 'Rom/Fiumicino',
-    'LIMC': 'Milano/Malpensa',
+    'LOWW': 'Wien/Schwechat',
+    'LOWI': 'Innsbruck',
+    'LKPR': 'Prag',
+    'LHBP': 'Budapest',
+    'LROP': 'Bukarest/Otopeni',
+    'LBSF': 'Sofia',
+    'LGAV': 'Aten',
+    'LTFM': 'Istanbul',
+    'LTFJ': 'Istanbul/Sabiha Gökçen',
+    'LTAI': 'Antalya',
     'LEMD': 'Madrid/Barajas',
-    'LEBL': 'Barcelona',
+    'LEBL': 'Barcelona/El Prat',
+    'LEMG': 'Málaga',
     'LEPA': 'Palma de Mallorca',
     'LPPT': 'Lissabon',
-    'LGAV': 'Aten',
-    'LTFM': 'Istanbul'
+    'LIRF': 'Rom/Fiumicino',
+    'LIMC': 'Milano/Malpensa',
+    'LIME': 'Milano/Bergamo',
+    'LIPZ': 'Venedig',
+    'OMDB': 'Dubai',
+    'OTHH': 'Doha/Hamad',
+    'KJFK': 'New York/JFK',
+    'KEWR': 'New York/Newark',
+    'KORD': "Chicago/O'Hare",
+    'ZBAA': 'Peking/Capital',
+    'ZSPD': 'Shanghai/Pudong',
+    'RJTT': 'Tokyo/Haneda',
+    'VTBS': 'Bangkok/Suvarnabhumi'
 }
 
 AIRPORTS = dict(FALLBACK_AIRPORTS)
@@ -977,6 +1034,78 @@ def rule_boeing_fms_weather_log(text: str, label: str = None, metadata: dict = N
         return None
 
 
+# ATA-kapitel för flygplansunderhåll och cockpit-varningar (FDE / MSG)
+ATA_CHAPTERS = {
+    '21': 'Luftkonditionering/Tryck',
+    '22': 'Autopilot',
+    '23': 'Kommunikation',
+    '24': 'Elkraft',
+    '26': 'Brandskydd',
+    '27': 'Färdstyrning (Flight Controls)',
+    '28': 'Bränslesystem',
+    '29': 'Hydraulik',
+    '30': 'Avisning',
+    '31': 'Instrument',
+    '32': 'Landningsställ',
+    '33': 'Belysning',
+    '34': 'Navigation',
+    '36': 'Pneumatik',
+    '49': 'APU (Hjälpkraftverk)',
+    '52': 'Dörrar'
+}
+
+def get_ata_description(code: str) -> str:
+    """Returnerar formaterad ATA-kapitelbeskrivning (t.ex. 'ATA 34: Navigation')."""
+    ch = str(code).strip()[:2]
+    if ch in ATA_CHAPTERS:
+        return f"ATA {ch}: {ATA_CHAPTERS[ch]}"
+    try:
+        n = int(ch)
+        if 70 <= n <= 80:
+            return f"ATA {ch}: Motorer/Framdrivning"
+    except Exception:
+        pass
+    return f"ATA {ch}"
+
+def rule_boeing_plf_fault_report(text: str, label: str = None, metadata: dict = None) -> str:
+    """Boeing Central Maintenance / Felkodsrapport (PLF / FDE / MSG)."""
+    stripped = text.strip()
+    if not (stripped.startswith('PLF ') or '\nPLF ' in stripped or re.search(r'\bPLF\s+\d+\b', stripped)):
+        return None
+
+    # Extrahera rutt t.ex. EPWA/ESSA
+    m_r = re.search(r'\b([A-Z]{4})/([A-Z]{4})\b', stripped)
+    if m_r:
+        orig = m_r.group(1).upper()
+        dest = m_r.group(2).upper()
+        orig_fmt = format_airport(orig)
+        dest_fmt = format_airport(dest)
+        route_str = f"Rutt: {orig_fmt} → {dest_fmt}"
+        if isinstance(metadata, dict):
+            metadata['dst_airport'] = dest
+    else:
+        route_str = ""
+
+    # Hitta FDE (Cockpit-varningar / Flight Deck Effects)
+    fde_codes = re.findall(r'\bFDE\s+(\d+)\b', stripped)
+    unique_atas = []
+    for code in fde_codes:
+        ata_desc = get_ata_description(code)
+        if ata_desc not in unique_atas:
+            unique_atas.append(ata_desc)
+    ata_info = f" ({', '.join(unique_atas)})" if unique_atas else ""
+    fde_str = f"Cockpit-varningar (FDE): {len(fde_codes)} st{ata_info}"
+
+    # Hitta MSG (Underhållskoder / Maintenance Messages)
+    msg_codes = re.findall(r'\bMSG\s+(\d+)\b', stripped)
+    msg_str = f"Underhållskoder (MSG): {len(msg_codes)} st"
+
+    parts = [p for p in [route_str, fde_str, msg_str] if p]
+    summary = f"[Underhålls-/Felrapport (PLF)] {' | '.join(parts)}"
+
+    return f"{summary}\n{stripped}"
+
+
 def rule_aoc_airline_designated(text: str, label: str = None, metadata: dict = None) -> str:
     """Flygbolagens interna AOC-labels (Label 1L, 1A-4Z)."""
     stripped = text.strip()
@@ -1295,11 +1424,11 @@ def rule_generic_fallback_telemetry(text: str, label: str = None, metadata: dict
     # 1. Rutt: ICAO/ICAO eller ICAO -> ICAO (t.ex. ESSA/ENGM eller ARN-OSL)
     m_route = re.search(r'\b([A-Z]{4})[/->]([A-Z]{4})\b', stripped)
     if m_route:
-        extracted.append(f"Rutt: {m_route.group(1)} -> {m_route.group(2)}")
+        extracted.append(f"Rutt: {format_airport(m_route.group(1))} → {format_airport(m_route.group(2))}")
     else:
         m_route3 = re.search(r'\b([A-Z]{3})[/->]([A-Z]{3})\b', stripped)
         if m_route3:
-            extracted.append(f"Rutt: {m_route3.group(1)} -> {m_route3.group(2)}")
+            extracted.append(f"Rutt: {format_airport(m_route3.group(1))} → {format_airport(m_route3.group(2))}")
 
     # 2. ETA: t.ex. ETA 1234 eller ETA:1234
     m_eta = re.search(r'\bETA\s*[:=]?\s*(\d{2})(\d{2})\b', stripped, re.IGNORECASE)
@@ -1345,6 +1474,7 @@ PARSER_RULES = [
     rule_label_q0_link_test,
     rule_fms_progress_destination,
     rule_boeing_dfdau_engine_telemetry,
+    rule_boeing_plf_fault_report,
     rule_amdar_weather_report,
     rule_boeing_fms_weather_log,
     rule_aoc_airline_designated,

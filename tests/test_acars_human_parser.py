@@ -182,7 +182,7 @@ class TestAcarsHumanParser(unittest.TestCase):
     def test_generic_fallback_telemetry(self):
         raw = "FREE TEXT WITH ROUTE ESSA/ENGM AND ETA 1430 AT FL360"
         res = parse_human_acars(raw)
-        self.assertIn("Rutt: ESSA -> ENGM   ETA: 14:30 UTC   Höjd: FL360", res)
+        self.assertIn("Rutt: ESSA (Stockholm/Arlanda) → ENGM (Oslo/Gardermoen)   ETA: 14:30 UTC   Höjd: FL360", res)
         self.assertIn("FREE TEXT WITH ROUTE", res)
 
     def test_fallback_unmatched_returns_original(self):

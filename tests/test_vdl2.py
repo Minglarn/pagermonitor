@@ -549,11 +549,48 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertEqual(res['alt_ft'], 39998)
         self.assertIn('[FMS Färd- & Väderlogg]', res['message'])
         self.assertIn('B7378MAX', res['message'])
-        self.assertIn('EPWA (Warszawa)', res['message'])
+        self.assertIn('EPWA (Warszawa/Chopin)', res['message'])
         self.assertIn('ESSA (Stockholm/Arlanda)', res['message'])
         self.assertIn('-63.8°C', res['message'])
         self.assertIn('329° / 73 kt', res['message'])
         self.assertIn('6 mätpunkter', res['message'])
+
+    def test_lot_boeing_plf_fault_report(self):
+        """Verifiera LOT Polish Airlines (SP-LYM, LO0453) Boeing Central Maintenance PLF felkodsrapport."""
+        raw_msg = (
+            "PLF 1 15OCT26 0724 SP-LYM LOT4AR EPWA/ESSA BCG59-U000-08E7 BCG38-0MFC-0017 L 0609 15OCT26\n"
+            "FDE 34531131 I 0623 15OCT26\n"
+            "MSG 3455991 A 0609 15OCT26 PO H PL\n"
+            "OC 0609 15OCT26 : - -\n"
+            "FDE 34530331 A 0609 15OCT26"
+        )
+        frame = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '48AD1D'},
+                    'acars': {
+                        'reg': '.SP-LYM',
+                        'flight': 'LO0453',
+                        'label': 'H1',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertEqual(res['flight'], 'LO0453')
+        self.assertEqual(res['reg'], 'SP-LYM')
+        self.assertEqual(res['dst_airport'], 'ESSA')
+        self.assertIn('[Underhålls-/Felrapport (PLF)]', res['message'])
+        self.assertIn('Warszawa/Chopin', res['message'])
+        self.assertIn('Stockholm/Arlanda', res['message'])
+        self.assertIn('Rutt: EPWA (Warszawa/Chopin) → ESSA (Stockholm/Arlanda)', res['message'])
+        self.assertIn('Cockpit-varningar (FDE): 2 st', res['message'])
+        self.assertIn('ATA 34: Navigation', res['message'])
+        self.assertIn('Underhållskoder (MSG): 1 st', res['message'])
+        self.assertIn('FDE 34531131', res['message'])
 
 if __name__ == '__main__':
     unittest.main()
