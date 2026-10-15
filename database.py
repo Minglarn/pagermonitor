@@ -16,9 +16,12 @@ def regex_word_match(pattern, text):
     regex = rf'(?<![a-zA-Z0-9åäöÅÄÖ]){re.escape(str(pattern))}(?![a-zA-Z0-9åäöÅÄÖ])'
     return 1 if re.search(regex, str(text), re.IGNORECASE) else 0
 
-def get_connection():
-    """Create a sqlite3 connection with Unicode-aware helper functions."""
-    conn = sqlite3.connect(DB_PATH)
+def get_connection(timeout=30.0):
+    """Create a sqlite3 connection with WAL mode, busy timeout, and Unicode-aware helper functions."""
+    conn = sqlite3.connect(DB_PATH, timeout=timeout)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA busy_timeout=30000")
+    conn.execute("PRAGMA synchronous=NORMAL")
     conn.create_function("UPPER_UNICODE", 1, lambda s: (s or '').upper())
     conn.create_function("WORD_MATCH", 2, regex_word_match)
     return conn
@@ -47,6 +50,7 @@ def get_default_settings():
         'garbage_filter_sensitivity': '50',
         'duplicate_handling': 'merge',
         'duplicate_window': '120',
+        'save_duplicates': 'true',
         'auto_prune_enabled': 'true',
         'auto_prune_days': '30',
         'log_tetra_basestations': 'true',
@@ -67,7 +71,7 @@ def get_default_settings():
 
 def init_db():
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     c.execute('''
         CREATE TABLE IF NOT EXISTS messages (
@@ -107,6 +111,8 @@ def init_db():
     c.execute('CREATE INDEX IF NOT EXISTS idx_messages_id_desc ON messages(id DESC)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_messages_address ON messages(address)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_messages_is_duplicate ON messages(is_duplicate)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_messages_is_protected ON messages(is_protected)')
 
     # Create settings table
     c.execute('''
@@ -254,7 +260,14 @@ def init_db():
     conn.close()
 
 def save_message(address, message, alias='', function_code=0, bitrate='', frequency='', is_duplicate=False, is_protected=False, repeat_count=1, last_timestamp=None, metadata=None):
-    conn = sqlite3.connect(DB_PATH)
+    if is_duplicate:
+        settings = get_settings()
+        save_dups = settings.get('save_duplicates', 'true') in ('true', '1', True)
+        dup_handling = settings.get('duplicate_handling', 'merge')
+        if not save_dups or dup_handling == 'discard':
+            return None, None
+
+    conn = get_connection()
     c = conn.cursor()
     timestamp = datetime.now().isoformat()
     if last_timestamp is None:
@@ -285,7 +298,7 @@ def increment_message_repeat(msg_id, last_timestamp=None):
     """Increments repeat_count and updates last_timestamp on an existing message."""
     if not last_timestamp:
         last_timestamp = datetime.now().isoformat()
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     c.execute('''
         UPDATE messages
@@ -302,7 +315,7 @@ def increment_message_repeat(msg_id, last_timestamp=None):
 
 def toggle_message_lock(msg_id, protected):
     """Toggle the protected/locked status of a message."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     c.execute('UPDATE messages SET is_protected = ? WHERE id = ?', (1 if protected else 0, msg_id))
     conn.commit()
@@ -310,7 +323,7 @@ def toggle_message_lock(msg_id, protected):
 
 def delete_message(msg_id):
     """Delete a specific message by ID."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection()
     c = conn.cursor()
     c.execute('DELETE FROM messages WHERE id = ?', (msg_id,))
     conn.commit()
@@ -815,7 +828,7 @@ def clear_basestation_messages():
 
 def clear_messages():
     """Delete all messages from the database."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection(timeout=60.0)
     try:
         c = conn.cursor()
         c.execute('DELETE FROM messages')
@@ -827,7 +840,7 @@ def clear_messages():
 
 def prune_messages(days):
     """Delete messages older than X days, except protected ones."""
-    conn = sqlite3.connect(DB_PATH)
+    conn = get_connection(timeout=60.0)
     try:
         c = conn.cursor()
         # Replace 'T' with space and use 'localtime' for accurate timestamp comparison
@@ -839,8 +852,29 @@ def prune_messages(days):
         deleted_count = c.rowcount
         conn.commit()
         if deleted_count > 0:
-            conn.isolation_level = None
-            c.execute('VACUUM')
+            try:
+                conn.isolation_level = None
+                c.execute('VACUUM')
+            except Exception as ve:
+                logger.warning(f"Vacuum after prune skipped: {ve}")
+        return deleted_count
+    finally:
+        conn.close()
+
+def delete_duplicates():
+    """Delete all duplicate messages from the database and reclaim space."""
+    conn = get_connection(timeout=60.0)
+    try:
+        c = conn.cursor()
+        c.execute('DELETE FROM messages WHERE is_duplicate = 1')
+        deleted_count = c.rowcount
+        conn.commit()
+        if deleted_count > 0:
+            try:
+                conn.isolation_level = None
+                c.execute('VACUUM')
+            except Exception as ve:
+                logger.warning(f"Vacuum after deleting duplicates skipped: {ve}")
         return deleted_count
     finally:
         conn.close()
@@ -857,8 +891,7 @@ def auto_prune_if_enabled():
         days = 30
     return prune_messages(days)
 
-def get_database_stats():
-    """Retrieve comprehensive statistics about the database and retention."""
+def _calculate_database_stats():
     conn = get_connection()
     c = conn.cursor()
     
@@ -879,18 +912,25 @@ def get_database_stats():
     duplicate_count = c.fetchone()[0]
     
     # 5. Alert hits (messages matching active alert_words)
-    c.execute('''
-        SELECT COUNT(*) FROM messages m
-        WHERE EXISTS (
-            SELECT 1 FROM alert_words aw
-            WHERE aw.is_active = 1
-            AND (
-                m.message LIKE '%' || aw.word || '%'
-                OR UPPER_UNICODE(m.message) LIKE '%' || UPPER_UNICODE(aw.word) || '%'
+    c.execute('SELECT word FROM alert_words WHERE is_active = 1')
+    active_words = [row[0] for row in c.fetchall()]
+    alert_words_count = len(active_words)
+    
+    if alert_words_count == 0 or total_messages == 0:
+        alert_hits = 0
+    else:
+        c.execute('''
+            SELECT COUNT(*) FROM messages m
+            WHERE EXISTS (
+                SELECT 1 FROM alert_words aw
+                WHERE aw.is_active = 1
+                AND (
+                    m.message LIKE '%' || aw.word || '%'
+                    OR UPPER_UNICODE(m.message) LIKE '%' || UPPER_UNICODE(aw.word) || '%'
+                )
             )
-        )
-    ''')
-    alert_hits = c.fetchone()[0]
+        ''')
+        alert_hits = c.fetchone()[0]
     
     # 6. Unique CapCodes / addresses
     c.execute('SELECT COUNT(DISTINCT address) FROM messages')
@@ -900,13 +940,9 @@ def get_database_stats():
     c.execute('SELECT COUNT(*) FROM aliases')
     aliases_count = c.fetchone()[0]
     
-    # 8. Active alert words count
-    c.execute('SELECT COUNT(*) FROM alert_words WHERE is_active = 1')
-    alert_words_count = c.fetchone()[0]
-    
     conn.close()
     
-    # 9. Database file size on disk
+    # 8. Database file size on disk
     db_size_bytes = 0
     if os.path.exists(DB_PATH):
         try:
@@ -924,9 +960,10 @@ def get_database_stats():
         else:
             return f"{bytes_size / (1024 * 1024 * 1024):.2f} GB"
             
-    # Fetch auto-prune retention settings
+    # Fetch auto-prune retention settings and save_duplicates
     settings = get_settings()
     auto_prune_enabled = settings.get('auto_prune_enabled', 'true') in ('true', '1', True)
+    save_duplicates = settings.get('save_duplicates', 'true') in ('true', '1', True)
     try:
         auto_prune_days = int(settings.get('auto_prune_days', 30))
     except (ValueError, TypeError):
@@ -945,6 +982,18 @@ def get_database_stats():
         'db_size_bytes': db_size_bytes,
         'db_size_formatted': format_size(db_size_bytes),
         'auto_prune_enabled': auto_prune_enabled,
-        'auto_prune_days': auto_prune_days
+        'auto_prune_days': auto_prune_days,
+        'save_duplicates': save_duplicates
     }
+
+def get_database_stats():
+    """Retrieve comprehensive statistics about the database and retention with retry on transient lock."""
+    for attempt in range(3):
+        try:
+            return _calculate_database_stats()
+        except sqlite3.OperationalError as e:
+            if "locked" in str(e).lower() and attempt < 2:
+                time.sleep(0.2 * (attempt + 1))
+                continue
+            raise
 

@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.8] - Fix för Databasstatistik (500-fel) och Inställning för Dubbletthantering
+
+- **Åtgärd för 500-fel vid Läsning av Databasstatistik (`/api/database/stats`)**:
+  - Aktiverat `PRAGMA journal_mode=WAL;` (Write-Ahead Logging), `PRAGMA busy_timeout=30000;` och anslutningstimeout på 30 sekunder i SQLite.
+  - Förhindrar låsningskonflikter (`sqlite3.OperationalError: database is locked`) mellan samtidiga bakgrundsskrivningar (VDL2, SDR, radiosonder) och statistikberäkningar.
+  - Implementerat retry-loop i `get_database_stats()` vid övergående databaslåsningar samt optimerad uppslagning av `alert_hits`.
+  - Skapat index på `messages(is_duplicate)` och `messages(is_protected)` för blixtsnabb räkning utan fullständiga tabellskanningar av stora dataset.
+- **Robust Felhantering i Inställningsvyn (`templates/settings.html`)**:
+  - Säkerställt att felaktiga svar eller HTTP 500 från servern inte nollställer mätarkorten till `0`, `0 B` och `None`.
+  - Felstatus visas nu som en tydlig avisering i statusraden medan befintliga statistikvärden bibehålls.
+  - Säkrat uppläsningar av element mot null-pekare i JavaScript.
+- **Inställning för Dubbletthantering & Manuell Dubblettrensning**:
+  - Ny inställning i fliken "Database & Storage": "Spara dubblettmeddelanden i databasen" (`save_duplicates`). När den avmarkeras sparas inte dubbletter som nya rader, vilket sparar diskutrymme.
+  - Ny manuell åtgärd: "Rensa alla dubbletter nu" (`POST /api/messages/delete-duplicates`) som raderar alla dubbletter ur databasen och optimerar filstorleken.
+- **Enhetstester**:
+  - Lade till test för `POST /api/messages/delete-duplicates` och `save_duplicates` i `tests/test_stats_api.py`. Samtliga tester passerar.
+
 ## [2026.10.15.7] - Boeing PLF Underhållsrapport och Global Flygplatsuppslagning i Rutter
 
 - **Boeing PLF Central Maintenance / Felkodsrapport (`vdl2_receiver.py`, `acars_human_parser.py`)**:

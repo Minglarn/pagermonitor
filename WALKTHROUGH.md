@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.7`
+- **CalVer**: `2026.10.15.8`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
@@ -1936,6 +1936,24 @@
 - **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py), [tests/test_acars_human_parser.py](file:///d:/antigravity/pager-monitor/tests/test_acars_human_parser.py))**:
   - Lagt till `test_lot_boeing_plf_fault_report` och uppdaterat befintliga rutt-tester för fullständiga flygplatsnamn och pilar.
   - Samtliga 77 enhetstester i hela testsviten passerar felfritt.
+- **Emoji-granskning**:
+  - 100% fri från emojis i alla ändrade och tillagda filer.
+
+### 68. Åtgärd för 500-fel i Databasstatistik och Dubbletthantering (v2026.10.15.8)
+- **Åtgärd för 500-fel vid Databasstatistik ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Aktiverat `PRAGMA journal_mode=WAL;` (Write-Ahead Logging), `PRAGMA busy_timeout=30000;` och satt anslutningstimeout till 30 sekunder.
+  - Eliminerar `sqlite3.OperationalError: database is locked` vid samtidiga skrivningar från bakgrundstrådar (VDL2, SDR, radiosonder) och statistikfrågor.
+  - Skapat index på `messages(is_duplicate)` och `messages(is_protected)` för blixtsnabb filtrering och aggregering.
+  - Lagt till retry-loop i [get_database_stats](file:///d:/antigravity/pager-monitor/database.py#L960) samt optimerad förfrågan för aktiva larmord.
+- **Robust Felhantering och Skydd mot Nollställning ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+  - `loadDatabaseStats()` kontrollerar nu `res.ok` och kastar fel vid HTTP 500 istället för att parsa fel-JSON som ett tomt statistikobjekt och nollställa alla KPI-rutor till `0`, `0 B` och `None`.
+  - Mätarkorten bibehåller nu sina tidigare värden vid övergående nätverksfel eller temporär databaslåsning och visar felmeddelande i statusraden.
+  - Skyddade elementuppslagningar mot null-värden vid sparande av utseendeinställningar.
+- **Inställning för Dubbletter och Rensa Dubbletter ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Ny inställning "Spara dubblettmeddelanden i databasen" (`save_duplicates`) under fliken "Database & Storage".
+  - Ny manuell åtgärd: "Rensa alla dubbletter nu" kopplad till endpointen `POST /api/messages/delete-duplicates`.
+- **Enhetstester ([tests/test_stats_api.py](file:///d:/antigravity/pager-monitor/tests/test_stats_api.py))**:
+  - Tillagt enhetstest `test_delete_duplicates_endpoint` som verifierar att dubbletter kan rensas och att endpointen returnerar korrekt JSON-status.
 - **Emoji-granskning**:
   - 100% fri från emojis i alla ändrade och tillagda filer.
 

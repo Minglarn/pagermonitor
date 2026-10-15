@@ -18,7 +18,7 @@ from database import (
     clone_sdr_instance,
     delete_message, toggle_message_lock, clear_messages, prune_messages,
     get_database_stats, auto_prune_if_enabled, clear_basestation_messages,
-    save_message
+    save_message, delete_duplicates
 )
 
 try:
@@ -117,7 +117,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.15.7"
+APP_VERSION = "2026.10.15.8"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
@@ -318,6 +318,20 @@ def prune_old_messages():
         "message": f"Successfully pruned {deleted} messages older than {days} days.",
         "deleted_count": deleted
     })
+
+@app.route('/api/messages/delete-duplicates', methods=['POST'])
+def api_delete_duplicates():
+    """Delete all duplicate messages immediately."""
+    try:
+        deleted = delete_duplicates()
+        return jsonify({
+            "status": "success",
+            "message": f"Tog bort {deleted} dubblettmeddelanden ur databasen.",
+            "deleted_count": deleted
+        })
+    except Exception as e:
+        logger.error(f"Failed to delete duplicates: {e}", exc_info=True)
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 @app.route('/api/messages/basestations', methods=['DELETE', 'POST'])
 def handle_clear_basestations():

@@ -488,6 +488,18 @@
                                     <small style="display: block; margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-secondary);">
                                         Setting is saved automatically as soon as it is modified.
                                     </small>
+
+                                    <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--panel-border);">
+                                        <div class="form-group checkbox-group" style="margin-bottom: 0.35rem;">
+                                            <label style="font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; color: var(--text-primary);">
+                                                <input type="checkbox" id="save_duplicates" onchange="debouncedSaveRetention()">
+                                                Spara dubblettmeddelanden i databasen
+                                            </label>
+                                        </div>
+                                        <small style="display: block; font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4;">
+                                            Avmarkera om du vill spara diskutrymme och inte lagra återkommande dubbletter i databasen.
+                                        </small>
+                                    </div>
                                 </div>
 
                                 <!-- Manual Maintenance Actions -->
@@ -530,6 +542,19 @@
                                                 Prune Now
                                             </button>
                                         </div>
+                                    </div>
+
+                                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: 1.25rem; border-bottom: 1px solid var(--panel-border);">
+                                        <div>
+                                            <h5 style="margin: 0; font-size: 0.9rem; color: var(--text-primary);">Rensa alla dubbletter nu</h5>
+                                            <p style="margin: 0.2rem 0 0 0; font-size: 0.75rem; color: var(--text-secondary);">
+                                                Raderar omedelbart alla sparade dubblettmeddelanden och frigör diskutrymme.
+                                            </p>
+                                        </div>
+                                        <button type="button" class="secondary-btn" onclick="deleteDuplicatesNow()"
+                                            style="border-color: var(--accent); color: var(--accent); padding: 0.45rem 1rem; margin: 0;">
+                                            Rensa Dubbletter
+                                        </button>
                                     </div>
 
                                     <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;">
@@ -1231,13 +1256,15 @@
             const tetraSkipEncEl = document.getElementById('tetra_skip_encrypted');
             const rdsHbIntEl = document.getElementById('rds_heartbeat_interval');
             const rdsHbToEl = document.getElementById('rds_heartbeat_timeout');
+            const dupHandlingEl = document.getElementById('duplicate_handling');
+            const dupWindowEl = document.getElementById('duplicate_window');
             saveSettings({
                 message_font: fontSelect.value,
                 message_font_size: fontSlider.value,
                 garbage_filter: garbageFilterCheckbox.checked ? 'true' : 'false',
                 garbage_filter_sensitivity: sensitivitySlider.value,
-                duplicate_handling: document.getElementById('duplicate_handling').value,
-                duplicate_window: document.getElementById('duplicate_window').value,
+                duplicate_handling: dupHandlingEl ? dupHandlingEl.value : 'merge',
+                duplicate_window: dupWindowEl ? dupWindowEl.value : '120',
                 log_tetra_basestations: (logTetraEl && logTetraEl.checked) ? 'true' : 'false',
                 tetra_scan_mode: tetraScanModeEl ? tetraScanModeEl.value : 'monitor',
                 tetra_dwell_time: tetraDwellEl ? tetraDwellEl.value : '60',
@@ -1261,10 +1288,10 @@
                     sensitivitySlider.value = sens;
                     sensitivityValLabel.innerText = sens;
 
-                    if (data.duplicate_handling) {
+                    if (data.duplicate_handling && document.getElementById('duplicate_handling')) {
                         document.getElementById('duplicate_handling').value = data.duplicate_handling;
                     }
-                    if (data.duplicate_window) {
+                    if (data.duplicate_window && document.getElementById('duplicate_window')) {
                         document.getElementById('duplicate_window').value = data.duplicate_window;
                     }
 
@@ -1519,8 +1546,18 @@
         // Database Statistics & Maintenance
         function loadDatabaseStats() {
             fetch('/api/database/stats')
-                .then(res => res.json())
+                .then(res => {
+                    if (!res.ok) {
+                        return res.json().catch(() => ({})).then(errData => {
+                            throw new Error(errData.message || `HTTP ${res.status}`);
+                        });
+                    }
+                    return res.json();
+                })
                 .then(stats => {
+                    if (stats.status === 'error') {
+                        throw new Error(stats.message || 'Fel vid hämtning av databasstatistik');
+                    }
                     document.getElementById('stat_total_messages').innerText = Number(stats.total_messages || 0).toLocaleString();
                     document.getElementById('stat_alert_hits').innerText = Number(stats.alert_hits || 0).toLocaleString();
                     document.getElementById('stat_db_size').innerText = stats.db_size_formatted || '0 B';
@@ -1549,20 +1586,52 @@
 
                     document.getElementById('auto_prune_enabled').checked = Boolean(stats.auto_prune_enabled);
                     document.getElementById('auto_prune_days').value = stats.auto_prune_days || 30;
+
+                    const saveDupsEl = document.getElementById('save_duplicates');
+                    if (saveDupsEl && stats.save_duplicates !== undefined) {
+                        saveDupsEl.checked = Boolean(stats.save_duplicates);
+                    }
                 })
                 .catch(err => {
                     console.error('Could not load database stats:', err);
+                    showStatus('Kunde inte läsa databasstatistik: ' + (err.message || err), 'error');
                 });
         }
 
         const debouncedSaveRetention = debounce(() => {
+            const saveDupsEl = document.getElementById('save_duplicates');
             saveSettings({
                 auto_prune_enabled: document.getElementById('auto_prune_enabled').checked ? 'true' : 'false',
-                auto_prune_days: document.getElementById('auto_prune_days').value
+                auto_prune_days: document.getElementById('auto_prune_days').value,
+                save_duplicates: saveDupsEl ? (saveDupsEl.checked ? 'true' : 'false') : 'true'
             });
         }, 400);
 
+        async function deleteDuplicatesNow() {
+            const confirmed = await showConfirm(
+                'Rensa alla dubbletter?',
+                'Vill du radera alla sparade dubblettmeddelanden från databasen? Detta kan inte ångras.',
+                'Rensa Dubbletter',
+                false
+            );
 
+            if (!confirmed) return;
+
+            fetch('/api/messages/delete-duplicates', { method: 'POST' })
+                .then(res => {
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    return res.json();
+                })
+                .then(data => {
+                    const count = data.deleted_count !== undefined ? data.deleted_count : 0;
+                    showStatus(`Rensade ${count} dubblettmeddelanden ur databasen!`, 'success');
+                    loadDatabaseStats();
+                })
+                .catch(err => {
+                    console.error('Error deleting duplicates:', err);
+                    showStatus('Kunde inte rensa dubbletter.', 'error');
+                });
+        }
 
         async function emptyDatabase() {
             const confirmed = await showConfirm(

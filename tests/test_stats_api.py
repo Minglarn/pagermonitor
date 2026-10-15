@@ -130,4 +130,17 @@ def test_stats_range_activity(client):
     assert data['mode'] == 'hours'
     assert 'data' in data
 
+def test_delete_duplicates_endpoint(client):
+    from database import save_message, delete_duplicates
+    # Save a normal and a duplicate message
+    save_message('88881', 'Unique message', is_duplicate=False)
+    save_message('88882', 'Duplicate message', is_duplicate=True)
+    
+    resp = client.post('/api/messages/delete-duplicates')
+    assert resp.status_code == 200
+    res_data = resp.get_json()
+    assert res_data['status'] == 'success'
+    assert res_data['deleted_count'] >= 1
+
+
 
