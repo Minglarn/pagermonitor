@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.16] - Multi-Select Filter med Checkbox-Dropdowns och Aktiva Filter-Chips
+
+- **Multi-Select Filter-State (`activeFilters` med Sets i `index.html`)**:
+  - Konverterat `activeFilters` från enstaka strängvärden till `Set`: `{ protocols: new Set(), frequencies: new Set(), labels: new Set(), airports: new Set(), capcode: '' }`.
+  - Filterlogik: **OR** inom samma kategori (t.ex. matchar frekvens `136.725M` ELLER `136.875M`) och **AND** mellan olika kategorier (t.ex. måste matcha vald frekvens OCH vald label).
+  - Stöd för multi-select i DataTables anpassade filterfunktion med fullständigt dataattribut-stöd (`data-frequency`, `data-proto-name`, `data-label`, `data-airport-code`).
+- **Custom Checkbox-Dropdown Popover-Menyer**:
+  - Byggt om dropdown-kontrollerna ovanför meddelandetabellen till moderna klickbara popover-menyer med kryssrutor (`<input type="checkbox">`).
+  - Användare kan kryssa i och ur flera val i följd utan att menyn stängs. Klick utanför stänger dropdown-menyn.
+  - Dynamiska räknare för varje alternativ (`(15)` osv.) och en smidig "Rensa"-knapp överst i varje popover-meny.
+  - Knapparnas text uppdateras dynamiskt (t.ex. `Alla frekvenser`, `Frekvens: 136.725M`, `Frekvenser (3)`) med tydlig accentmarkering (`active-filter-select`) vid aktiva filter.
+- **Tydliga Aktiva Filter-Chips med `✕` och "Rensa alla"**:
+  - Varje valt filter renderas nu som ett klickbart filter-chip (`[ Frekvens: 136.725M ✕ ]`, `[ Label: H1 ✕ ]`, etc.) ovanför tabellen.
+  - Klick på chipets `✕` tar bort det specifika värdet ur motsvarande filter-Set.
+  - En röd "Rensa alla"-knapp nollställer samtliga filter och fritextsökning med ett enda klick.
+- **Klick-på-badge Toggle-Stöd**:
+  - Klick på badges i tabellcellerna (frekvens, SNR/ACARS, label, flygplats) togglar nu värdet in och ut ur respektive `Set` utan att rensa bort andra redan valda filter.
+- **Enhetstester & Emojivalidering**:
+  - Samtliga 82 enhetstester passerar.
+  - Emojiskanner bekräftar 0 otillåtna emojis.
+
 ## [2026.10.15.15] - Pills Alltid i Botten, Rådata Toggle-badge och Dynamisk Fontskalning
 
 - **Pillren (`.msg-meta-bar`) Alltid i Botten av Meddelandecellen (`style.css`, `index.html`, `larm.html`, `statistics.html`)**:

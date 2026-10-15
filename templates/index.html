@@ -111,57 +111,189 @@
             justify-content: center;
         }
 
-        .filter-select-wrapper {
+        .filter-dropdown-wrapper {
             display: inline-flex;
             align-items: center;
             position: relative;
         }
 
-        .filter-select-wrapper .filter-icon {
+        .filter-dropdown-wrapper .filter-icon {
             position: absolute;
             left: 7px;
+            top: 50%;
+            transform: translateY(-50%);
             color: var(--text-secondary, #94a3b8);
             font-size: 0.72rem;
             pointer-events: none;
             z-index: 2;
         }
 
-        .filter-select {
+        .filter-dropdown-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
             background: var(--input-bg, #0d1117);
             border: 1px solid var(--panel-border, #1f2937);
             border-radius: 6px;
-            padding: 0 0.5rem 0 1.55rem;
+            padding: 0 0.55rem 0 1.55rem;
             height: 28px;
             font-size: 0.78rem;
             color: var(--text-primary, #f1f5f9);
             outline: none;
             cursor: pointer;
             transition: all 0.2s ease;
-            max-width: 195px;
+            max-width: 220px;
+            user-select: none;
+            white-space: nowrap;
         }
 
-        .filter-select:focus {
-            border-color: var(--accent, #38bdf8);
-            box-shadow: 0 0 8px var(--accent-glow, rgba(56, 189, 248, 0.3));
+        .filter-dropdown-btn .filter-btn-text {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
-        .filter-select.active-filter-select {
+        .filter-dropdown-btn .filter-chevron {
+            font-size: 0.62rem;
+            color: var(--text-secondary, #94a3b8);
+            margin-left: 2px;
+            transition: transform 0.2s ease;
+        }
+
+        .filter-dropdown-wrapper.open .filter-chevron {
+            transform: rotate(180deg);
+        }
+
+        .filter-dropdown-btn:hover {
             border-color: var(--accent, #38bdf8);
-            background: rgba(56, 189, 248, 0.1);
-            color: #38bdf8;
+        }
+
+        .filter-dropdown-btn.active-filter-select {
+            border-color: var(--accent, #38bdf8);
+            background: rgba(56, 189, 248, 0.12);
+            color: var(--accent, #38bdf8);
             font-weight: 600;
         }
 
-        [data-theme="light"] .filter-select {
+        [data-theme="light"] .filter-dropdown-btn {
             background: #ffffff;
             border-color: #cbd5e1;
             color: #1e293b;
         }
 
-        [data-theme="light"] .filter-select.active-filter-select {
+        [data-theme="light"] .filter-dropdown-btn.active-filter-select {
             border-color: #0284c7;
             background: rgba(2, 132, 199, 0.08);
             color: #0284c7;
+        }
+
+        .filter-dropdown-menu {
+            position: absolute;
+            top: calc(100% + 4px);
+            left: 0;
+            min-width: 200px;
+            max-width: 340px;
+            max-height: 280px;
+            overflow-y: auto;
+            background: var(--card-bg, #0f172a);
+            border: 1px solid var(--panel-border, #334155);
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+            z-index: 1050;
+            padding: 4px 0;
+        }
+
+        [data-theme="light"] .filter-dropdown-menu {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .filter-menu-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 4px 10px 6px;
+            border-bottom: 1px solid var(--panel-border, #334155);
+            margin-bottom: 3px;
+        }
+
+        [data-theme="light"] .filter-menu-actions {
+            border-bottom-color: #e2e8f0;
+        }
+
+        .filter-menu-clear-btn {
+            background: none;
+            border: none;
+            color: var(--accent, #38bdf8);
+            font-size: 0.72rem;
+            cursor: pointer;
+            padding: 0;
+            font-weight: 500;
+        }
+
+        [data-theme="light"] .filter-menu-clear-btn {
+            color: #0284c7;
+        }
+
+        .filter-menu-clear-btn:hover {
+            text-decoration: underline;
+        }
+
+        .filter-menu-title {
+            font-size: 0.70rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary, #94a3b8);
+            font-weight: 600;
+        }
+
+        .filter-menu-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 10px;
+            font-size: 0.78rem;
+            color: var(--text-primary, #f1f5f9);
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s ease;
+        }
+
+        .filter-menu-item:hover {
+            background: rgba(56, 189, 248, 0.12);
+        }
+
+        [data-theme="light"] .filter-menu-item {
+            color: #1e293b;
+        }
+
+        [data-theme="light"] .filter-menu-item:hover {
+            background: rgba(2, 132, 199, 0.08);
+        }
+
+        .filter-menu-item input[type="checkbox"] {
+            cursor: pointer;
+            accent-color: var(--accent, #38bdf8);
+            width: 14px;
+            height: 14px;
+            margin: 0;
+            flex-shrink: 0;
+        }
+
+        .filter-menu-label {
+            flex: 1 1 auto;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .filter-menu-count {
+            font-size: 0.72rem;
+            color: var(--text-secondary, #94a3b8);
+            margin-left: 4px;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         .clear-filters-btn {
@@ -913,45 +1045,53 @@
 
             <main>
                 <div class="glass-panel table-container" style="padding: 0;">
-                    <!-- Filter Bar for Real-time Monitor -->
+                    <!-- Filter Bar for Real-time Monitor (Multi-Select Checkbox Dropdowns) -->
                     <div id="tableFilterBar" class="table-filter-bar">
                         <div class="filter-controls-group">
                             <!-- 1. Protocol Filter -->
-                            <div class="filter-select-wrapper" id="filterProtoWrapper">
+                            <div class="filter-dropdown-wrapper" id="filterProtoWrapper">
                                 <i class="fas fa-layer-group filter-icon"></i>
-                                <select id="filterProtocolSelect" class="filter-select" onchange="onProtocolFilterChange(this.value)" title="Filtrera på protokoll">
-                                    <option value="ALL">Alla protokoll</option>
-                                </select>
+                                <button type="button" class="filter-dropdown-btn" id="filterProtoBtn" onclick="toggleFilterDropdown('filterProtoMenu', event)" title="Filtrera på protokoll">
+                                    <span class="filter-btn-text" id="filterProtoBtnText">Alla protokoll</span>
+                                    <i class="fas fa-chevron-down filter-chevron"></i>
+                                </button>
+                                <div class="filter-dropdown-menu" id="filterProtoMenu" style="display: none;"></div>
                             </div>
 
                             <!-- 2. Frequency Filter -->
-                            <div class="filter-select-wrapper" id="filterFreqWrapper">
+                            <div class="filter-dropdown-wrapper" id="filterFreqWrapper">
                                 <i class="fas fa-broadcast-tower filter-icon"></i>
-                                <select id="filterFreqSelect" class="filter-select" onchange="onFrequencyFilterChange(this.value)" title="Filtrera på frekvens">
-                                    <option value="ALL">Alla frekvenser</option>
-                                </select>
+                                <button type="button" class="filter-dropdown-btn" id="filterFreqBtn" onclick="toggleFilterDropdown('filterFreqMenu', event)" title="Filtrera på frekvens">
+                                    <span class="filter-btn-text" id="filterFreqBtnText">Alla frekvenser</span>
+                                    <i class="fas fa-chevron-down filter-chevron"></i>
+                                </button>
+                                <div class="filter-dropdown-menu" id="filterFreqMenu" style="display: none;"></div>
                             </div>
 
                             <!-- 3. VDL2: Label Filter (Only shown when VDL2 is enabled in settings) -->
-                            <div class="filter-select-wrapper vdl2-only-filter" id="filterLabelWrapper" style="display: none;">
+                            <div class="filter-dropdown-wrapper vdl2-only-filter" id="filterLabelWrapper" style="display: none;">
                                 <i class="fas fa-tag filter-icon"></i>
-                                <select id="filterLabelSelect" class="filter-select" onchange="onLabelFilterChange(this.value)" title="Filtrera på ACARS Label">
-                                    <option value="ALL">Alla Labels</option>
-                                </select>
+                                <button type="button" class="filter-dropdown-btn" id="filterLabelBtn" onclick="toggleFilterDropdown('filterLabelMenu', event)" title="Filtrera på ACARS Label">
+                                    <span class="filter-btn-text" id="filterLabelBtnText">Alla Labels</span>
+                                    <i class="fas fa-chevron-down filter-chevron"></i>
+                                </button>
+                                <div class="filter-dropdown-menu" id="filterLabelMenu" style="display: none;"></div>
                             </div>
 
                             <!-- 4. VDL2: Airport Filter (Only shown when VDL2 is enabled in settings) -->
-                            <div class="filter-select-wrapper vdl2-only-filter" id="filterAirportWrapper" style="display: none;">
+                            <div class="filter-dropdown-wrapper vdl2-only-filter" id="filterAirportWrapper" style="display: none;">
                                 <i class="fas fa-plane-arrival filter-icon"></i>
-                                <select id="filterAirportSelect" class="filter-select" onchange="onAirportFilterChange(this.value)" title="Filtrera på flygplats / rutt">
-                                    <option value="ALL">Alla flygplatser</option>
-                                </select>
+                                <button type="button" class="filter-dropdown-btn" id="filterAirportBtn" onclick="toggleFilterDropdown('filterAirportMenu', event)" title="Filtrera på flygplats / rutt">
+                                    <span class="filter-btn-text" id="filterAirportBtnText">Alla flygplatser</span>
+                                    <i class="fas fa-chevron-down filter-chevron"></i>
+                                </button>
+                                <div class="filter-dropdown-menu" id="filterAirportMenu" style="display: none;"></div>
                             </div>
 
                             <!-- Clear all filters button -->
                             <button id="clearFiltersBtn" class="clear-filters-btn" onclick="clearAllTableFilters()" title="Rensa alla filter" style="display: none;">
                                 <i class="fas fa-times-circle"></i>
-                                <span>Rensa filter</span>
+                                <span>Rensa alla</span>
                             </button>
                         </div>
 
@@ -1031,12 +1171,12 @@
         let pausedQueue = [];
         let hideBasestations = localStorage.getItem('hide_tetra_basestations') === 'true'; // default: false (visas som standard)
 
-        // Filter state for Real-time Monitor
+        // Filter state for Real-time Monitor (Multi-Select Sets)
         const activeFilters = {
-            protocol: 'ALL',
-            frequency: 'ALL',
-            label: 'ALL',
-            airport: 'ALL',
+            protocols: new Set(),
+            frequencies: new Set(),
+            labels: new Set(),
+            airports: new Set(),
             capcode: ''
         };
 
@@ -1150,42 +1290,62 @@
             return '';
         }
 
-        window.onProtocolFilterChange = function(val) {
-            activeFilters.protocol = val;
+        window.toggleFilterDropdown = function(menuId, event) {
+            if (event) event.stopPropagation();
+            const targetMenu = document.getElementById(menuId);
+            if (!targetMenu) return;
+            const isOpen = (targetMenu.style.display !== 'none');
+            closeAllFilterDropdowns();
+            if (!isOpen) {
+                targetMenu.style.display = 'block';
+                const wrapper = targetMenu.closest('.filter-dropdown-wrapper');
+                if (wrapper) wrapper.classList.add('open');
+            }
+        };
+
+        window.closeAllFilterDropdowns = function() {
+            document.querySelectorAll('.filter-dropdown-menu').forEach(m => m.style.display = 'none');
+            document.querySelectorAll('.filter-dropdown-wrapper').forEach(w => w.classList.remove('open'));
+        };
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.filter-dropdown-wrapper')) {
+                closeAllFilterDropdowns();
+            }
+        });
+
+        window.toggleFilterValue = function(category, val, isChecked) {
+            if (!activeFilters[category]) return;
+            if (isChecked !== undefined) {
+                if (isChecked) activeFilters[category].add(val);
+                else activeFilters[category].delete(val);
+            } else {
+                if (activeFilters[category].has(val)) activeFilters[category].delete(val);
+                else activeFilters[category].add(val);
+            }
             applyAllFilters();
         };
 
-        window.onFrequencyFilterChange = function(val) {
-            activeFilters.frequency = val;
-            applyAllFilters();
-        };
-
-        window.onLabelFilterChange = function(val) {
-            activeFilters.label = val;
-            applyAllFilters();
-        };
-
-        window.onAirportFilterChange = function(val) {
-            activeFilters.airport = val;
-            applyAllFilters();
+        window.clearFilterCategory = function(category) {
+            if (activeFilters[category]) {
+                activeFilters[category].clear();
+                applyAllFilters();
+            }
         };
 
         window.filterByProtocol = function(protoName) {
             if (!protoName) return;
-            activeFilters.protocol = (activeFilters.protocol.toUpperCase() === protoName.toUpperCase()) ? 'ALL' : protoName;
-            applyAllFilters();
+            toggleFilterValue('protocols', protoName);
         };
 
         window.filterByFrequency = function(freq) {
             if (!freq) return;
-            activeFilters.frequency = (activeFilters.frequency.toUpperCase() === freq.toUpperCase()) ? 'ALL' : freq;
-            applyAllFilters();
+            toggleFilterValue('frequencies', freq);
         };
 
         window.filterByLabel = function(labelCode) {
             if (!labelCode) return;
-            activeFilters.label = (activeFilters.label.toUpperCase() === labelCode.toUpperCase()) ? 'ALL' : labelCode;
-            applyAllFilters();
+            toggleFilterValue('labels', labelCode);
         };
 
         window.filterByAirport = function(airportCode) {
@@ -1193,8 +1353,7 @@
             let code = airportCode;
             const m = airportCode.match(/\b([A-Z]{4})\b/);
             if (m) code = m[1].toUpperCase();
-            activeFilters.airport = (activeFilters.airport.toUpperCase() === code.toUpperCase()) ? 'ALL' : code;
-            applyAllFilters();
+            toggleFilterValue('airports', code);
         };
 
         window.filterByCapcode = function(displayAddr, rawAddr) {
@@ -1218,25 +1377,24 @@
             renderFilterChips();
         };
 
-        window.removeSingleFilter = function(key) {
-            if (key === 'protocol') activeFilters.protocol = 'ALL';
-            else if (key === 'frequency') activeFilters.frequency = 'ALL';
-            else if (key === 'label') activeFilters.label = 'ALL';
-            else if (key === 'airport') activeFilters.airport = 'ALL';
-            else if (key === 'capcode') activeFilters.capcode = '';
-            else if (key === 'search') {
+        window.removeFilterItem = function(category, val) {
+            if (category === 'search') {
                 const sInput = document.getElementById('searchInput');
                 if (sInput) sInput.value = '';
                 if (dataTable) dataTable.search('');
+            } else if (category === 'capcode') {
+                activeFilters.capcode = '';
+            } else if (activeFilters[category]) {
+                activeFilters[category].delete(val);
             }
             applyAllFilters();
         };
 
         window.clearAllTableFilters = function() {
-            activeFilters.protocol = 'ALL';
-            activeFilters.frequency = 'ALL';
-            activeFilters.label = 'ALL';
-            activeFilters.airport = 'ALL';
+            activeFilters.protocols.clear();
+            activeFilters.frequencies.clear();
+            activeFilters.labels.clear();
+            activeFilters.airports.clear();
             activeFilters.capcode = '';
             const sInput = document.getElementById('searchInput');
             if (sInput) sInput.value = '';
@@ -1245,33 +1403,84 @@
         };
 
         function applyAllFilters() {
-            updateFilterSelectStyles();
+            updateFilterDropdownButtons();
             renderFilterChips();
+            populateFilterDropdowns();
             if (dataTable) {
                 dataTable.draw();
             }
         }
 
-        function updateFilterSelectStyles() {
-            const protoSel = document.getElementById('filterProtocolSelect');
-            if (protoSel) {
-                protoSel.value = activeFilters.protocol;
-                protoSel.classList.toggle('active-filter-select', activeFilters.protocol !== 'ALL');
+        function updateFilterDropdownButtons() {
+            // 1. Protocols button
+            const protoBtn = document.getElementById('filterProtoBtn');
+            const protoText = document.getElementById('filterProtoBtnText');
+            if (protoBtn && protoText) {
+                const count = activeFilters.protocols.size;
+                if (count === 0) {
+                    protoText.textContent = 'Alla protokoll';
+                    protoBtn.classList.remove('active-filter-select');
+                } else if (count === 1) {
+                    protoText.textContent = `Protokoll: ${Array.from(activeFilters.protocols)[0]}`;
+                    protoBtn.classList.add('active-filter-select');
+                } else {
+                    protoText.textContent = `Protokoll (${count})`;
+                    protoBtn.classList.add('active-filter-select');
+                }
             }
-            const freqSel = document.getElementById('filterFreqSelect');
-            if (freqSel) {
-                freqSel.value = activeFilters.frequency;
-                freqSel.classList.toggle('active-filter-select', activeFilters.frequency !== 'ALL');
+
+            // 2. Frequencies button
+            const freqBtn = document.getElementById('filterFreqBtn');
+            const freqText = document.getElementById('filterFreqBtnText');
+            if (freqBtn && freqText) {
+                const count = activeFilters.frequencies.size;
+                if (count === 0) {
+                    freqText.textContent = 'Alla frekvenser';
+                    freqBtn.classList.remove('active-filter-select');
+                } else if (count === 1) {
+                    freqText.textContent = `Frekvens: ${Array.from(activeFilters.frequencies)[0]}`;
+                    freqBtn.classList.add('active-filter-select');
+                } else {
+                    freqText.textContent = `Frekvenser (${count})`;
+                    freqBtn.classList.add('active-filter-select');
+                }
             }
-            const labelSel = document.getElementById('filterLabelSelect');
-            if (labelSel) {
-                labelSel.value = activeFilters.label;
-                labelSel.classList.toggle('active-filter-select', activeFilters.label !== 'ALL');
+
+            // 3. Labels button
+            const labelBtn = document.getElementById('filterLabelBtn');
+            const labelText = document.getElementById('filterLabelBtnText');
+            if (labelBtn && labelText) {
+                const count = activeFilters.labels.size;
+                if (count === 0) {
+                    labelText.textContent = 'Alla Labels';
+                    labelBtn.classList.remove('active-filter-select');
+                } else if (count === 1) {
+                    const singleVal = Array.from(activeFilters.labels)[0];
+                    const disp = (singleVal === '__PILOT_FREETEXT__') ? '💬 Pilotmeddelanden' : singleVal;
+                    labelText.textContent = `Label: ${disp}`;
+                    labelBtn.classList.add('active-filter-select');
+                } else {
+                    labelText.textContent = `Labels (${count})`;
+                    labelBtn.classList.add('active-filter-select');
+                }
             }
-            const airportSel = document.getElementById('filterAirportSelect');
-            if (airportSel) {
-                airportSel.value = activeFilters.airport;
-                airportSel.classList.toggle('active-filter-select', activeFilters.airport !== 'ALL');
+
+            // 4. Airports button
+            const apBtn = document.getElementById('filterAirportBtn');
+            const apText = document.getElementById('filterAirportBtnText');
+            if (apBtn && apText) {
+                const count = activeFilters.airports.size;
+                if (count === 0) {
+                    apText.textContent = 'Alla flygplatser';
+                    apBtn.classList.remove('active-filter-select');
+                } else if (count === 1) {
+                    const singleAp = Array.from(activeFilters.airports)[0];
+                    apText.textContent = `Flygplats: ${singleAp}`;
+                    apBtn.classList.add('active-filter-select');
+                } else {
+                    apText.textContent = `Flygplatser (${count})`;
+                    apBtn.classList.add('active-filter-select');
+                }
             }
         }
 
@@ -1283,33 +1492,43 @@
             const chips = [];
             const searchVal = (dataTable ? dataTable.search() : '') || (document.getElementById('searchInput')?.value || '');
 
-            if (activeFilters.protocol !== 'ALL') {
-                chips.push({ key: 'protocol', label: `Protokoll: ${escapeHtml(activeFilters.protocol)}` });
-            }
-            if (activeFilters.frequency !== 'ALL') {
-                chips.push({ key: 'frequency', label: `Frekvens: ${escapeHtml(activeFilters.frequency)}` });
-            }
-            if (activeFilters.label !== 'ALL') {
-                const lblDisp = (activeFilters.label === '__PILOT_FREETEXT__') ? '💬 Pilotmeddelanden' : activeFilters.label;
-                chips.push({ key: 'label', label: `Label: ${escapeHtml(lblDisp)}` });
-            }
-            if (activeFilters.airport !== 'ALL') {
-                const apName = AIRPORT_NAMES[activeFilters.airport] || '';
-                const apDisp = apName ? `${activeFilters.airport} (${apName})` : activeFilters.airport;
-                chips.push({ key: 'airport', label: `Flygplats: ${escapeHtml(apDisp)}` });
-            }
+            activeFilters.protocols.forEach(p => {
+                chips.push({ category: 'protocols', val: p, label: `Protokoll: ${p}` });
+            });
+
+            activeFilters.frequencies.forEach(f => {
+                chips.push({ category: 'frequencies', val: f, label: `Frekvens: ${f}` });
+            });
+
+            activeFilters.labels.forEach(lbl => {
+                let disp = lbl;
+                if (lbl === '__PILOT_FREETEXT__') {
+                    disp = '💬 Pilotmeddelanden';
+                } else if (LABEL_DESCRIPTIONS[lbl]) {
+                    disp = `${lbl} (${LABEL_DESCRIPTIONS[lbl]})`;
+                }
+                chips.push({ category: 'labels', val: lbl, label: `Label: ${disp}` });
+            });
+
+            activeFilters.airports.forEach(ap => {
+                const name = AIRPORT_NAMES[ap] || '';
+                const disp = name ? `${ap} (${name})` : ap;
+                chips.push({ category: 'airports', val: ap, label: `Flygplats: ${disp}` });
+            });
+
             if (activeFilters.capcode) {
-                chips.push({ key: 'capcode', label: `Capcode/Flygbolag: ${escapeHtml(activeFilters.capcode)}` });
+                chips.push({ category: 'capcode', val: activeFilters.capcode, label: `Capcode/Flygbolag: ${activeFilters.capcode}` });
             }
+
             if (searchVal.trim()) {
-                chips.push({ key: 'search', label: `Sök: "${escapeHtml(searchVal.trim())}"` });
+                chips.push({ category: 'search', val: '', label: `Sök: "${searchVal.trim()}"` });
             }
 
             if (chips.length > 0) {
                 chipsContainer.innerHTML = chips.map(c => `
                     <span class="filter-chip">
-                        <span>${c.label}</span>
-                        <button type="button" class="chip-remove" onclick="removeSingleFilter('${c.key}')" title="Ta bort filter">&times;</button>
+                        <span>${escapeHtml(c.label)}</span>
+                        <button type="button" class="chip-remove" onclick="removeFilterItem('${c.category}', '${escapeHtml(c.val)}')" title="Ta bort filter">&times;</button>
                     </span>
                 `).join('');
                 chipsContainer.style.display = 'flex';
@@ -1322,10 +1541,6 @@
         }
 
         function populateFilterDropdowns() {
-            if (document.activeElement && document.activeElement.tagName === 'SELECT') {
-                return;
-            }
-
             const isVdl2Enabled = (appSettings.vdl2_enabled !== 'false');
 
             // Show or hide VDL2 dropdown wrappers based on Settings
@@ -1335,8 +1550,8 @@
             });
 
             if (!isVdl2Enabled) {
-                if (activeFilters.label !== 'ALL') activeFilters.label = 'ALL';
-                if (activeFilters.airport !== 'ALL') activeFilters.airport = 'ALL';
+                if (activeFilters.labels.size > 0) activeFilters.labels.clear();
+                if (activeFilters.airports.size > 0) activeFilters.airports.clear();
             }
 
             // 1. Protocol options
@@ -1348,10 +1563,8 @@
                 }
             });
 
-            const protoSelect = document.getElementById('filterProtocolSelect');
-            if (protoSelect) {
-                const currentProto = activeFilters.protocol;
-                let html = '<option value="ALL">Alla protokoll</option>';
+            const protoMenu = document.getElementById('filterProtoMenu');
+            if (protoMenu) {
                 const preferredOrder = ['POCSAG', 'VDL2', 'SONDE', 'TETRA', 'RDS', 'AFSK'];
                 let activeProtos = preferredOrder.filter(p => protoCounts[p]);
                 Object.keys(protoCounts).forEach(p => {
@@ -1360,12 +1573,25 @@
                 if (!isVdl2Enabled) {
                     activeProtos = activeProtos.filter(p => p !== 'VDL2');
                 }
+                const hasSelected = activeFilters.protocols.size > 0;
+                let html = `
+                    <div class="filter-menu-actions">
+                        <span class="filter-menu-title">Välj protokoll</span>
+                        ${hasSelected ? `<button type="button" class="filter-menu-clear-btn" onclick="clearFilterCategory('protocols')">Rensa</button>` : ''}
+                    </div>
+                `;
                 activeProtos.forEach(p => {
                     const cnt = protoCounts[p] || 0;
-                    html += `<option value="${escapeHtml(p)}">${escapeHtml(p)} (${cnt})</option>`;
+                    const isChecked = activeFilters.protocols.has(p);
+                    html += `
+                        <label class="filter-menu-item" onclick="event.stopPropagation()">
+                            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFilterValue('protocols', '${escapeHtml(p)}', this.checked)">
+                            <span class="filter-menu-label">${escapeHtml(p)}</span>
+                            <span class="filter-menu-count">(${cnt})</span>
+                        </label>
+                    `;
                 });
-                protoSelect.innerHTML = html;
-                protoSelect.value = (activeProtos.includes(currentProto) || currentProto === 'ALL') ? currentProto : 'ALL';
+                protoMenu.innerHTML = html;
             }
 
             // 2. Frequency options
@@ -1377,19 +1603,31 @@
                 }
             });
 
-            const freqSelect = document.getElementById('filterFreqSelect');
-            if (freqSelect) {
-                const currentFreq = activeFilters.frequency;
-                let html = '<option value="ALL">Alla frekvenser</option>';
+            const freqMenu = document.getElementById('filterFreqMenu');
+            if (freqMenu) {
                 const sortedFreqs = Object.keys(freqCounts).sort((a, b) => freqCounts[b] - freqCounts[a]);
+                const hasSelected = activeFilters.frequencies.size > 0;
+                let html = `
+                    <div class="filter-menu-actions">
+                        <span class="filter-menu-title">Välj frekvenser</span>
+                        ${hasSelected ? `<button type="button" class="filter-menu-clear-btn" onclick="clearFilterCategory('frequencies')">Rensa</button>` : ''}
+                    </div>
+                `;
                 sortedFreqs.forEach(f => {
-                    html += `<option value="${escapeHtml(f)}">${escapeHtml(f)} (${freqCounts[f]})</option>`;
+                    const cnt = freqCounts[f] || 0;
+                    const isChecked = activeFilters.frequencies.has(f);
+                    html += `
+                        <label class="filter-menu-item" onclick="event.stopPropagation()">
+                            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFilterValue('frequencies', '${escapeHtml(f)}', this.checked)">
+                            <span class="filter-menu-label">${escapeHtml(f)}</span>
+                            <span class="filter-menu-count">(${cnt})</span>
+                        </label>
+                    `;
                 });
-                freqSelect.innerHTML = html;
-                freqSelect.value = (freqCounts[currentFreq] || currentFreq === 'ALL') ? currentFreq : 'ALL';
+                freqMenu.innerHTML = html;
             }
 
-            // 3. VDL2: Label options (Only if VDL2 is enabled in settings)
+            // 3. VDL2: Label options
             if (isVdl2Enabled) {
                 const labelCounts = {};
                 let pilotMsgCount = 0;
@@ -1407,24 +1645,41 @@
                     }
                 });
 
-                const labelSelect = document.getElementById('filterLabelSelect');
-                if (labelSelect) {
-                    const currentLabel = activeFilters.label;
-                    let html = '<option value="ALL">Alla Labels</option>';
-                    const pilotSuffix = pilotMsgCount > 0 ? ` (${pilotMsgCount})` : '';
-                    html += `<option value="__PILOT_FREETEXT__">💬 Endast pilotmeddelanden / fritext${pilotSuffix}</option>`;
+                const labelMenu = document.getElementById('filterLabelMenu');
+                if (labelMenu) {
+                    const hasSelected = activeFilters.labels.size > 0;
+                    let html = `
+                        <div class="filter-menu-actions">
+                            <span class="filter-menu-title">Välj ACARS Labels</span>
+                            ${hasSelected ? `<button type="button" class="filter-menu-clear-btn" onclick="clearFilterCategory('labels')">Rensa</button>` : ''}
+                        </div>
+                    `;
+                    const isPilotChecked = activeFilters.labels.has('__PILOT_FREETEXT__');
+                    html += `
+                        <label class="filter-menu-item" onclick="event.stopPropagation()">
+                            <input type="checkbox" ${isPilotChecked ? 'checked' : ''} onchange="toggleFilterValue('labels', '__PILOT_FREETEXT__', this.checked)">
+                            <span class="filter-menu-label">💬 Pilotmeddelanden</span>
+                            <span class="filter-menu-count">(${pilotMsgCount})</span>
+                        </label>
+                    `;
 
                     const sortedLabels = Object.keys(labelCounts).sort((a, b) => labelCounts[b] - labelCounts[a]);
                     sortedLabels.forEach(lbl => {
                         const desc = LABEL_DESCRIPTIONS[lbl] || '';
                         const descText = desc ? ` (${desc})` : '';
-                        html += `<option value="${escapeHtml(lbl)}">${escapeHtml(lbl)}${escapeHtml(descText)} (${labelCounts[lbl]})</option>`;
+                        const isChecked = activeFilters.labels.has(lbl);
+                        html += `
+                            <label class="filter-menu-item" onclick="event.stopPropagation()">
+                                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFilterValue('labels', '${escapeHtml(lbl)}', this.checked)">
+                                <span class="filter-menu-label">${escapeHtml(lbl)}${escapeHtml(descText)}</span>
+                                <span class="filter-menu-count">(${labelCounts[lbl]})</span>
+                            </label>
+                        `;
                     });
-                    labelSelect.innerHTML = html;
-                    labelSelect.value = (labelCounts[currentLabel] || currentLabel === '__PILOT_FREETEXT__' || currentLabel === 'ALL') ? currentLabel : 'ALL';
+                    labelMenu.innerHTML = html;
                 }
 
-                // 4. VDL2: Airport options (Only if VDL2 is enabled in settings)
+                // 4. VDL2: Airport options
                 const airportCounts = {};
                 allAlarms.forEach(a => {
                     const p = getAlarmProtoName(a);
@@ -1436,22 +1691,33 @@
                     }
                 });
 
-                const airportSelect = document.getElementById('filterAirportSelect');
-                if (airportSelect) {
-                    const currentAirport = activeFilters.airport;
-                    let html = '<option value="ALL">Alla flygplatser</option>';
+                const airportMenu = document.getElementById('filterAirportMenu');
+                if (airportMenu) {
                     const sortedAirports = Object.keys(airportCounts).sort((a, b) => airportCounts[b] - airportCounts[a]);
+                    const hasSelected = activeFilters.airports.size > 0;
+                    let html = `
+                        <div class="filter-menu-actions">
+                            <span class="filter-menu-title">Välj flygplatser</span>
+                            ${hasSelected ? `<button type="button" class="filter-menu-clear-btn" onclick="clearFilterCategory('airports')">Rensa</button>` : ''}
+                        </div>
+                    `;
                     sortedAirports.forEach(code => {
                         const name = AIRPORT_NAMES[code] || '';
                         const disp = name ? `${code} (${name})` : code;
-                        html += `<option value="${escapeHtml(code)}">${escapeHtml(disp)} (${airportCounts[code]})</option>`;
+                        const isChecked = activeFilters.airports.has(code);
+                        html += `
+                            <label class="filter-menu-item" onclick="event.stopPropagation()">
+                                <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleFilterValue('airports', '${escapeHtml(code)}', this.checked)">
+                                <span class="filter-menu-label">${escapeHtml(disp)}</span>
+                                <span class="filter-menu-count">(${airportCounts[code]})</span>
+                            </label>
+                        `;
                     });
-                    airportSelect.innerHTML = html;
-                    airportSelect.value = (airportCounts[currentAirport] || currentAirport === 'ALL') ? currentAirport : 'ALL';
+                    airportMenu.innerHTML = html;
                 }
             }
 
-            updateFilterSelectStyles();
+            updateFilterDropdownButtons();
         }
 
         let dropdownRefreshTimer = null;
@@ -1937,6 +2203,7 @@
 
             // Sätt filterattribut på raden
             tr.setAttribute('data-proto-name', protoName);
+            tr.setAttribute('data-frequency', alarm.frequency || '');
             tr.setAttribute('data-label', labelVal || '');
             tr.setAttribute('data-airport', stationVal || alarm.dst_airport || '');
             tr.setAttribute('data-airport-code', cleanAirportCode);
@@ -2157,15 +2424,15 @@
                 return window.WaterfallManager.isRowMatchingFilter(rowNode);
             });
 
-            // Real-time Monitor Active Filters (Protocol, Frequency, Label, Airport, Capcode)
+            // Real-time Monitor Active Filters (Multi-Select: Protocols, Frequencies, Labels, Airports, Capcode)
             $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
                 if (settings.nTable && settings.nTable.id !== 'alarmsTable') return true;
 
                 const hasFilter = (
-                    activeFilters.protocol !== 'ALL' ||
-                    activeFilters.frequency !== 'ALL' ||
-                    activeFilters.label !== 'ALL' ||
-                    activeFilters.airport !== 'ALL' ||
+                    activeFilters.protocols.size > 0 ||
+                    activeFilters.frequencies.size > 0 ||
+                    activeFilters.labels.size > 0 ||
+                    activeFilters.airports.size > 0 ||
                     activeFilters.capcode !== ''
                 );
                 if (!hasFilter) return true;
@@ -2173,35 +2440,63 @@
                 const rowNode = settings.aoData[dataIndex] ? settings.aoData[dataIndex].nTr : null;
                 if (!rowNode) return true;
 
-                // 1. Protocol
-                if (activeFilters.protocol !== 'ALL') {
+                // 1. Protocols (OR within protocols, AND with others)
+                if (activeFilters.protocols.size > 0) {
                     const rowProto = (rowNode.getAttribute('data-proto-name') || '').toUpperCase();
-                    if (rowProto !== activeFilters.protocol.toUpperCase()) return false;
-                }
-
-                // 2. Frequency
-                if (activeFilters.frequency !== 'ALL') {
-                    const rowFreq = (rowNode.getAttribute('data-frequency') || '').toUpperCase();
-                    if (rowFreq !== activeFilters.frequency.toUpperCase()) return false;
-                }
-
-                // 3. Label
-                if (activeFilters.label !== 'ALL') {
-                    if (activeFilters.label === '__PILOT_FREETEXT__') {
-                        const hasPilot = rowNode.getAttribute('data-has-pilot') === '1';
-                        if (!hasPilot) return false;
-                    } else {
-                        const rowLabel = (rowNode.getAttribute('data-label') || '').toUpperCase();
-                        if (rowLabel !== activeFilters.label.toUpperCase()) return false;
+                    let matchProto = false;
+                    for (const p of activeFilters.protocols) {
+                        if (rowProto === p.toUpperCase()) {
+                            matchProto = true;
+                            break;
+                        }
                     }
+                    if (!matchProto) return false;
                 }
 
-                // 4. Airport
-                if (activeFilters.airport !== 'ALL') {
+                // 2. Frequencies (OR within frequencies, AND with others)
+                if (activeFilters.frequencies.size > 0) {
+                    const rowFreq = (rowNode.getAttribute('data-frequency') || '').toUpperCase();
+                    let matchFreq = false;
+                    for (const f of activeFilters.frequencies) {
+                        if (rowFreq === f.toUpperCase()) {
+                            matchFreq = true;
+                            break;
+                        }
+                    }
+                    if (!matchFreq) return false;
+                }
+
+                // 3. Labels (OR within labels, AND with others)
+                if (activeFilters.labels.size > 0) {
+                    const rowLabel = (rowNode.getAttribute('data-label') || '').toUpperCase();
+                    const hasPilot = rowNode.getAttribute('data-has-pilot') === '1';
+                    let matchLabel = false;
+                    for (const lbl of activeFilters.labels) {
+                        if (lbl === '__PILOT_FREETEXT__' && hasPilot) {
+                            matchLabel = true;
+                            break;
+                        }
+                        if (rowLabel === lbl.toUpperCase()) {
+                            matchLabel = true;
+                            break;
+                        }
+                    }
+                    if (!matchLabel) return false;
+                }
+
+                // 4. Airports (OR within airports, AND with others)
+                if (activeFilters.airports.size > 0) {
                     const rowApCode = (rowNode.getAttribute('data-airport-code') || '').toUpperCase();
                     const rowAirport = (rowNode.getAttribute('data-airport') || '').toUpperCase();
-                    const targetAp = activeFilters.airport.toUpperCase();
-                    if (rowApCode !== targetAp && !rowAirport.includes(targetAp)) return false;
+                    let matchAp = false;
+                    for (const ap of activeFilters.airports) {
+                        const targetAp = ap.toUpperCase();
+                        if (rowApCode === targetAp || rowAirport.includes(targetAp)) {
+                            matchAp = true;
+                            break;
+                        }
+                    }
+                    if (!matchAp) return false;
                 }
 
                 // 5. Capcode / Airline

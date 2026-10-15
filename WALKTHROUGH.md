@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.15`
+- **CalVer**: `2026.10.15.16`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
@@ -2121,7 +2121,28 @@
 - **Enhetstester & Verifiering**:
   - Samtliga 82 enhetstester passerar (`python -m unittest discover tests`).
   - Emoji-granskning verifierad: Inga otillåtna emojis i applikationen.
-  - Versionsbump till CalVer `2026.10.15.15` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
+### 76. Multi-Select Filter med Checkbox-Dropdowns och Aktiva Filter-Chips (v2026.10.15.16)
+- **Multi-Select Filter-State ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Konverterat `activeFilters` från enstaka strängar till `Set`-objekt: `{ protocols: new Set(), frequencies: new Set(), labels: new Set(), airports: new Set(), capcode: '' }`.
+  - Filterlogik: **OR** inom samma kategori (t.ex. visar meddelanden på `136.725M` ELLER `136.875M`) och **AND** mellan olika kategorier (t.ex. matchar vald frekvens OCH vald label).
+  - DataTables anpassade filter-funktion utökad för att stödja multi-select matchning på `data-frequency`, `data-proto-name`, `data-label` och `data-airport-code`.
+- **Custom Checkbox-Dropdown Popovers ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Ersatt de tidigare standard-`<select>`-menyerna med custom dropdown-menyer med kryssrutor (`<input type="checkbox">`).
+  - Användare kan öppna menyn och kryssa i/ur flera val utan att menyn stängs.
+  - Varje meny har en smidig "Rensa"-knapp i toppen samt dynamiska meddelanderäknare för varje alternativ.
+  - Dropdown-knapparnas text uppdateras dynamiskt (t.ex. `Alla frekvenser`, `Frekvens: 136.725M`, `Frekvenser (3)`) med tydlig accentfärg och border vid aktiva val (`active-filter-select`).
+- **Tydliga Aktiva Filter-Chips med `✕` ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - För varje valt filter renderas ett klickbart filter-chip (`[ Frekvens: 136.725M ✕ ]`, `[ Label: H1 ✕ ]`, etc.) ovanför tabellen.
+  - Klick på `✕` tar bort det enskilda valet ur filtret.
+  - "Rensa alla"-knappen nollställer samtliga aktiva filter samt fritextsökning med ett klick.
+- **Klick-på-badge Toggle-Stöd ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Klick på badges i tabellcellerna (frekvens, SNR/ACARS, label, flygplats) togglar nu värdet in och ut ur filtret utan att skriva över övriga valda filter.
+- **Enhetstester & Verifiering**:
+  - Samtliga 82 enhetstester passerar (`python -m unittest discover tests`).
+  - Emoji-granskning verifierad: Inga otillåtna emojis i applikationen.
+  - Versionsbump till CalVer `2026.10.15.16` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
 
 
 
