@@ -117,7 +117,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.15.9"
+APP_VERSION = "2026.10.15.10"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
@@ -150,8 +150,9 @@ def rules_page():
 @app.route('/api/database/stats')
 def database_stats():
     """Retrieve detailed database statistics including size, message counts, and oldest/newest timestamps."""
+    force = request.args.get('force', '0').lower() in ('1', 'true')
     try:
-        stats = get_database_stats()
+        stats = get_database_stats(force=force)
         return jsonify(stats)
     except Exception as e:
         logger.error(f"Failed to fetch database stats: {e}")

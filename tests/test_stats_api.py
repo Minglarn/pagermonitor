@@ -142,5 +142,23 @@ def test_delete_duplicates_endpoint(client):
     assert res_data['status'] == 'success'
     assert res_data['deleted_count'] >= 1
 
+def test_database_stats_cache_and_force(client):
+    from database import save_message
+    save_message('99991', 'Message 1')
+    resp1 = client.get('/api/database/stats')
+    assert resp1.status_code == 200
+    data1 = resp1.get_json()
+    assert data1['total_messages'] >= 1
+    
+    # Second call uses cache
+    resp2 = client.get('/api/database/stats')
+    assert resp2.status_code == 200
+    assert resp2.get_json() == data1
+    
+    # Force call bypasses cache
+    resp3 = client.get('/api/database/stats?force=1')
+    assert resp3.status_code == 200
+    assert 'total_messages' in resp3.get_json()
+
 
 

@@ -379,8 +379,8 @@
                                         Real-time storage status, integrity verification, and automated retention.
                                     </p>
                                 </div>
-                                <button type="button" class="secondary-btn" onclick="loadDatabaseStats()" style="font-size: 0.85rem; padding: 0.45rem 1rem; margin: 0;">
-                                    <i class="fas fa-sync-alt" style="margin-right: 6px;"></i> Refresh Stats
+                                <button type="button" id="btnRefreshStats" class="secondary-btn" onclick="loadDatabaseStats(true)" style="font-size: 0.85rem; padding: 0.45rem 1rem; margin: 0;">
+                                    <i id="iconRefreshStats" class="fas fa-sync-alt" style="margin-right: 6px;"></i> Refresh Stats
                                 </button>
                             </div>
 
@@ -1548,8 +1548,14 @@
         }
 
         // Database Statistics & Maintenance
-        function loadDatabaseStats() {
-            fetch('/api/database/stats')
+        function loadDatabaseStats(force = false) {
+            const refreshBtn = document.getElementById('btnRefreshStats');
+            const refreshIcon = document.getElementById('iconRefreshStats');
+            if (refreshIcon) refreshIcon.classList.add('fa-spin');
+            if (refreshBtn) refreshBtn.disabled = true;
+
+            const url = force ? '/api/database/stats?force=1' : '/api/database/stats';
+            fetch(url)
                 .then(res => {
                     if (!res.ok) {
                         return res.json().catch(() => ({})).then(errData => {
@@ -1599,6 +1605,10 @@
                 .catch(err => {
                     console.error('Could not load database stats:', err);
                     showStatus('Kunde inte läsa databasstatistik: ' + (err.message || err), 'error');
+                })
+                .finally(() => {
+                    if (refreshIcon) refreshIcon.classList.remove('fa-spin');
+                    if (refreshBtn) refreshBtn.disabled = false;
                 });
         }
 

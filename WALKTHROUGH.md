@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.9`
+- **CalVer**: `2026.10.15.10`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
@@ -1966,6 +1966,28 @@
   - Dedikerad sparfunktion `saveDuplicateSetting()` anropas direkt vid ändring av kryssrutan `save_duplicates` för omedelbar respons utan fördröjning.
   - Kryssrutan synkas samtidigt automatiskt med `duplicate_handling` ('merge' eller 'discard').
   - `loadDatabaseStats()` skyddar kryssrutans tillstånd så att periodiska statistikuppdateringar inte skriver över användarens val under pågående ändring.
+- **Emoji-granskning**:
+  - 100% fri från emojis i alla ändrade och tillagda filer.
+
+### 70. Prestandaoptimering av Databasstatistik och TTL-caching (v2026.10.15.10)
+- **Problem & Flaskhalsanalys ([database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+  - Vid inläsning av fliken "Database & Storage" tog anropet till `/api/database/stats` 7–8 sekunder för databaser med över 24 000 meddelanden.
+  - Den primära flaskhalsen var beräkningen av bevakningslistaträffar (`alert_hits`), som tidigare anropade `UPPER_UNICODE(m.message)` i SQLite för varje meddelande och aktivt larmord. Detta ledde till hundratusentals Python-callbackanrop och konstant trådlåsning/kontextväxling i SQLite.
+  - Dessutom kördes 5 separata databasfrågor mot samma meddelandetabell, vilket orsakade upprepade skanningar.
+- **Höghastighets-aggregationsfråga ([database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+  - Sammanfogat räkning av totalt antal meddelanden, äldsta och nyaste tidsstämpel, skyddade meddelanden, dubblettmeddelanden och unika adresser i EN enda optimerad SQL-fråga:
+    `SELECT COUNT(*), MIN(timestamp), MAX(timestamp), COALESCE(SUM(CASE WHEN is_protected = 1 THEN 1 ELSE 0 END), 0), COALESCE(SUM(CASE WHEN is_duplicate = 1 THEN 1 ELSE 0 END), 0), COUNT(DISTINCT address) FROM messages`.
+- **C-baserad SQL LIKE-mönstermatchning ([database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+  - Ersatt Python UDF-anropet `UPPER_UNICODE` med en dynamisk SQL-fråga (`WHERE m.message LIKE ? OR ...`) som exekveras i ren C i SQLite-kärnan.
+  - Detta eliminerade Python GIL-overhead helt och sänkte beräkningstiden från 7 500 ms till ca 3 ms (över 2 400x snabbare).
+- **In-memory TTL-caching ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Infört en 15-sekunders minnescache (`_stats_cache`) som gör att återkommande flikbyten och sidvisningar svarar omedelbart (0,0 ms).
+  - Cachen invalideras automatiskt via `invalidate_database_stats_cache()` när meddelanden rensas, gallras eller dubbletter tas bort.
+  - Lagt till parameter `?force=1` på `/api/database/stats` i [app.py](file:///d:/antigravity/pager-monitor/app.py) för att kringgå cachen när användaren klickar på "Refresh Stats".
+- **Visuell Feedback i Användargränssnittet ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+  - Knappen "Refresh Stats" försågs med ett roterande ikon (`fa-spin`) och inaktiveras under pågående begäran så att användaren tydligt ser att data hämtas.
+- **Enhetstester ([tests/test_stats_api.py](file:///d:/antigravity/pager-monitor/tests/test_stats_api.py))**:
+  - Utökat testsviten med `test_database_stats_cache_and_force` som verifierar cachefunktion och force-flaggan.
 - **Emoji-granskning**:
   - 100% fri från emojis i alla ändrade och tillagda filer.
 

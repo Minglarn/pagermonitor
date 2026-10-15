@@ -1,6 +1,7 @@
 import sqlite3
 import os
 import re
+import time
 import logging
 from datetime import datetime
 
@@ -835,6 +836,7 @@ def clear_messages():
         conn.commit()
         conn.isolation_level = None
         c.execute('VACUUM')
+        invalidate_database_stats_cache()
     finally:
         conn.close()
 
@@ -852,6 +854,7 @@ def prune_messages(days):
         deleted_count = c.rowcount
         conn.commit()
         if deleted_count > 0:
+            invalidate_database_stats_cache()
             try:
                 conn.isolation_level = None
                 c.execute('VACUUM')
@@ -870,6 +873,7 @@ def delete_duplicates():
         deleted_count = c.rowcount
         conn.commit()
         if deleted_count > 0:
+            invalidate_database_stats_cache()
             try:
                 conn.isolation_level = None
                 c.execute('VACUUM')
@@ -891,58 +895,73 @@ def auto_prune_if_enabled():
         days = 30
     return prune_messages(days)
 
+# In-memory stats cache with TTL to eliminate multi-second UI freezes
+_stats_cache = {
+    'timestamp': 0.0,
+    'data': None
+}
+
+def invalidate_database_stats_cache():
+    """Invalidate the cached database stats so the next request recalculates."""
+    global _stats_cache
+    _stats_cache['timestamp'] = 0.0
+    _stats_cache['data'] = None
+
 def _calculate_database_stats():
     conn = get_connection()
     c = conn.cursor()
     
-    # 1. Total message count
-    c.execute('SELECT COUNT(*) FROM messages')
-    total_messages = c.fetchone()[0]
+    # 1. Höghastighets-aggregationsfråga i EN enda tabellskanning
+    c.execute('''
+        SELECT 
+            COUNT(*),
+            MIN(timestamp),
+            MAX(timestamp),
+            COALESCE(SUM(CASE WHEN is_protected = 1 THEN 1 ELSE 0 END), 0),
+            COALESCE(SUM(CASE WHEN is_duplicate = 1 THEN 1 ELSE 0 END), 0),
+            COUNT(DISTINCT address)
+        FROM messages
+    ''')
+    row = c.fetchone()
+    total_messages = row[0] if row else 0
+    min_ts = row[1] if row else None
+    max_ts = row[2] if row else None
+    protected_count = row[3] if row else 0
+    duplicate_count = row[4] if row else 0
+    unique_addresses = row[5] if row else 0
     
-    # 2. Oldest and newest timestamps
-    c.execute('SELECT MIN(timestamp), MAX(timestamp) FROM messages')
-    min_ts, max_ts = c.fetchone()
-    
-    # 3. Protected / locked messages
-    c.execute('SELECT COUNT(*) FROM messages WHERE is_protected = 1')
-    protected_count = c.fetchone()[0]
-    
-    # 4. Duplicate messages
-    c.execute('SELECT COUNT(*) FROM messages WHERE is_duplicate = 1')
-    duplicate_count = c.fetchone()[0]
-    
-    # 5. Alert hits (messages matching active alert_words)
+    # 2. Blixtsnabb beräkning av alert hits i ren C-kod (ingen Python UPPER_UNICODE callback)
     c.execute('SELECT word FROM alert_words WHERE is_active = 1')
-    active_words = [row[0] for row in c.fetchall()]
+    active_words = [r[0].strip() for r in c.fetchall() if r[0] and r[0].strip()]
     alert_words_count = len(active_words)
     
     if alert_words_count == 0 or total_messages == 0:
         alert_hits = 0
     else:
-        c.execute('''
-            SELECT COUNT(*) FROM messages m
-            WHERE EXISTS (
-                SELECT 1 FROM alert_words aw
-                WHERE aw.is_active = 1
-                AND (
-                    m.message LIKE '%' || aw.word || '%'
-                    OR UPPER_UNICODE(m.message) LIKE '%' || UPPER_UNICODE(aw.word) || '%'
-                )
-            )
-        ''')
+        clauses = []
+        params = []
+        for w in active_words:
+            clauses.append("m.message LIKE ?")
+            params.append(f"%{w}%")
+            w_lower = w.lower()
+            w_upper = w.upper()
+            if w_lower != w:
+                clauses.append("m.message LIKE ?")
+                params.append(f"%{w_lower}%")
+            if w_upper != w and w_upper != w_lower:
+                clauses.append("m.message LIKE ?")
+                params.append(f"%{w_upper}%")
+        where_sql = " OR ".join(clauses)
+        c.execute(f"SELECT COUNT(*) FROM messages m WHERE {where_sql}", params)
         alert_hits = c.fetchone()[0]
     
-    # 6. Unique CapCodes / addresses
-    c.execute('SELECT COUNT(DISTINCT address) FROM messages')
-    unique_addresses = c.fetchone()[0]
-    
-    # 7. Total aliases count
+    # 3. Antal alias
     c.execute('SELECT COUNT(*) FROM aliases')
     aliases_count = c.fetchone()[0]
     
     conn.close()
     
-    # 8. Database file size on disk
+    # 4. Databasstorlek på disk
     db_size_bytes = 0
     if os.path.exists(DB_PATH):
         try:
@@ -986,14 +1005,24 @@ def _calculate_database_stats():
         'save_duplicates': save_duplicates
     }
 
-def get_database_stats():
-    """Retrieve comprehensive statistics about the database and retention with retry on transient lock."""
+def get_database_stats(force=False):
+    """Retrieve comprehensive statistics about the database with in-memory TTL caching and retry on lock."""
+    global _stats_cache
+    now = time.time()
+    
+    # Om cachen är yngre än 15 sekunder och ingen forcerad uppdatering begärs: svara direkt (0 ms)
+    if not force and _stats_cache['data'] is not None and (now - _stats_cache['timestamp']) < 15.0:
+        return _stats_cache['data']
+
     for attempt in range(3):
         try:
-            return _calculate_database_stats()
+            stats = _calculate_database_stats()
+            _stats_cache['timestamp'] = now
+            _stats_cache['data'] = stats
+            return stats
         except sqlite3.OperationalError as e:
             if "locked" in str(e).lower() and attempt < 2:
-                time.sleep(0.2 * (attempt + 1))
+                time.sleep(0.15 * (attempt + 1))
                 continue
             raise
 

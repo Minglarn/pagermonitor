@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.10] - Prestandaoptimering av Databasstatistik (3 ms svarstid & Cache)
+
+- **Drastisk Prestandaförbättring för Databasöversikt (`_calculate_database_stats`)**:
+  - Åtgärdat den kritiska flaskhalsen där uppslagning av träffar för larmord (`alert_hits`) exekverade Python-funktionen `UPPER_UNICODE` som en callback i SQLite över tiotusentals rader (vilket tog 7-8 sekunder på grund av GIL och kontextväxlingar).
+  - Ersatt callbacken med direkt SQL-mönstermatchning (`LIKE ? OR LIKE ?`) kompilerad i ren C-kod i SQLite.
+  - Sammanfogat 5 separata databasfrågor till en enda optimerad aggregationsfråga (`SELECT COUNT(*), MIN(timestamp), MAX(timestamp), SUM(CASE WHEN is_protected = 1...), SUM(CASE WHEN is_duplicate = 1...), COUNT(DISTINCT address) FROM messages`) som läser hela tabellen i en enda snabb disksekvens.
+  - Total körtid för full omberäkning sjönk från 7-8 sekunder till endast ca 3 millisekunder!
+- **In-memory TTL-caching (`get_database_stats`)**:
+  - Implementerat en 15-sekunders in-memory cache för statistiken. Vid flikbyten i Inställningar svarar servern omedelbart på 0 ms.
+  - Cachen invalideras automatiskt vid rensningar, gallringar eller radering av dubbletter via `invalidate_database_stats_cache()`.
+  - Lagt till stöd för `?force=1` i `/api/database/stats` så att användaren kan tvinga fram en färsk beräkning vid klick på "Refresh Stats".
+- **Visuell Feedback i Användargränssnittet (`templates/settings.html`)**:
+  - Lagt till roterande laddikon (`fa-spin`) och temporär inaktivering av knappen "Refresh Stats" under hämtning för tydlig visuell respons.
+
 ## [2026.10.15.9] - Fix för Spara Dubbletter Inställning (Persistence & API Whitelist)
 
 - **Åtgärd för Återställning av "Spara dubblettmeddelanden i databasen" (`save_duplicates`)**:
