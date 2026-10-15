@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.5] - Lufthansa Group AOC Telemetri (Label 1L) och Flygbolagsinterna Labels
+
+- **Stod for Flygbolagsinterna AOC-labels (`vdl2_receiver.py`, `acars_human_parser.py`)**:
+  - Lade till `"1L": "Flygbolagsdata (Lufthansa Group AOC)"` i `ACARS_LABELS` och `FALLBACK_LABELS`.
+  - Fallback-logik for labels som matchar `^[1-4][A-Z]$` till `"Flygbolagsdata (AOC Intern)"` om de inte redan ar explicit definierade.
+- **Formatering av Kodad AOC-telemetri (`humanize_acars_message`, `acars_human_parser.py`)**:
+  - Tolkar och presenterar komprimerade 1L/AOC-paket med monster `^(\d{10,12})([A-Z0-9.,\-/]+)$`.
+  - Extraherar sekvensnummer (forsta 6 siffrorna) och presenterar tydligt pa svenska: `[AOC Flygbolagsdata] Intern kodad drift-/telemetrirapport (Lufthansa Group, Seq: <sekvensnummer>) | Rådata: <msg_text>`.
+- **Flygplatsdatabas (`vdl2_receiver.py`, `acars_human_parser.py`)**:
+  - Lade till `ESDF`: `Ronneby/Kallinge` i flygplatsuppslaget.
+- **Enhetstester (`tests/test_vdl2.py`)**:
+  - Lade till `test_austrian_aoc_1l_telemetry` som verifierar Austrian Airlines `OE-LBS` / `OS096F` med verklig `Label: 1L`-telemetristrang.
+  - Samtliga 74 enhetstester i hela testsviten passerar felfritt.
+
 ## [2026.10.15.4] - Flygplatsformatering och Uppdatering av Destinationsbadge vid Arrival ATIS
 
 - **Universell Flygplatsformatering (`format_airport`) (`vdl2_receiver.py`, `acars_human_parser.py`)**:

@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.4`
+- **CalVer**: `2026.10.15.5`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
@@ -1887,6 +1887,21 @@
 - **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
   - Uppdaterat `test_atis_departure_clearance` och lagt till `test_norwegian_arrival_atis_destination_badge` (för Norwegian `SE-RPF` / `D83195` med `/EKCH.TI2/024EKCHA6237`).
   - Samtliga 73 enhetstester i hela testsviten passerar felfritt.
+- **Emoji-granskning**:
+  - 100% fri från emojis i alla ändrade och tillagda filer.
+
+### 65. Lufthansa Group AOC Telemetri (Label 1L) och Flygbolagsinterna Labels (v2026.10.15.5)
+- **Stod for Flygbolagsinterna AOC-labels ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Lade till `"1L": "Flygbolagsdata (Lufthansa Group AOC)"` i `ACARS_LABELS` och `FALLBACK_LABELS`.
+  - Implementerade generell regex-fallback (`^[1-4][A-Z]$`) som automatiskt klassificerar tidigare okanda flygbolagsspecifika labels som `"Flygbolagsdata (AOC Intern)"`.
+- **Formatering av Kodad AOC-telemetri ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Tolkar och presenterar komprimerade 1L/AOC-paket med monster `^(\d{10,12})([A-Z0-9.,\-/]+)$` (t.ex. Austrian Airlines `OE-LBS` / `OS096F`).
+  - Extraherar sekvensnummer ur den inledande siffergruppen och presenterar tydligt: `[AOC Flygbolagsdata] Intern kodad drift-/telemetrirapport (Lufthansa Group, Seq: <sekvensnummer>) | Rådata: <msg_text>`.
+- **Flygplatsdatabas ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Lade till `ESDF`: `Ronneby/Kallinge` i flygplatsregistret.
+- **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
+  - Lade till `test_austrian_aoc_1l_telemetry` som verifierar Austrian Airlines `OE-LBS` / `OS096F` med verklig `Label: 1L`-telemetristrang.
+  - Samtliga 74 enhetstester i hela testsviten passerar felfritt.
 - **Emoji-granskning**:
   - 100% fri från emojis i alla ändrade och tillagda filer.
 

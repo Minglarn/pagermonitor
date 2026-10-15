@@ -112,6 +112,7 @@ FALLBACK_LABELS = {
     '4A': 'Motorövervakning (ECM)',
     '5D': 'Flygplatsväder (ATIS)',
     '5Z': 'Flygbolagsdata (Airline Designated)',
+    '1L': 'Flygbolagsdata (Lufthansa Group AOC)',
     'Q0': 'Länktest (ACARS Link Test)',
     'Q1': 'Avgångsrapport (OOOI)',
     'Q2': 'Ankomstrapport (OOOI)',
@@ -137,6 +138,7 @@ FALLBACK_AIRPORTS = {
     'ESNX': 'Arvidsjaur',
     'ESOE': 'Örebro',
     'ESOK': 'Karlstad',
+    'ESDF': 'Ronneby/Kallinge',
     'EKCH': 'Köpenhamn/Kastrup',
     'EKBI': 'Billund',
     'EKYT': 'Aalborg',
@@ -264,7 +266,11 @@ def lookup_label(label_code: str) -> str:
     if not label_code:
         return ""
     lbl = str(label_code).strip().upper()
-    return ACARS_LABELS.get(lbl, "")
+    if lbl in ACARS_LABELS:
+        return ACARS_LABELS[lbl]
+    if re.match(r'^[1-4][A-Z]$', lbl):
+        return "Flygbolagsdata (AOC Intern)"
+    return ""
 
 def extract_acars_metadata(avlc: dict = None, acars: dict = None, vdl2_frame: dict = None) -> dict:
     """
@@ -866,6 +872,18 @@ def rule_boeing_dfdau_engine_telemetry(text: str, label: str = None, metadata: d
     return f"[Boeing Motortelemetri / DFDAU] {' | '.join(parts)}"
 
 
+def rule_aoc_airline_designated(text: str, label: str = None, metadata: dict = None) -> str:
+    """Flygbolagens interna AOC-labels (Label 1L, 1A-4Z)."""
+    stripped = text.strip()
+    lbl = (label or '').strip().upper()
+    m_aoc_seq = re.match(r'^(\d{10,12})([A-Z0-9.,\-/]+)$', stripped)
+    is_aoc_label = bool(lbl == '1L' or re.match(r'^[1-4][A-Z]$', lbl))
+    if lbl == '1L' or (is_aoc_label and m_aoc_seq):
+        seq_part = f", Seq: {m_aoc_seq.group(1)[:6]}" if m_aoc_seq else ""
+        return f"[AOC Flygbolagsdata] Intern kodad drift-/telemetrirapport (Lufthansa Group{seq_part}) | Rådata: {stripped}"
+    return None
+
+
 def rule_label_38_finnair_weather(text: str, label: str = None, metadata: dict = None) -> str:
     """Label 38: Finnair väder- och positionsrapport."""
     stripped = text.strip()
@@ -1210,6 +1228,7 @@ PARSER_RULES = [
     rule_label_q0_link_test,
     rule_fms_progress_destination,
     rule_boeing_dfdau_engine_telemetry,
+    rule_aoc_airline_designated,
     rule_label_h1_fpn_flight_plan,
     rule_label_h1_posn_fms,
     rule_label_h1_resreq_ack,

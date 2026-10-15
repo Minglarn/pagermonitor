@@ -61,6 +61,7 @@ AIRPORT_MAP = {
     'ESNX': 'Arvidsjaur',
     'ESOE': 'Örebro',
     'ESOK': 'Karlstad',
+    'ESDF': 'Ronneby/Kallinge',
     'EKCH': 'Köpenhamn/Kastrup',
     'EKBI': 'Billund',
     'EKYT': 'Aalborg',
@@ -193,6 +194,13 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
                 return f"Begär flygplatsväder (ATIS) för {ap_disp} | Rådata: {txt}"
             else:
                 return f"Flygplatsväder (ATIS) för {ap_disp} | {txt}"
+
+    # 2c. Flygbolagens interna AOC-labels (Label 1L, 1A-4Z)
+    m_aoc_seq = re.match(r'^(\d{10,12})([A-Z0-9.,\-/]+)$', txt)
+    is_aoc_label = bool(lbl == '1L' or re.match(r'^[1-4][A-Z]$', lbl))
+    if lbl == '1L' or (is_aoc_label and m_aoc_seq):
+        seq_part = f", Seq: {m_aoc_seq.group(1)[:6]}" if m_aoc_seq else ""
+        return f"[AOC Flygbolagsdata] Intern kodad drift-/telemetrirapport (Lufthansa Group{seq_part}) | Rådata: {txt}"
 
     # 3. Boeing / Honeywell FMS & CMC prefix
     if txt.startswith('#M1B'):

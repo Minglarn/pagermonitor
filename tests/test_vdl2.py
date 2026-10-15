@@ -447,6 +447,33 @@ class TestVDL2Receiver(unittest.TestCase):
         # Kontrollera att den enorma sifferväggen är trunkerad och inte läcker ut till UI
         self.assertNotIn('0256400672166766750', res['message'])
 
+    def test_austrian_aoc_1l_telemetry(self):
+        """Verifiera Austrian Airlines (OE-LBS, OS096F) Label 1L AOC intern telemetrirapport."""
+        raw_msg = '00027266265P.J7.QYQGJGG,KQJQJG4BQ.KKB,Q1,Q4-K999QJB-G'
+        frame = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '440182'},
+                    'acars': {
+                        'reg': '.OE-LBS',
+                        'flight': 'OS096F',
+                        'label': '1L',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertEqual(res['flight'], 'OS096F')
+        self.assertEqual(res['reg'], 'OE-LBS')
+        self.assertEqual(res['label'], '1L')
+        self.assertIn('Lufthansa Group AOC', res['label_desc'])
+        self.assertIn('[AOC Flygbolagsdata]', res['message'])
+        self.assertIn('Seq: 000272', res['message'])
+        self.assertIn(raw_msg, res['message'])
+
 if __name__ == '__main__':
     unittest.main()
 
