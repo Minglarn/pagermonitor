@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.17`
+- **CalVer**: `2026.10.15.18`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
@@ -2159,6 +2159,22 @@
   - `test_boeing_dfdau_hex_and_negative_telemetry`: Verifierar avkodning av DFDAU-telemetri med negativa tal och hex-statusord.
   - Samtliga 84 enhetstester passerar utan anmärkning.
   - Versionsbump till CalVer `2026.10.15.17` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
+### 78. Rättad Reassembly-ordning och Rådatabuffring för MIAM och ACARS (v2026.10.15.18)
+- **Reassembly Före Avkodning och Formatering ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Flyttat Multi-block ACARS Reassembly så att den körs direkt på **den obehandlade råtexten** (`msg_text`), INNAN `decode_miam_base85()` och `humanize_acars_message()` körs.
+  - Förhindrar att delblock formateras till svenska beskrivningar i förväg och klistras ihop efter varandra vid sammanslagning (som inträffade för Finnair AY1332 Label MA).
+  - När `more is True` eller `assstat == "reassembly_in_progress"` sparas den råa texten i `PARTIAL_ACARS` och exekveringen avbryts direkt (`return None`) utan formatering eller rendering i UI.
+- **Dubbleringsskydd vid dumpvdl2 Förhands-Reassembly ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Kontrollerar om slutblockets råtext redan inleds med samma tecken som första sparade delblocket (`msg_text.startswith(first_chunk[:16])`).
+  - Om `dumpvdl2` redan pusslat ihop delarna används `msg_text` direkt utan duplicering; annars konkateneras de råa delblocken.
+- **Snygg MIAM Fallback och Rådatavisning ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - MIAM Base85-avkodning (`decode_miam_base85()`) körs enbart en gång på den fullständiga råtexten efter avslutad reassembly.
+  - Om ett MIAM-paket inte kan dekomprimeras till ASCII presenteras det rent med rubrik och storlek (`[MIAM Komprimerad Telemetri] Airbus komprimerat telemetripaket (244 B)`), medan hela den råa Base85-strängen placeras i `\nRådata:` och visas bakom `</> Rådata`-badgen istället för mitt i meddelandecellen.
+- **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
+  - `test_miam_multi_block_reassembly`: Verifierar att flerdelade MIAM-paket (210 B + 34 B) buffras rått, inte duplicerar rubriker och lägger rådata i `Rådata:`.
+  - Samtliga 85 enhetstester passerar utan anmärkning.
+  - Versionsbump till CalVer `2026.10.15.18` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
 
 
 

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.18] - Rättad Reassembly-ordning och Rådatabuffring för MIAM och ACARS
+
+- **Reassembly Före Avkodning och Formatering (`vdl2_receiver.py`)**:
+  - Flyttat Multi-block ACARS Reassembly så att den körs direkt på **den obehandlade råtexten** (`msg_text`), INNAN `decode_miam_base85()` och `humanize_acars_message()` körs.
+  - Förhindrar att delblock formateras till svenska beskrivningar i förväg och klistras ihop efter varandra vid sammanslagning.
+  - När `more is True` eller `assstat == "reassembly_in_progress"` sparas den råa texten i `PARTIAL_ACARS` och exekveringen avbryts direkt (`return None`) utan formatering eller rendering i UI.
+- **Dubbleringsskydd vid dumpvdl2 Förhands-Reassembly**:
+  - Kontrollerar om slutblockets råtext redan inleds med samma tecken som första sparade delblocket (`msg_text.startswith(first_chunk[:16])`).
+  - Om `dumpvdl2` redan pusslat ihop delarna används `msg_text` direkt utan duplicering; annars konkateneras de råa delblocken.
+- **Snygg MIAM Fallback och Rådatavisning**:
+  - MIAM Base85-avkodning (`decode_miam_base85()`) körs enbart en gång på den fullständiga råtexten efter avslutad reassembly.
+  - Om ett MIAM-paket inte kan dekomprimeras till ASCII presenteras det rent med rubrik och storlek (`[MIAM Komprimerad Telemetri] Airbus komprimerat telemetripaket (244 B)`), medan hela den råa Base85-strängen placeras i `\nRådata:` och visas bakom `</> Rådata`-badgen istället för mitt i meddelandecellen.
+- **Enhetstester (`tests/test_vdl2.py`)**:
+  - Lagt till `test_miam_multi_block_reassembly` som verifierar att flerdelade MIAM-paket (210 B + 34 B) buffras rått, inte duplicerar rubriker och lägger rådata i `Rådata:`.
+
 ## [2026.10.15.17] - ACARS Multi-block Reassembly och Boeing DFDAU med Hex & Negativa Värden
 
 - **Multi-block Reassembly Buffer i `vdl2_receiver.py`**:

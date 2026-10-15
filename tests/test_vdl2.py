@@ -409,11 +409,13 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertEqual(res['bitrate'], 'VDL2-MIAM')
         self.assertEqual(res['flight'], 'AY1339')
         self.assertEqual(res['reg'], 'OH-LWD')
-        # Verifiera att rå Base85-vägg INTE finns i meddelandet
-        self.assertNotIn('234567890abcdefghijklmnopqrstuvwxyz', res['message'])
-        # Verifiera ren och snygg presentationsrad med preview och längd
-        self.assertIn('[MIAM Komprimerad Telemetri] Krypterat/fragmenterat Airbus-datapaket', res['message'])
-        self.assertIn('(T02!<<,:/l,"i9N0...)', res['message'])
+        # Verifiera att rå Base85-vägg INTE finns i meddelandets huvudrubrik
+        main_headline = res['message'].split('\nRådata:')[0]
+        self.assertNotIn('234567890abcdefghijklmnopqrstuvwxyz', main_headline)
+        # Verifiera ren och snygg presentationsrad och att rådata bevaras bakom Rådata-sektion
+        self.assertIn('[MIAM Komprimerad Telemetri] Airbus komprimerat telemetripaket (54 B)', res['message'])
+        self.assertIn('Rådata:', res['message'])
+        self.assertIn('T02!<<,:/l,"i9N0', res['message'])
 
     def test_miam_decode_valid_base85_package(self):
         """Verifiera att decode_miam_base85 packar upp en giltig RFC 1924 Base85 + zlib payload och utvinner telemetri."""
@@ -794,6 +796,58 @@ class TestVDL2Receiver(unittest.TestCase):
         res_combined = parse_vdl2_frame(f_part2)
         self.assertIsNotNone(res_combined)
         self.assertIn('CHUNK_AAA_CHUNK_BBB_END', res_combined['message'])
+
+    def test_miam_multi_block_reassembly(self):
+        """Verifiera att multi-block MIAM (t.ex. Finnair AY1332 Label MA) buffras rått och slås ihop utan dubblerade rubriker."""
+        reset_partial_acars_cache()
+        part1_text = 'T02!<<,6/l,"i9N0' + 'A' * 194  # 210 bytes
+        part2_full_text = part1_text + 'B' * 34     # 244 bytes (dumpvdl2 har redan slagit ihop del 1 + del 2)
+
+        # Block 1: more=True (skall ignoreras och returnera None)
+        frame1 = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '461F50'},
+                    'acars': {
+                        'reg': 'OH-LWD',
+                        'flight': 'AY1332',
+                        'label': 'MA',
+                        'more': True,
+                        'assstat': 'reassembly_in_progress',
+                        'msg_text': part1_text
+                    }
+                }
+            }
+        }
+        res1 = parse_vdl2_frame(frame1)
+        self.assertIsNone(res1, "Delblock med more=True skall ignoreras och inte formateras till svensk text")
+
+        # Block 2: more=False, 244 bytes komplett text från dumpvdl2
+        frame2 = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '461F50'},
+                    'acars': {
+                        'reg': 'OH-LWD',
+                        'flight': 'AY1332',
+                        'label': 'MA',
+                        'more': False,
+                        'assstat': 'complete',
+                        'msg_text': part2_full_text
+                    }
+                }
+            }
+        }
+        res2 = parse_vdl2_frame(frame2)
+        self.assertIsNotNone(res2)
+        self.assertEqual(res2['message'].count('[MIAM Komprimerad Telemetri]'), 1, "Skall endast innehålla EN MIAM-header")
+        self.assertIn('[MIAM Komprimerad Telemetri] Airbus komprimerat telemetripaket (244 B)', res2['message'])
+        self.assertIn('Rådata:', res2['message'])
+        self.assertEqual(res2['message'].count('Rådata:'), 1)
+        self.assertIn(part2_full_text, res2['message'])
+
 
     def test_boeing_dfdau_hex_and_negative_telemetry(self):
         """Verifiera DFDAU-telemetri innehållande minustecken (-010760 9388) och hexadecimala statusord (6780018CE000...)."""

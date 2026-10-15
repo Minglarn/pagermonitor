@@ -1236,43 +1236,6 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
     if not label and data.get('label'):
         label = str(data.get('label') or '').strip()
 
-    # C) Kontroll och avkodning av råa MIAM Base85-strängar (Label: MA eller T01/T02 Single Transfer)
-    is_miam_packet = (
-        (label.upper() == 'MA') or 
-        msg_text.startswith('T01') or 
-        msg_text.startswith('T02') or
-        (isinstance(acars, dict) and bool(acars.get('miam')))
-    )
-    if is_miam_packet and msg_text:
-        is_already_decoded = (
-            is_miam and 
-            not msg_text.startswith(('T01', 'T02', 'z!')) and 
-            (';' in msg_text or 'PALAT' in msg_text or msg_text.startswith('[MIAM'))
-        )
-        if not is_already_decoded:
-            decoded_try = decode_miam_base85(msg_text)
-            if decoded_try:
-                msg_text = decoded_try
-                is_miam = True
-            else:
-                # Ofullständigt/fragmenterat paket (eller acars.more == True)
-                # Krav 3: Ersätt Base85-vägg med snygg statusrad
-                clean_raw = msg_text.strip()
-                raw_len = len(clean_raw)
-                preview = clean_raw[:16] + ('...' if raw_len > 16 else '')
-                msg_text = f"[MIAM Komprimerad Telemetri] Krypterat/fragmenterat Airbus-datapaket ({raw_len} B, delpaket) ({preview})"
-                is_miam = True
-
-    # Fallback till rotnivå (t.ex. normaliserad JSON från router)
-    if not flight:
-        flight = str(data.get('flight') or '').strip().upper()
-    if not reg:
-        reg = str(data.get('tail') or data.get('reg') or '').strip()
-    if not msg_text:
-        msg_text = str(data.get('text') or data.get('msg_text') or '').strip()
-    if not label and data.get('label'):
-        label = str(data.get('label') or '').strip()
-
     # Rensa inledande punkter i reg (t.ex. ".OH-LWI" -> "OH-LWI")
     if reg:
         reg = re.sub(r'^\.+', '', reg).strip().upper()
@@ -1318,15 +1281,46 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
     if saved_entry and saved_entry.get('chunks'):
         saved_chunks = saved_entry['chunks']
         first_chunk = saved_chunks[0]
-        # Om dumpvdl2 redan har slagit ihop hela texten i msg_text:
-        if first_chunk and first_chunk in msg_text and len(msg_text) >= sum(len(c) for c in saved_chunks):
+        # Undvik dubblering när dumpvdl2 redan har gjort reassembly:
+        # Kolla om det nya paketets msg_text redan börjar med samma tecken som det första sparade delblocket
+        prefix_to_check = first_chunk[:16] if len(first_chunk) >= 16 else first_chunk
+        if prefix_to_check and msg_text.startswith(prefix_to_check):
+            # dumpvdl2 har redan pusslat ihop hela meddelandet!
+            pass
+        elif first_chunk and first_chunk in msg_text and len(msg_text) >= sum(len(c) for c in saved_chunks):
+            # dumpvdl2 har redan slagit ihop meddelandet
             pass
         else:
-            # Slå ihop de sparade delblocken och eventuellt sista blockets text
+            # Konkatenera de råa delblocken
             combined = "".join(saved_chunks)
             if msg_text and msg_text not in combined:
                 combined += msg_text
             msg_text = combined
+
+    # C) Kontroll och avkodning av råa MIAM Base85-strängar (Label: MA eller T01/T02 Single Transfer)
+    is_miam_packet = (
+        (label.upper() == 'MA') or 
+        msg_text.startswith('T01') or 
+        msg_text.startswith('T02') or
+        (isinstance(acars, dict) and bool(acars.get('miam')))
+    )
+    if is_miam_packet and msg_text:
+        is_already_decoded = (
+            is_miam and 
+            not msg_text.startswith(('T01', 'T02', 'z!')) and 
+            (';' in msg_text or 'PALAT' in msg_text or msg_text.startswith('[MIAM'))
+        )
+        if not is_already_decoded:
+            decoded_try = decode_miam_base85(msg_text)
+            if decoded_try:
+                msg_text = decoded_try
+                is_miam = True
+            else:
+                # Ofullständigt/fragmenterat eller binärt komprimerat paket som inte kunde packas upp som text
+                clean_raw = msg_text.strip()
+                raw_len = len(clean_raw)
+                msg_text = f"[MIAM Komprimerad Telemetri] Airbus komprimerat telemetripaket ({raw_len} B)\nRådata: {clean_raw}"
+                is_miam = True
 
     # C) CPDLC (Flygledningsmeddelanden):
     cpdlc_data = None
