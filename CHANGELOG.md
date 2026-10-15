@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.9] - Fix för Spara Dubbletter Inställning (Persistence & API Whitelist)
+
+- **Åtgärd för Återställning av "Spara dubblettmeddelanden i databasen" (`save_duplicates`)**:
+  - Lade till `save_duplicates` i listan `allowed_keys` i `handle_settings()` i `app.py` så att inställningen inte filtreras bort vid sparande.
+  - Ändrade `update_setting()` i `database.py` från ren `UPDATE` till `INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)` så att nya inställningsnycklar sparas även om de inte fanns i databasen sedan tidigare.
+  - Gjorde att `get_settings()` i `database.py` slår ihop databasrader med `get_default_settings()`.
+  - Lagt till direkt sparning via `saveDuplicateSetting()` vid ändring av kryssrutan i `templates/settings.html` samt synkning mot `duplicate_handling` ('merge'/'discard').
+  - Skyddat `save_duplicates.checked` i `loadDatabaseStats()` så att den inte skrivs över medan användaren interagerar med den.
+
 ## [2026.10.15.8] - Fix för Databasstatistik (500-fel) och Inställning för Dubbletthantering
 
 - **Åtgärd för 500-fel vid Läsning av Databasstatistik (`/api/database/stats`)**:

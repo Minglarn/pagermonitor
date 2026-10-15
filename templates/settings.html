@@ -492,7 +492,7 @@
                                     <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--panel-border);">
                                         <div class="form-group checkbox-group" style="margin-bottom: 0.35rem;">
                                             <label style="font-size: 0.95rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.6rem; color: var(--text-primary);">
-                                                <input type="checkbox" id="save_duplicates" onchange="debouncedSaveRetention()">
+                                                <input type="checkbox" id="save_duplicates" onchange="saveDuplicateSetting()">
                                                 Spara dubblettmeddelanden i databasen
                                             </label>
                                         </div>
@@ -1294,6 +1294,10 @@
                     if (data.duplicate_window && document.getElementById('duplicate_window')) {
                         document.getElementById('duplicate_window').value = data.duplicate_window;
                     }
+                    const saveDupsGlobalEl = document.getElementById('save_duplicates');
+                    if (saveDupsGlobalEl && data.save_duplicates !== undefined) {
+                        saveDupsGlobalEl.checked = (data.save_duplicates === 'true' || data.save_duplicates === true);
+                    }
 
                     const logTetraEl = document.getElementById('log_tetra_basestations');
                     if (logTetraEl) {
@@ -1588,7 +1592,7 @@
                     document.getElementById('auto_prune_days').value = stats.auto_prune_days || 30;
 
                     const saveDupsEl = document.getElementById('save_duplicates');
-                    if (saveDupsEl && stats.save_duplicates !== undefined) {
+                    if (saveDupsEl && stats.save_duplicates !== undefined && document.activeElement !== saveDupsEl) {
                         saveDupsEl.checked = Boolean(stats.save_duplicates);
                     }
                 })
@@ -1598,12 +1602,23 @@
                 });
         }
 
+        function saveDuplicateSetting() {
+            const saveDupsEl = document.getElementById('save_duplicates');
+            const isSave = saveDupsEl ? saveDupsEl.checked : true;
+            saveSettings({
+                save_duplicates: isSave ? 'true' : 'false',
+                duplicate_handling: isSave ? 'merge' : 'discard'
+            });
+        }
+
         const debouncedSaveRetention = debounce(() => {
             const saveDupsEl = document.getElementById('save_duplicates');
+            const isSave = saveDupsEl ? saveDupsEl.checked : true;
             saveSettings({
                 auto_prune_enabled: document.getElementById('auto_prune_enabled').checked ? 'true' : 'false',
                 auto_prune_days: document.getElementById('auto_prune_days').value,
-                save_duplicates: saveDupsEl ? (saveDupsEl.checked ? 'true' : 'false') : 'true'
+                save_duplicates: isSave ? 'true' : 'false',
+                duplicate_handling: isSave ? 'merge' : 'discard'
             });
         }, 400);
 

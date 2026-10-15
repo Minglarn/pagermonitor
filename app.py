@@ -117,7 +117,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.15.8"
+APP_VERSION = "2026.10.15.9"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
@@ -433,7 +433,7 @@ def handle_settings():
             'enable_dc_removal', 'ppm_error', 'enable_deemp', 
             'enable_high_quality_fir', 'atan_math', 'oversampling',
             'multimon_input_type', 'garbage_filter', 'garbage_filter_sensitivity',
-            'duplicate_handling', 'duplicate_window',
+            'duplicate_handling', 'duplicate_window', 'save_duplicates',
             'auto_prune_enabled', 'auto_prune_days', 'log_tetra_basestations',
             'tetra_scan_mode', 'tetra_dwell_time', 'tetra_skip_encrypted',
             'vdl2_enabled', 'vdl2_host', 'vdl2_port', 'vdl2_filter_empty', 'vdl2_filter_links',

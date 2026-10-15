@@ -567,23 +567,23 @@ def delete_alert_word(word_id):
     conn.close()
 
 def get_settings():
-    """Retrieve all settings as a dictionary."""
-    conn = sqlite3.connect(DB_PATH)
+    """Retrieve all settings as a dictionary merged with default fallback settings."""
+    conn = get_connection()
     c = conn.cursor()
     c.execute('SELECT key, value FROM settings')
     rows = c.fetchall()
     conn.close()
     
-    settings = {}
+    settings = get_default_settings()
     for key, value in rows:
         settings[key] = value
     return settings
 
 def update_setting(key, value):
-    """Update a specific setting."""
-    conn = sqlite3.connect(DB_PATH)
+    """Update a specific setting, inserting if it does not already exist."""
+    conn = get_connection()
     c = conn.cursor()
-    c.execute('UPDATE settings SET value = ? WHERE key = ?', (str(value), key))
+    c.execute('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', (key, str(value)))
     conn.commit()
     conn.close()
 

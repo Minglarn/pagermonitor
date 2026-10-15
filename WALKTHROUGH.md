@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.8`
+- **CalVer**: `2026.10.15.9`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
@@ -1954,6 +1954,18 @@
   - Ny manuell åtgärd: "Rensa alla dubbletter nu" kopplad till endpointen `POST /api/messages/delete-duplicates`.
 - **Enhetstester ([tests/test_stats_api.py](file:///d:/antigravity/pager-monitor/tests/test_stats_api.py))**:
   - Tillagt enhetstest `test_delete_duplicates_endpoint` som verifierar att dubbletter kan rensas och att endpointen returnerar korrekt JSON-status.
+- **Emoji-granskning**:
+  - 100% fri från emojis i alla ändrade och tillagda filer.
+
+### 69. Fix för Inställningen Spara Dubbletter och Persistens (v2026.10.15.9)
+- **Persistens och Tillåtna Inställningsnycklar ([app.py](file:///d:/antigravity/pager-monitor/app.py), [database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+  - `save_duplicates` lades till i listan `allowed_keys` i [app.py](file:///d:/antigravity/pager-monitor/app.py) så att anrop till `/api/settings` tillåts spara värdet.
+  - [update_setting](file:///d:/antigravity/pager-monitor/database.py#L580) uppdaterades från att köra ren `UPDATE` till `INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)`, vilket säkerställer att nya inställningar alltid sparas även om de saknades i befintliga databasrader.
+  - [get_settings](file:///d:/antigravity/pager-monitor/database.py#L569) sammanfogar nu databasinställningar med [get_default_settings](file:///d:/antigravity/pager-monitor/database.py#L31) som fallback.
+- **Frontend-optimering ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+  - Dedikerad sparfunktion `saveDuplicateSetting()` anropas direkt vid ändring av kryssrutan `save_duplicates` för omedelbar respons utan fördröjning.
+  - Kryssrutan synkas samtidigt automatiskt med `duplicate_handling` ('merge' eller 'discard').
+  - `loadDatabaseStats()` skyddar kryssrutans tillstånd så att periodiska statistikuppdateringar inte skriver över användarens val under pågående ändring.
 - **Emoji-granskning**:
   - 100% fri från emojis i alla ändrade och tillagda filer.
 
