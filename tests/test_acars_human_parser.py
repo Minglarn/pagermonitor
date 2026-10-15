@@ -68,15 +68,35 @@ class TestAcarsHumanParser(unittest.TestCase):
 
     def test_rule_label_83_csv_position(self):
         raw = "ESSA,HAAB,142029, 58.54,  18.94,22605,305, 166.9, 43000"
-        res = rule_label_83_csv_position(raw)
-        expected = "Rutt: ESSA -> HAAB (Avgång/Ankomst)   Tid: 20:29 UTC\nHöjd: 22605 ft   Fart: 305 kt   Kurs: 166.9 deg   Bränsle: 43000\nPosition: 58.54, 18.94"
+        meta = {}
+        res = rule_label_83_csv_position(raw, metadata=meta)
+        expected = "Rutt: ESSA (Stockholm/Arlanda) → HAAB (Addis Abeba/Bole)   Tid: 20:29 UTC\nHöjd: 22605 ft   Fart: 305 kt   Kurs: 166.9 deg   Bränsle: 43000\nPosition: 58.54, 18.94"
         self.assertEqual(res, expected)
+        self.assertEqual(meta.get('dst_airport'), 'HAAB')
 
     def test_label_83_csv_position_via_parse_human_acars(self):
         raw = "[83: Operativt meddelande / Dispatch (IN)] ESSA,HAAB,142029, 58.54,  18.94,22605,305, 166.9, 43000"
-        res = parse_human_acars(raw)
-        expected = "[83: Operativt meddelande / Dispatch (IN)] Rutt: ESSA -> HAAB (Avgång/Ankomst)   Tid: 20:29 UTC\nHöjd: 22605 ft   Fart: 305 kt   Kurs: 166.9 deg   Bränsle: 43000\nPosition: 58.54, 18.94"
+        meta = {}
+        res = parse_human_acars(raw, metadata=meta)
+        expected = "[83: Operativt meddelande / Dispatch (IN)] Rutt: ESSA (Stockholm/Arlanda) → HAAB (Addis Abeba/Bole)   Tid: 20:29 UTC\nHöjd: 22605 ft   Fart: 305 kt   Kurs: 166.9 deg   Bränsle: 43000\nPosition: 58.54, 18.94"
         self.assertEqual(res, expected)
+        self.assertEqual(meta.get('dst_airport'), 'HAAB')
+
+    def test_label_83_airportsdata_fallback_and_ana(self):
+        # All Nippon Airways Tokyo/Haneda (RJTT)
+        raw_ana = "ESSA,RJTT,150847,58.32,18.46,26178,309,178.3,157800"
+        meta_ana = {}
+        res_ana = rule_label_83_csv_position(raw_ana, metadata=meta_ana)
+        self.assertIn("Rutt: ESSA (Stockholm/Arlanda) → RJTT (Tokyo/Haneda)   Tid: 08:47 UTC", res_ana)
+        self.assertEqual(meta_ana.get('dst_airport'), 'RJTT')
+
+        # Obskyr flygplats utanför vår svenska dict (t.ex. KLAX eller YSSY från airportsdata)
+        raw_klax = "ESSA,KLAX,150847,58.32,18.46,26178,309,178.3,157800"
+        meta_klax = {}
+        res_klax = rule_label_83_csv_position(raw_klax, metadata=meta_klax)
+        self.assertIn("Rutt: ESSA (Stockholm/Arlanda) → KLAX (Los Angeles)   Tid: 08:47 UTC", res_klax)
+        self.assertEqual(meta_klax.get('dst_airport'), 'KLAX')
+
 
     def test_pattern_1_finnair_weather_and_position(self):
         raw = "/AY8892/141026/E 17.655/N 59.387/37969/-------/      /- 57/33535/ 88 /46/"
@@ -123,17 +143,18 @@ class TestAcarsHumanParser(unittest.TestCase):
     def test_label_h1_fpn_flight_plan(self):
         raw = "FPN/RI/ESSA/HAAB/FL370/"
         res = parse_human_acars(raw, label="H1")
-        self.assertEqual(res, "Färdplan (FPN): ESSA -> HAAB   Höjd: FL370")
+        self.assertEqual(res, "Färdplan (FPN): ESSA (Stockholm/Arlanda) → HAAB (Addis Abeba/Bole)   Höjd: FL370")
 
     def test_label_h1_icao_fpl(self):
         raw = "(FPL-SAS1401-IS-A320/M-S/C-ESSA1200-N0450F360-EKCH0110)"
         res = parse_human_acars(raw, label="H1")
-        self.assertEqual(res, "Färdplan (FPL): SAS1401   Rutt: ESSA -> EKCH")
+        self.assertEqual(res, "Färdplan (FPL): SAS1401   Rutt: ESSA (Stockholm/Arlanda) → EKCH (Köpenhamn/Kastrup)")
 
     def test_label_h1_ini_preparation(self):
         raw = "INI/ESSA/ENGM/1420"
         res = parse_human_acars(raw, label="H1")
-        self.assertEqual(res, "Färdförberedelse (INI): ESSA -> ENGM   Tid: 14:20 UTC")
+        self.assertEqual(res, "Färdförberedelse (INI): ESSA (Stockholm/Arlanda) → ENGM (Oslo/Gardermoen)   Tid: 14:20 UTC")
+
 
     def test_label_80_oooi_report(self):
         raw = "OUT/ESSA/1435"

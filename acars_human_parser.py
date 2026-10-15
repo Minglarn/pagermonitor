@@ -238,8 +238,10 @@ FALLBACK_AIRPORTS = {
     'ZBAA': 'Peking/Capital',
     'ZSPD': 'Shanghai/Pudong',
     'RJTT': 'Tokyo/Haneda',
-    'VTBS': 'Bangkok/Suvarnabhumi'
+    'VTBS': 'Bangkok/Suvarnabhumi',
+    'HAAB': 'Addis Abeba/Bole'
 }
+
 
 AIRPORTS = dict(FALLBACK_AIRPORTS)
 
@@ -269,6 +271,32 @@ def load_reference_data():
 # Ladda vid import
 load_reference_data()
 
+try:
+    import airportsdata
+    _AIRPORTSDATA_ICAO = airportsdata.load('ICAO')
+except Exception:
+    _AIRPORTSDATA_ICAO = {}
+
+def _clean_airport_name(ap_dict: dict) -> str:
+    if not ap_dict:
+        return ""
+    city = (ap_dict.get('city') or '').strip()
+    name = (ap_dict.get('name') or '').strip()
+    clean = re.sub(
+        r'\s+(?:International|Intercontinental)?\s*(?:Airport|Air Base|Airbase|Aerodrome|Field|Heliport)\b.*$',
+        '',
+        name,
+        flags=re.IGNORECASE
+    ).strip()
+    if not clean:
+        clean = name
+    if city and clean:
+        if clean.lower().startswith(city.lower()):
+            rest = clean[len(city):].strip(' -/')
+            return f"{city}/{rest}" if rest else city
+        return f"{city}/{clean}"
+    return city or clean
+
 def lookup_airport(icao_code: str) -> str:
     """Slår upp flygplatsnamn utifrån ICAO-kod (4 tecken)."""
     if not icao_code:
@@ -282,7 +310,43 @@ def format_airport(icao_code: str) -> str:
         return ""
     code = str(icao_code).strip().upper()
     name = lookup_airport(code)
-    return f"{code} ({name})" if name else code
+    if name:
+        return f"{code} ({name})"
+    if _AIRPORTSDATA_ICAO and code in _AIRPORTSDATA_ICAO:
+        clean = _clean_airport_name(_AIRPORTSDATA_ICAO[code])
+        if clean:
+            return f"{code} ({clean})"
+    return code
+
+def fix_untranslated_routes(text: str, metadata: dict = None) -> str:
+    """
+    Global säkerhetsspärr: Ersätter råa ICAO-koder i rutter med format_airport()
+    om de inte redan följs av flygplatsnamn inom parentes.
+    Rensar även bort överflödig text som '(Avgång/Ankomst)'.
+    """
+    if not text:
+        return ""
+
+    clean_text = re.sub(r'\s*\(Avgång/Ankomst\)', '', text)
+    if 'Rutt:' not in clean_text:
+        return clean_text
+
+    def _replace_route(m):
+        dep = m.group(1)
+        dep_paren = m.group(2) or ''
+        arr = m.group(3)
+        arr_paren = m.group(4) or ''
+
+        dep_str = f"{dep}{dep_paren}" if ('(' in dep_paren) else format_airport(dep)
+        arr_str = f"{arr}{arr_paren}" if ('(' in arr_paren) else format_airport(arr)
+
+        if isinstance(metadata, dict):
+            metadata['dst_airport'] = arr
+
+        return f"Rutt: {dep_str} → {arr_str}"
+
+    pattern = r'Rutt:\s*([A-Z]{4})(\s*\([^)]+\))?\s*(?:→|->)\s*([A-Z]{4})(\s*\([^)]+\))?'
+    return re.sub(pattern, _replace_route, clean_text)
 
 def lookup_airline(flight_code: str) -> str:
     """Slår upp flygbolagsnamn utifrån callsign/flight via ICAO (3 tecken) eller IATA (2 tecken)."""
@@ -643,9 +707,11 @@ def rule_label_h1_fpn_flight_plan(text: str, label: str = None, metadata: dict =
             callsign = m_fpl.group(1)
             airports = re.findall(r'-([A-Z]{4})\d{4}', stripped)
             if len(airports) >= 2:
-                return f"Färdplan (FPL): {callsign}   Rutt: {airports[0]} -> {airports[1]}"
+                if isinstance(metadata, dict):
+                    metadata['dst_airport'] = airports[1].upper()
+                return f"Färdplan (FPL): {callsign}   Rutt: {format_airport(airports[0])} → {format_airport(airports[1])}"
             elif len(airports) == 1:
-                return f"Färdplan (FPL): {callsign}   Flygplats: {airports[0]}"
+                return f"Färdplan (FPL): {callsign}   Flygplats: {format_airport(airports[0])}"
             return f"Färdplan (FPL): {callsign}"
 
     # 2. FPN rutt (FPN/RI...)
@@ -654,9 +720,11 @@ def rule_label_h1_fpn_flight_plan(text: str, label: str = None, metadata: dict =
         if m_fpn:
             orig = m_fpn.group(1).upper()
             dest = m_fpn.group(2).upper()
+            if isinstance(metadata, dict):
+                metadata['dst_airport'] = dest
             fl = m_fpn.group(3)
             fl_str = f"   Höjd: FL{fl}" if fl else ""
-            return f"Färdplan (FPN): {orig} -> {dest}{fl_str}"
+            return f"Färdplan (FPN): {format_airport(orig)} → {format_airport(dest)}{fl_str}"
 
     # 3. INI flight initialization
     if stripped.startswith('INI') or '/INI/' in stripped:
@@ -664,11 +732,14 @@ def rule_label_h1_fpn_flight_plan(text: str, label: str = None, metadata: dict =
         if m_ini:
             orig = m_ini.group(1).upper()
             dest = m_ini.group(2).upper()
+            if isinstance(metadata, dict):
+                metadata['dst_airport'] = dest
             tm = m_ini.group(3)
             tm_str = f"   Tid: {tm[:2]}:{tm[2:]} UTC" if tm else ""
-            return f"Färdförberedelse (INI): {orig} -> {dest}{tm_str}"
+            return f"Färdförberedelse (INI): {format_airport(orig)} → {format_airport(dest)}{tm_str}"
 
     return None
+
 
 
 def rule_label_h1_posn_fms(text: str, label: str = None, metadata: dict = None) -> str:
@@ -960,7 +1031,7 @@ def rule_amdar_weather_report(text: str, label: str = None, metadata: dict = Non
             dest_icao = m_hdr.group(2).upper()
             orig_fmt = format_airport(orig_icao)
             dest_fmt = format_airport(dest_icao)
-            route_part = f"Rutt: {orig_fmt} -> {dest_fmt} | "
+            route_part = f"Rutt: {orig_fmt} → {dest_fmt} | "
             if isinstance(metadata, dict):
                 metadata['dst_airport'] = dest_icao
         else:
@@ -1016,7 +1087,7 @@ def rule_boeing_fms_weather_log(text: str, label: str = None, metadata: dict = N
             dest_fmt = format_airport(dest_icao)
             if isinstance(metadata, dict):
                 metadata['dst_airport'] = dest_icao
-            header_part = f"Flygplan: {ac_type} | Rutt: {orig_fmt} -> {dest_fmt} | "
+            header_part = f"Flygplan: {ac_type} | Rutt: {orig_fmt} → {dest_fmt} | "
         else:
             header_part = ""
 
@@ -1237,7 +1308,7 @@ def rule_label_38_finnair_weather(text: str, label: str = None, metadata: dict =
 
 
 def rule_label_83_csv_position(text: str, label: str = None, metadata: dict = None) -> str:
-    """Label 83: 9-fälts CSV positionsrapport (Ethiopian Airlines m.fl.)."""
+    """Label 83: 9-fälts CSV positionsrapport (Ethiopian Airlines, ANA m.fl.)."""
     stripped = text.strip()
     if ',' not in stripped:
         return None
@@ -1274,7 +1345,13 @@ def rule_label_83_csv_position(text: str, label: str = None, metadata: dict = No
     except ValueError:
         return None
 
-    line1 = f"Rutt: {dep} -> {dest} (Avgång/Ankomst)   Tid: {time_fmt}"
+    if isinstance(metadata, dict):
+        metadata['dst_airport'] = dest
+
+    dep_fmt = format_airport(dep)
+    dest_fmt = format_airport(dest)
+
+    line1 = f"Rutt: {dep_fmt} → {dest_fmt}   Tid: {time_fmt}"
     line2 = f"Höjd: {alt_str} ft   Fart: {spd_str} kt   Kurs: {hdg_str} deg   Bränsle: {fuel_str}"
     line3 = f"Position: {lat_str}, {lon_str}"
 
@@ -1299,11 +1376,18 @@ def rule_label_83_eta_report(text: str, label: str = None, metadata: dict = None
         tokens = stripped.split()
         if len(tokens) >= 7 and '/' in tokens[3]:
             orig, dest = tokens[3].split('/', 1)
+            orig = orig.upper()
+            dest = dest.upper()
+            if isinstance(metadata, dict):
+                metadata['dst_airport'] = dest
             eta_raw = tokens[6]
             eta_fmt = f"{eta_raw[:2]}:{eta_raw[2:4]} UTC" if len(eta_raw) >= 4 else eta_raw
-            return f"Ankomstrapport: Rutt {orig} -> {dest}   ETA: {eta_fmt}"
+            orig_fmt = format_airport(orig)
+            dest_fmt = format_airport(dest)
+            return f"Ankomstrapport: Rutt {orig_fmt} → {dest_fmt}   ETA: {eta_fmt}"
 
     return None
+
 
 
 def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: dict = None) -> str:
@@ -1653,17 +1737,26 @@ def parse_human_acars(message: str, label: str = None, metadata: dict = None, st
             label = m_lbl.group(1)
 
     # Kör kärntexten mot samtliga regler
+    out_msg = None
     for rule in PARSER_RULES:
         try:
             res = rule(core_text, label=label, metadata=metadata)
             if res:
                 if strip_prefix:
-                    return res.strip()
-                return f"{prefix}{res}".strip()
+                    out_msg = res.strip()
+                else:
+                    out_msg = f"{prefix}{res}".strip()
+                break
         except Exception:
             continue
 
-    # Fallback: Originaltext oförändrad (eller core_text om strip_prefix)
-    if strip_prefix and core_text.strip():
-        return core_text.strip()
-    return message
+    if out_msg is None:
+        # Fallback: Originaltext oförändrad (eller core_text om strip_prefix)
+        if strip_prefix and core_text.strip():
+            out_msg = core_text.strip()
+        else:
+            out_msg = message
+
+    # Global säkerhetsspärr: Säkerställ att inga oöversatta ICAO-rutter slinker igenom
+    return fix_untranslated_routes(out_msg, metadata=metadata)
+

@@ -2083,6 +2083,31 @@
   - Emoji-granskning verifierad: Inga otillåtna emojis i applikationen.
   - Versionsbump till CalVer `2026.10.15.13` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
 
+---
+
+### 74. Global Flygplatsöversättning med airportsdata, Ruttdestination & Säkerhetsspärr (v2026.10.15.14)
+- **Problembeskrivning och Orsaksanalys**:
+  - I meddelande `189813` från All Nippon Airways (`JA813A`, `NH0222`, `Label: 83`) visades rutten som `Rutt: ESSA → RJTT (Avgång/Ankomst)   Tid: 08:47 UTC` trots att `ESSA` och `RJTT` fanns i ordboken.
+  - Samtidigt visade badgen `To: Linkoping ESSL` trots att meddelandet innehöll destinationen `RJTT` (Tokyo/Haneda).
+  - Orsaken var att `rule_label_83_csv_position` i `acars_human_parser.py` byggde strängen direkt med de oöversatta token-värdena `{dep} -> {dest} (Avgång/Ankomst)` utan `format_airport()`, och sparade inte destinationsflygplatsen i `metadata['dst_airport']`. Dessutom saknade systemet täckning för de tiotusentals internationella flygplatser som inte finns i den manuella svenska listan.
+- **Teknisk Implementering**:
+  - **Stöd för 28 000+ Flygplatser Globalt via `airportsdata` ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [requirements.txt](file:///d:/antigravity/pager-monitor/requirements.txt))**:
+    - Integrerat biblioteket `airportsdata` som global fallback i `format_airport()`.
+    - Uppslag prioriterar först vår handskrivna svenska `AIRPORTS`/`AIRPORT_MAP`-ordbok (`Stockholm/Arlanda`, `Tokyo/Haneda`, `Addis Abeba/Bole`, `Köpenhamn/Kastrup` m.fl.).
+    - Om koden saknas slår funktionen upp i `airportsdata.load('ICAO')` och rensar bort redundanta ord ("International Airport", "Air Base") via `_clean_airport_name()` för att generera snygga namn som `KLAX (Los Angeles)` och `YSSY (Sydney/Kingsford Smith)`.
+  - **Korrigerad Ruttöversättning & Destinationsbadge ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+    - `rule_label_83_csv_position` och `rule_label_83_eta_report` kör nu konsekvent `{format_airport(dep)} → {format_airport(dest)}`, tar bort den överflödiga texten `(Avgång/Ankomst)` och sparar destinationsflygplatsen till `metadata['dst_airport']`.
+    - I `parse_vdl2_frame()` och `extract_position_and_telemetry()` uppdateras paketets `dst_airport` till ruttdestinationen så att den gröna badgen visar flygplanets faktiska destination (t.ex. `RJTT (Tokyo/Haneda)`) istället för den lokala markstationen det råkade kommunicera via.
+  - **Global Säkerhetsspärr ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+    - Skapat `fix_untranslated_routes(text, metadata)` som post-processing på all formaterad text.
+    - Regex-regeln fångar upp alla rutter med oöversatta ICAO-koder, slår upp dem via `format_airport()` och garanterar att råa koder aldrig slinker igenom till gränssnittet.
+- **Enhetstester & Verifiering**:
+  - Samtliga 82 enhetstester passerar (`python -m unittest discover tests`).
+  - Tillagt dedikerat enhetstest `test_label_83_ana_and_airportsdata` i [tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py) samt utökade tester i [tests/test_acars_human_parser.py](file:///d:/antigravity/pager-monitor/tests/test_acars_human_parser.py).
+  - Emoji-granskning verifierad: Inga otillåtna emojis i applikationen.
+  - Versionsbump till CalVer `2026.10.15.14` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
+
 
 
 

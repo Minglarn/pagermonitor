@@ -5,7 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.14] - Global Flygplatsöversättning med airportsdata, Ruttdestination & Säkerhetsspärr
+
+- **Stöd för 28 000+ Flygplatser Globalt via `airportsdata` (`vdl2_receiver.py`, `acars_human_parser.py`, `requirements.txt`)**:
+  - Integrerat biblioteket `airportsdata` som global fallback i `format_airport()`.
+  - Uppslag prioriterar vår handskrivna svenska `AIRPORTS`/`AIRPORT_MAP`-ordbok (`Stockholm/Arlanda`, `Tokyo/Haneda`, `Addis Abeba/Bole` osv.) och faller tillbaka på `airportsdata.load('ICAO')` för alla övriga internationella flygplatser i världen.
+  - Skapat hjälpfunktionen `_clean_airport_name()` som automatiskt rensar bort överflödiga ord som "International Airport", "Air Base" och formaterar flygplatser snyggt som `ICAO (City / CleanName)` eller `ICAO (City)` (t.ex. `KLAX (Los Angeles)`, `YSSY (Sydney/Kingsford Smith)`).
+- **Åtgärdad Ruttöversättning & Rättad Destinationsbadge (`vdl2_receiver.py`, `acars_human_parser.py`)**:
+  - Åtgärdat fel i `rule_label_83_csv_position` (t.ex. All Nippon Airways NH0222 `ESSA,RJTT,...`) där råa ICAO-koder skrevs ut direkt utan `format_airport()` och med överflödig text `(Avgång/Ankomst)`.
+  - Nu formateras samtliga rutter konsekvent med `format_airport()` och unicode-pilen `→`: `Rutt: ESSA (Stockholm/Arlanda) → RJTT (Tokyo/Haneda)   Tid: 08:47 UTC`.
+  - När en rutt extraheras ur meddelandetext eller CSV-data uppdateras alltid meddelandets `dst_airport` (t.ex. `RJTT`) och badgen sätts till destinationen istället för den lokala markstationen planet råkade sända igenom (t.ex. Linköping ESSL).
+- **Global Säkerhetsspärr för Rutter (`fix_untranslated_routes`)**:
+  - Implementerat `fix_untranslated_routes()` som post-processing på all formaterad text i både `vdl2_receiver.py` och `acars_human_parser.py`.
+  - Regex-spärren fångar upp alla rutter på formen `Rutt: XXXX →/-> YYYY` som saknar parenteser, översätter ICAO-koderna med `format_airport()`, rensar eventuellt `(Avgång/Ankomst)` och säkerställer att destinationen sätts i metadata.
+- **Enhetstester (`tests/test_vdl2.py`, `tests/test_acars_human_parser.py`)**:
+  - Tillagt dedikerat enhetstest `test_label_83_ana_and_airportsdata` i `test_vdl2.py` för All Nippon Airways (`ESSA → RJTT`) samt extern flygplats (`ESSA → KLAX`).
+  - Verifierat att `dst_airport` uppdateras till `RJTT` och att badgen visar `RJTT (Tokyo/Haneda)`.
+  - Samtliga 82 enhetstester passerar felfritt.
+
 ## [2026.10.15.13] - Dynamiskt Filtersystem, Click-to-Filter och Förfinad Rådata-avdelare
+
 
 - **Dynamisk Filter-bar i Real-time Monitor (`templates/index.html`)**:
   - Tillagd kompakt filter-bar ovanför tabellen (mellan "Show X messages" och "Quick filter...") med snabbfiltrering:

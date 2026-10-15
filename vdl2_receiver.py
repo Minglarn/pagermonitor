@@ -161,8 +161,36 @@ AIRPORT_MAP = {
     'ZBAA': 'Peking/Capital',
     'ZSPD': 'Shanghai/Pudong',
     'RJTT': 'Tokyo/Haneda',
-    'VTBS': 'Bangkok/Suvarnabhumi'
+    'VTBS': 'Bangkok/Suvarnabhumi',
+    'HAAB': 'Addis Abeba/Bole'
 }
+
+
+try:
+    import airportsdata
+    _AIRPORTSDATA_ICAO = airportsdata.load('ICAO')
+except Exception:
+    _AIRPORTSDATA_ICAO = {}
+
+def _clean_airport_name(ap_dict: dict) -> str:
+    if not ap_dict:
+        return ""
+    city = (ap_dict.get('city') or '').strip()
+    name = (ap_dict.get('name') or '').strip()
+    clean = re.sub(
+        r'\s+(?:International|Intercontinental)?\s*(?:Airport|Air Base|Airbase|Aerodrome|Field|Heliport)\b.*$',
+        '',
+        name,
+        flags=re.IGNORECASE
+    ).strip()
+    if not clean:
+        clean = name
+    if city and clean:
+        if clean.lower().startswith(city.lower()):
+            rest = clean[len(city):].strip(' -/')
+            return f"{city}/{rest}" if rest else city
+        return f"{city}/{clean}"
+    return city or clean
 
 def format_airport(icao: str) -> str:
     """Slår upp flygplatsnamn utifrån 4-ställig ICAO-kod och returnerar 'EKCH (Köpenhamn/Kastrup)'."""
@@ -170,7 +198,44 @@ def format_airport(icao: str) -> str:
         return ""
     code = str(icao).strip().upper()
     ap_name = AIRPORT_MAP.get(code)
-    return f"{code} ({ap_name})" if ap_name else code
+    if ap_name:
+        return f"{code} ({ap_name})"
+    if _AIRPORTSDATA_ICAO and code in _AIRPORTSDATA_ICAO:
+        clean = _clean_airport_name(_AIRPORTSDATA_ICAO[code])
+        if clean:
+            return f"{code} ({clean})"
+    return code
+
+def fix_untranslated_routes(text: str, metadata: dict = None) -> str:
+    """
+    Global säkerhetsspärr: Ersätter råa ICAO-koder i rutter med format_airport()
+    om de inte redan följs av flygplatsnamn inom parentes.
+    Rensar även bort överflödig text som '(Avgång/Ankomst)'.
+    """
+    if not text:
+        return ""
+
+    clean_text = re.sub(r'\s*\(Avgång/Ankomst\)', '', text)
+    if 'Rutt:' not in clean_text:
+        return clean_text
+
+    def _replace_route(m):
+        dep = m.group(1)
+        dep_paren = m.group(2) or ''
+        arr = m.group(3)
+        arr_paren = m.group(4) or ''
+
+        dep_str = f"{dep}{dep_paren}" if ('(' in dep_paren) else format_airport(dep)
+        arr_str = f"{arr}{arr_paren}" if ('(' in arr_paren) else format_airport(arr)
+
+        if isinstance(metadata, dict):
+            metadata['dst_airport'] = arr
+
+        return f"Rutt: {dep_str} → {arr_str}"
+
+    pattern = r'Rutt:\s*([A-Z]{4})(\s*\([^)]+\))?\s*(?:→|->)\s*([A-Z]{4})(\s*\([^)]+\))?'
+    return re.sub(pattern, _replace_route, clean_text)
+
 
 # Länkkoder för Media Advisory (Label SA)
 LINK_NAMES = {
@@ -523,20 +588,27 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
         )
         if m_csv:
             try:
+                dep_code = m_csv.group(1).upper()
+                dest_code = m_csv.group(2).upper()
                 res['lat'] = float(m_csv.group(4))
                 res['lon'] = float(m_csv.group(5))
                 res['alt_ft'] = int(m_csv.group(6))
                 spd = float(m_csv.group(7))
                 hdg = float(m_csv.group(8))
                 fuel = m_csv.group(9)
+                res['dst_airport'] = dest_code
+                res['telemetry']['route'] = f"{dep_code} -> {dest_code}"
                 res['telemetry']['speed_kt'] = spd
                 res['telemetry']['heading'] = hdg
                 res['telemetry']['fuel_weight'] = fuel
                 fl = round(res['alt_ft'] / 100)
-                res['telemetry_summary'] = f"FL{fl} ({res['alt_ft']:,} ft) | Fart: {spd:.0f} kt | Kurs: {hdg:.0f}°"
+                dep_fmt = format_airport(dep_code)
+                dest_fmt = format_airport(dest_code)
+                res['telemetry_summary'] = f"Rutt: {dep_fmt} → {dest_fmt} | FL{fl} ({res['alt_ft']:,} ft) | Fart: {spd:.0f} kt | Kurs: {hdg:.0f}°"
                 return res
             except (ValueError, TypeError):
                 pass
+
 
     # --- Mönster 1: Airbus MIAM / FDIMU semikolon-format ---
     # Exempel: ;PAALT,41001;PALAT,5.875309E+01;PALONG,1.543292E+01;PASAT,-6.347548E+01;...
@@ -1285,7 +1357,15 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
         if atis_type == 'A' or (atis_type != 'D' and ground_status == 'Airborne'):
             dst_airport = atis_icao
 
-    # Om en destinationsflygplats är känd (FMS, Arrival ATIS eller XID), uppdatera station_name så den gröna badgen visar rätt destination
+    # Kontrollera om rutt finns i message_lines (t.ex. Rutt: ESSA (Stockholm/Arlanda) → RJTT (Tokyo/Haneda))
+    if not dst_airport:
+        for m_l in message_lines:
+            m_r = re.search(r'Rutt:\s*[A-Z]{4}[^\n→\->]*(?:→|->)\s*([A-Z]{4})', m_l)
+            if m_r:
+                dst_airport = m_r.group(1).upper()
+                break
+
+    # Om en destinationsflygplats är känd (FMS, rutt i meddelandet, Arrival ATIS eller XID), uppdatera station_name så den gröna badgen visar rätt destination
     if dst_airport:
         station_name = format_airport(dst_airport)
 
@@ -1302,7 +1382,12 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
         if "Position:" not in joined_txt and "Pos:" not in joined_txt and "Pos " not in joined_txt:
             message_lines.append(coord_line)
 
-    full_message = "\n".join(message_lines).strip()
+    raw_joined = "\n".join(message_lines).strip()
+    full_message = fix_untranslated_routes(raw_joined, metadata=acars)
+    if not dst_airport and isinstance(acars, dict) and acars.get('dst_airport'):
+        dst_airport = str(acars['dst_airport']).strip().upper()
+        station_name = format_airport(dst_airport)
+
     if not full_message:
         if dst_airport:
             ap_desc = AIRPORT_MAP.get(dst_airport, '')
@@ -1312,6 +1397,7 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
             full_message = f"Positionsrapport mottagen   Position: {lat:.4f}, {lon:.4f}"
         else:
             full_message = f"VDL2 Signallänk: {src_type} ({src_addr or 'Okänd'}) -> {dst_type} ({dst_addr or 'Okänd'})"
+
 
     bitrate_str = "VDL2-CPDLC" if cpdlc_text else ("VDL2-MIAM" if is_miam else ("VDL2-ACARS" if label else "VDL2"))
 

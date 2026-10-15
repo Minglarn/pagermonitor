@@ -274,8 +274,10 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertEqual(res['flight'], 'ET0715')
         self.assertEqual(res['reg'], 'ET-ATK')
         self.assertEqual(res['icao'], '040127')
-        self.assertEqual(res['station'], 'Arlanda ESSA')
+        self.assertEqual(res['dst_airport'], 'HAAB')
+        self.assertEqual(res['station'], 'HAAB (Addis Abeba/Bole)')
         self.assertEqual(res['ground_status'], 'Airborne')
+
         self.assertEqual(res['label'], '83')
         self.assertIn('Operativt meddelande', res['label_desc'])
         self.assertAlmostEqual(res['lat'], 58.54, places=2)
@@ -288,9 +290,65 @@ class TestVDL2Receiver(unittest.TestCase):
         # Verifiera att själva meddelandet är rent utan pipes (|) och utan inbäddad metadata
         self.assertNotIn('|', res['message'])
         self.assertNotIn('[Reg:', res['message'])
-        self.assertIn('Rutt: ESSA -> HAAB (Avgång/Ankomst)   Tid: 20:29 UTC', res['message'])
+        self.assertIn('Rutt: ESSA (Stockholm/Arlanda) → HAAB (Addis Abeba/Bole)   Tid: 20:29 UTC', res['message'])
         self.assertIn('Höjd: 22605 ft   Fart: 305 kt   Kurs: 166.9 deg   Bränsle: 43000', res['message'])
         self.assertIn('Position: 58.54, 18.94', res['message'])
+        self.assertEqual(res['dst_airport'], 'HAAB')
+        self.assertEqual(res['station'], 'HAAB (Addis Abeba/Bole)')
+
+    def test_label_83_ana_and_airportsdata(self):
+        """Test för All Nippon Airways RJTT och global airportsdata-fallback (t.ex. KLAX)."""
+        # 1. All Nippon Airways ESSA -> RJTT
+        raw_vdl2_ana = {
+            "vdl2": {
+                "app": {"name": "dumpvdl2"},
+                "t": {"sec": 1729000000, "usec": 0},
+                "freq": 136775000,
+                "sig_level": 29.5,
+                "avlc": {
+                    "src": {"addr": "86D244", "type": "Airborne", "status": "Airborne"},
+                    "dst": {"addr": "02", "type": "Ground station"},
+                    "acars": {
+                        "reg": ".JA813A",
+                        "flight": "NH0222",
+                        "label": "83",
+                        "msg_text": "ESSA,RJTT,150847,58.32,18.46,26178,309,178.3,157800"
+                    }
+                }
+            }
+        }
+        res_ana = parse_vdl2_frame(raw_vdl2_ana)
+        self.assertIsNotNone(res_ana)
+        self.assertIn('Rutt: ESSA (Stockholm/Arlanda) → RJTT (Tokyo/Haneda)   Tid: 08:47 UTC', res_ana['message'])
+        self.assertNotIn('(Avgång/Ankomst)', res_ana['message'])
+        self.assertEqual(res_ana['dst_airport'], 'RJTT')
+        self.assertEqual(res_ana['station'], 'RJTT (Tokyo/Haneda)')
+
+        # 2. Rutt till flygplats från airportsdata (KLAX Los Angeles)
+        raw_vdl2_klax = {
+            "vdl2": {
+                "app": {"name": "dumpvdl2"},
+                "t": {"sec": 1729000000, "usec": 0},
+                "freq": 136775000,
+                "sig_level": 29.5,
+                "avlc": {
+                    "src": {"addr": "A1B2C3", "type": "Airborne", "status": "Airborne"},
+                    "dst": {"addr": "02", "type": "Ground station"},
+                    "acars": {
+                        "reg": "N12345",
+                        "flight": "UA100",
+                        "label": "83",
+                        "msg_text": "ESSA,KLAX,150847,58.32,18.46,26178,309,178.3,157800"
+                    }
+                }
+            }
+        }
+        res_klax = parse_vdl2_frame(raw_vdl2_klax)
+        self.assertIsNotNone(res_klax)
+        self.assertIn('Rutt: ESSA (Stockholm/Arlanda) → KLAX (Los Angeles)   Tid: 08:47 UTC', res_klax['message'])
+        self.assertEqual(res_klax['dst_airport'], 'KLAX')
+        self.assertEqual(res_klax['station'], 'KLAX (Los Angeles)')
+
 
     def test_send_synthetic_test_message(self):
         res = send_test_vdl2_message()
