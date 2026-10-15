@@ -216,6 +216,14 @@ def lookup_airport(icao_code: str) -> str:
     code = str(icao_code).strip().upper()
     return AIRPORTS.get(code, "")
 
+def format_airport(icao_code: str) -> str:
+    """Slår upp flygplatsnamn utifrån 4-ställig ICAO-kod och returnerar 'EKCH (Köpenhamn/Kastrup)'."""
+    if not icao_code:
+        return ""
+    code = str(icao_code).strip().upper()
+    name = lookup_airport(code)
+    return f"{code} ({name})" if name else code
+
 def lookup_airline(flight_code: str) -> str:
     """Slår upp flygbolagsnamn utifrån callsign/flight via ICAO (3 tecken) eller IATA (2 tecken)."""
     if not flight_code:
@@ -483,12 +491,23 @@ def rule_label_b6_cpdlc(text: str, label: str = None, metadata: dict = None) -> 
     if m_dc:
         icao = m_dc.group(1).upper()
         act = m_dc.group(2).upper()
+        ap_disp = format_airport(icao)
         if act == 'DC1':
-            return f"Begär starttillstånd (Departure Clearance) för {icao}\nRådata: {stripped}"
+            return f"Begär starttillstånd (Departure Clearance) för {ap_disp}\nRådata: {stripped}"
         elif act == 'OC1':
-            return f"Begär Oceanic Clearance för {icao}\nRådata: {stripped}"
+            return f"Begär Oceanic Clearance för {ap_disp}\nRådata: {stripped}"
         elif act == 'TI2':
-            return f"Begär flygplatsväder (ATIS) för {icao}\nRådata: {stripped}"
+            m_ad = re.search(r'/([A-Z]{4})\.TI2/(?:\d{1,4}\1)?([AD])', stripped, re.IGNORECASE)
+            atis_type = (m_ad.group(2).upper()) if m_ad else ''
+            if atis_type == 'A':
+                if isinstance(metadata, dict):
+                    metadata['dst_airport'] = icao
+                desc = f"Begär landningsväder (Arrival ATIS) för {ap_disp}"
+            elif atis_type == 'D':
+                desc = f"Begär avgångsväder (Departure ATIS) för {ap_disp}"
+            else:
+                desc = f"Begär flygplatsväder (ATIS) för {ap_disp}"
+            return f"{desc}\nRådata: {stripped}"
 
     # Fritext CPDLC med inledande snedstreck
     if stripped.startswith('/') and re.search(r'/(?:CLIMB|DESCEND|MAINTAIN|PROCEED|CONTACT|SQUAWK|DIRECT)', stripped, re.IGNORECASE):
@@ -512,18 +531,30 @@ def rule_label_5u_weather_request(text: str, label: str = None, metadata: dict =
     m_atis = re.search(r'/([A-Z]{4})\.TI2/?', stripped, re.IGNORECASE)
     if m_atis:
         icao = m_atis.group(1).upper()
-        return f"Begär flygplatsväder (ATIS) för {icao}\nRådata: {stripped}"
+        ap_disp = format_airport(icao)
+        m_ad = re.search(r'/([A-Z]{4})\.TI2/(?:\d{1,4}\1)?([AD])', stripped, re.IGNORECASE)
+        atis_type = (m_ad.group(2).upper()) if m_ad else ''
+        if atis_type == 'A':
+            if isinstance(metadata, dict):
+                metadata['dst_airport'] = icao
+            desc = f"Begär landningsväder (Arrival ATIS) för {ap_disp}"
+        elif atis_type == 'D':
+            desc = f"Begär avgångsväder (Departure ATIS) för {ap_disp}"
+        else:
+            desc = f"Begär flygplatsväder (ATIS) för {ap_disp}"
+        return f"{desc}\nRådata: {stripped}"
 
     # ICAO flygplats sökning i väderbegäran
     m_icao = re.search(r'\b([A-Z]{4})\b', stripped)
     if m_icao:
         icao = m_icao.group(1).upper()
+        ap_disp = format_airport(icao)
         if lbl == 'B9':
-            return f"Begär flygplatsväder (ATIS) för {icao}\nRådata: {stripped}"
+            return f"Begär flygplatsväder (ATIS) för {ap_disp}\nRådata: {stripped}"
         elif lbl == 'A9':
-            return f"Flygplatsväder (ATIS) för {icao}\n{stripped}"
+            return f"Flygplatsväder (ATIS) för {ap_disp}\n{stripped}"
         elif lbl in ('5U', '57', 'WX'):
-            return f"Begäran om flygplatsväder (METAR) för {icao}\nRådata: {stripped}"
+            return f"Begäran om flygplatsväder (METAR) för {ap_disp}\nRådata: {stripped}"
 
     return None
 
@@ -727,8 +758,7 @@ def rule_fms_progress_destination(text: str, label: str = None, metadata: dict =
     if isinstance(metadata, dict):
         metadata['dst_airport'] = dst_code
 
-    ap_name = lookup_airport(dst_code)
-    dst_desc = f"{dst_code} ({ap_name})" if ap_name else dst_code
+    dst_desc = format_airport(dst_code)
 
     rwy_part = f" Bana {rwy}" if rwy else ""
     eta_str = f"{eta_raw[:2]}:{eta_raw[2:4]} UTC"

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.4] - Flygplatsformatering och Uppdatering av Destinationsbadge vid Arrival ATIS
+
+- **Universell Flygplatsformatering (`format_airport`) (`vdl2_receiver.py`, `acars_human_parser.py`)**:
+  - Implementerat hjälpfunktionen `format_airport(icao)` som slår upp 4-ställiga ICAO-koder i referenstabellen och returnerar `EKCH (Köpenhamn/Kastrup)`.
+  - Integrerat `format_airport(icao)` överallt där flygplatser presenteras i meddelanden: ATIS (`.TI2`), Departure Clearance (`.DC1`), Oceanic Clearance (`.OC1`), METAR och FMS-rapporter.
+- **Detektering av Arrival och Departure ATIS (`vdl2_receiver.py`, `acars_human_parser.py`)**:
+  - Avkodar specificerad ATIS-typ (bokstaven `A` = Arrival, `D` = Departure direkt efter sekvensnummer/flygplatskod i t.ex. `/EKCH.TI2/024EKCHA6237`).
+  - Presenterar tydligt och korrekt på svenska:
+    - Arrival: `Begär landningsväder (Arrival ATIS) för EKCH (Köpenhamn/Kastrup)`
+    - Departure: `Begär avgångsväder (Departure ATIS) för EKCH (Köpenhamn/Kastrup)`
+    - Standard: `Begär flygplatsväder (ATIS) för EKCH (Köpenhamn/Kastrup)`
+- **Destinationsbadge (`dst_airport`) Uppdateras vid Arrival ATIS (`vdl2_receiver.py`)**:
+  - Vid mottagande av Arrival ATIS (eller `.TI2` när planet har status `Airborne`) uppdateras paketets `dst_airport` till flygplatskoden (`EKCH`).
+  - Markstationsmetadata (`station`) uppdateras till `EKCH (Köpenhamn/Kastrup)`, vilket omedelbart ändrar den gröna badgen i UI från avgångsflygplatsen till den faktiska destinationen (`To: EKCH (Köpenhamn/Kastrup)`).
+- **Enhetstester (`tests/test_vdl2.py`)**:
+  - Uppdaterat `test_atis_departure_clearance` och lagt till `test_norwegian_arrival_atis_destination_badge` (för Norwegian `SE-RPF` / `D83195` med `/EKCH.TI2/024EKCHA6237`).
+  - Samtliga 73 enhetstester i hela testsviten passerar felfritt.
+
 ## [2026.10.15.3] - FMS Progress & Destination Report samt Boeing DFDAU/ACMS Motortelemetri
 
 - **FMS Progress & Destination Report (`acars_human_parser.py`, `vdl2_receiver.py`)**:

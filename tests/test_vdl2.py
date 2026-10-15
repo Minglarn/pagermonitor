@@ -128,8 +128,37 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertIsNotNone(res)
         self.assertEqual(res['label'], 'B9')
         self.assertIn('ATIS', res['label_desc'])
-        self.assertIn('Begär flygplatsväder (ATIS) för EKCH', res['message'])
+        self.assertIn('Begär landningsväder (Arrival ATIS) för EKCH (Köpenhamn/Kastrup)', res['message'])
         self.assertIn('/EKCH.TI2/024EKCHA6237', res['message'])
+        self.assertEqual(res['dst_airport'], 'EKCH')
+        self.assertIn('EKCH', res['station'])
+        self.assertIn('Köpenhamn/Kastrup', res['station'])
+
+    def test_norwegian_arrival_atis_destination_badge(self):
+        """Verifiera Norwegian SE-RPF (D83195) Arrival ATIS (/EKCH.TI2/024EKCHA6237) uppdaterar dst_airport och station."""
+        frame = {
+            'vdl2': {
+                'freq': 136875000,
+                'avlc': {
+                    'src': {'addr': '4ACA06', 'status': 'Airborne'},
+                    'dst': {'addr': '119AAA'},
+                    'acars': {
+                        'reg': '.SE-RPF',
+                        'flight': 'D83195',
+                        'label': 'B9',
+                        'msg_text': '/EKCH.TI2/024EKCHA6237'
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertEqual(res['flight'], 'D83195')
+        self.assertEqual(res['reg'], 'SE-RPF')
+        self.assertEqual(res['dst_airport'], 'EKCH')
+        self.assertIn('EKCH', res['station'])
+        self.assertIn('Köpenhamn/Kastrup', res['station'])
+        self.assertIn('Begär landningsväder (Arrival ATIS) för EKCH (Köpenhamn/Kastrup)', res['message'])
 
     def test_boeing_fms_prefix(self):
         text = humanize_acars_message('H1', '#M1BPOSN59102E017505,FL320')

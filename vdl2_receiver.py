@@ -105,6 +105,14 @@ AIRPORT_MAP = {
     'LTFM': 'Istanbul'
 }
 
+def format_airport(icao: str) -> str:
+    """Slår upp flygplatsnamn utifrån 4-ställig ICAO-kod och returnerar 'EKCH (Köpenhamn/Kastrup)'."""
+    if not icao:
+        return ""
+    code = str(icao).strip().upper()
+    ap_name = AIRPORT_MAP.get(code)
+    return f"{code} ({ap_name})" if ap_name else code
+
 # Länkkoder för Media Advisory (Label SA)
 LINK_NAMES = {
     'V': 'VHF ACARS',
@@ -157,10 +165,16 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
     if m_action:
         icao = m_action.group(1).upper()
         act = m_action.group(2).upper()
-        ap_name = AIRPORT_MAP.get(icao)
-        ap_disp = f"{icao} ({ap_name})" if ap_name else icao
+        ap_disp = format_airport(icao)
         if act == 'TI2':
-            desc = f"Begär aktuellt flygplatsväder (ATIS) för {ap_disp}"
+            m_ad = re.search(r'/([A-Z]{4})\.TI2/(?:\d{1,4}\1)?([AD])', txt, re.IGNORECASE)
+            atis_type = (m_ad.group(2).upper()) if m_ad else ''
+            if atis_type == 'A':
+                desc = f"Begär landningsväder (Arrival ATIS) för {ap_disp}"
+            elif atis_type == 'D':
+                desc = f"Begär avgångsväder (Departure ATIS) för {ap_disp}"
+            else:
+                desc = f"Begär flygplatsväder (ATIS) för {ap_disp}"
         elif act == 'DC1':
             desc = f"Begär starttillstånd (Departure Clearance) för {ap_disp}"
         elif act == 'OC1':
@@ -172,13 +186,13 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
     # 2b. Label B9 eller A9 med flygplatskod
     if lbl in ('B9', 'A9') and txt:
         m_icao = re.search(r'\b([A-Z]{4})\b', txt)
-        if m_icao and m_icao.group(1) in AIRPORT_MAP:
-            icao = m_icao.group(1)
-            ap_name = AIRPORT_MAP[icao]
+        if m_icao:
+            icao = m_icao.group(1).upper()
+            ap_disp = format_airport(icao)
             if lbl == 'B9':
-                return f"Begär flygplatsväder (ATIS) för {icao} ({ap_name}) | Rådata: {txt}"
+                return f"Begär flygplatsväder (ATIS) för {ap_disp} | Rådata: {txt}"
             else:
-                return f"Flygplatsväder (ATIS) för {icao} ({ap_name}) | {txt}"
+                return f"Flygplatsväder (ATIS) för {ap_disp} | {txt}"
 
     # 3. Boeing / Honeywell FMS & CMC prefix
     if txt.startswith('#M1B'):
@@ -485,14 +499,36 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
         dst_code = m_fms_dst.group(1).upper()
         res['dst_airport'] = dst_code
         rwy = m_fms_dst.group(2)
-        ap_name = AIRPORT_MAP.get(dst_code, '')
         rwy_part = f" Bana {rwy}" if rwy else ""
-        dst_str = f"Dest: {dst_code} ({ap_name}){rwy_part}" if ap_name else f"Dest: {dst_code}{rwy_part}"
+        dst_str = f"Dest: {format_airport(dst_code)}{rwy_part}"
         if res['telemetry_summary']:
             if dst_str not in res['telemetry_summary']:
                 res['telemetry_summary'] = f"{dst_str} | {res['telemetry_summary']}"
         else:
             res['telemetry_summary'] = dst_str
+
+    # Sök efter Arrival ATIS eller ATIS under flygning (t.ex. /EKCH.TI2/024EKCHA6237)
+    m_atis_dst = re.search(r'/([A-Z]{4})\.TI2/(?:\d{1,4}\1)?([AD])?', raw_text, re.IGNORECASE)
+    if m_atis_dst:
+        atis_icao = m_atis_dst.group(1).upper()
+        atis_type = (m_atis_dst.group(2) or '').upper()
+
+        is_airborne = False
+        if isinstance(vdl2_obj, dict):
+            avlc = vdl2_obj.get('avlc', {}) if isinstance(vdl2_obj, dict) else {}
+            src = avlc.get('src', {}) if isinstance(avlc, dict) else {}
+            st = str(src.get('status') or '').lower()
+            if 'air' in st:
+                is_airborne = True
+
+        if atis_type == 'A' or (atis_type != 'D' and is_airborne):
+            res['dst_airport'] = atis_icao
+            ap_str = f"Destination: {format_airport(atis_icao)}"
+            if res['telemetry_summary']:
+                if ap_str not in res['telemetry_summary']:
+                    res['telemetry_summary'] = f"{ap_str} | {res['telemetry_summary']}"
+            else:
+                res['telemetry_summary'] = ap_str
 
     # --- Mönster 4: Fallback till XID / GSIF / ADS-C struktur ur JSON ---
     if isinstance(vdl2_obj, dict):
@@ -973,10 +1009,17 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
     if not dst_airport and isinstance(acars, dict) and acars.get('dst_airport'):
         dst_airport = str(acars['dst_airport']).strip().upper()
 
-    # Om en destinationsflygplats är känd (FMS eller XID), uppdatera station_name så den gröna badgen visar rätt destination
+    # Kontrollera även i parse_vdl2_frame om Arrival ATIS (eller ATIS när Airborne) begärs
+    m_atis_chk = re.search(r'/([A-Z]{4})\.TI2/(?:\d{1,4}\1)?([AD])?', msg_text, re.IGNORECASE)
+    if m_atis_chk:
+        atis_icao = m_atis_chk.group(1).upper()
+        atis_type = (m_atis_chk.group(2) or '').upper()
+        if atis_type == 'A' or (atis_type != 'D' and ground_status == 'Airborne'):
+            dst_airport = atis_icao
+
+    # Om en destinationsflygplats är känd (FMS, Arrival ATIS eller XID), uppdatera station_name så den gröna badgen visar rätt destination
     if dst_airport:
-        ap_desc = AIRPORT_MAP.get(dst_airport, '')
-        station_name = f"{dst_airport} ({ap_desc})" if ap_desc else dst_airport
+        station_name = format_airport(dst_airport)
 
     # Om ingen text genererades, men telemetrisammanfattning finns
     if not message_lines:
