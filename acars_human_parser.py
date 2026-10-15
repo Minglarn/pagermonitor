@@ -946,17 +946,24 @@ def rule_boeing_dfdau_engine_telemetry(text: str, label: str = None, metadata: d
     if not is_target_label:
         return None
 
-    # Minst 85% siffror och mellanslag
-    digits_and_spaces = sum(1 for c in body if c.isdigit() or c.isspace())
-    if digits_and_spaces / len(body) < 0.85:
+    if stripped.startswith('MM'):
+        return None
+
+    # Minst 85% siffror, mellanslag, minustecken och hex-tecken (A-F)
+    telemetry_chars = sum(1 for c in body if c.isdigit() or c.isspace() or c in 'ABCDEFabcdef-')
+    if len(body) == 0 or telemetry_chars / len(body) < 0.85:
         return None
 
     tokens = body.split()
-    num_tokens = [t for t in tokens if t.isdigit()]
-    if len(num_tokens) < 10:
+    def is_telemetry_token(t: str) -> bool:
+        clean = t.lstrip('-')
+        return bool(clean) and all(c.isdigit() or c in 'ABCDEFabcdef' for c in clean)
+
+    telemetry_tokens = [t for t in tokens if is_telemetry_token(t)]
+    if len(telemetry_tokens) < 10 and not (len(body) >= 30 and len(telemetry_tokens) >= 3):
         return None
 
-    total_groups = len(num_tokens)
+    total_groups = len(telemetry_tokens)
 
     def scan_quads(min_lim):
         rpm_vals = []

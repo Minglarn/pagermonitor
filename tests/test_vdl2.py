@@ -1,7 +1,10 @@
 import unittest
 import base64
 import zlib
-from vdl2_receiver import parse_vdl2_frame, extract_position_and_telemetry, send_test_vdl2_message, humanize_acars_message, decode_miam_base85
+from vdl2_receiver import (
+    parse_vdl2_frame, extract_position_and_telemetry, send_test_vdl2_message,
+    humanize_acars_message, decode_miam_base85, reset_partial_acars_cache
+)
 
 class TestVDL2Receiver(unittest.TestCase):
     def test_miam_airbus_telemetry_extraction(self):
@@ -718,6 +721,103 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertIn('💬 Pilotmeddelande: "HI BER — REQ FUEL 5.6T"', res['message'])
         self.assertIn('Rådata:', res['message'])
         self.assertIn('HI BER', res['message'])
+
+    def test_acars_multi_block_reassembly(self):
+        """Verifiera att ACARS multi-block med more: True filtreras bort tills slutblocket more: False anländer."""
+        reset_partial_acars_cache()
+        # Delblock 1 av 2: Fler block väntas (more: True, reassembly_in_progress) -> skall filtreras bort (None)
+        frame1 = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '48AD12'},
+                    'acars': {
+                        'reg': 'SP-LYM',
+                        'flight': 'LO0454',
+                        'label': 'H1',
+                        'more': True,
+                        'assstat': 'reassembly_in_progress',
+                        'msg_text': '-010760 9388 '
+                    }
+                }
+            }
+        }
+        res1 = parse_vdl2_frame(frame1)
+        self.assertIsNone(res1, "Delblock med more=True eller assstat=reassembly_in_progress skall ignoreras")
+
+        # Delblock 2 av 2: Sista blocket (more: False, complete)
+        frame2 = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '48AD12'},
+                    'acars': {
+                        'reg': 'SP-LYM',
+                        'flight': 'LO0454',
+                        'label': 'H1',
+                        'more': False,
+                        'assstat': 'complete',
+                        'msg_text': '-010760 9388 6780018CE0000000003494300000100007F00100000 0007F0010000000000 9158 9204 9700 533131 00 7858 8423 8589 8926'
+                    }
+                }
+            }
+        }
+        res2 = parse_vdl2_frame(frame2)
+        self.assertIsNotNone(res2, "Slutblocket skall producera ett giltigt sammanslaget meddelande")
+        self.assertEqual(res2['flight'], 'LO0454')
+        self.assertIn('[Boeing Motortelemetri / DFDAU]', res2['message'])
+        self.assertIn('Rådata:', res2['message'])
+        self.assertIn('-010760 9388', res2['message'])
+        self.assertIn('6780018CE0000000003494300000100007F00100000', res2['message'])
+
+        # Del 1b: Egen sammanslagning när dumpvdl2 inte slagit ihop texten i förväg
+        reset_partial_acars_cache()
+        f_part1 = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '48AD12'},
+                    'acars': {'reg': 'SP-LYM', 'label': 'H1', 'more': True, 'msg_text': 'CHUNK_AAA_'}
+                }
+            }
+        }
+        self.assertIsNone(parse_vdl2_frame(f_part1))
+        f_part2 = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '48AD12'},
+                    'acars': {'reg': 'SP-LYM', 'label': 'H1', 'more': False, 'msg_text': 'CHUNK_BBB_END'}
+                }
+            }
+        }
+        res_combined = parse_vdl2_frame(f_part2)
+        self.assertIsNotNone(res_combined)
+        self.assertIn('CHUNK_AAA_CHUNK_BBB_END', res_combined['message'])
+
+    def test_boeing_dfdau_hex_and_negative_telemetry(self):
+        """Verifiera DFDAU-telemetri innehållande minustecken (-010760 9388) och hexadecimala statusord (6780018CE000...)."""
+        raw_msg = '-010760 9388 6780018CE0000000003494300000100007F00100000 0007F0010000000000 9158 9204 9700 533131 00 7858 8423 8589 8926'
+        frame = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '48AD12'},
+                    'acars': {
+                        'reg': 'SP-LYM',
+                        'flight': 'LO0454',
+                        'label': 'H1',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertIn('[Boeing Motortelemetri / DFDAU]', res['message'])
+        self.assertIn('Rådata:', res['message'])
+        self.assertIn('-010760 9388', res['message'])
+        self.assertIn('6780018CE0000000003494300000100007F00100000', res['message'])
 
 if __name__ == '__main__':
     unittest.main()

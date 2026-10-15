@@ -43,6 +43,24 @@ ACARS_LABELS = dict(PARSER_ACARS_LABELS)
 ACARS_LABELS['H2'] = 'Meteorologisk rapport (AMDAR)'
 LABEL_MAP = ACARS_LABELS
 
+# Multi-block ACARS Reassembly buffer för dumpvdl2
+# Nyckel: (reg/addr, label) -> {'chunks': [str], 'first_seen': float, 'last_seen': float}
+PARTIAL_ACARS = {}
+PARTIAL_ACARS_LOCK = threading.Lock()
+
+def cleanup_partial_acars(now=None, max_age=30.0):
+    """Rensar utgångna delblock som inte fått sitt slutblock inom max_age sekunder."""
+    t_now = now if now is not None else time.time()
+    with PARTIAL_ACARS_LOCK:
+        expired = [k for k, v in PARTIAL_ACARS.items() if t_now - v.get('last_seen', t_now) > max_age]
+        for k in expired:
+            PARTIAL_ACARS.pop(k, None)
+
+def reset_partial_acars_cache():
+    """Tömmer bufferten för multi-block ACARS (används primärt i enhetstester)."""
+    with PARTIAL_ACARS_LOCK:
+        PARTIAL_ACARS.clear()
+
 
 # Kända ICAO-flygplatser och deras namn
 AIRPORT_MAP = {
@@ -1262,6 +1280,53 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
     # Filter för länktest (Label Q0) om filter_links är på
     if filter_links and label.upper() == 'Q0':
         return None
+
+    # Multi-block ACARS Reassembly (dumpvdl2)
+    # Kontrollera fälten 'more' och 'assstat' från dumpvdl2
+    is_more = False
+    assstat = ""
+    if isinstance(acars, dict):
+        is_more = bool(acars.get('more') is True)
+        assstat = str(acars.get('assstat') or '').strip().lower()
+    if not is_more and not assstat and isinstance(data, dict):
+        is_more = bool(data.get('more') is True)
+        assstat = str(data.get('assstat') or '').strip().lower()
+
+    cleanup_partial_acars()
+
+    ac_id = (reg or src_addr or flight or 'UNKNOWN').upper()
+    lbl_clean = (label or '').strip().upper()
+    partial_key = (ac_id, lbl_clean)
+
+    # Om dumpvdl2 indikerar att fler delblock väntas, eller reassembly pågår
+    if is_more or assstat == 'reassembly_in_progress':
+        with PARTIAL_ACARS_LOCK:
+            entry = PARTIAL_ACARS.setdefault(partial_key, {'chunks': [], 'first_seen': time.time(), 'last_seen': time.time()})
+            if msg_text:
+                entry['chunks'].append(msg_text)
+            entry['last_seen'] = time.time()
+        # Ignorera delblocket tills meddelandet är komplett (skicka inte ut till UI/DB)
+        return None
+
+    # När slutblocket kommer (more is False eller assstat == 'complete' eller fristående paket):
+    # Kolla om vi har tidigare sparade delblock för detta flygplan och label
+    saved_entry = None
+    with PARTIAL_ACARS_LOCK:
+        if partial_key in PARTIAL_ACARS:
+            saved_entry = PARTIAL_ACARS.pop(partial_key, None)
+
+    if saved_entry and saved_entry.get('chunks'):
+        saved_chunks = saved_entry['chunks']
+        first_chunk = saved_chunks[0]
+        # Om dumpvdl2 redan har slagit ihop hela texten i msg_text:
+        if first_chunk and first_chunk in msg_text and len(msg_text) >= sum(len(c) for c in saved_chunks):
+            pass
+        else:
+            # Slå ihop de sparade delblocken och eventuellt sista blockets text
+            combined = "".join(saved_chunks)
+            if msg_text and msg_text not in combined:
+                combined += msg_text
+            msg_text = combined
 
     # C) CPDLC (Flygledningsmeddelanden):
     cpdlc_data = None

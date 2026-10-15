@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.16`
+- **CalVer**: `2026.10.15.17`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
@@ -2142,6 +2142,23 @@
   - Samtliga 82 enhetstester passerar (`python -m unittest discover tests`).
   - Emoji-granskning verifierad: Inga otillåtna emojis i applikationen.
   - Versionsbump till CalVer `2026.10.15.16` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
+### 77. ACARS Multi-block Reassembly och Boeing DFDAU med Hex & Negativa Värden (v2026.10.15.17)
+- **Multi-block Reassembly i Receivern ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Flygplan som sänder stora datamängder (t.ex. LOT Polish Airlines Boeing DFDAU) delar upp dem i multipla ACARS-block med `more: True` och `assstat: "reassembly_in_progress"`.
+  - Implementerat en trådsäker minnescache `PARTIAL_ACARS` (`threading.Lock()`).
+  - Om `is_more` är sant eller `assstat == 'reassembly_in_progress'` sparas texten i bufferten och `parse_vdl2_frame()` returnerar omedelbart `None`. Inga ofullständiga delblock släpps igenom till databasen eller gränssnittet.
+  - När slutblocket tas emot (`more: False` eller `assstat == 'complete'`): om `dumpvdl2` redan pusslat ihop meddelandet i `msg_text` används det direkt; annars slås de sparade delblocken ihop med slutblocket till ett enda sammanhållet meddelande.
+  - Automatisk städning med 30 sekunders timeout via `cleanup_partial_acars()` och cachetömning för tester via `reset_partial_acars_cache()`.
+- **Boeing DFDAU Motortelemetri med Hex & Negativa Värden ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - `rule_boeing_dfdau_engine_telemetry` har uppdaterats för att acceptera minustecken och hexadecimala statusord (`[0-9A-Fa-f\s\-]`).
+  - Rader som `-010760 9388 6780018CE0000000003494300000100007F00100000...` tolkas nu korrekt som `[Boeing Motortelemetri / DFDAU]`, och all rådata placeras automatiskt bakom `</> Rådata`-badgen.
+  - `rule_label_h1_mm_telemetry` skyddas mot överlappning genom kontroll på `MM`-prefix.
+- **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
+  - `test_acars_multi_block_reassembly`: Verifierar att delblock filtreras bort och att slutblocket ger ett komplett samlat meddelande (både för `dumpvdl2`-assisterad reassembly och intern sammanfogning).
+  - `test_boeing_dfdau_hex_and_negative_telemetry`: Verifierar avkodning av DFDAU-telemetri med negativa tal och hex-statusord.
+  - Samtliga 84 enhetstester passerar utan anmärkning.
+  - Versionsbump till CalVer `2026.10.15.17` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
 
 
 

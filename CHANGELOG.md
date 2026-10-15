@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.17] - ACARS Multi-block Reassembly och Boeing DFDAU med Hex & Negativa Värden
+
+- **Multi-block Reassembly Buffer i `vdl2_receiver.py`**:
+  - Implementerat hantering av flerblockiga ACARS-meddelanden via fälten `more` och `assstat` från `dumpvdl2`.
+  - När `assstat == "reassembly_in_progress"` eller `more is True`: delblock sparas i en trådsäker minnescachen `PARTIAL_ACARS` och ignoreras temporärt (`None`) så att ofullständiga fragment inte loggas eller skickas ut till UI/DB.
+  - När slutblocket anländer (`more is False` eller `assstat == "complete"`): om `dumpvdl2` redan slagit ihop meddelandet i `msg_text` används det direkt, annars konkateneras de sparade delblocken till ett enda komplett meddelande.
+  - Automatisk städning via `cleanup_partial_acars()` med 30 sekunders timeout för att förhindra minnesläckor vid signalbortfall samt `reset_partial_acars_cache()` för enhetstester.
+- **Boeing DFDAU / Motortelemetri med Hex & Negativa Värden (`acars_human_parser.py`)**:
+  - Utökat `rule_boeing_dfdau_engine_telemetry` till att acceptera minustecken (`-`) och hexadecimala statusord (`[0-9A-Fa-f\s\-]`).
+  - Tolkar nu korrekt telemetriramar innehållande negativa tal (t.ex. `-010760 9388`) och långa hex-statusord (t.ex. `6780018CE0000000003494300000100007F00100000`), presenterar dem som `[Boeing Motortelemetri / DFDAU]` och placerar rådatan bakom `</> Rådata`-badgen.
+  - Skyddat MM-telemetriloggar (`rule_label_h1_mm_telemetry`) från falskträffar genom explicit kontroll.
+- **Enhetstester (`tests/test_vdl2.py`)**:
+  - `test_acars_multi_block_reassembly`: Verifierar att delblock med `more: True` ignoreras och att det slutgiltiga blocket (`more: False`) skapar exakt ett komplett meddelande (både för extern dumpvdl2-hopsättning och intern konkatenering).
+  - `test_boeing_dfdau_hex_and_negative_telemetry`: Verifierar att DFDAU med minustecken och hex-statusord tolkas och presenteras korrekt.
+
 ## [2026.10.15.16] - Multi-Select Filter med Checkbox-Dropdowns och Aktiva Filter-Chips
 
 - **Multi-Select Filter-State (`activeFilters` med Sets i `index.html`)**:
