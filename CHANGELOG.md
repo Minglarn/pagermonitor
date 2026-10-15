@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.22] - Fix för Flödesuppdatering i Realtid, Återanslutning av SSE och Fallback-Polling
+
+- **Realtidsflöde och Dynamisk Sortering i DataTables ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Åtgärdat fel där inkommande meddelanden från SSE-strömmen (`/stream`) inte automatiskt hamnade överst i meddelandeflödet utan krävde manuell siduppdatering (F5).
+  - DataTables anropas nu med explicit omsortering `dataTable.order([[1, 'desc']]).draw(false);` när nya rader läggs till via `processIncomingMessage()`, vilket garanterar att nya rader omedelbart placeras överst på sidan.
+  - Implementerat automatisk återanslutning (`connectSSE`) med 3 sekunders återförsök vid avbruten eller stängd EventSource-anslutning.
+- **Robust Fallback-Polling för Inkommande Händelser ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [app.py](file:///d:/antigravity/pager-monitor/app.py), [database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+  - Implementerat säkerhetsnät i frontend med bakgrundspolling var 5:e sekund via `/api/messages?since_id=<maxId>`. Detta förhindrar att händelser missas om webbläsaren pausat flikar, nätverket tappat SSE-anslutningen eller proxyservrar buffrat dataströmmar.
+  - Tillagt stöd för parameter `since_id` i `get_recent_messages()` i [database.py](file:///d:/antigravity/pager-monitor/database.py) och `/api/messages` i [app.py](file:///d:/antigravity/pager-monitor/app.py) för optimal SQL-hämtning (`WHERE m.id > ?`).
+- **Åtgärdad Äldre Bakgrundsprocess**:
+  - Avslutat en föråldrad bakgrundsprocess (PID 27488) som körts sedan 12 oktober utan VDL2-stöd i SSE, och startat den aktuella serverkoden.
+- **Enhetstester och Emojiförbud**:
+  - Samtliga 92 enhetstester passerar felfritt och 0 otillåtna emojis finns i kodbasen.
+
 ## [2026.10.15.21] - Avkodning av KLM POS, Airbus/Finnair FMS-delblock, H1/H2/DF-fallback och Freetext-restriktioner
 
 - **Begränsning av `Pilotmeddelande:` till Konversations-Labels och `.FREE` / `FTX/` ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
@@ -36,7 +50,7 @@ and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 ## [2026.10.15.20] - Totalförbud mot Emojis, Nyckel/Värde POS-Telemetri och Skärpt Pilotfritext-Filter
 
 - **Totalförbud mot Emojis i Hela Kodbasen**:
-  - Raderat samtliga förekomster av pratbubblan `💬` (U+1F4AC) och alla andra emojis i backend ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py)) och frontend ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html)).
+  - Raderat samtliga förekomster av pratbubblan `` (U+1F4AC) och alla andra emojis i backend ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py)) och frontend ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html)).
   - Meddelandeprefix är nu uteslutande `Pilotmeddelande:` i ren text och filtermeny/chips visar `Pilotmeddelanden`.
   - Automatisk emojiskanning bekräftar 0 otillåtna emojis i hela systemet.
 - **Avkodning av Nyckel/Värde-baserade `POS`-rapporter ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
@@ -60,12 +74,12 @@ and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
   - Matchar mönstret `(?:[A-Z0-9]+/)?LSCONF/([A-Z0-9]+)/([A-Z]{4})/([A-Z]{4})/(\d+|--)` (t.ex. `V09CA032/LSCONF/SK1423/ESSA/EKCH/11859/--/`).
   - Översätter flygplatskoder med `format_airport()`, uppdaterar `dst_airport` i metadata och formaterar som:
     `[Lastbesked / Loadsheet (LSCONF)] Kvittens av last- och viktbesked för flight SK1423 | Rutt: ESSA (Stockholm/Arlanda) → EKCH (Köpenhamn/Kastrup)` med rådata bifogad bakom `</> Rådata`-badgen.
-- **Skärpta Regler för `💬 Pilotmeddelande:` i `acars_human_parser.py`**:
+- **Skärpta Regler för ` Pilotmeddelande:` i `acars_human_parser.py`**:
   - Maskinell telemetri och Loadsheet-bekräftelser förhindras från att klassas som pilotmeddelanden genom tre strikta krav:
     1. Raden **måste** innehålla minst ett mellanslag mellan riktiga ord.
     2. Raden får **inte** innehålla fler än 1 snedstreck per 15 tecken, och blockerar strukturerad komma-/snedstrecks-telemetri (>= 3 avskiljare).
     3. Raden får **inte** inledas med kända tekniska prefix (`V09`, `PLF `, `FDE `, `MSG `, `/ETA`, `/FOB`, `PRG/`, `INI/`, `FTX/`, `POS`, `REP`, `02E`, `#DFB`, `#CFB`, `#M1B`).
-  - Riktig mänsklig fritext (t.ex. `HI BER\nREQ FUEL 5.6T`) bevaras och formateras korrekt som `💬 Pilotmeddelande: "HI BER — REQ FUEL 5.6T"`.
+  - Riktig mänsklig fritext (t.ex. `HI BER\nREQ FUEL 5.6T`) bevaras och formateras korrekt som ` Pilotmeddelande: "HI BER — REQ FUEL 5.6T"`.
 - **Enhetlig Struktur och Riktiga Enheter för FMS- och Väderrapporter**:
   - `rule_label_h1_posn_fms` och `rule_label_38_finnair_weather`: Använder alltid ` | ` mellan fält samt riktiga enheter (`Höjd: FL360 (36 000 ft) | Temp: -54°C | Vind: 314° / 45 kt`).
   - Koordinatkonvertering för "Nästa brytpunkt" via `format_waypoint_or_coord()`: Råa koordinater (`N59101E020416`) konverteras nu automatiskt till decimalgrader (`59.1683, 20.6933`).
@@ -173,7 +187,7 @@ and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
     1. **Protokoll-filter**: Dynamiskt val mellan `Alla protokoll`, `POCSAG`, `VDL2`, `SONDE`, `TETRA`, `RDS` med meddelandeantal.
     2. **Frekvens-filter**: Dynamiskt befolkad lista över unika frekvenser med meddelandeantal i parentes.
     3. **VDL2-specifika filter**: Känner av `vdl2_enabled` i inställningar – om VDL2 är avstängt döljs VDL2-dropdowns helt så att gränssnittet hålls rent för POCSAG.
-       - **ACARS Label-filter**: Unika labels med beskrivning (`H1 (FMS)`, `16 (Position/Landning)`, `80 (Operativt/Fritext)` etc.) samt toppvalet `💬 Endast pilotmeddelanden / fritext`.
+       - **ACARS Label-filter**: Unika labels med beskrivning (`H1 (FMS)`, `16 (Position/Landning)`, `80 (Operativt/Fritext)` etc.) samt toppvalet ` Endast pilotmeddelanden / fritext`.
        - **Flygplats-filter**: Unika rutt- och markstationsflygplatser (`ESSA (Arlanda)`, `ESDF (Kallinge)`, `EFHK (Helsingfors/Vanda)`).
 - **Click-to-Filter på alla badgar i tabellen (`templates/index.html`)**:
   - Alla badgar i tabellens celler är klickbara med subtil hover-effekt och verktygstips:
@@ -201,7 +215,7 @@ and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 - **Backend: Rättad ETA-validering, /FOB och Pilotfritext (`vdl2_receiver.py`, `acars_human_parser.py`)**:
   - Strikt validering av ETA: Kräver timmar `00–23` och minuter `00–59` (`(?:[01]\d|2[0-3])[0-5]\d`), vilket förhindrar att flightnummer (som `4505` i `3401 ETA 4505/15`) felaktigt tolkas som `45:05 UTC`.
   - Parsar `/ETA` -> `ETA: 09:25 UTC` och `/FOB` -> `Bränsle (FOB): 4 280 kg`.
-  - Extraherar mänsklig pilotfritext (t.ex. `HI BER` / `REQ FUEL 5.6T`) till `💬 Pilotmeddelande: "HI BER — REQ FUEL 5.6T"`.
+  - Extraherar mänsklig pilotfritext (t.ex. `HI BER` / `REQ FUEL 5.6T`) till ` Pilotmeddelande: "HI BER — REQ FUEL 5.6T"`.
   - Standardiserat rådatamarkören till `\nRådata: <original_msg>` utan onödig trunkering.
 - **Enhetstester (`tests/test_vdl2.py`, `tests/test_acars_human_parser.py`)**:
   - Lagt till `test_norwegian_label_80_eta_fob_and_pilot_freetext` och uppdaterat `test_boeing_dfdau_engine_telemetry`.

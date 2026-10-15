@@ -377,7 +377,7 @@ def reindex_messages(already_open_conn=None):
         conn.commit()
         conn.close()
 
-def get_recent_messages(limit=None, before_id=None, search=None, alerts_only=False, exclude_duplicates=False):
+def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, alerts_only=False, exclude_duplicates=False):
     conn = get_connection()
     c = conn.cursor()
     
@@ -412,6 +412,10 @@ def get_recent_messages(limit=None, before_id=None, search=None, alerts_only=Fal
     if before_id:
         where_clauses.append('m.id < ?')
         params.append(before_id)
+        
+    if since_id:
+        where_clauses.append('m.id > ?')
+        params.append(since_id)
         
     if search:
         search_term = f'%{search}%' # For LIKE

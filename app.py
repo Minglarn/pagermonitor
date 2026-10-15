@@ -117,7 +117,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.15.21"
+APP_VERSION = "2026.10.15.22"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
@@ -281,6 +281,7 @@ def stats_freq_hits():
 @app.route('/api/messages')
 def get_messages():
     before_id = request.args.get('before_id', type=int)
+    since_id = request.args.get('since_id', type=int)
     limit_raw = request.args.get('limit', default='500')
     if str(limit_raw).lower() in ('all', 'none', '0'):
         limit = None
@@ -297,7 +298,7 @@ def get_messages():
     include_dups = request.args.get('include_duplicates', '0').lower() in ('1', 'true')
     exclude_duplicates = (dup_handling == 'hide') and not include_dups
 
-    messages = get_recent_messages(limit, before_id, search_query, alerts_only=alerts_only, exclude_duplicates=exclude_duplicates)
+    messages = get_recent_messages(limit, before_id, since_id=since_id, search=search_query, alerts_only=alerts_only, exclude_duplicates=exclude_duplicates)
     return jsonify(messages)
 
 @app.route('/api/messages/clear', methods=['POST'])

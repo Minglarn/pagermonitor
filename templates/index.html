@@ -2657,50 +2657,13 @@
                 loading.innerText = 'Failed to load messages.';
             }
 
-            // Real-time SSE updates
+            // Real-time SSE updates & message processing
             const satIcon = document.getElementById('satellite-icon');
             const rxIndicator = document.getElementById('rx-indicator');
             const statusMsg = document.getElementById('conn-status-msg');
 
-            const evtSource = new EventSource("/stream");
-
-            evtSource.onopen = function () {
-                satIcon.classList.remove('conn-error');
-                satIcon.classList.add('conn-ok');
-                if (statusMsg) statusMsg.style.display = 'none';
-            };
-
-            evtSource.onerror = function () {
-                satIcon.classList.remove('conn-ok');
-                satIcon.classList.add('conn-error');
-                if (statusMsg) {
-                    statusMsg.innerText = "Connection Lost";
-                    statusMsg.style.display = 'block';
-                }
-            };
-
-            evtSource.onmessage = function (event) {
-                // Flash activity
-                satIcon.classList.remove('extreme-pulse');
-                void satIcon.offsetWidth;
-                satIcon.classList.add('extreme-pulse');
-
-                if (rxIndicator) {
-                    rxIndicator.classList.add('rx-active');
-                    setTimeout(() => rxIndicator.classList.remove('rx-active'), 800);
-                }
-
-                let data;
-                try {
-                    data = JSON.parse(event.data);
-                } catch (e) {
-                    return;
-                }
-
-                // Ignore activity pings (sent when garbage or duplicate is filtered) or malformed events
-                if (!data || data.type === 'ping' || !data.id) {
-                    return;
-                }
+            function processIncomingMessage(data) {
+                if (!data || !data.id || data.type === 'ping') return;
 
                 // Handle merged duplicate / repeat update
                 if (data.type === 'repeat_update') {
@@ -2763,16 +2726,18 @@
                 }
 
                 if (isLivePaused) {
-                    pausedQueue.push(data);
-                    const badge = document.getElementById('livePauseBadge');
-                    const bannerCount = document.getElementById('pausedBannerCount');
-                    const bar = document.getElementById('pausedNotificationBar');
-                    if (badge) {
-                        badge.textContent = pausedQueue.length;
-                        badge.style.display = 'inline-flex';
+                    if (!pausedQueue.some(p => p.id === data.id)) {
+                        pausedQueue.push(data);
+                        const badge = document.getElementById('livePauseBadge');
+                        const bannerCount = document.getElementById('pausedBannerCount');
+                        const bar = document.getElementById('pausedNotificationBar');
+                        if (badge) {
+                            badge.textContent = pausedQueue.length;
+                            badge.style.display = 'inline-flex';
+                        }
+                        if (bannerCount) bannerCount.textContent = pausedQueue.length;
+                        if (bar) bar.style.display = 'flex';
                     }
-                    if (bannerCount) bannerCount.textContent = pausedQueue.length;
-                    if (bar) bar.style.display = 'flex';
                 } else {
                     if (!allAlarms.some(a => a.id === data.id)) {
                         allAlarms.unshift(data);
@@ -2782,12 +2747,85 @@
                         newRow.classList.add('new-msg-pulse');
 
                         if (dataTable) {
-                            dataTable.row.add(newRow).draw(false);
+                            dataTable.row.add(newRow);
+                            dataTable.order([[1, 'desc']]).draw(false);
                         }
                         scheduleDropdownRefresh();
                     }
                 }
-            };
+            }
+
+            let evtSource = null;
+            let sseReconnectTimer = null;
+
+            function connectSSE() {
+                if (evtSource) {
+                    try { evtSource.close(); } catch (e) {}
+                }
+
+                evtSource = new EventSource("/stream");
+
+                evtSource.onopen = function () {
+                    satIcon.classList.remove('conn-error');
+                    satIcon.classList.add('conn-ok');
+                    if (statusMsg) statusMsg.style.display = 'none';
+                };
+
+                evtSource.onerror = function () {
+                    satIcon.classList.remove('conn-ok');
+                    satIcon.classList.add('conn-error');
+                    if (statusMsg) {
+                        statusMsg.innerText = "Connection Lost";
+                        statusMsg.style.display = 'block';
+                    }
+                    if (evtSource.readyState === EventSource.CLOSED) {
+                        clearTimeout(sseReconnectTimer);
+                        sseReconnectTimer = setTimeout(connectSSE, 3000);
+                    }
+                };
+
+                evtSource.onmessage = function (event) {
+                    // Flash activity
+                    satIcon.classList.remove('extreme-pulse');
+                    void satIcon.offsetWidth;
+                    satIcon.classList.add('extreme-pulse');
+
+                    if (rxIndicator) {
+                        rxIndicator.classList.add('rx-active');
+                        setTimeout(() => rxIndicator.classList.remove('rx-active'), 800);
+                    }
+
+                    let data;
+                    try {
+                        data = JSON.parse(event.data);
+                    } catch (e) {
+                        return;
+                    }
+
+                    processIncomingMessage(data);
+                };
+            }
+
+            connectSSE();
+
+            // Säkerhetsnät: Bakgrundspolling var 5:e sekund för att garantera att inga meddelanden missas
+            setInterval(async () => {
+                if (isLivePaused || !allAlarms || allAlarms.length === 0) return;
+                try {
+                    const maxId = allAlarms.reduce((max, a) => (a.id && a.id > max ? a.id : max), 0);
+                    if (maxId <= 0) return;
+                    const res = await fetch(`/api/messages?since_id=${maxId}`);
+                    if (!res.ok) return;
+                    const newItems = await res.json();
+                    if (Array.isArray(newItems) && newItems.length > 0) {
+                        // Sortera i kronologisk ordning så att de läggs till rätt
+                        newItems.sort((a, b) => (a.id || 0) - (b.id || 0));
+                        newItems.forEach(item => processIncomingMessage(item));
+                    }
+                } catch (e) {
+                    // Ignorera tillfälliga nätverksfel
+                }
+            }, 5000);
 
             // Handle alias modal save
             const aliasModalForm = document.getElementById('aliasModalForm');

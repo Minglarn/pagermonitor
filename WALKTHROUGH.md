@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.18`
+- **CalVer**: `2026.10.15.22`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
@@ -2016,14 +2016,14 @@
   - Extraherar och formaterar flygplatser via `format_airport()` och uppdaterar automatiskt `dst_airport`-metadatat (t.ex. `EDDB` -> `Berlin/Brandenburg`).
 - **Framhävning av Mänsklig Pilot-fritext ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
   - Extraherar fritextrader under tekniska headers i operativa meddelanden (t.ex. `Label: 80`, `RA`) och sammanfogar dem till en tydlig rad:
-    `💬 Pilotmeddelande: "HI BER — REQ FUEL 5.6T"`.
+    ` Pilotmeddelande: "HI BER — REQ FUEL 5.6T"`.
 - **Standardisering av Rådata-avgränsare ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
   - Standardiserat all rådata till `\nRådata: <original_text>` i slutet av meddelandet.
   - Tagit bort godtycklig avkortning med `[:35] + '...'` i Python-reglerna så att full rådata bevaras för visning i gränssnittet.
 - **Kollapsbar `<details>`-sektion i Frontend ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
   - Uppdaterat `formatMessage()` i Dashboard, Alarms och Statistics så att meddelanden med `\nRådata:` eller `| Rådata:` delas upp i `parsedSummary` och `rawText`.
   - Båda delarna XSS-skyddas med `escapeHtml()`.
-  - Rader som innehåller pilotfritext (`💬`) ges en framträdande stil via CSS-klassen `.pilot-freetext-highlight`.
+  - Rader som innehåller pilotfritext (``) ges en framträdande stil via CSS-klassen `.pilot-freetext-highlight`.
   - `rawText` renderas som en kollapsbar sektion:
     ```html
     <details class="raw-data-details">
@@ -2033,10 +2033,10 @@
     ```
   - Stylad med diskret länktext och mörk/ljus anpassad monospace-ruta (`.raw-data-content`).
 - **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
-  - Tillagt `test_norwegian_label_80_eta_fob_and_pilot_freetext` för att verifiera Norwegian `3401 ETA 4505/15 ESSA/EDDB .SE-RYC`, `ETA: 09:25 UTC`, `Bränsle (FOB): 4 280 kg` samt `💬 Pilotmeddelande: "HI BER — REQ FUEL 5.6T"`.
+  - Tillagt `test_norwegian_label_80_eta_fob_and_pilot_freetext` för att verifiera Norwegian `3401 ETA 4505/15 ESSA/EDDB .SE-RYC`, `ETA: 09:25 UTC`, `Bränsle (FOB): 4 280 kg` samt ` Pilotmeddelande: "HI BER — REQ FUEL 5.6T"`.
   - Samtliga 80 tester passerar felfritt.
 - **Emoji-granskning**:
-  - Strikt granskad. Endast den begärda pilotfritext-indikatorn `💬` tillåten i meddelandeparsningen. Inga övriga emojis.
+  - Strikt granskad. Endast den begärda pilotfritext-indikatorn `` tillåten i meddelandeparsningen. Inga övriga emojis.
 
 ---
 
@@ -2182,12 +2182,12 @@
   - Implementerat `rule_lsconf_loadsheet` som matchar `(?:[A-Z0-9]+/)?LSCONF/([A-Z0-9]+)/([A-Z]{4})/([A-Z]{4})/(\d+|--)`.
   - Översätter flygplatskoder (`ESSA` -> `ESSA (Stockholm/Arlanda)`, `EKCH` -> `EKCH (Köpenhamn/Kastrup)`), uppdaterar metadata `dst_airport` och flightnummer, samt formaterar som:
     `[Lastbesked / Loadsheet (LSCONF)] Kvittens av last- och viktbesked för flight SK1423 | Rutt: ESSA (Stockholm/Arlanda) → EKCH (Köpenhamn/Kastrup)`.
-- **Skärpta Regler för `💬 Pilotmeddelande:` ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+- **Skärpta Regler för ` Pilotmeddelande:` ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
   - För att förhindra att maskinell telemetri misstas för pilotfritext måste varje fritextrad uppfylla tre strikta villkor:
     1. **Mellanslagskrav**: Raden måste innehålla minst ett mellanslag mellan ord (`' ' in l`). Sammanhängande maskinkoder utan mellanslag blockeras alltid.
     2. **Snedstrecks- och teckentäthetskrav**: Raden får inte innehålla fler än 1 snedstreck per 15 tecken, och blockerar strukturerade data med >= 3 snedstreck eller kommatecken.
     3. **Tekniska prefixfilter**: Blockerar rader med kända maskinprefix (`V09`, `PLF `, `FDE `, `MSG `, `/ETA`, `/FOB`, `PRG/`, `INI/`, `FTX/`, `POS`, `REP`, `02E`, `#DFB`, `#CFB`, `#M1B`).
-  - Verifierat att genuina pilotmeddelanden med mellanslag (t.ex. `HI BER\nREQ FUEL 5.6T`) bevaras och presenteras med `💬 Pilotmeddelande:`.
+  - Verifierat att genuina pilotmeddelanden med mellanslag (t.ex. `HI BER\nREQ FUEL 5.6T`) bevaras och presenteras med ` Pilotmeddelande:`.
 - **Förbättrad FMS & Vädertelemetri med Enheter och Avdelare ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
   - För Finnair `OH-LZP`, `AY04PE` (`Label: H1`) och andra FMS/väder-meddelanden:
     - Lagt till fältavdelare ` | ` och riktiga fysikaliska enheter: `Höjd: FL360 (36 000 ft) | Temp: -54°C | Vind: 314° / 45 kt`.
@@ -2205,7 +2205,7 @@
 
 ### 80. Totalförbud mot Emojis, Nyckel/Värde POS-Telemetri och Skärpt Pilotfritext-Filter (v2026.10.15.20)
 - **Totalförbud mot Emojis i Hela Kodbasen ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
-  - Raderat samtliga förekomster av pratbubblan `💬` (U+1F4AC) och alla övriga emojis.
+  - Raderat samtliga förekomster av pratbubblan `` (U+1F4AC) och alla övriga emojis.
   - Meddelandeprefix är nu uteslutande `Pilotmeddelande:` i ren text och filtermeny/chips visar `Pilotmeddelanden`.
   - Automatisk unicode-skanning bekräftar 0 otillåtna emojis i hela systemet.
 - **Avkodning av Nyckel/Värde-baserade `POS`-rapporter ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
@@ -2250,3 +2250,17 @@
   - Tillagt `test_hainan_airlines_free_text_header`, `test_klm_icao_pos_report`, `test_finnair_fms_delblock_continuation` och `test_lufthansa_fms_system_fallback`.
   - Samtliga 92 enhetstester i hela testsviten passerar felfritt och 0 otillåtna emojis finns i kodbasen.
   - Versionsbump till CalVer `2026.10.15.21` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
+### 82. Fix för Realtidsflödesuppdatering, DataTables Omsortering och Robust Fallback-Polling (v2026.10.15.22)
+- **Realtidsflöde och Omsortering i DataTables ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Åtgärdat felet där nya inkommande händelser inte visades i realtid utan krävde att användaren manuellt uppdaterade sidan med F5.
+  - Skapat funktionen `processIncomingMessage(data)` och säkerställt att `dataTable.row.add(newRow)` följs av `dataTable.order([[1, 'desc']]).draw(false);` så att nytillkomna meddelanden direkt hamnar överst i tabellen.
+  - Lagt till automatisk återanslutning i `connectSSE()` med 3 sekunders återförsök vid bruten eller stängd EventSource-kontakt.
+- **Robust Dubbelriktat Skydd med Fallback-Polling ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [app.py](file:///d:/antigravity/pager-monitor/app.py), [database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+  - Infört ett säkerhetsnät i klienten som pollar `/api/messages?since_id=<maxId>` var 5:e sekund. Detta garanterar kontinuerlig uppdatering även vid tillfälligt tappad socket, bakgrundsflikar i webbläsaren eller nätverksproxyer.
+  - Implementerat stöd för `since_id` i `get_recent_messages()` i [database.py](file:///d:/antigravity/pager-monitor/database.py) och `/api/messages` i [app.py](file:///d:/antigravity/pager-monitor/app.py).
+- **Processomstart och Livetest**:
+  - Avslutat den gamla Flask-processen (PID 27488 från 12 oktober) och startat den aktuella servern.
+  - Verifierat i webbläsaren att nya meddelanden injiceras i tabellens topp i realtid utan manuell omläsning.
+  - Versionsbump till CalVer `2026.10.15.22` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
