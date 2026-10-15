@@ -665,6 +665,13 @@ tr:hover td {
     word-break: break-word;
 }
 
+.msg-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 100%;
+}
+
 .msg-cell .msg-text {
     word-break: break-word;
     overflow-wrap: anywhere;
@@ -676,8 +683,8 @@ tr:hover td {
     flex-wrap: wrap;
     align-items: center;
     gap: 5px;
-    margin-top: 6px;
-    padding-top: 3px;
+    margin-top: auto;
+    padding-top: 6px;
 }
 
 .msg-cell .msg-meta-bar .badge {

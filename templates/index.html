@@ -564,6 +564,14 @@
             overflow-wrap: anywhere !important;
             padding: 0.5rem 0.85rem !important;
             vertical-align: top !important;
+            height: 1px !important;
+        }
+
+        .msg-content-wrapper {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: 100%;
         }
 
         .msg-cell .msg-text {
@@ -580,88 +588,63 @@
             padding: 0;
         }
 
-        /* Rådata collapsible details styling med avdelare och tydlig indikator */
-        .raw-data-details {
-            margin-top: 6px;
-            margin-bottom: 3px;
-            border-top: 1px dashed rgba(148, 163, 184, 0.25);
-            padding-top: 5px;
+        /* Rådata box och toggle-badge */
+        .raw-data-box {
+            font-family: inherit;
+            font-size: inherit; /* VIKTIGT: Måste följa tabellens/Settings font-size! */
+            line-height: 1.4;
+            color: #475569;
+            background: #f8fafc;
+            border-left: 3px solid #94a3b8;
+            padding: 6px 10px;
+            margin: 6px 0;
+            border-radius: 0 4px 4px 0;
+            white-space: pre-wrap;
+            word-break: break-word;
         }
-        [data-theme="light"] .raw-data-details {
-            border-top-color: rgba(148, 163, 184, 0.4);
+        [data-theme="dark"] .raw-data-box,
+        body.dark-mode .raw-data-box {
+            color: #cbd5e1;
+            background: rgba(15, 23, 42, 0.65);
+            border-left-color: #64748b;
         }
-        .raw-data-details summary {
-            list-style: none !important;
+
+        .badge-raw-toggle {
             cursor: pointer;
             user-select: none;
-            outline: none;
-            display: inline-block;
-            margin: 0;
-            padding: 0;
-        }
-        .raw-data-details summary::-webkit-details-marker {
-            display: none !important;
-        }
-        .raw-data-badge-btn {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            font-size: 0.72rem;
-            font-weight: 500;
+            background: rgba(148, 163, 184, 0.12);
             color: #94a3b8;
-            background: rgba(148, 163, 184, 0.08);
             border: 1px solid rgba(148, 163, 184, 0.25);
-            border-radius: 4px;
-            padding: 2px 7px;
+            font-weight: 500;
             transition: all 0.15s ease;
         }
-        .raw-data-badge-btn:hover {
+        .badge-raw-toggle:hover {
+            background: rgba(56, 189, 248, 0.15);
             color: var(--accent, #38bdf8);
-            background: rgba(56, 189, 248, 0.12);
             border-color: rgba(56, 189, 248, 0.45);
         }
-        .raw-data-chevron {
-            font-size: 0.65rem;
-            transition: transform 0.2s ease;
+        .badge-raw-toggle.active {
+            background: var(--accent, #38bdf8);
+            color: #0f172a;
+            font-weight: 600;
+            border-color: var(--accent, #38bdf8);
         }
-        .raw-data-details[open] .raw-data-chevron {
-            transform: rotate(90deg);
-        }
-        .raw-data-details[open] .raw-data-badge-btn {
-            color: var(--accent, #38bdf8);
-            background: rgba(56, 189, 248, 0.12);
-            border-color: rgba(56, 189, 248, 0.45);
-        }
-        .raw-data-content {
-            font-family: var(--msg-font, 'JetBrains Mono', monospace);
-            font-size: 0.72rem;
-            background: #0f172a;
-            color: #cbd5e1;
-            border: 1px solid #334155;
-            padding: 6px 8px;
-            border-radius: 4px;
-            white-space: pre-wrap;
-            word-break: break-all;
-            margin-top: 5px;
-            margin-bottom: 2px;
-            max-height: 240px;
-            overflow-y: auto;
-        }
-        [data-theme="light"] .raw-data-content {
-            background: #f8fafc;
-            color: #334155;
-            border-color: #cbd5e1;
-        }
-        [data-theme="light"] .raw-data-badge-btn {
+        [data-theme="light"] .badge-raw-toggle {
             background: #f1f5f9;
-            border-color: #cbd5e1;
             color: #475569;
+            border-color: #cbd5e1;
         }
-        [data-theme="light"] .raw-data-badge-btn:hover {
+        [data-theme="light"] .badge-raw-toggle:hover {
             background: rgba(2, 132, 199, 0.1);
-            border-color: #0284c7;
             color: #0284c7;
+            border-color: #0284c7;
         }
+        [data-theme="light"] .badge-raw-toggle.active {
+            background: #0284c7;
+            color: #ffffff;
+            border-color: #0284c7;
+        }
+
 
         /* Pilot freetext highlight */
         .pilot-freetext-highlight {
@@ -1621,7 +1604,7 @@
         }
 
         function formatMessage(msgStr) {
-            if (!msgStr) return '';
+            if (!msgStr) return { summaryHtml: '', rawText: '' };
             let text = String(msgStr).replace(/<CR><LF>/gi, '\n');
 
             let parsedSummary = text;
@@ -1655,13 +1638,25 @@
             });
             const summaryHtml = formattedLines.join('<br>');
 
-            let rawDetailsHtml = '';
-            if (rawText) {
-                rawDetailsHtml = `<details class="raw-data-details"><summary><span class="raw-data-badge-btn"><i class="fas fa-chevron-right raw-data-chevron"></i><i class="fas fa-code"></i><span>Visa rådata</span></span></summary><pre class="raw-data-content">${escapeHtml(rawText)}</pre></details>`;
-            }
-
-            return `<div class="msg-summary">${summaryHtml}</div>${rawDetailsHtml}`;
+            return { summaryHtml, rawText };
         }
+
+        window.toggleRawData = function(btn) {
+            if (!btn) return;
+            const msgCell = btn.closest('.msg-cell');
+            if (!msgCell) return;
+            const box = msgCell.querySelector('.raw-data-box');
+            if (!box) return;
+            const isHidden = (box.style.display === 'none' || getComputedStyle(box).display === 'none');
+            if (isHidden) {
+                box.style.display = 'block';
+                btn.classList.add('active');
+            } else {
+                box.style.display = 'none';
+                btn.classList.remove('active');
+            }
+        };
+
 
         function showSystemToast(title, message) {
             const container = document.getElementById('toastContainer');
@@ -1969,7 +1964,11 @@
             const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
             const repeatTag = (alarm.repeat_count && alarm.repeat_count > 1) ? `<span class="badge repeat-badge meta" title="Repeated ${alarm.repeat_count} times">${alarm.repeat_count}x</span>` : '';
 
-            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${funcTag}${duplicateTag}${repeatTag}`;
+            const msgObj = formatMessage(cleanMsg);
+            const rawToggleBadge = msgObj.rawText ? `<span class="badge badge-raw-toggle" onclick="toggleRawData(this)" title="Visa eller dölj rådata">&lt;/&gt; Rådata</span>` : '';
+            const rawBoxHtml = msgObj.rawText ? `<div class="raw-data-box" style="display: none;">${escapeHtml(msgObj.rawText)}</div>` : '';
+
+            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
             const metaBarHtml = metaBarBadges ? `<div class="msg-meta-bar">${metaBarBadges}</div>` : '';
 
             tr.innerHTML = `
@@ -1982,7 +1981,8 @@
                         <button type="button" class="alias-edit-icon-btn" onclick="openAliasModal('${escapeHtml(alarm.address)}')" title="Redigera alias för ${escapeHtml(alarm.address)}"><i class="fas fa-pen"></i></button>
                     </div>
                 </td>
-                <td class="msg-cell"><div class="msg-text">${formatMessage(cleanMsg)}</div>${metaBarHtml}</td>
+                <td class="msg-cell"><div class="msg-content-wrapper"><div class="msg-text">${msgObj.summaryHtml}</div>${rawBoxHtml}${metaBarHtml}</div></td>
+
                 <td class="actions-cell">
                     <div class="actions-wrapper">
                         <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">
@@ -2391,7 +2391,8 @@
                             if (!metaBar) {
                                 metaBar = document.createElement('div');
                                 metaBar.className = 'msg-meta-bar';
-                                msgCell.appendChild(metaBar);
+                                const targetContainer = msgCell.querySelector('.msg-content-wrapper') || msgCell;
+                                targetContainer.appendChild(metaBar);
                             }
                             let badge = metaBar.querySelector('.repeat-badge');
                             if (!badge) {

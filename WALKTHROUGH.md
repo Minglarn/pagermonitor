@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.12`
+- **CalVer**: `2026.10.15.15`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
@@ -2105,7 +2105,24 @@
   - Samtliga 82 enhetstester passerar (`python -m unittest discover tests`).
   - Tillagt dedikerat enhetstest `test_label_83_ana_and_airportsdata` i [tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py) samt utökade tester i [tests/test_acars_human_parser.py](file:///d:/antigravity/pager-monitor/tests/test_acars_human_parser.py).
   - Emoji-granskning verifierad: Inga otillåtna emojis i applikationen.
-  - Versionsbump till CalVer `2026.10.15.14` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
+### 75. Förankring av Badges/Pills i Botten av Cellen, Rådata Toggle-Badge & Dynamisk Fontskalning (v2026.10.15.15)
+- **Förankring av Pillren i Botten ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Infört flexkolumn-containern `.msg-content-wrapper` inuti `td.msg-cell` (`display: flex; flex-direction: column; height: 100%; min-height: 100%;`).
+  - Satt `height: 1px !important;` på `td.msg-cell` så att tabellcellen tillåter barnet med `height: 100%` att fylla cellens hela höjd oberoende av knapparna i actions-kolumnen.
+  - Satt `margin-top: auto; padding-top: 6px;` på `.msg-meta-bar` så att pillren (frekvens, SNR, ACARS, anrop, destination, etc.) alltid förankras längst ner i raden utan tomt glapp under pillren.
+  - Dynamiska `repeat_update`-händelser uppdaterade för att placera `.msg-meta-bar` inuti `.msg-content-wrapper`.
+- **Kompakt `</> Rådata` Toggle-badge och Borttagning av `<details>`-raden**:
+  - Ersatt `<details>` / `<summary>`-elementet med en klickbar badge (`<span class="badge badge-raw-toggle" onclick="toggleRawData(this)">&lt;/&gt; Rådata</span>`) längst till höger på badge-raden.
+  - Meddelandetexten ligger därmed direkt ovanför badgarna precis som för normala meddelanden.
+  - Implementerat `toggleRawData(btn)` för att visa och dölja `.raw-data-box` vid klick.
+- **Strikt Dynamisk Fontstorlek (1:1 Skalning från Settings)**:
+  - `.raw-data-box` har `font-family: inherit; font-size: inherit;` utan några hårdkodade `rem`- eller `px`-storlekar. Rådata skalar nu 1:1 när användaren ändrar teckenstorlek i Settings.
+- **Enhetstester & Verifiering**:
+  - Samtliga 82 enhetstester passerar (`python -m unittest discover tests`).
+  - Emoji-granskning verifierad: Inga otillåtna emojis i applikationen.
+  - Versionsbump till CalVer `2026.10.15.15` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
 
 
 

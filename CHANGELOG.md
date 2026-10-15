@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.15] - Pills Alltid i Botten, Rådata Toggle-badge och Dynamisk Fontskalning
+
+- **Pillren (`.msg-meta-bar`) Alltid i Botten av Meddelandecellen (`style.css`, `index.html`, `larm.html`, `statistics.html`)**:
+  - Infört `.msg-content-wrapper` inuti `td.msg-cell` med flex-layout i kolumn (`display: flex; flex-direction: column; height: 100%; min-height: 100%;`).
+  - Satt `height: 1px !important;` på `td.msg-cell` så att tabellcellen tillåter barnet med `height: 100%` att fylla cellens hela höjd oberoende av knapparna i actions-kolumnen.
+  - Satt `margin-top: auto; padding-top: 6px;` på `.msg-meta-bar` så att pillren (frekvens, SNR, ACARS, anrop, destination, etc.) alltid är förankrade längst ner i raden utan tomt glapp under pillren.
+  - Vid dynamiska `repeat_update`-händelser läggs `.msg-meta-bar` nu automatiskt till i `.msg-content-wrapper`.
+- **Kompakt `</> Rådata` Toggle-badge och Borttagning av `<details>`-raden**:
+  - Ersatt den tidigare klumpiga `<details>` / `<summary>`-avdelaren med en klickbar badge (`<span class="badge badge-raw-toggle" onclick="toggleRawData(this)">&lt;/&gt; Rådata</span>`) längst till höger på badge-raden.
+  - Meddelandetexten ligger därmed direkt ovanför badgarna precis som för normala meddelanden.
+  - Implementerat `toggleRawData(btn)` för att smidigt visa och dölja `.raw-data-box` vid klick.
+- **Strikt Dynamisk Fontstorlek (1:1 Skalning från Settings)**:
+  - Säkerställt att `.raw-data-box` har `font-family: inherit; font-size: inherit;` utan några hårdkodade `rem`- eller `px`-storlekar. Rådata skalar nu 1:1 när användaren ändrar teckenstorlek i Settings.
+- **Enhetstester & Emojivalidering**:
+  - Samtliga 82 enhetstester passerar.
+  - Emojiskanner bekräftar 0 otillåtna emojis.
+
 ## [2026.10.15.14] - Global Flygplatsöversättning med airportsdata, Ruttdestination & Säkerhetsspärr
 
 - **Stöd för 28 000+ Flygplatser Globalt via `airportsdata` (`vdl2_receiver.py`, `acars_human_parser.py`, `requirements.txt`)**:
