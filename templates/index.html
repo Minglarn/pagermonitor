@@ -86,6 +86,182 @@
             box-shadow: 0 0 10px var(--accent-glow);
         }
 
+        /* Real-time Monitor Filter Bar */
+        .dt-layout-cell.dt-mid-filter {
+            flex: 1 1 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 0 0.5rem;
+        }
+
+        .table-filter-bar {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            width: 100%;
+        }
+
+        .filter-controls-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .filter-select-wrapper {
+            display: inline-flex;
+            align-items: center;
+            position: relative;
+        }
+
+        .filter-select-wrapper .filter-icon {
+            position: absolute;
+            left: 7px;
+            color: var(--text-secondary, #94a3b8);
+            font-size: 0.72rem;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .filter-select {
+            background: var(--input-bg, #0d1117);
+            border: 1px solid var(--panel-border, #1f2937);
+            border-radius: 6px;
+            padding: 0 0.5rem 0 1.55rem;
+            height: 28px;
+            font-size: 0.78rem;
+            color: var(--text-primary, #f1f5f9);
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            max-width: 195px;
+        }
+
+        .filter-select:focus {
+            border-color: var(--accent, #38bdf8);
+            box-shadow: 0 0 8px var(--accent-glow, rgba(56, 189, 248, 0.3));
+        }
+
+        .filter-select.active-filter-select {
+            border-color: var(--accent, #38bdf8);
+            background: rgba(56, 189, 248, 0.1);
+            color: #38bdf8;
+            font-weight: 600;
+        }
+
+        [data-theme="light"] .filter-select {
+            background: #ffffff;
+            border-color: #cbd5e1;
+            color: #1e293b;
+        }
+
+        [data-theme="light"] .filter-select.active-filter-select {
+            border-color: #0284c7;
+            background: rgba(2, 132, 199, 0.08);
+            color: #0284c7;
+        }
+
+        .clear-filters-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            height: 28px;
+            padding: 0 0.65rem;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            color: #f87171;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .clear-filters-btn:hover {
+            background: rgba(239, 68, 68, 0.25);
+            border-color: #ef4444;
+            color: #ffffff;
+        }
+
+        .active-filter-chips {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 2px 4px;
+        }
+
+        .filter-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(56, 189, 248, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            color: #38bdf8;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 0.72rem;
+            font-weight: 500;
+        }
+
+        .filter-chip .chip-remove {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 0.85rem;
+            line-height: 1;
+            padding: 0 1px;
+            transition: color 0.15s ease;
+        }
+
+        .filter-chip .chip-remove:hover {
+            color: #ef4444;
+        }
+
+        [data-theme="light"] .filter-chip {
+            background: rgba(2, 132, 199, 0.1);
+            border-color: rgba(2, 132, 199, 0.3);
+            color: #0369a1;
+        }
+
+        /* Click-to-filter badge styles */
+        .badge.filterable-badge {
+            cursor: pointer !important;
+            transition: all 0.15s ease;
+        }
+
+        .badge.filterable-badge:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            filter: brightness(1.22);
+            outline: 1px solid var(--accent, #38bdf8);
+        }
+
+        .alias-edit-icon-btn {
+            background: none;
+            border: none;
+            color: #64748b;
+            font-size: 0.7rem;
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin-left: 4px;
+            opacity: 0.6;
+            transition: all 0.15s ease;
+        }
+
+        .alias-edit-icon-btn:hover {
+            opacity: 1;
+            color: var(--accent, #38bdf8);
+            background: rgba(56, 189, 248, 0.12);
+        }
+
         .dt-container .dt-info {
             color: var(--text-secondary);
             font-size: 0.85rem;
@@ -386,44 +562,105 @@
             width: auto !important;
             word-break: break-word !important;
             overflow-wrap: anywhere !important;
-            padding: 0.6rem 0.85rem !important;
+            padding: 0.5rem 0.85rem !important;
+            vertical-align: top !important;
         }
 
-        /* Rådata collapsible details styling */
+        .msg-cell .msg-text {
+            white-space: normal !important;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            line-height: 1.4;
+        }
+
+        .msg-summary {
+            white-space: normal;
+            line-height: 1.4;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Rådata collapsible details styling med avdelare och tydlig indikator */
         .raw-data-details {
-            margin-top: 4px;
+            margin-top: 6px;
+            margin-bottom: 3px;
+            border-top: 1px dashed rgba(148, 163, 184, 0.25);
+            padding-top: 5px;
+        }
+        [data-theme="light"] .raw-data-details {
+            border-top-color: rgba(148, 163, 184, 0.4);
         }
         .raw-data-details summary {
-            font-size: 0.75rem;
-            color: #64748b;
+            list-style: none !important;
             cursor: pointer;
             user-select: none;
             outline: none;
-            transition: color 0.15s ease;
             display: inline-block;
+            margin: 0;
+            padding: 0;
         }
-        .raw-data-details summary:hover {
+        .raw-data-details summary::-webkit-details-marker {
+            display: none !important;
+        }
+        .raw-data-badge-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            font-weight: 500;
             color: #94a3b8;
+            background: rgba(148, 163, 184, 0.08);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 4px;
+            padding: 2px 7px;
+            transition: all 0.15s ease;
+        }
+        .raw-data-badge-btn:hover {
+            color: var(--accent, #38bdf8);
+            background: rgba(56, 189, 248, 0.12);
+            border-color: rgba(56, 189, 248, 0.45);
+        }
+        .raw-data-chevron {
+            font-size: 0.65rem;
+            transition: transform 0.2s ease;
+        }
+        .raw-data-details[open] .raw-data-chevron {
+            transform: rotate(90deg);
+        }
+        .raw-data-details[open] .raw-data-badge-btn {
+            color: var(--accent, #38bdf8);
+            background: rgba(56, 189, 248, 0.12);
+            border-color: rgba(56, 189, 248, 0.45);
         }
         .raw-data-content {
             font-family: var(--msg-font, 'JetBrains Mono', monospace);
-            font-size: 0.75rem;
-            background: #f8fafc;
-            color: #334155;
-            border: 1px solid #e2e8f0;
+            font-size: 0.72rem;
+            background: #0f172a;
+            color: #cbd5e1;
+            border: 1px solid #334155;
             padding: 6px 8px;
             border-radius: 4px;
             white-space: pre-wrap;
             word-break: break-all;
-            margin-top: 4px;
+            margin-top: 5px;
+            margin-bottom: 2px;
             max-height: 240px;
             overflow-y: auto;
         }
-        [data-theme="dark"] .raw-data-content,
-        body.dark-mode .raw-data-content {
-            background: #0f172a;
-            color: #cbd5e1;
-            border-color: #334155;
+        [data-theme="light"] .raw-data-content {
+            background: #f8fafc;
+            color: #334155;
+            border-color: #cbd5e1;
+        }
+        [data-theme="light"] .raw-data-badge-btn {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #475569;
+        }
+        [data-theme="light"] .raw-data-badge-btn:hover {
+            background: rgba(2, 132, 199, 0.1);
+            border-color: #0284c7;
+            color: #0284c7;
         }
 
         /* Pilot freetext highlight */
@@ -693,6 +930,52 @@
 
             <main>
                 <div class="glass-panel table-container" style="padding: 0;">
+                    <!-- Filter Bar for Real-time Monitor -->
+                    <div id="tableFilterBar" class="table-filter-bar">
+                        <div class="filter-controls-group">
+                            <!-- 1. Protocol Filter -->
+                            <div class="filter-select-wrapper" id="filterProtoWrapper">
+                                <i class="fas fa-layer-group filter-icon"></i>
+                                <select id="filterProtocolSelect" class="filter-select" onchange="onProtocolFilterChange(this.value)" title="Filtrera på protokoll">
+                                    <option value="ALL">Alla protokoll</option>
+                                </select>
+                            </div>
+
+                            <!-- 2. Frequency Filter -->
+                            <div class="filter-select-wrapper" id="filterFreqWrapper">
+                                <i class="fas fa-broadcast-tower filter-icon"></i>
+                                <select id="filterFreqSelect" class="filter-select" onchange="onFrequencyFilterChange(this.value)" title="Filtrera på frekvens">
+                                    <option value="ALL">Alla frekvenser</option>
+                                </select>
+                            </div>
+
+                            <!-- 3. VDL2: Label Filter (Only shown when VDL2 is enabled in settings) -->
+                            <div class="filter-select-wrapper vdl2-only-filter" id="filterLabelWrapper" style="display: none;">
+                                <i class="fas fa-tag filter-icon"></i>
+                                <select id="filterLabelSelect" class="filter-select" onchange="onLabelFilterChange(this.value)" title="Filtrera på ACARS Label">
+                                    <option value="ALL">Alla Labels</option>
+                                </select>
+                            </div>
+
+                            <!-- 4. VDL2: Airport Filter (Only shown when VDL2 is enabled in settings) -->
+                            <div class="filter-select-wrapper vdl2-only-filter" id="filterAirportWrapper" style="display: none;">
+                                <i class="fas fa-plane-arrival filter-icon"></i>
+                                <select id="filterAirportSelect" class="filter-select" onchange="onAirportFilterChange(this.value)" title="Filtrera på flygplats / rutt">
+                                    <option value="ALL">Alla flygplatser</option>
+                                </select>
+                            </div>
+
+                            <!-- Clear all filters button -->
+                            <button id="clearFiltersBtn" class="clear-filters-btn" onclick="clearAllTableFilters()" title="Rensa alla filter" style="display: none;">
+                                <i class="fas fa-times-circle"></i>
+                                <span>Rensa filter</span>
+                            </button>
+                        </div>
+
+                        <!-- Active filter chips -->
+                        <div id="activeFilterChips" class="active-filter-chips" style="display: none;"></div>
+                    </div>
+
                     <table id="alarmsTable" class="dataTable dashboard-dt">
                         <thead>
                             <tr>
@@ -764,6 +1047,437 @@
         let isLivePaused = false;
         let pausedQueue = [];
         let hideBasestations = localStorage.getItem('hide_tetra_basestations') === 'true'; // default: false (visas som standard)
+
+        // Filter state for Real-time Monitor
+        const activeFilters = {
+            protocol: 'ALL',
+            frequency: 'ALL',
+            label: 'ALL',
+            airport: 'ALL',
+            capcode: ''
+        };
+
+        const AIRPORT_NAMES = {
+            'ESSA': 'Arlanda',
+            'ESSB': 'Bromma',
+            'ESGG': 'Landvetter',
+            'ESMS': 'Sturup',
+            'ESDF': 'Kallinge',
+            'ESNZ': 'Östersund',
+            'ESPA': 'Kallax',
+            'ESNU': 'Umeå',
+            'ESKN': 'Skavsta',
+            'ESOW': 'Västerås',
+            'ESOE': 'Örebro',
+            'ESMQ': 'Kalmar',
+            'ESMX': 'Växjö',
+            'ESNX': 'Arvidsjaur',
+            'ESNQ': 'Kiruna',
+            'ESNN': 'Sundsvall',
+            'EFHK': 'Helsingfors/Vanda',
+            'EKCH': 'Köpenhamn',
+            'ENGM': 'Gardermoen',
+            'EDDB': 'Berlin',
+            'EDDF': 'Frankfurt',
+            'EDDM': 'München',
+            'EGLL': 'Heathrow',
+            'EGKK': 'Gatwick',
+            'EGSS': 'Stansted',
+            'EHAM': 'Schiphol',
+            'LFPG': 'Paris CDG',
+            'LOWW': 'Wien',
+            'EPWA': 'Warszawa',
+            'LTFJ': 'Sabiha Gökçen',
+            'LTFM': 'Istanbul'
+        };
+
+        const LABEL_DESCRIPTIONS = {
+            'H1': 'FMS',
+            '16': 'Position/Landning',
+            '80': 'Operativt/Fritext',
+            'RA': 'Operativt/Fritext',
+            '82': 'Operativt/Fritext',
+            '1M': 'ETA Report',
+            'B9': 'ATIS',
+            'MA': 'MIAM',
+            'H2': 'AMDAR/Väder',
+            '5U': 'Väderrapport',
+            '10': 'Teknisk logg',
+            '15': 'Höjdmätning',
+            '20': 'Tidsrapport',
+            '30': 'Pax Service',
+            '44': 'Statusmeddelande',
+            '5Z': 'Datalänk',
+            'SQ': 'Squawk',
+            '_d': 'Datalänk Bekräftelse',
+            'Q0': 'Länkbekräftelse'
+        };
+
+        function getAlarmProtoName(alarm) {
+            if (!alarm) return 'POCSAG';
+            if (alarm.address === 'SYSTEM' || alarm.frequency === 'RESTART' || alarm.is_system) return 'SYSTEM';
+            const rawProto = (alarm.protocol || '').toString().trim().toUpperCase();
+            const rawBitrate = (alarm.bitrate || '').toString().trim();
+            const addrUpper = (alarm.address || '').toString().trim().toUpperCase();
+            const aliasUpper = (alarm.alias || '').toString().trim().toUpperCase();
+            const msgUpper = (alarm.message || '').toString().trim().toUpperCase();
+
+            if (rawProto.includes('TETRA') || rawBitrate.toUpperCase().includes('TETRA') || addrUpper.startsWith('RAKEL') || addrUpper.startsWith('TETRA') || aliasUpper.includes('BASSTATION') || msgUpper.includes('TETRA BASSTATION')) {
+                return 'TETRA';
+            } else if (rawProto.includes('RDS') || rawProto.includes('TMC') || rawBitrate.toUpperCase().includes('RDS') || rawBitrate.toUpperCase().includes('TMC') || addrUpper.startsWith('E4:') || addrUpper.startsWith('TMC-') || aliasUpper.startsWith('RDS') || msgUpper.includes('RDS-TMC')) {
+                return 'RDS';
+            } else if (rawProto.includes('VDL') || rawBitrate.toUpperCase().includes('VDL') || rawProto.includes('ACARS') || rawBitrate.toUpperCase().includes('ACARS') || msgUpper.includes('VDL2') || msgUpper.includes('ACARS')) {
+                return 'VDL2';
+            } else if (rawProto.includes('SONDE') || rawBitrate.toUpperCase().includes('SONDE') || msgUpper.includes('VÄDERBALLONG') || msgUpper.includes('RADIOSOND')) {
+                return 'SONDE';
+            } else if (rawProto.includes('AFSK') || rawProto.includes('UFSK') || rawBitrate.toUpperCase().includes('AFSK') || rawBitrate.toUpperCase().includes('UFSK') || addrUpper === 'AFSK') {
+                return 'AFSK';
+            } else if (rawProto.includes('POCSAG') || rawBitrate.toUpperCase().includes('POCSAG') || /^\d+$/.test(rawBitrate) || /^\d+$/.test(addrUpper)) {
+                return 'POCSAG';
+            } else if (rawProto && rawProto !== 'UNKNOWN') {
+                return rawProto;
+            }
+            return 'POCSAG';
+        }
+
+        function getAlarmLabelCode(alarm) {
+            if (!alarm) return '';
+            if (alarm.label) return String(alarm.label).trim().toUpperCase();
+            const msg = alarm.message || '';
+            const m = msg.match(/^\[([A-Z0-9_]{1,4})(?::|\])/i);
+            if (m) return m[1].toUpperCase();
+            return '';
+        }
+
+        function getAlarmAirportCode(alarm) {
+            if (!alarm) return '';
+            let st = alarm.dst_airport || alarm.station || '';
+            if (!st && alarm.message) {
+                const toM = alarm.message.match(/\bTo:\s*([^|\]\n]+)/i);
+                if (toM) st = toM[1].trim();
+                else {
+                    const rM = alarm.message.match(/(?:Rutt|Route):\s*[A-Z]{4}[^→\n]*→\s*([A-Z]{4})/i);
+                    if (rM) st = rM[1];
+                }
+            }
+            if (st) {
+                const m = st.match(/\b([A-Z]{4})\b/);
+                if (m) return m[1].toUpperCase();
+            }
+            return '';
+        }
+
+        window.onProtocolFilterChange = function(val) {
+            activeFilters.protocol = val;
+            applyAllFilters();
+        };
+
+        window.onFrequencyFilterChange = function(val) {
+            activeFilters.frequency = val;
+            applyAllFilters();
+        };
+
+        window.onLabelFilterChange = function(val) {
+            activeFilters.label = val;
+            applyAllFilters();
+        };
+
+        window.onAirportFilterChange = function(val) {
+            activeFilters.airport = val;
+            applyAllFilters();
+        };
+
+        window.filterByProtocol = function(protoName) {
+            if (!protoName) return;
+            activeFilters.protocol = (activeFilters.protocol.toUpperCase() === protoName.toUpperCase()) ? 'ALL' : protoName;
+            applyAllFilters();
+        };
+
+        window.filterByFrequency = function(freq) {
+            if (!freq) return;
+            activeFilters.frequency = (activeFilters.frequency.toUpperCase() === freq.toUpperCase()) ? 'ALL' : freq;
+            applyAllFilters();
+        };
+
+        window.filterByLabel = function(labelCode) {
+            if (!labelCode) return;
+            activeFilters.label = (activeFilters.label.toUpperCase() === labelCode.toUpperCase()) ? 'ALL' : labelCode;
+            applyAllFilters();
+        };
+
+        window.filterByAirport = function(airportCode) {
+            if (!airportCode) return;
+            let code = airportCode;
+            const m = airportCode.match(/\b([A-Z]{4})\b/);
+            if (m) code = m[1].toUpperCase();
+            activeFilters.airport = (activeFilters.airport.toUpperCase() === code.toUpperCase()) ? 'ALL' : code;
+            applyAllFilters();
+        };
+
+        window.filterByCapcode = function(displayAddr, rawAddr) {
+            const term = displayAddr || rawAddr;
+            if (!term) return;
+            activeFilters.capcode = (activeFilters.capcode.toUpperCase() === term.toUpperCase()) ? '' : term;
+            applyAllFilters();
+        };
+
+        window.filterByQuickSearch = function(term) {
+            if (!term) return;
+            const sInput = document.getElementById('searchInput');
+            const curVal = dataTable ? dataTable.search() : '';
+            if (curVal.toUpperCase() === term.toUpperCase()) {
+                if (sInput) sInput.value = '';
+                if (dataTable) dataTable.search('').draw();
+            } else {
+                if (sInput) sInput.value = term;
+                if (dataTable) dataTable.search(term).draw();
+            }
+            renderFilterChips();
+        };
+
+        window.removeSingleFilter = function(key) {
+            if (key === 'protocol') activeFilters.protocol = 'ALL';
+            else if (key === 'frequency') activeFilters.frequency = 'ALL';
+            else if (key === 'label') activeFilters.label = 'ALL';
+            else if (key === 'airport') activeFilters.airport = 'ALL';
+            else if (key === 'capcode') activeFilters.capcode = '';
+            else if (key === 'search') {
+                const sInput = document.getElementById('searchInput');
+                if (sInput) sInput.value = '';
+                if (dataTable) dataTable.search('');
+            }
+            applyAllFilters();
+        };
+
+        window.clearAllTableFilters = function() {
+            activeFilters.protocol = 'ALL';
+            activeFilters.frequency = 'ALL';
+            activeFilters.label = 'ALL';
+            activeFilters.airport = 'ALL';
+            activeFilters.capcode = '';
+            const sInput = document.getElementById('searchInput');
+            if (sInput) sInput.value = '';
+            if (dataTable) dataTable.search('');
+            applyAllFilters();
+        };
+
+        function applyAllFilters() {
+            updateFilterSelectStyles();
+            renderFilterChips();
+            if (dataTable) {
+                dataTable.draw();
+            }
+        }
+
+        function updateFilterSelectStyles() {
+            const protoSel = document.getElementById('filterProtocolSelect');
+            if (protoSel) {
+                protoSel.value = activeFilters.protocol;
+                protoSel.classList.toggle('active-filter-select', activeFilters.protocol !== 'ALL');
+            }
+            const freqSel = document.getElementById('filterFreqSelect');
+            if (freqSel) {
+                freqSel.value = activeFilters.frequency;
+                freqSel.classList.toggle('active-filter-select', activeFilters.frequency !== 'ALL');
+            }
+            const labelSel = document.getElementById('filterLabelSelect');
+            if (labelSel) {
+                labelSel.value = activeFilters.label;
+                labelSel.classList.toggle('active-filter-select', activeFilters.label !== 'ALL');
+            }
+            const airportSel = document.getElementById('filterAirportSelect');
+            if (airportSel) {
+                airportSel.value = activeFilters.airport;
+                airportSel.classList.toggle('active-filter-select', activeFilters.airport !== 'ALL');
+            }
+        }
+
+        function renderFilterChips() {
+            const chipsContainer = document.getElementById('activeFilterChips');
+            const clearBtn = document.getElementById('clearFiltersBtn');
+            if (!chipsContainer) return;
+
+            const chips = [];
+            const searchVal = (dataTable ? dataTable.search() : '') || (document.getElementById('searchInput')?.value || '');
+
+            if (activeFilters.protocol !== 'ALL') {
+                chips.push({ key: 'protocol', label: `Protokoll: ${escapeHtml(activeFilters.protocol)}` });
+            }
+            if (activeFilters.frequency !== 'ALL') {
+                chips.push({ key: 'frequency', label: `Frekvens: ${escapeHtml(activeFilters.frequency)}` });
+            }
+            if (activeFilters.label !== 'ALL') {
+                const lblDisp = (activeFilters.label === '__PILOT_FREETEXT__') ? '💬 Pilotmeddelanden' : activeFilters.label;
+                chips.push({ key: 'label', label: `Label: ${escapeHtml(lblDisp)}` });
+            }
+            if (activeFilters.airport !== 'ALL') {
+                const apName = AIRPORT_NAMES[activeFilters.airport] || '';
+                const apDisp = apName ? `${activeFilters.airport} (${apName})` : activeFilters.airport;
+                chips.push({ key: 'airport', label: `Flygplats: ${escapeHtml(apDisp)}` });
+            }
+            if (activeFilters.capcode) {
+                chips.push({ key: 'capcode', label: `Capcode/Flygbolag: ${escapeHtml(activeFilters.capcode)}` });
+            }
+            if (searchVal.trim()) {
+                chips.push({ key: 'search', label: `Sök: "${escapeHtml(searchVal.trim())}"` });
+            }
+
+            if (chips.length > 0) {
+                chipsContainer.innerHTML = chips.map(c => `
+                    <span class="filter-chip">
+                        <span>${c.label}</span>
+                        <button type="button" class="chip-remove" onclick="removeSingleFilter('${c.key}')" title="Ta bort filter">&times;</button>
+                    </span>
+                `).join('');
+                chipsContainer.style.display = 'flex';
+                if (clearBtn) clearBtn.style.display = 'inline-flex';
+            } else {
+                chipsContainer.innerHTML = '';
+                chipsContainer.style.display = 'none';
+                if (clearBtn) clearBtn.style.display = 'none';
+            }
+        }
+
+        function populateFilterDropdowns() {
+            if (document.activeElement && document.activeElement.tagName === 'SELECT') {
+                return;
+            }
+
+            const isVdl2Enabled = (appSettings.vdl2_enabled !== 'false');
+
+            // Show or hide VDL2 dropdown wrappers based on Settings
+            const vdl2Wrappers = document.querySelectorAll('.vdl2-only-filter');
+            vdl2Wrappers.forEach(el => {
+                el.style.display = isVdl2Enabled ? 'inline-flex' : 'none';
+            });
+
+            if (!isVdl2Enabled) {
+                if (activeFilters.label !== 'ALL') activeFilters.label = 'ALL';
+                if (activeFilters.airport !== 'ALL') activeFilters.airport = 'ALL';
+            }
+
+            // 1. Protocol options
+            const protoCounts = {};
+            allAlarms.forEach(a => {
+                const p = getAlarmProtoName(a);
+                if (p && p !== 'SYSTEM') {
+                    protoCounts[p] = (protoCounts[p] || 0) + 1;
+                }
+            });
+
+            const protoSelect = document.getElementById('filterProtocolSelect');
+            if (protoSelect) {
+                const currentProto = activeFilters.protocol;
+                let html = '<option value="ALL">Alla protokoll</option>';
+                const preferredOrder = ['POCSAG', 'VDL2', 'SONDE', 'TETRA', 'RDS', 'AFSK'];
+                let activeProtos = preferredOrder.filter(p => protoCounts[p]);
+                Object.keys(protoCounts).forEach(p => {
+                    if (!activeProtos.includes(p)) activeProtos.push(p);
+                });
+                if (!isVdl2Enabled) {
+                    activeProtos = activeProtos.filter(p => p !== 'VDL2');
+                }
+                activeProtos.forEach(p => {
+                    const cnt = protoCounts[p] || 0;
+                    html += `<option value="${escapeHtml(p)}">${escapeHtml(p)} (${cnt})</option>`;
+                });
+                protoSelect.innerHTML = html;
+                protoSelect.value = (activeProtos.includes(currentProto) || currentProto === 'ALL') ? currentProto : 'ALL';
+            }
+
+            // 2. Frequency options
+            const freqCounts = {};
+            allAlarms.forEach(a => {
+                const f = a.frequency;
+                if (f && f !== 'RESTART' && f !== 'SYSTEM') {
+                    freqCounts[f] = (freqCounts[f] || 0) + 1;
+                }
+            });
+
+            const freqSelect = document.getElementById('filterFreqSelect');
+            if (freqSelect) {
+                const currentFreq = activeFilters.frequency;
+                let html = '<option value="ALL">Alla frekvenser</option>';
+                const sortedFreqs = Object.keys(freqCounts).sort((a, b) => freqCounts[b] - freqCounts[a]);
+                sortedFreqs.forEach(f => {
+                    html += `<option value="${escapeHtml(f)}">${escapeHtml(f)} (${freqCounts[f]})</option>`;
+                });
+                freqSelect.innerHTML = html;
+                freqSelect.value = (freqCounts[currentFreq] || currentFreq === 'ALL') ? currentFreq : 'ALL';
+            }
+
+            // 3. VDL2: Label options (Only if VDL2 is enabled in settings)
+            if (isVdl2Enabled) {
+                const labelCounts = {};
+                let pilotMsgCount = 0;
+                allAlarms.forEach(a => {
+                    const p = getAlarmProtoName(a);
+                    if (p === 'VDL2') {
+                        const lbl = getAlarmLabelCode(a);
+                        if (lbl) {
+                            labelCounts[lbl] = (labelCounts[lbl] || 0) + 1;
+                        }
+                        const msg = a.message || '';
+                        if (msg.includes('💬')) {
+                            pilotMsgCount++;
+                        }
+                    }
+                });
+
+                const labelSelect = document.getElementById('filterLabelSelect');
+                if (labelSelect) {
+                    const currentLabel = activeFilters.label;
+                    let html = '<option value="ALL">Alla Labels</option>';
+                    const pilotSuffix = pilotMsgCount > 0 ? ` (${pilotMsgCount})` : '';
+                    html += `<option value="__PILOT_FREETEXT__">💬 Endast pilotmeddelanden / fritext${pilotSuffix}</option>`;
+
+                    const sortedLabels = Object.keys(labelCounts).sort((a, b) => labelCounts[b] - labelCounts[a]);
+                    sortedLabels.forEach(lbl => {
+                        const desc = LABEL_DESCRIPTIONS[lbl] || '';
+                        const descText = desc ? ` (${desc})` : '';
+                        html += `<option value="${escapeHtml(lbl)}">${escapeHtml(lbl)}${escapeHtml(descText)} (${labelCounts[lbl]})</option>`;
+                    });
+                    labelSelect.innerHTML = html;
+                    labelSelect.value = (labelCounts[currentLabel] || currentLabel === '__PILOT_FREETEXT__' || currentLabel === 'ALL') ? currentLabel : 'ALL';
+                }
+
+                // 4. VDL2: Airport options (Only if VDL2 is enabled in settings)
+                const airportCounts = {};
+                allAlarms.forEach(a => {
+                    const p = getAlarmProtoName(a);
+                    if (p === 'VDL2') {
+                        const code = getAlarmAirportCode(a);
+                        if (code) {
+                            airportCounts[code] = (airportCounts[code] || 0) + 1;
+                        }
+                    }
+                });
+
+                const airportSelect = document.getElementById('filterAirportSelect');
+                if (airportSelect) {
+                    const currentAirport = activeFilters.airport;
+                    let html = '<option value="ALL">Alla flygplatser</option>';
+                    const sortedAirports = Object.keys(airportCounts).sort((a, b) => airportCounts[b] - airportCounts[a]);
+                    sortedAirports.forEach(code => {
+                        const name = AIRPORT_NAMES[code] || '';
+                        const disp = name ? `${code} (${name})` : code;
+                        html += `<option value="${escapeHtml(code)}">${escapeHtml(disp)} (${airportCounts[code]})</option>`;
+                    });
+                    airportSelect.innerHTML = html;
+                    airportSelect.value = (airportCounts[currentAirport] || currentAirport === 'ALL') ? currentAirport : 'ALL';
+                }
+            }
+
+            updateFilterSelectStyles();
+        }
+
+        let dropdownRefreshTimer = null;
+        function scheduleDropdownRefresh() {
+            if (dropdownRefreshTimer) clearTimeout(dropdownRefreshTimer);
+            dropdownRefreshTimer = setTimeout(() => {
+                populateFilterDropdowns();
+            }, 800);
+        }
 
         function toggleHideBasestations() {
             hideBasestations = !hideBasestations;
@@ -930,7 +1644,7 @@
             parsedSummary = parsedSummary.replace(/\s*\|\s*/g, '   ');
 
             // Formatera parsedSummary rad för rad för att hantera 💬
-            const lines = parsedSummary.split(/\r?\n/);
+            const lines = parsedSummary.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
             const formattedLines = lines.map(line => {
                 let lineEscaped = escapeHtml(line);
                 let highlighted = highlightMessage(lineEscaped);
@@ -943,12 +1657,7 @@
 
             let rawDetailsHtml = '';
             if (rawText) {
-                rawDetailsHtml = `
-                    <details class="raw-data-details">
-                        <summary>Visa rådata</summary>
-                        <pre class="raw-data-content">${escapeHtml(rawText)}</pre>
-                    </details>
-                `;
+                rawDetailsHtml = `<details class="raw-data-details"><summary><span class="raw-data-badge-btn"><i class="fas fa-chevron-right raw-data-chevron"></i><i class="fas fa-code"></i><span>Visa rådata</span></span></summary><pre class="raw-data-content">${escapeHtml(rawText)}</pre></details>`;
             }
 
             return `<div class="msg-summary">${summaryHtml}</div>${rawDetailsHtml}`;
@@ -1008,12 +1717,16 @@
             if (isSystem) {
                 tr.classList.add('system-event-row');
                 const displayInstance = alarm.alias ? alarm.alias : 'System';
+                tr.setAttribute('data-proto-name', 'SYSTEM');
+                tr.setAttribute('data-frequency', 'RESTART');
+                tr.setAttribute('data-address', alarm.address || 'SYSTEM');
+                tr.setAttribute('data-alias', displayInstance);
                 tr.innerHTML = `
                     <td class="id-cell"><span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-weight: 700;">SYS</span></td>
                     <td class="ts-cell" data-order="${alarm.timestamp}">${formattedTime}</td>
-                    <td class="meta-cell"><span class="badge" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); font-weight: 700;">RESTART</span></td>
+                    <td class="meta-cell"><span class="badge filterable-badge" onclick="filterByFrequency('RESTART')" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); font-weight: 700;">RESTART</span></td>
                     <td class="addr-cell">
-                        <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: var(--accent); font-weight: 600;">${displayInstance}</span>
+                        <span class="badge filterable-badge" onclick="filterByCapcode('${escapeHtml(displayInstance)}', '${escapeHtml(alarm.address || 'SYSTEM')}')" style="background: rgba(56, 189, 248, 0.15); color: var(--accent); font-weight: 600;">${displayInstance}</span>
                     </td>
                     <td class="msg-cell" style="color: #fcd34d; font-family: var(--msg-font, 'JetBrains Mono', monospace);"><i class="fas fa-sync-alt" style="margin-right: 6px; color: #f59e0b;"></i>${alarm.message}</td>
                     <td class="actions-cell">
@@ -1073,7 +1786,7 @@
                 protoName = 'POCSAG';
                 protoClass = 'proto-pocsag';
             }
-            const protoTag = `<span class="badge meta badge-proto ${protoClass}">${protoName}</span>`;
+            const protoTag = `<span class="badge meta badge-proto ${protoClass} filterable-badge" onclick="filterByProtocol('${protoName}')" title="Klicka för att filtrera på ${protoName}">${protoName}</span>`;
 
             let formattedBitrate = '';
             if (alarm.bitrate) {
@@ -1138,16 +1851,17 @@
 
             // VDL2 Metadata Badges (Krav 1: Badge-raden längst ner)
             let vdl2BadgesHtml = '';
+            let cleanAirportCode = '';
+            let regVal = alarm.reg || '';
+            let flightVal = alarm.flight || '';
+            let icaoVal = alarm.icao || '';
+            let stationVal = alarm.station || alarm.dst_airport || '';
+            let statusVal = alarm.ground_status || '';
+            let labelVal = alarm.label || '';
+            let labelDescVal = alarm.label_desc || '';
+
             const isVdl2 = protoName === 'VDL2';
             if (isVdl2) {
-                let regVal = alarm.reg || '';
-                let flightVal = alarm.flight || '';
-                let icaoVal = alarm.icao || '';
-                let stationVal = alarm.station || alarm.dst_airport || '';
-                let statusVal = alarm.ground_status || '';
-                let labelVal = alarm.label || '';
-                let labelDescVal = alarm.label_desc || '';
-
                 // Fallback-extrahering ur alarm.address (t.ex. "D84378 (SE-RTA) [4ACA81]")
                 if (!flightVal && alarm.address) {
                     const mFl = alarm.address.match(/^([A-Z0-9]{2,8})\b/i);
@@ -1194,13 +1908,23 @@
                         if (!labelVal) labelVal = lblPrefixMatch[1].toUpperCase();
                         if (!labelDescVal && lblPrefixMatch[2]) labelDescVal = lblPrefixMatch[2].trim();
                     }
+
+                    if (!stationVal) {
+                        const routeMatch = cleanMsg.match(/(?:Rutt|Route):\s*[A-Z]{4}[^→\n]*→\s*([A-Z]{4})/i);
+                        if (routeMatch) stationVal = routeMatch[1].toUpperCase();
+                    }
                 }
 
-                // Bygg badges
-                const regTag = regVal ? `<span class="badge meta badge-reg" title="Registrering">${escapeHtml(regVal)}</span>` : '';
-                const flightTag = flightVal ? `<span class="badge meta badge-flight" title="Flight / Callsign">${escapeHtml(flightVal)}</span>` : '';
-                const icaoTag = icaoVal ? `<span class="badge meta badge-icao" title="ICAO-adress">ICAO: ${escapeHtml(icaoVal)}</span>` : '';
-                const stationTag = stationVal ? `<span class="badge meta badge-station" title="Markstation">To: ${escapeHtml(stationVal)}</span>` : '';
+                if (stationVal) {
+                    const icaoM = stationVal.match(/\b([A-Z]{4})\b/);
+                    if (icaoM) cleanAirportCode = icaoM[1].toUpperCase();
+                }
+
+                // Bygg badges med Click-to-Filter
+                const regTag = regVal ? `<span class="badge meta badge-reg filterable-badge" onclick="filterByQuickSearch('${escapeHtml(regVal)}')" title="Klicka för att söka registrering: ${escapeHtml(regVal)}">${escapeHtml(regVal)}</span>` : '';
+                const flightTag = flightVal ? `<span class="badge meta badge-flight filterable-badge" onclick="filterByQuickSearch('${escapeHtml(flightVal)}')" title="Klicka för att söka flight: ${escapeHtml(flightVal)}">${escapeHtml(flightVal)}</span>` : '';
+                const icaoTag = icaoVal ? `<span class="badge meta badge-icao filterable-badge" onclick="filterByQuickSearch('${escapeHtml(icaoVal)}')" title="Klicka för att söka ICAO: ${escapeHtml(icaoVal)}">ICAO: ${escapeHtml(icaoVal)}</span>` : '';
+                const stationTag = stationVal ? `<span class="badge meta badge-station filterable-badge" onclick="filterByAirport('${escapeHtml(cleanAirportCode || stationVal)}')" title="Klicka för att filtrera på flygplats: ${escapeHtml(stationVal)}">To: ${escapeHtml(stationVal)}</span>` : '';
                 const statusTag = statusVal ? `<span class="badge meta badge-status ${statusVal === 'Airborne' ? 'badge-airborne' : 'badge-ground'}" title="Flygstatus">${escapeHtml(statusVal)}</span>` : '';
 
                 let labelBadgeText = '';
@@ -1211,10 +1935,22 @@
                         labelBadgeText = `${labelVal} (${shortDesc})`;
                     }
                 }
-                const labelTag = labelBadgeText ? `<span class="badge meta badge-label" title="ACARS Label">Label: ${escapeHtml(labelBadgeText)}</span>` : '';
+                const labelTag = labelBadgeText ? `<span class="badge meta badge-label filterable-badge" onclick="filterByLabel('${escapeHtml(labelVal)}')" title="Klicka för att filtrera på ACARS Label: ${escapeHtml(labelVal)}">Label: ${escapeHtml(labelBadgeText)}</span>` : '';
 
                 vdl2BadgesHtml = `${regTag}${flightTag}${icaoTag}${stationTag}${statusTag}${labelTag}`;
             }
+
+            // Sätt filterattribut på raden
+            tr.setAttribute('data-proto-name', protoName);
+            tr.setAttribute('data-label', labelVal || '');
+            tr.setAttribute('data-airport', stationVal || alarm.dst_airport || '');
+            tr.setAttribute('data-airport-code', cleanAirportCode);
+            tr.setAttribute('data-has-pilot', (cleanMsg.includes('💬') || (alarm.message && alarm.message.includes('💬'))) ? '1' : '0');
+            tr.setAttribute('data-address', alarm.address || '');
+            tr.setAttribute('data-alias', alarm.alias || '');
+            tr.setAttribute('data-reg', regVal || '');
+            tr.setAttribute('data-flight', flightVal || '');
+            tr.setAttribute('data-icao', icaoVal || '');
 
             // Ordbevakning (Krav 3): Kontrolleras ENDAST på själva meddelandetexten (cleanMsg), med hela ord
             if (isBasestation) {
@@ -1229,7 +1965,7 @@
             // Dölj Alpha/Num för VDL2
             const funcLabel = (!isVdl2 && alarm.function !== undefined) ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
             const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
-            const freqTag = alarm.frequency ? `<span class="badge meta badge-freq">${alarm.frequency}</span>` : '';
+            const freqTag = alarm.frequency ? `<span class="badge meta badge-freq filterable-badge" onclick="filterByFrequency('${escapeHtml(alarm.frequency)}')" title="Klicka för att filtrera på frekvens: ${escapeHtml(alarm.frequency)}">${escapeHtml(alarm.frequency)}</span>` : '';
             const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
             const repeatTag = (alarm.repeat_count && alarm.repeat_count > 1) ? `<span class="badge repeat-badge meta" title="Repeated ${alarm.repeat_count} times">${alarm.repeat_count}x</span>` : '';
 
@@ -1241,7 +1977,10 @@
                 <td class="ts-cell" data-order="${alarm.timestamp}">${formattedTime}</td>
                 <td class="meta-cell"><div class="meta-wrapper">${protoTag}</div></td>
                 <td class="addr-cell">
-                    <span class="badge" title="${escapeHtml(alarm.address)}" onclick="openAliasModal('${escapeHtml(alarm.address)}')">${escapeHtml(displayAddress)}</span>
+                    <div style="display: inline-flex; align-items: center; max-width: 100%;">
+                        <span class="badge filterable-badge" title="Klicka för att filtrera på ${escapeHtml(displayAddress)}" onclick="filterByCapcode('${escapeHtml(displayAddress)}', '${escapeHtml(alarm.address)}')">${escapeHtml(displayAddress)}</span>
+                        <button type="button" class="alias-edit-icon-btn" onclick="openAliasModal('${escapeHtml(alarm.address)}')" title="Redigera alias för ${escapeHtml(alarm.address)}"><i class="fas fa-pen"></i></button>
+                    </div>
                 </td>
                 <td class="msg-cell"><div class="msg-text">${formatMessage(cleanMsg)}</div>${metaBarHtml}</td>
                 <td class="actions-cell">
@@ -1418,6 +2157,66 @@
                 return window.WaterfallManager.isRowMatchingFilter(rowNode);
             });
 
+            // Real-time Monitor Active Filters (Protocol, Frequency, Label, Airport, Capcode)
+            $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                if (settings.nTable && settings.nTable.id !== 'alarmsTable') return true;
+
+                const hasFilter = (
+                    activeFilters.protocol !== 'ALL' ||
+                    activeFilters.frequency !== 'ALL' ||
+                    activeFilters.label !== 'ALL' ||
+                    activeFilters.airport !== 'ALL' ||
+                    activeFilters.capcode !== ''
+                );
+                if (!hasFilter) return true;
+
+                const rowNode = settings.aoData[dataIndex] ? settings.aoData[dataIndex].nTr : null;
+                if (!rowNode) return true;
+
+                // 1. Protocol
+                if (activeFilters.protocol !== 'ALL') {
+                    const rowProto = (rowNode.getAttribute('data-proto-name') || '').toUpperCase();
+                    if (rowProto !== activeFilters.protocol.toUpperCase()) return false;
+                }
+
+                // 2. Frequency
+                if (activeFilters.frequency !== 'ALL') {
+                    const rowFreq = (rowNode.getAttribute('data-frequency') || '').toUpperCase();
+                    if (rowFreq !== activeFilters.frequency.toUpperCase()) return false;
+                }
+
+                // 3. Label
+                if (activeFilters.label !== 'ALL') {
+                    if (activeFilters.label === '__PILOT_FREETEXT__') {
+                        const hasPilot = rowNode.getAttribute('data-has-pilot') === '1';
+                        if (!hasPilot) return false;
+                    } else {
+                        const rowLabel = (rowNode.getAttribute('data-label') || '').toUpperCase();
+                        if (rowLabel !== activeFilters.label.toUpperCase()) return false;
+                    }
+                }
+
+                // 4. Airport
+                if (activeFilters.airport !== 'ALL') {
+                    const rowApCode = (rowNode.getAttribute('data-airport-code') || '').toUpperCase();
+                    const rowAirport = (rowNode.getAttribute('data-airport') || '').toUpperCase();
+                    const targetAp = activeFilters.airport.toUpperCase();
+                    if (rowApCode !== targetAp && !rowAirport.includes(targetAp)) return false;
+                }
+
+                // 5. Capcode / Airline
+                if (activeFilters.capcode) {
+                    const rowAddr = (rowNode.getAttribute('data-address') || '').toUpperCase();
+                    const rowAlias = (rowNode.getAttribute('data-alias') || '').toUpperCase();
+                    const target = activeFilters.capcode.toUpperCase();
+                    if (rowAddr !== target && rowAlias !== target && !rowAddr.includes(target) && !rowAlias.includes(target)) {
+                        return false;
+                    }
+                }
+
+                return true;
+            });
+
             updateBasestationBtnUI();
 
             // Initialize DataTables
@@ -1453,6 +2252,21 @@
                 ]
             });
 
+            // Relocate tableFilterBar into DataTables top layout row
+            const dtFirstRow = document.querySelector('.dt-container .dt-layout-row:first-child');
+            const filterBar = document.getElementById('tableFilterBar');
+            if (dtFirstRow && filterBar) {
+                const endCell = dtFirstRow.querySelector('.dt-layout-cell.dt-end') || dtFirstRow.lastElementChild;
+                const midCell = document.createElement('div');
+                midCell.className = 'dt-layout-cell dt-mid-filter';
+                midCell.appendChild(filterBar);
+                if (endCell) {
+                    dtFirstRow.insertBefore(midCell, endCell);
+                } else {
+                    dtFirstRow.appendChild(midCell);
+                }
+            }
+
             // Restore search input from saved state if available
             const savedState = dataTable.state.loaded();
             if (savedState && savedState.search && savedState.search.search) {
@@ -1487,6 +2301,7 @@
             // Bind top search input to DataTables search
             searchInput.addEventListener('input', function () {
                 dataTable.search(this.value).draw();
+                renderFilterChips();
             });
 
             // Fetch initial messages (latest 500 from database)
@@ -1498,6 +2313,7 @@
                 if (allAlarms.length > 0) {
                     const rowNodes = allAlarms.map(a => createAlarmRowNode(a));
                     dataTable.rows.add(rowNodes).draw();
+                    populateFilterDropdowns();
                 }
 
                 // Initialize Waterfall Manager with initial messages
@@ -1641,6 +2457,7 @@
                         if (dataTable) {
                             dataTable.row.add(newRow).draw(false);
                         }
+                        scheduleDropdownRefresh();
                     }
                 }
             };

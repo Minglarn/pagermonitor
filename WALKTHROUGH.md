@@ -2038,6 +2038,51 @@
 - **Emoji-granskning**:
   - Strikt granskad. Endast den begärda pilotfritext-indikatorn `💬` tillåten i meddelandeparsningen. Inga övriga emojis.
 
+---
+
+### 73. Dynamiskt Filtersystem, Click-to-Filter & UI-Fix för Rådata-kollaps (v2026.10.15.13)
+- **Problembeskrivning och Kravspecifikation**:
+  1. Användaren efterfrågade ett smart och smidigt filtersystem ovanför tabellen i Real-time Monitor (mellan "Show X messages" och "Quick filter...") för att snabbt kunna filtrera på Protokoll, Frekvens, ACARS Label och Flygplats, samt Click-to-filter direkt från brickor i tabellen.
+  2. Strikt krav: VDL2-specifika filter (ACARS Label, Flygplats) får INTE synas om VDL2 är inaktiverat i Settings (`vdl2_enabled`). Gränssnittet ska förbli helt rent för användare som enbart kör POCSAG.
+  3. UI-bugg: Stor onödig marginal mellan den tolkade texten och texten "Visa rådata", samt otydligt att det rör sig om en kollapsbar sektion. Användaren begärde en avdelare och tydlig visuell indikering om att texten är kollapsad.
+- **Identifierade Orsaker till UI-marginalen**:
+  - CSS-klassen `.msg-cell` i `static/style.css` hade egenskapen `white-space: pre-wrap;`.
+  - JS-mallsträngar i `formatMessage()` och array-metoder (`split(/\r?\n/)`) innehöll efterföljande radbrytningar och tomrader, vilka webbläsaren tolkade bokstavligt och renderade som tomma textrader före `<details>`.
+  - Webbläsarens inbyggda `<summary>`-pil var diskret eller dold och saknade tydlig interaktionsdesign.
+- **Teknisk Implementering**:
+  - **Eliminering av Vertikalt Tomrum & Förfinad Rådata-design ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+    - Satte `.msg-cell .msg-text { white-space: normal !important; }` så att den tolkade texten inte genererar oavsiktliga tomrader från strängformatering, medan själva rådatan inuti `<pre class="raw-data-content">` behåller sin monospace pre-formatering.
+    - Trimmat bort tomrader före rendering av den tolkade texten.
+    - Lagt till en diskret streckad avdelare (`border-top: 1px dashed rgba(148, 163, 184, 0.25)`) och marginal (`margin-top: 6px; padding-top: 5px;`) på `.raw-data-details`.
+    - Stylat om `<summary>` med `list-style: none` till en kompakt, elegant pill-knapp (`.raw-data-badge-btn`):
+      - Ikon för råkod (`<i class="fas fa-code"></i>`) och roterande chevron (`<i class="fas fa-chevron-right raw-data-chevron"></i>`).
+      - Chevronen roterar 90 grader (`transform: rotate(90deg)`) med CSS-transition när `<details open>` expanderas.
+      - Tydlig hover-effekt med mjuk kantlinje och bakgrundsskiftning.
+  - **Dynamisk Filter-bar i Real-time Monitor ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+    - Skapat container `#tableFilterBar` placerad mellan sidlängdsdropdown och snabbsökrutan i DataTables topprad (`.dt-layout-row:first-child`).
+    - **Protokoll-filter (`#filterProtocol`)**: Dynamiskt befolkad med aktiva protokoll (`Alla protokoll`, `POCSAG`, `VDL2`, `TETRA`, `RDS-TMC`, `AFSK`).
+    - **Frekvens-filter (`#filterFrequency`)**: Dynamiskt befolkad med alla unika frekvenser i stigande frekvensordning tillsammans med meddelandeantal (t.ex. `136.975 MHz (142)`).
+    - **ACARS Label-filter (`#filterLabel`)**: Dynamiskt befolkad med VDL2-labels, inklusive snabbvalet `Endast pilotmeddelanden / fritext` i toppen samt mänskliga förklaringar (t.ex. `80 — Pilot-fritext / ETA & FOB`, `H1 — Airbus AIDS / FDIMU`).
+    - **Flygplats-filter (`#filterAirport`)**: Dynamiskt befolkad med alla unika flygplatser med ICAO och fullt flygplatsnamn (t.ex. `ESSA — Stockholm/Arlanda`).
+    - **Villkorlig Visning baserad på VDL2-inställning**: Känner av `appSettings.vdl2_enabled`. Om VDL2 är inaktiverat döljs Label- och Flygplats-dropdowns automatiskt (`display: none`).
+  - **Click-to-Filter på Samtliga Brickor i Tabellen**:
+    - Klick på **Protokoll-bricka** sätter protokollfiltret.
+    - Klick på **Frekvens-bricka** sätter frekvensfiltret.
+    - Klick på **Label-bricka** sätter label-filtret.
+    - Klick på **Flygplats-bricka** sätter flygplatsfiltret.
+    - Klick på **Flygbolag / Capcode** sätter sökfiltret (medan pennikonen öppnar alias-redigeringen separat).
+    - Klick på **Registrering / Flight / ICAO** sätter sökfiltret.
+  - **Filterchips & Rensa-knapp**:
+    - Aktiva filter visas som klickbara chips (`#activeFilterChips`) med ett litet kryss för att ta bort enskilda filter.
+    - Knappen "Rensa filter" (`#clearFiltersBtn`) nollställer samtliga aktiva dropdowns och fritextsökning med ett enda klick.
+  - **Live-kompatibilitet**:
+    - Inkommande meddelanden via SSE respekterar användarens aktiva filter utan att nollställa dropdowns.
+    - Dropdown-listor uppdateras med nya värden i bakgrunden utan att störa användarens pågående menyinteraktion.
+- **Enhetstester & Verifiering**:
+  - Samtliga 80 enhetstester passerar (`python -m unittest discover tests`).
+  - Emoji-granskning verifierad: Inga otillåtna emojis i applikationen.
+  - Versionsbump till CalVer `2026.10.15.13` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
+
 
 
 

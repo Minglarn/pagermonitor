@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.13] - Dynamiskt Filtersystem, Click-to-Filter och Förfinad Rådata-avdelare
+
+- **Dynamisk Filter-bar i Real-time Monitor (`templates/index.html`)**:
+  - Tillagd kompakt filter-bar ovanför tabellen (mellan "Show X messages" och "Quick filter...") med snabbfiltrering:
+    1. **Protokoll-filter**: Dynamiskt val mellan `Alla protokoll`, `POCSAG`, `VDL2`, `SONDE`, `TETRA`, `RDS` med meddelandeantal.
+    2. **Frekvens-filter**: Dynamiskt befolkad lista över unika frekvenser med meddelandeantal i parentes.
+    3. **VDL2-specifika filter**: Känner av `vdl2_enabled` i inställningar – om VDL2 är avstängt döljs VDL2-dropdowns helt så att gränssnittet hålls rent för POCSAG.
+       - **ACARS Label-filter**: Unika labels med beskrivning (`H1 (FMS)`, `16 (Position/Landning)`, `80 (Operativt/Fritext)` etc.) samt toppvalet `💬 Endast pilotmeddelanden / fritext`.
+       - **Flygplats-filter**: Unika rutt- och markstationsflygplatser (`ESSA (Arlanda)`, `ESDF (Kallinge)`, `EFHK (Helsingfors/Vanda)`).
+- **Click-to-Filter på alla badgar i tabellen (`templates/index.html`)**:
+  - Alla badgar i tabellens celler är klickbara med subtil hover-effekt och verktygstips:
+    - Klick på **Protokoll-badge** filtrerar tabellen på det protokollet.
+    - Klick på **Capcode / Flygbolags-badge** filtrerar på vald adress/alias (separat penn-ikon för redigering).
+    - Klick på **Frekvens-badge** sätter frekvensfiltret till den frekvensen.
+    - Klick på **Label-badge** sätter labelfiltret till den koden.
+    - Klick på **Flygplats-badge** sätter flygplatsfiltret till flygplatsens ICAO-kod.
+    - Klick på **Registrering / Flight / ICAO-badge** filtrerar snabbsökningen.
+- **Aktiva filter-chips & Rensa filter-knapp (`templates/index.html`)**:
+  - Visar interaktiva filter-taggar med `✕` för varje aktivt filter samt en röd `Rensa filter`-knapp.
+  - Live SSE-meddelanden filtreras i realtid utan att aktiva filter nollställs.
+- **UI-fix: Tydlig avdelare och kollaps-indikator för Rådata (`index.html`, `larm.html`, `statistics.html`)**:
+  - Åtgärdat onödigt vertikalt avstånd mellan meddelandetext och "Visa rådata" genom att ta bort oavsiktliga radbrytningar och nollställa cellens whitespace-arv (`.msg-text { white-space: normal; }`).
+  - Lagt till en diskret streckad avdelare (`border-top: 1px dashed rgba(148, 163, 184, 0.25)`) ovanför rådata.
+  - Förvandlat "Visa rådata" till en tydlig pill-knapp med kodikon och animerad chevron (`<i class="fas fa-chevron-right raw-data-chevron"></i>`) som roterar 90 grader vid utfällning.
+
 ## [2026.10.15.12] - Kollapsbar Rådata i UI och Förbättrad Label 80 ETA/FOB/Fritext
 
 - **Kollapsbar Rådata i Gränssnittet (`index.html`, `larm.html`, `statistics.html`)**:

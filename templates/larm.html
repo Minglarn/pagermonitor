@@ -371,44 +371,105 @@
             width: auto !important;
             word-break: break-word !important;
             overflow-wrap: anywhere !important;
-            padding: 0.6rem 0.85rem !important;
+            padding: 0.5rem 0.85rem !important;
+            vertical-align: top !important;
         }
 
-        /* Rådata collapsible details styling */
+        .msg-cell .msg-text {
+            white-space: normal !important;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            line-height: 1.4;
+        }
+
+        .msg-summary {
+            white-space: normal;
+            line-height: 1.4;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* Rådata collapsible details styling med avdelare och tydlig indikator */
         .raw-data-details {
-            margin-top: 4px;
+            margin-top: 6px;
+            margin-bottom: 3px;
+            border-top: 1px dashed rgba(148, 163, 184, 0.25);
+            padding-top: 5px;
+        }
+        [data-theme="light"] .raw-data-details {
+            border-top-color: rgba(148, 163, 184, 0.4);
         }
         .raw-data-details summary {
-            font-size: 0.75rem;
-            color: #64748b;
+            list-style: none !important;
             cursor: pointer;
             user-select: none;
             outline: none;
-            transition: color 0.15s ease;
             display: inline-block;
+            margin: 0;
+            padding: 0;
         }
-        .raw-data-details summary:hover {
+        .raw-data-details summary::-webkit-details-marker {
+            display: none !important;
+        }
+        .raw-data-badge-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.72rem;
+            font-weight: 500;
             color: #94a3b8;
+            background: rgba(148, 163, 184, 0.08);
+            border: 1px solid rgba(148, 163, 184, 0.25);
+            border-radius: 4px;
+            padding: 2px 7px;
+            transition: all 0.15s ease;
+        }
+        .raw-data-badge-btn:hover {
+            color: var(--accent, #38bdf8);
+            background: rgba(56, 189, 248, 0.12);
+            border-color: rgba(56, 189, 248, 0.45);
+        }
+        .raw-data-chevron {
+            font-size: 0.65rem;
+            transition: transform 0.2s ease;
+        }
+        .raw-data-details[open] .raw-data-chevron {
+            transform: rotate(90deg);
+        }
+        .raw-data-details[open] .raw-data-badge-btn {
+            color: var(--accent, #38bdf8);
+            background: rgba(56, 189, 248, 0.12);
+            border-color: rgba(56, 189, 248, 0.45);
         }
         .raw-data-content {
             font-family: var(--msg-font, 'JetBrains Mono', monospace);
-            font-size: 0.75rem;
-            background: #f8fafc;
-            color: #334155;
-            border: 1px solid #e2e8f0;
+            font-size: 0.72rem;
+            background: #0f172a;
+            color: #cbd5e1;
+            border: 1px solid #334155;
             padding: 6px 8px;
             border-radius: 4px;
             white-space: pre-wrap;
             word-break: break-all;
-            margin-top: 4px;
+            margin-top: 5px;
+            margin-bottom: 2px;
             max-height: 240px;
             overflow-y: auto;
         }
-        [data-theme="dark"] .raw-data-content,
-        body.dark-mode .raw-data-content {
-            background: #0f172a;
-            color: #cbd5e1;
-            border-color: #334155;
+        [data-theme="light"] .raw-data-content {
+            background: #f8fafc;
+            color: #334155;
+            border-color: #cbd5e1;
+        }
+        [data-theme="light"] .raw-data-badge-btn {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+            color: #475569;
+        }
+        [data-theme="light"] .raw-data-badge-btn:hover {
+            background: rgba(2, 132, 199, 0.1);
+            border-color: #0284c7;
+            color: #0284c7;
         }
 
         /* Pilot freetext highlight */
@@ -790,7 +851,7 @@
             parsedSummary = parsedSummary.replace(/\s*\|\s*/g, '   ');
 
             // Formatera parsedSummary rad för rad för att hantera 💬
-            const lines = parsedSummary.split(/\r?\n/);
+            const lines = parsedSummary.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
             const formattedLines = lines.map(line => {
                 let lineEscaped = escapeHtml(line);
                 let highlighted = highlightMessage(lineEscaped);
@@ -803,12 +864,7 @@
 
             let rawDetailsHtml = '';
             if (rawText) {
-                rawDetailsHtml = `
-                    <details class="raw-data-details">
-                        <summary>Visa rådata</summary>
-                        <pre class="raw-data-content">${escapeHtml(rawText)}</pre>
-                    </details>
-                `;
+                rawDetailsHtml = `<details class="raw-data-details"><summary><span class="raw-data-badge-btn"><i class="fas fa-chevron-right raw-data-chevron"></i><i class="fas fa-code"></i><span>Visa rådata</span></span></summary><pre class="raw-data-content">${escapeHtml(rawText)}</pre></details>`;
             }
 
             return `<div class="msg-summary">${summaryHtml}</div>${rawDetailsHtml}`;
