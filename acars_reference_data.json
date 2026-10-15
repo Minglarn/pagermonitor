@@ -1,6 +1,9 @@
 {
   "labels": {
     "_d": "Kvittens (ACK)",
+    "H1": "FMS / Färddator-rapport",
+    "H2": "Meteorologisk rapport (AMDAR)",
+    "1L": "Flygbolagsdata (Lufthansa Group AOC)",
     "00": "Emergency Situation Report",
     "11": "In Range Arrival Report",
     "13": "CMU Loadsheet Uplink",

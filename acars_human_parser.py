@@ -113,6 +113,7 @@ FALLBACK_LABELS = {
     '5D': 'Flygplatsväder (ATIS)',
     '5Z': 'Flygbolagsdata (Airline Designated)',
     '1L': 'Flygbolagsdata (Lufthansa Group AOC)',
+    'H2': 'Meteorologisk rapport (AMDAR)',
     'Q0': 'Länktest (ACARS Link Test)',
     'Q1': 'Avgångsrapport (OOOI)',
     'Q2': 'Ankomstrapport (OOOI)',
@@ -153,7 +154,7 @@ FALLBACK_AIRPORTS = {
     'EETN': 'Tallinn',
     'EVRA': 'Riga',
     'EYVI': 'Vilnius',
-    'EPWA': 'Warszawa/Chopin',
+    'EPWA': 'Warszawa',
     'EPGD': 'Gdansk',
     'EDDF': 'Frankfurt',
     'EDDM': 'München',
@@ -872,6 +873,110 @@ def rule_boeing_dfdau_engine_telemetry(text: str, label: str = None, metadata: d
     return f"[Boeing Motortelemetri / DFDAU] {' | '.join(parts)}"
 
 
+def rule_amdar_weather_report(text: str, label: str = None, metadata: dict = None) -> str:
+    """AMDAR meteorologisk rapport (Label H2 m.fl.)."""
+    stripped = text.strip()
+    matches = re.findall(
+        r'([NS])(\d{2})(\d{3})([EW])(\d{3})(\d{3})(\d{4})(\d{4})([MP])(\d{3})(\d{3})(\d{3})G',
+        stripped
+    )
+    if not matches:
+        return None
+
+    last_pt = matches[-1]
+    ns, lat_d, lat_m, ew, lon_d, lon_m, t_str, alt_s, t_sign, temp_s, w_dir, w_spd = last_pt
+    try:
+        lat_val = int(lat_d) + (int(lat_m) / 600.0)
+        if ns.upper() == 'S':
+            lat_val = -lat_val
+        lon_val = int(lon_d) + (int(lon_m) / 600.0)
+        if ew.upper() == 'W':
+            lon_val = -lon_val
+
+        alt_ft_val = int(alt_s) * 10
+        alt_fmt = f"{alt_ft_val:,} ft".replace(',', ' ')
+        temp_val = int(temp_s) / 10.0
+        temp_sign_char = '-' if t_sign.upper() == 'M' else '+'
+        wind_dir_val = int(w_dir)
+        wind_spd_val = int(w_spd)
+        time_str = f"{t_str[:2]}:{t_str[2:]} UTC"
+
+        m_hdr = re.search(r'02E\d{2}([A-Z]{4})([A-Z]{4})', stripped)
+        if m_hdr:
+            orig_icao = m_hdr.group(1).upper()
+            dest_icao = m_hdr.group(2).upper()
+            orig_fmt = format_airport(orig_icao)
+            dest_fmt = format_airport(dest_icao)
+            route_part = f"Rutt: {orig_fmt} -> {dest_fmt} | "
+            if isinstance(metadata, dict):
+                metadata['dst_airport'] = dest_icao
+        else:
+            route_part = ""
+
+        return (
+            f"[AMDAR Väderrapport] {route_part}"
+            f"Senaste ({time_str}): Pos {lat_val:.4f}, {lon_val:.4f} | "
+            f"Höjd: {alt_fmt} | Temp: {temp_sign_char}{temp_val:.1f}°C | "
+            f"Vind: {wind_dir_val}° / {wind_spd_val} kt ({len(matches)} mätpunkter)"
+        )
+    except (ValueError, TypeError):
+        return None
+
+
+def rule_boeing_fms_weather_log(text: str, label: str = None, metadata: dict = None) -> str:
+    """Boeing CSV FMS/väder-loggformat (Label H1 m.fl.)."""
+    stripped = text.strip()
+    lot_matches = re.findall(
+        r'([NS])(\d{2})(\d{2}\.\d+),([EW])(\d{3})(\d{2}\.\d+),(\d{6}),(-?\d+),(-?\d+\.\d+),(\d{3}),(\d{3}),([A-Z]{2})',
+        stripped
+    )
+    if not lot_matches:
+        return None
+
+    last_pt = lot_matches[-1]
+    ns, lat_d, lat_m, ew, lon_d, lon_m, t_str, alt_s, temp_s, w_dir, w_spd, phase = last_pt
+    try:
+        lat_val = int(lat_d) + (float(lat_m) / 60.0)
+        if ns.upper() == 'S':
+            lat_val = -lat_val
+        lon_val = int(lon_d) + (float(lon_m) / 60.0)
+        if ew.upper() == 'W':
+            lon_val = -lon_val
+
+        alt_ft_val = int(alt_s)
+        alt_fmt = f"{alt_ft_val:,} ft".replace(',', ' ')
+        temp_val = float(temp_s)
+        wind_dir_val = int(w_dir)
+        wind_spd_val = int(w_spd)
+        time_str = f"{t_str[2:4]}:{t_str[4:6]} UTC"
+
+        m_hdr = re.search(
+            r'[A-Z0-9_]+\s*,\s*([A-Z0-9]+)\s*,\s*(\d{6})\s*,\s*([A-Z0-9]+)\s*,\s*([A-Z]{4})\s*,\s*([A-Z]{4})',
+            stripped
+        )
+        if m_hdr:
+            ac_type = m_hdr.group(1).strip()
+            callsign = m_hdr.group(3).strip()
+            orig_icao = m_hdr.group(4).strip().upper()
+            dest_icao = m_hdr.group(5).strip().upper()
+            orig_fmt = format_airport(orig_icao)
+            dest_fmt = format_airport(dest_icao)
+            if isinstance(metadata, dict):
+                metadata['dst_airport'] = dest_icao
+            header_part = f"Flygplan: {ac_type} | Rutt: {orig_fmt} -> {dest_fmt} | "
+        else:
+            header_part = ""
+
+        return (
+            f"[FMS Färd- & Väderlogg] {header_part}"
+            f"Senaste ({time_str}): Pos {lat_val:.4f}, {lon_val:.4f} | "
+            f"Höjd: {alt_fmt} | Temp: {temp_val:.1f}°C | "
+            f"Vind: {wind_dir_val}° / {wind_spd_val} kt ({len(lot_matches)} mätpunkter)"
+        )
+    except (ValueError, TypeError):
+        return None
+
+
 def rule_aoc_airline_designated(text: str, label: str = None, metadata: dict = None) -> str:
     """Flygbolagens interna AOC-labels (Label 1L, 1A-4Z)."""
     stripped = text.strip()
@@ -1206,10 +1311,22 @@ def rule_generic_fallback_telemetry(text: str, label: str = None, metadata: dict
     if m_fl:
         extracted.append(f"Höjd: FL{m_fl.group(1)}")
 
-    # 4. Koordinater: t.ex. 58.54N 18.94E eller N58.54 E18.94
-    m_coord = re.search(r'([NS]\s*\d+\.?\d*)\s*[,/ ]\s*([EW]\s*\d+\.?\d*)', stripped, re.IGNORECASE)
-    if m_coord:
-        extracted.append(f"Position: {m_coord.group(1)}, {m_coord.group(2)}")
+    # 4. Koordinater: t.ex. 58.54N 18.94E eller N58.54 E18.94 eller N5611.4, E01728.9
+    # Om DDMM.M, konvertera till decimalgrader och välj sista punkten
+    m_dm = re.findall(r'([NS])\s*([0-9]{2})([0-9]{2}\.[0-9]+)\s*[/,\s]?\s*([EW])\s*([0-9]{3})([0-9]{2}\.[0-9]+)', stripped, re.IGNORECASE)
+    if m_dm:
+        last_c = m_dm[-1]
+        try:
+            lat = (int(last_c[1]) + float(last_c[2]) / 60.0) * (-1 if last_c[0].upper() == 'S' else 1)
+            lon = (int(last_c[4]) + float(last_c[5]) / 60.0) * (-1 if last_c[3].upper() == 'W' else 1)
+            extracted.append(f"Position: {lat:.4f}, {lon:.4f}")
+        except Exception:
+            pass
+    else:
+        m_coord = re.findall(r'([NS]\s*\d+\.?\d*)\s*[,/ ]\s*([EW]\s*\d+\.?\d*)', stripped, re.IGNORECASE)
+        if m_coord:
+            last_c = m_coord[-1]
+            extracted.append(f"Position: {last_c[0]}, {last_c[1]}")
 
     if extracted:
         summary = "   ".join(extracted)
@@ -1228,6 +1345,8 @@ PARSER_RULES = [
     rule_label_q0_link_test,
     rule_fms_progress_destination,
     rule_boeing_dfdau_engine_telemetry,
+    rule_amdar_weather_report,
+    rule_boeing_fms_weather_log,
     rule_aoc_airline_designated,
     rule_label_h1_fpn_flight_plan,
     rule_label_h1_posn_fms,

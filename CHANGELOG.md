@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.6] - AMDAR Väderrapport (Label H2) och Boeing CSV FMS/Väderlogg (Label H1)
+
+- **AMDAR Meteorologiska Rapporter (`vdl2_receiver.py`, `acars_human_parser.py`)**:
+  - Implementerat parserstod for AMDAR (`Label: H2`) med headermonster `02E\d{2}([A-Z]{4})([A-Z]{4})` och matpunkter med lat/lon/tid/hojd/temp/vind.
+  - Valjer alltid den sista (senaste/aktuella) matpunkten ur rapporten sa att planet ritas ut pa aktuell position istallet for historiska koordinater.
+  - Snygg presentation: `[AMDAR Väderrapport] Rutt: LOWW (Wien) -> ESSA (Stockholm/Arlanda) | Senaste (07:18 UTC): Pos 58.7750, 17.8333 | Höjd: 19 500 ft | Temp: -14.7°C | Vind: 312° / 13 kt (5 mätpunkter)`.
+- **Boeing CSV FMS/Väderlogg (`vdl2_receiver.py`, `acars_human_parser.py`)**:
+  - Implementerat parserstod for kommaseparerade FMS- och vaderloggar (t.ex. LOT Polish Airlines `B7378MAX` under `Label: H1`).
+  - Extraherar flygplanstyp, callsign, rutt (`EPWA (Warszawa) -> ESSA (Stockholm/Arlanda)`), uppdaterar `dst_airport`, och valjer sista matpunkten for aktuell position, hojd (`39 998 ft`), temperatur (`-63.8°C`) och vind (`329° / 73 kt`).
+  - Snygg presentation: `[FMS Färd- & Väderlogg] Flygplan: B7378MAX | Rutt: EPWA (Warszawa) -> ESSA (Stockholm/Arlanda) | Senaste (07:21 UTC): Pos 57.7217, 17.7250 | Höjd: 39 998 ft | Temp: -63.8°C | Vind: 329° / 73 kt (6 mätpunkter)`.
+- **Forbattrad Koordinatparsning (`vdl2_receiver.py`, `acars_human_parser.py`)**:
+  - Generella `DDMM.M`-koordinater konverteras nu alltid till decimalgrader (`float`) och valjer den sista punkten om flera matvarden skickats.
+- **Enhetstester (`tests/test_vdl2.py`)**:
+  - Lagt till `test_amdar_weather_report` (Austrian Airlines `OE-LBS`) och `test_lot_boeing_fms_weather_log` (LOT `SP-LYM`).
+  - Samtliga 76 enhetstester i hela testsviten passerar felfritt.
+
 ## [2026.10.15.5] - Lufthansa Group AOC Telemetri (Label 1L) och Flygbolagsinterna Labels
 
 - **Stod for Flygbolagsinterna AOC-labels (`vdl2_receiver.py`, `acars_human_parser.py`)**:

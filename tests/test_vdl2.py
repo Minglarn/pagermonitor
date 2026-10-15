@@ -474,6 +474,87 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertIn('Seq: 000272', res['message'])
         self.assertIn(raw_msg, res['message'])
 
+    def test_amdar_weather_report(self):
+        """Verifiera Austrian Airlines (OE-LBS, OS096F) Label H2 AMDAR väder- och positionsrapport."""
+        raw_msg = (
+            '02E15LOWWESSAN55287E01618406503096M407353048G   '
+            'QN56167E01639606573096M402348048G   '
+            'QN57053E01702107043097M402341044G   '
+            'QN57555E01725607112634M290338022G   '
+            'QN58465E01750007181950M147312013G   Q'
+        )
+        frame = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '440182'},
+                    'acars': {
+                        'reg': '.OE-LBS',
+                        'flight': 'OS096F',
+                        'label': 'H2',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertEqual(res['flight'], 'OS096F')
+        self.assertEqual(res['reg'], 'OE-LBS')
+        self.assertEqual(res['label'], 'H2')
+        self.assertEqual(res['dst_airport'], 'ESSA')
+        self.assertAlmostEqual(res['lat'], 58.775, places=3)
+        self.assertNotAlmostEqual(res['lat'], 55.4783, places=3)
+        self.assertAlmostEqual(res['lon'], 17.8333, places=3)
+        self.assertEqual(res['alt_ft'], 19500)
+        self.assertIn('[AMDAR Väderrapport]', res['message'])
+        self.assertIn('Wien', res['message'])
+        self.assertIn('-14.7°C', res['message'])
+        self.assertIn('312° / 13 kt', res['message'])
+        self.assertIn('5 mätpunkter', res['message'])
+
+    def test_lot_boeing_fms_weather_log(self):
+        """Verifiera LOT Polish Airlines (SP-LYM, LO0453) Label H1 Boeing CSV FMS/väderlogg."""
+        raw_msg = (
+            "ABS026BA_S      ,B7378MAX ,261015,L04AR ,EPWA,ESSA,0146,BCG27-S200-0011\n"
+            "N5611.4,E01728.9,150706,40003,-63.3,341,082,ER,00000,0,\n"
+            "N5629.6,E01731.7,150709,40002,-63.3,340,081,ER,00000,0,\n"
+            "N5647.8,E01734.5,150712,39997,-63.5,336,079,ER,00000,0,\n"
+            "N5706.1,E01737.4,150715,39998,-63.5,334,076,ER,00000,0,\n"
+            "N5724.6,E01740.4,150718,40001,-63.8,331,074,ER,00000,0,\n"
+            "N5743.3,E01743.5,150721,39998,-63.8,329,073,ER,00000,0,"
+        )
+        frame = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '48AD1D'},
+                    'acars': {
+                        'reg': '.SP-LYM',
+                        'flight': 'LO0453',
+                        'label': 'H1',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertEqual(res['flight'], 'LO0453')
+        self.assertEqual(res['reg'], 'SP-LYM')
+        self.assertEqual(res['dst_airport'], 'ESSA')
+        self.assertAlmostEqual(res['lat'], 57.7217, places=3)
+        self.assertNotAlmostEqual(res['lat'], 56.19, places=2)
+        self.assertAlmostEqual(res['lon'], 17.7250, places=3)
+        self.assertEqual(res['alt_ft'], 39998)
+        self.assertIn('[FMS Färd- & Väderlogg]', res['message'])
+        self.assertIn('B7378MAX', res['message'])
+        self.assertIn('EPWA (Warszawa)', res['message'])
+        self.assertIn('ESSA (Stockholm/Arlanda)', res['message'])
+        self.assertIn('-63.8°C', res['message'])
+        self.assertIn('329° / 73 kt', res['message'])
+        self.assertIn('6 mätpunkter', res['message'])
+
 if __name__ == '__main__':
     unittest.main()
 

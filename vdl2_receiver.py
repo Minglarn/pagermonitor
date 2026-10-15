@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 
 # ACARS Label-koder och deras förklaringar från acars_reference_data.json
 ACARS_LABELS = dict(PARSER_ACARS_LABELS)
+ACARS_LABELS['H2'] = 'Meteorologisk rapport (AMDAR)'
 LABEL_MAP = ACARS_LABELS
 
 
@@ -76,7 +77,7 @@ AIRPORT_MAP = {
     'EETN': 'Tallinn',
     'EVRA': 'Riga',
     'EYVI': 'Vilnius',
-    'EPWA': 'Warszawa/Chopin',
+    'EPWA': 'Warszawa',
     'EPGD': 'Gdansk',
     'EDDF': 'Frankfurt',
     'EDDM': 'München',
@@ -259,6 +260,123 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
 
     raw_text = text or ''
 
+    # --- Mönster 0a: AMDAR meteorologiska rapporter (Label H2 m.fl.) ---
+    # Exempel: 02E15LOWWESSAN55287E01618406503096M407353048G   QN56167...
+    amdar_matches = re.findall(
+        r'([NS])(\d{2})(\d{3})([EW])(\d{3})(\d{3})(\d{4})(\d{4})([MP])(\d{3})(\d{3})(\d{3})G',
+        raw_text
+    )
+    if amdar_matches:
+        last_pt = amdar_matches[-1]
+        ns, lat_d, lat_m, ew, lon_d, lon_m, t_str, alt_s, t_sign, temp_s, w_dir, w_spd = last_pt
+        try:
+            lat_val = int(lat_d) + (int(lat_m) / 600.0)
+            if ns.upper() == 'S':
+                lat_val = -lat_val
+            lon_val = int(lon_d) + (int(lon_m) / 600.0)
+            if ew.upper() == 'W':
+                lon_val = -lon_val
+            res['lat'] = round(lat_val, 4)
+            res['lon'] = round(lon_val, 4)
+            res['alt_ft'] = int(alt_s) * 10
+
+            temp_val = int(temp_s) / 10.0
+            temp_sign_char = '-' if t_sign.upper() == 'M' else '+'
+            wind_dir_val = int(w_dir)
+            wind_spd_val = int(w_spd)
+            time_str = f"{t_str[:2]}:{t_str[2:]} UTC"
+            alt_fmt = f"{res['alt_ft']:,} ft".replace(',', ' ')
+
+            res['telemetry']['time'] = time_str
+            res['telemetry']['temp_c'] = -temp_val if t_sign.upper() == 'M' else temp_val
+            res['telemetry']['wind_dir'] = wind_dir_val
+            res['telemetry']['wind_kt'] = wind_spd_val
+            res['telemetry']['num_points'] = len(amdar_matches)
+
+            m_hdr = re.search(r'02E\d{2}([A-Z]{4})([A-Z]{4})', raw_text)
+            if m_hdr:
+                orig_icao = m_hdr.group(1).upper()
+                dest_icao = m_hdr.group(2).upper()
+                res['dst_airport'] = dest_icao
+                orig_fmt = format_airport(orig_icao)
+                dest_fmt = format_airport(dest_icao)
+                res['telemetry_summary'] = (
+                    f"Rutt: {orig_fmt} -> {dest_fmt} | "
+                    f"Senaste ({time_str}): Pos {res['lat']:.4f}, {res['lon']:.4f} | "
+                    f"Höjd: {alt_fmt} | Temp: {temp_sign_char}{temp_val:.1f}°C | "
+                    f"Vind: {wind_dir_val}° / {wind_spd_val} kt ({len(amdar_matches)} mätpunkter)"
+                )
+            else:
+                res['telemetry_summary'] = (
+                    f"AMDAR Senaste ({time_str}): Pos {res['lat']:.4f}, {res['lon']:.4f} | "
+                    f"Höjd: {alt_fmt} | Temp: {temp_sign_char}{temp_val:.1f}°C | "
+                    f"Vind: {wind_dir_val}° / {wind_spd_val} kt ({len(amdar_matches)} mätpunkter)"
+                )
+            return res
+        except (ValueError, TypeError):
+            pass
+
+    # --- Mönster 0b: Boeing CSV FMS / väderlogg (Label H1 m.fl.) ---
+    # Exempel: N5611.4,E01728.9,150706,40003,-63.3,341,082,ER,00000,0,
+    lot_matches = re.findall(
+        r'([NS])(\d{2})(\d{2}\.\d+),([EW])(\d{3})(\d{2}\.\d+),(\d{6}),(-?\d+),(-?\d+\.\d+),(\d{3}),(\d{3}),([A-Z]{2})',
+        raw_text
+    )
+    if lot_matches:
+        last_pt = lot_matches[-1]
+        ns, lat_d, lat_m, ew, lon_d, lon_m, t_str, alt_s, temp_s, w_dir, w_spd, phase = last_pt
+        try:
+            lat_val = int(lat_d) + (float(lat_m) / 60.0)
+            if ns.upper() == 'S':
+                lat_val = -lat_val
+            lon_val = int(lon_d) + (float(lon_m) / 60.0)
+            if ew.upper() == 'W':
+                lon_val = -lon_val
+            res['lat'] = round(lat_val, 4)
+            res['lon'] = round(lon_val, 4)
+            res['alt_ft'] = int(alt_s)
+
+            temp_val = float(temp_s)
+            wind_dir_val = int(w_dir)
+            wind_spd_val = int(w_spd)
+            time_str = f"{t_str[2:4]}:{t_str[4:6]} UTC"
+            alt_fmt = f"{res['alt_ft']:,} ft".replace(',', ' ')
+
+            res['telemetry']['time'] = time_str
+            res['telemetry']['temp_c'] = temp_val
+            res['telemetry']['wind_dir'] = wind_dir_val
+            res['telemetry']['wind_kt'] = wind_spd_val
+            res['telemetry']['flight_phase'] = phase
+            res['telemetry']['num_points'] = len(lot_matches)
+
+            m_hdr = re.search(
+                r'[A-Z0-9_]+\s*,\s*([A-Z0-9]+)\s*,\s*(\d{6})\s*,\s*([A-Z0-9]+)\s*,\s*([A-Z]{4})\s*,\s*([A-Z]{4})',
+                raw_text
+            )
+            if m_hdr:
+                ac_type = m_hdr.group(1).strip()
+                callsign = m_hdr.group(3).strip()
+                orig_icao = m_hdr.group(4).strip().upper()
+                dest_icao = m_hdr.group(5).strip().upper()
+                res['dst_airport'] = dest_icao
+                orig_fmt = format_airport(orig_icao)
+                dest_fmt = format_airport(dest_icao)
+                res['telemetry_summary'] = (
+                    f"Flygplan: {ac_type} | Rutt: {orig_fmt} -> {dest_fmt} | "
+                    f"Senaste ({time_str}): Pos {res['lat']:.4f}, {res['lon']:.4f} | "
+                    f"Höjd: {alt_fmt} | Temp: {temp_val:.1f}°C | "
+                    f"Vind: {wind_dir_val}° / {wind_spd_val} kt ({len(lot_matches)} mätpunkter)"
+                )
+            else:
+                res['telemetry_summary'] = (
+                    f"FMS Logg Senaste ({time_str}): Pos {res['lat']:.4f}, {res['lon']:.4f} | "
+                    f"Höjd: {alt_fmt} | Temp: {temp_val:.1f}°C | "
+                    f"Vind: {wind_dir_val}° / {wind_spd_val} kt ({len(lot_matches)} mätpunkter)"
+                )
+            return res
+        except (ValueError, TypeError):
+            pass
+
     # --- Mönster 0: CSV-positionsrapport (t.ex. Label 83) ---
     # Exempel: ESSA,HAAB,142029, 58.54,  18.94,22605,305, 166.9, 43000
     if ',' in raw_text:
@@ -426,38 +544,41 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
             pass
 
     if res['lat'] is None:
-        # Format med decimalpunkt: 5912.4N 01805.2E eller N5912.4 E01805.2
-        m_dm_dec = re.search(r'([0-9]{2})([0-9]{2}\.[0-9]+)\s*([NS])\s*[/,\s]?\s*([0-9]{3})([0-9]{2}\.[0-9]+)\s*([EW])', raw_text, re.IGNORECASE)
-        if not m_dm_dec:
-            m_dm_dec = re.search(r'([NS])\s*([0-9]{2})([0-9]{2}\.[0-9]+)\s*[/,\s]?\s*([EW])\s*([0-9]{3})([0-9]{2}\.[0-9]+)', raw_text, re.IGNORECASE)
-            if m_dm_dec:
-                try:
-                    lat_ns = m_dm_dec.group(1).upper()
-                    lat_deg = int(m_dm_dec.group(2))
-                    lat_min = float(m_dm_dec.group(3))
-                    lat = (lat_deg + lat_min / 60.0) * (-1 if lat_ns == 'S' else 1)
-
-                    lon_ew = m_dm_dec.group(4).upper()
-                    lon_deg = int(m_dm_dec.group(5))
-                    lon_min = float(m_dm_dec.group(6))
-                    lon = (lon_deg + lon_min / 60.0) * (-1 if lon_ew == 'W' else 1)
-                    res['lat'], res['lon'] = round(lat, 4), round(lon, 4)
-                except (ValueError, TypeError):
-                    pass
-        else:
+        # Format med decimalpunkt: t.ex. N5611.4, E01728.9 eller 5912.4N 01805.2E
+        # Välj alltid sista förekomsten om flera punkter loggats
+        dm_matches = re.findall(r'([NS])\s*([0-9]{2})([0-9]{2}\.[0-9]+)\s*[/,\s]?\s*([EW])\s*([0-9]{3})([0-9]{2}\.[0-9]+)', raw_text, re.IGNORECASE)
+        if dm_matches:
+            last_m = dm_matches[-1]
             try:
-                lat_deg = int(m_dm_dec.group(1))
-                lat_min = float(m_dm_dec.group(2))
-                lat_ns = m_dm_dec.group(3).upper()
+                lat_ns = last_m[0].upper()
+                lat_deg = int(last_m[1])
+                lat_min = float(last_m[2])
                 lat = (lat_deg + lat_min / 60.0) * (-1 if lat_ns == 'S' else 1)
 
-                lon_deg = int(m_dm_dec.group(4))
-                lon_min = float(m_dm_dec.group(5))
-                lon_ew = m_dm_dec.group(6).upper()
+                lon_ew = last_m[3].upper()
+                lon_deg = int(last_m[4])
+                lon_min = float(last_m[5])
                 lon = (lon_deg + lon_min / 60.0) * (-1 if lon_ew == 'W' else 1)
                 res['lat'], res['lon'] = round(lat, 4), round(lon, 4)
             except (ValueError, TypeError):
                 pass
+        else:
+            dm_matches_rev = re.findall(r'([0-9]{2})([0-9]{2}\.[0-9]+)\s*([NS])\s*[/,\s]?\s*([0-9]{3})([0-9]{2}\.[0-9]+)\s*([EW])', raw_text, re.IGNORECASE)
+            if dm_matches_rev:
+                last_m = dm_matches_rev[-1]
+                try:
+                    lat_deg = int(last_m[0])
+                    lat_min = float(last_m[1])
+                    lat_ns = last_m[2].upper()
+                    lat = (lat_deg + lat_min / 60.0) * (-1 if lat_ns == 'S' else 1)
+
+                    lon_deg = int(last_m[3])
+                    lon_min = float(last_m[4])
+                    lon_ew = last_m[5].upper()
+                    lon = (lon_deg + lon_min / 60.0) * (-1 if lon_ew == 'W' else 1)
+                    res['lat'], res['lon'] = round(lat, 4), round(lon, 4)
+                except (ValueError, TypeError):
+                    pass
 
     if res['lat'] is None:
         # Format: LAT 59.21 LON 18.08 eller LAT: 59.21, LON: 18.08
@@ -1039,7 +1160,7 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
     if lat is not None and lon is not None:
         coord_line = f"Position: {lat:.4f}, {lon:.4f}"
         joined_txt = "\n".join(message_lines)
-        if "Position:" not in joined_txt and "Pos:" not in joined_txt:
+        if "Position:" not in joined_txt and "Pos:" not in joined_txt and "Pos " not in joined_txt:
             message_lines.append(coord_line)
 
     full_message = "\n".join(message_lines).strip()

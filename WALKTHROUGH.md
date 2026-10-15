@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.5`
+- **CalVer**: `2026.10.15.6`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
@@ -1902,6 +1902,23 @@
 - **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
   - Lade till `test_austrian_aoc_1l_telemetry` som verifierar Austrian Airlines `OE-LBS` / `OS096F` med verklig `Label: 1L`-telemetristrang.
   - Samtliga 74 enhetstester i hela testsviten passerar felfritt.
+- **Emoji-granskning**:
+  - 100% fri från emojis i alla ändrade och tillagda filer.
+
+### 66. AMDAR Väderrapport (Label H2) och Boeing CSV FMS/Väderlogg (Label H1) (v2026.10.15.6)
+- **AMDAR Meteorologiska Rapporter ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Implementerat parserstöd för AMDAR-rapporter (`Label: H2`) med headermönster `02E\d{2}([A-Z]{4})([A-Z]{4})`.
+  - Parsar samtliga mätpunkter (`lat`, `lon`, `tid`, `höjd`, `temp`, `vind`) och väljer alltid den sista (senaste/aktuella) mätpunkten för flygplanets position så att kartmarkören placeras rätt.
+  - Snygg presentation: `[AMDAR Väderrapport] Rutt: LOWW (Wien) -> ESSA (Stockholm/Arlanda) | Senaste (07:18 UTC): Pos 58.7750, 17.8333 | Höjd: 19 500 ft | Temp: -14.7°C | Vind: 312° / 13 kt (5 mätpunkter)`.
+- **Boeing CSV FMS/Väderlogg ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Implementerat parserstöd för kommaseparerade FMS-loggar (t.ex. LOT Polish Airlines `B7378MAX` under `Label: H1`).
+  - Extraherar flygplanstyp, callsign, rutt (`EPWA (Warszawa) -> ESSA (Stockholm/Arlanda)`), uppdaterar `dst_airport`, och väljer sista mätpunkten för aktuell position, höjd (`39 998 ft`), temperatur (`-63.8°C`) och vind (`329° / 73 kt`).
+  - Snygg presentation: `[FMS Färd- & Väderlogg] Flygplan: B7378MAX | Rutt: EPWA (Warszawa) -> ESSA (Stockholm/Arlanda) | Senaste (07:21 UTC): Pos 57.7217, 17.7250 | Höjd: 39 998 ft | Temp: -63.8°C | Vind: 329° / 73 kt (6 mätpunkter)`.
+- **Förbättrad Koordinatkonvertering ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Generella `DDMM.M`-koordinater konverteras nu alltid till decimalgrader (`float`) och väljer den sista punkten om flera mätvärden skickats.
+- **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
+  - Lagt till `test_amdar_weather_report` (Austrian Airlines `OE-LBS`) och `test_lot_boeing_fms_weather_log` (LOT `SP-LYM`).
+  - Samtliga 76 enhetstester i hela testsviten passerar felfritt.
 - **Emoji-granskning**:
   - 100% fri från emojis i alla ändrade och tillagda filer.
 
