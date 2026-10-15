@@ -260,6 +260,41 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
         seq_part = f", Seq: {m_aoc_seq.group(1)[:6]}" if m_aoc_seq else ""
         return f"[AOC Flygbolagsdata] Intern kodad drift-/telemetrirapport (Lufthansa Group{seq_part}) | Rådata: {txt}"
 
+    # 2d. Airbus AIDS / FDIMU-rapporter (/REP och /CC headers)
+    m_airbus = re.search(r'^(A\d{3})[^/]*/REP(\d+)[^/]*/CC([A-Z0-9-]+),([A-Z]{3}\d{2}),(\d{6}),([A-Z]{4}),([A-Z]{4})', txt)
+    if m_airbus:
+        ac_type = m_airbus.group(1).strip()
+        rep_num = m_airbus.group(2).strip()
+        reg_code = m_airbus.group(3).strip()
+        date_str = m_airbus.group(4).strip()
+        t_raw = m_airbus.group(5).strip()
+        orig_icao = m_airbus.group(6).strip().upper()
+        dest_icao = m_airbus.group(7).strip().upper()
+
+        time_str = f"{t_raw[0:2]}:{t_raw[2:4]}:{t_raw[4:6]} UTC" if len(t_raw) == 6 else t_raw
+        orig_fmt = format_airport(orig_icao)
+        dest_fmt = format_airport(dest_icao)
+        route_str = f"Rutt: {orig_fmt} → {dest_fmt}"
+
+        if isinstance(acars_dict, dict):
+            acars_dict['dst_airport'] = dest_icao
+
+        parts = [f"Flygplan: {ac_type}", route_str, f"Tid: {time_str}"]
+
+        m_ce = re.search(r'/CE\d{4},(\d{4,5}),(\d{3})', txt)
+        if m_ce:
+            alt_val = int(m_ce.group(1))
+            spd_val = int(m_ce.group(2))
+            alt_fmt = f"{alt_val:,} ft".replace(',', ' ')
+            parts.append(f"Höjd: {alt_fmt}")
+            parts.append(f"Fart: {spd_val} kt")
+            if isinstance(acars_dict, dict):
+                acars_dict['alt_ft'] = alt_val
+                acars_dict['alt'] = alt_val
+
+        summary = f"[Airbus FDIMU/Systemrapport #{rep_num}] {' | '.join(parts)}"
+        return f"{summary} | Rådata: {txt}"
+
     # 3. Boeing / Honeywell FMS & CMC prefix
     if txt.startswith('#M1B'):
         if not txt.startswith('[Boeing/Honeywell FMS]'):
@@ -310,6 +345,7 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
     res = {
         'lat': None,
         'lon': None,
+        'alt': None,
         'alt_ft': None,
         'telemetry_summary': '',
         'telemetry': {}
@@ -433,6 +469,50 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
             return res
         except (ValueError, TypeError):
             pass
+
+    # --- Mönster 0c: Airbus AIDS / FDIMU-rapporter (/REP och /CC headers) ---
+    m_airbus_aids = re.search(
+        r'^(A\d{3})[^/]*/REP(\d+)[^/]*/CC([A-Z0-9-]+),([A-Z]{3}\d{2}),(\d{6}),([A-Z]{4}),([A-Z]{4})',
+        raw_text.strip()
+    )
+    if m_airbus_aids:
+        ac_type = m_airbus_aids.group(1).strip()
+        rep_num = m_airbus_aids.group(2).strip()
+        reg_code = m_airbus_aids.group(3).strip()
+        date_str = m_airbus_aids.group(4).strip()
+        t_raw = m_airbus_aids.group(5).strip()
+        orig_icao = m_airbus_aids.group(6).strip().upper()
+        dest_icao = m_airbus_aids.group(7).strip().upper()
+
+        time_str = f"{t_raw[0:2]}:{t_raw[2:4]}:{t_raw[4:6]} UTC" if len(t_raw) == 6 else t_raw
+        orig_fmt = format_airport(orig_icao)
+        dest_fmt = format_airport(dest_icao)
+        res['dst_airport'] = dest_icao
+        res['telemetry']['aircraft_type'] = ac_type
+        res['telemetry']['report_num'] = rep_num
+        res['telemetry']['reg'] = reg_code
+        res['telemetry']['time'] = time_str
+
+        m_ce = re.search(r'/CE\d{4},(\d{4,5}),(\d{3})', raw_text)
+        if m_ce:
+            alt_val = int(m_ce.group(1))
+            spd_val = int(m_ce.group(2))
+            res['alt'] = alt_val
+            res['alt_ft'] = alt_val
+            res['telemetry']['speed_kt'] = spd_val
+            res['telemetry']['alt_ft'] = alt_val
+            alt_fmt = f"{alt_val:,} ft".replace(',', ' ')
+            res['telemetry_summary'] = (
+                f"[Airbus FDIMU/Systemrapport #{rep_num}] Flygplan: {ac_type} | "
+                f"Rutt: {orig_fmt} → {dest_fmt} | Tid: {time_str} | "
+                f"Höjd: {alt_fmt} | Fart: {spd_val} kt"
+            )
+        else:
+            res['telemetry_summary'] = (
+                f"[Airbus FDIMU/Systemrapport #{rep_num}] Flygplan: {ac_type} | "
+                f"Rutt: {orig_fmt} → {dest_fmt} | Tid: {time_str}"
+            )
+        return res
 
     # --- Mönster 0: CSV-positionsrapport (t.ex. Label 83) ---
     # Exempel: ESSA,HAAB,142029, 58.54,  18.94,22605,305, 166.9, 43000
@@ -1251,6 +1331,7 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
         'label_desc': label_desc,
         'lat': lat,
         'lon': lon,
+        'alt': alt_ft,
         'alt_ft': alt_ft,
         'snr': snr_str,
         'snr_db': snr_db,

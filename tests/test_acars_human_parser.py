@@ -185,6 +185,24 @@ class TestAcarsHumanParser(unittest.TestCase):
         self.assertIn("Rutt: ESSA (Stockholm/Arlanda) → ENGM (Oslo/Gardermoen)   ETA: 14:30 UTC   Höjd: FL360", res)
         self.assertIn("FREE TEXT WITH ROUTE", res)
 
+    def test_rule_airbus_aids_fdimu_report(self):
+        raw = (
+            "A321,017705,1,1,TB00000/REP009,85,02,1/CCTC-RBH,OCT15,081323,LTFJ,ESSA,0056"
+            "/C0TFC05PGTS40101/C106,01009,4130,59,0011,0,1100,61,X/CE0103,13407,301,578,6647,241,F22TS4"
+            "/C22500M34P08/C3FAKC2507       /C42"
+        )
+        meta = {}
+        res = parse_human_acars(raw, label="H1", metadata=meta)
+        self.assertIn("[Airbus FDIMU/Systemrapport #009]", res)
+        self.assertIn("Flygplan: A321", res)
+        self.assertIn("Rutt: LTFJ (Istanbul/Sabiha Gökçen) → ESSA (Stockholm/Arlanda)", res)
+        self.assertIn("Tid: 08:13:23 UTC", res)
+        self.assertIn("Höjd: 13 407 ft", res)
+        self.assertIn("Fart: 301 kt", res)
+        self.assertIn("Rådata: " + raw, res)
+        self.assertEqual(meta.get('dst_airport'), 'ESSA')
+        self.assertEqual(meta.get('alt'), 13407)
+
     def test_fallback_unmatched_returns_original(self):
         raw = "[H1: FMS / Färddator-rapport] OKÄND TEXT SOM INTE MATCHAR REGLERNA"
         res = parse_human_acars(raw)

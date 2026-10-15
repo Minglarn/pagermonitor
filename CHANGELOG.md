@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.15.11] - Airbus FDIMU / AIDS-rapport (Label H1, /REP & /CC)
+
+- **Airbus FDIMU & AIDS-systemrapporter (`vdl2_receiver.py`, `acars_human_parser.py`)**:
+  - Implementerat parserstöd för Airbus FDIMU / AIDS-rapporter under `Label: H1` med mönstret `^(A\d{3})[^/]*/REP(\d+)[^/]*/CC([A-Z0-9-]+),([A-Z]{3}\d{2}),(\d{6}),([A-Z]{4}),([A-Z]{4})`.
+  - Extraherar flygplanstyp (`A321`), rapportnummer (`Rapport #009`), registrering (`TC-RBH`), tidstämpel (`08:13:23 UTC`), avgångsflygplats (`LTFJ (Istanbul/Sabiha Gökçen)`) och destinationsflygplats (`ESSA (Stockholm/Arlanda)`).
+  - Uppdaterar automatiskt paketets `dst_airport` till destinationsflygplatsen så att den gröna stations-badgen i gränssnittet visar korrekt destination (`Stockholm/Arlanda`).
+  - Extraherar flyghöjd och indikerad fart ur `/CE`-sektionen (`/CE\d{4},(\d{4,5}),(\d{3})`) och sätter paketets `alt` och `alt_ft` till `13407` samt fart till `301 kt`.
+  - Snygg presentation på svenska:
+    `[Airbus FDIMU/Systemrapport #009] Flygplan: A321 | Rutt: LTFJ (Istanbul/Sabiha Gökçen) → ESSA (Stockholm/Arlanda) | Tid: 08:13:23 UTC | Höjd: 13 407 ft | Fart: 301 kt | Rådata: A321,017705...`
+- **Enhetstester (`tests/test_vdl2.py`, `tests/test_acars_human_parser.py`)**:
+  - Lagt till `test_pegasus_airbus_aids_fdimu_report` och `test_rule_airbus_aids_fdimu_report` med verklig Pegasus Airlines-data.
+  - Verifierar att `Istanbul/Sabiha Gökçen` och `Stockholm/Arlanda` slås upp och skrivs ut samt att `alt` sätts till `13407`.
+  - Samtliga 79 enhetstester passerar felfritt.
+
 ## [2026.10.15.10] - Prestandaoptimering av Databasstatistik (3 ms svarstid & Cache)
 
 - **Drastisk Prestandaförbättring för Databasöversikt (`_calculate_database_stats`)**:

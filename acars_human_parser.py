@@ -1106,6 +1106,53 @@ def rule_boeing_plf_fault_report(text: str, label: str = None, metadata: dict = 
     return f"{summary}\n{stripped}"
 
 
+def rule_airbus_aids_fdimu_report(text: str, label: str = None, metadata: dict = None) -> str:
+    """Airbus AIDS / FDIMU systemrapporter (/REP och /CC headers)."""
+    stripped = text.strip()
+    m = re.search(
+        r'^(A\d{3})[^/]*/REP(\d+)[^/]*/CC([A-Z0-9-]+),([A-Z]{3}\d{2}),(\d{6}),([A-Z]{4}),([A-Z]{4})',
+        stripped
+    )
+    if not m:
+        return None
+
+    ac_type = m.group(1).strip()
+    rep_num = m.group(2).strip()
+    reg_code = m.group(3).strip()
+    date_str = m.group(4).strip()
+    t_raw = m.group(5).strip()
+    orig_icao = m.group(6).strip().upper()
+    dest_icao = m.group(7).strip().upper()
+
+    time_str = f"{t_raw[0:2]}:{t_raw[2:4]}:{t_raw[4:6]} UTC" if len(t_raw) == 6 else t_raw
+    orig_fmt = format_airport(orig_icao)
+    dest_fmt = format_airport(dest_icao)
+    route_str = f"Rutt: {orig_fmt} → {dest_fmt}"
+
+    if isinstance(metadata, dict):
+        metadata['dst_airport'] = dest_icao
+
+    parts = [
+        f"Flygplan: {ac_type}",
+        route_str,
+        f"Tid: {time_str}"
+    ]
+
+    m_ce = re.search(r'/CE\d{4},(\d{4,5}),(\d{3})', stripped)
+    if m_ce:
+        alt_val = int(m_ce.group(1))
+        spd_val = int(m_ce.group(2))
+        alt_fmt = f"{alt_val:,} ft".replace(',', ' ')
+        parts.append(f"Höjd: {alt_fmt}")
+        parts.append(f"Fart: {spd_val} kt")
+        if isinstance(metadata, dict):
+            metadata['alt_ft'] = alt_val
+            metadata['alt'] = alt_val
+
+    summary = f"[Airbus FDIMU/Systemrapport #{rep_num}] {' | '.join(parts)}"
+    return f"{summary} | Rådata: {stripped}"
+
+
 def rule_aoc_airline_designated(text: str, label: str = None, metadata: dict = None) -> str:
     """Flygbolagens interna AOC-labels (Label 1L, 1A-4Z)."""
     stripped = text.strip()
@@ -1475,6 +1522,7 @@ PARSER_RULES = [
     rule_fms_progress_destination,
     rule_boeing_dfdau_engine_telemetry,
     rule_boeing_plf_fault_report,
+    rule_airbus_aids_fdimu_report,
     rule_amdar_weather_report,
     rule_boeing_fms_weather_log,
     rule_aoc_airline_designated,

@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.10`
+- **CalVer**: `2026.10.15.11`
 - **Date**: 2026-10-15
 - **Language**: English / Swedish
 
@@ -1988,6 +1988,23 @@
   - Knappen "Refresh Stats" försågs med ett roterande ikon (`fa-spin`) och inaktiveras under pågående begäran så att användaren tydligt ser att data hämtas.
 - **Enhetstester ([tests/test_stats_api.py](file:///d:/antigravity/pager-monitor/tests/test_stats_api.py))**:
   - Utökat testsviten med `test_database_stats_cache_and_force` som verifierar cachefunktion och force-flaggan.
+- **Emoji-granskning**:
+  - 100% fri från emojis i alla ändrade och tillagda filer.
+
+### 71. Airbus FDIMU / AIDS-systemrapporter under Label H1 (v2026.10.15.11)
+- **Airbus FDIMU & AIDS-headerdekodning ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Implementerat parserstöd för Airbus AIDS/FDIMU-rapporter (t.ex. Pegasus Airlines TC-RBH, PC56HA på A321) under `Label: H1` som inleds med flygplanstyp, rapportnummer och `/CC`-header:
+    `^(A\d{3})[^/]*/REP(\d+)[^/]*/CC([A-Z0-9-]+),([A-Z]{3}\d{2}),(\d{6}),([A-Z]{4}),([A-Z]{4})`.
+  - Extraherar flygplanstyp (`A321`), rapportnummer (`009`), registrering (`TC-RBH`), tidsstämpel (`08:13:23 UTC`), avgångsflygplats (`LTFJ`) och destinationsflygplats (`ESSA`).
+  - Uppdaterar automatiskt `dst_airport` till `ESSA` och sätter destinations-badgen till `ESSA (Stockholm/Arlanda)`.
+- **Telemetri & Höjddata från `/CE`-sektionen ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Extraherar flyghöjd i fot (`13 407 ft`) och indikerad fart (`301 kt`) ur mönstret `/CE\d{4},(\d{4,5}),(\d{3})`.
+  - Sätter paketets `alt` och `alt_ft` till `13407` i `parse_vdl2_frame` och `extract_position_and_telemetry`.
+  - Formaterar rapporten strukturerat på svenska:
+    `[Airbus FDIMU/Systemrapport #009] Flygplan: A321 | Rutt: LTFJ (Istanbul/Sabiha Gökçen) → ESSA (Stockholm/Arlanda) | Tid: 08:13:23 UTC | Höjd: 13 407 ft | Fart: 301 kt | Rådata: ...`
+- **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py), [tests/test_acars_human_parser.py](file:///d:/antigravity/pager-monitor/tests/test_acars_human_parser.py))**:
+  - Tillagt `test_pegasus_airbus_aids_fdimu_report` och `test_rule_airbus_aids_fdimu_report` som verifierar att `Istanbul/Sabiha Gökçen` och `Stockholm/Arlanda` slås upp och visas samt att `alt` sätts till `13407`.
+  - Samtliga 79 enhetstester passerar felfritt.
 - **Emoji-granskning**:
   - 100% fri från emojis i alla ändrade och tillagda filer.
 

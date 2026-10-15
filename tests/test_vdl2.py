@@ -592,6 +592,42 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertIn('Underhållskoder (MSG): 1 st', res['message'])
         self.assertIn('FDE 34531131', res['message'])
 
+    def test_pegasus_airbus_aids_fdimu_report(self):
+        """Verifiera Pegasus Airlines (TC-RBH, PC56HA) Airbus FDIMU / AIDS-rapport under Label: H1."""
+        raw_msg = (
+            "A321,017705,1,1,TB00000/REP009,85,02,1/CCTC-RBH,OCT15,081323,LTFJ,ESSA,0056"
+            "/C0TFC05PGTS40101/C106,01009,4130,59,0011,0,1100,61,X/CE0103,13407,301,578,6647,241,F22TS4"
+            "/C22500M34P08/C3FAKC2507       /C42"
+        )
+        frame = {
+            'vdl2': {
+                'freq': 136975000,
+                'avlc': {
+                    'src': {'addr': '4BA42A'},
+                    'acars': {
+                        'reg': '.TC-RBH',
+                        'flight': 'PC56HA',
+                        'label': 'H1',
+                        'msg_text': raw_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertEqual(res['flight'], 'PC56HA')
+        self.assertEqual(res['reg'], 'TC-RBH')
+        self.assertEqual(res['dst_airport'], 'ESSA')
+        self.assertEqual(res['alt'], 13407)
+        self.assertEqual(res['alt_ft'], 13407)
+        self.assertIn('Istanbul/Sabiha Gökçen', res['message'])
+        self.assertIn('Stockholm/Arlanda', res['message'])
+        self.assertIn('[Airbus FDIMU/Systemrapport #009]', res['message'])
+        self.assertIn('13 407 ft', res['message'])
+        self.assertIn('301 kt', res['message'])
+        self.assertIn('08:13:23 UTC', res['message'])
+        self.assertIn('Rutt: LTFJ (Istanbul/Sabiha Gökçen) → ESSA (Stockholm/Arlanda)', res['message'])
+
 if __name__ == '__main__':
     unittest.main()
 
