@@ -2659,6 +2659,7 @@
                 activeMinimapHtml = `<div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}" data-proto="${escapeHtml(protoName)}"></div>`;
             }
 
+            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${satcBadgesHtml}${universalCoordTag}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
             const badgesHtml = metaBarBadges ? `<div class="msg-badges msg-meta-bar">${metaBarBadges}</div>` : '';
             const msgCellInner = `
                 <div class="msg-row-layout">

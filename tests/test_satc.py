@@ -588,6 +588,7 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn('msg-row-layout', index_html)
         self.assertIn('msg-main-content', index_html)
         self.assertIn('msg-badges', index_html)
+        self.assertIn('metaBarBadges', index_html)
         self.assertIn('.msg-minimap-container', style_css)
         self.assertIn('.msg-row-layout', style_css)
         self.assertIn('.msg-main-content', style_css)
@@ -617,7 +618,7 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn("Varning för hård vind", decoded_qp)
 
     def test_csp_allows_leaflet_and_tiles(self):
-        """Verifiera att CSP-headern i app.py tillåter unpkg.com och OpenStreetMap/OpenSeaMap kartresurser."""
+        """Verifiera att CSP-headern i app.py tillåter unpkg.com, OpenStreetMap/OpenSeaMap och cdn.jsdelivr.net."""
         base_dir = os.path.dirname(os.path.dirname(__file__))
         app_path = os.path.join(base_dir, 'app.py')
         with open(app_path, 'r', encoding='utf-8') as f:
@@ -625,6 +626,15 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn("https://unpkg.com", app_code)
         self.assertIn("tile.openstreetmap.org", app_code)
         self.assertIn("tiles.openseamap.org", app_code)
+        self.assertIn("https://cdn.jsdelivr.net", app_code)
+
+    def test_statistics_has_escapehtml(self):
+        """Verifiera att escapeHtml är definierad i statistics.html för att förhindra ReferenceError."""
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        stats_path = os.path.join(base_dir, 'templates', 'statistics.html')
+        with open(stats_path, 'r', encoding='utf-8') as f:
+            stats_code = f.read()
+        self.assertIn("function escapeHtml(", stats_code)
 
     def test_strict_no_emojis_in_source_code(self):
         """Verifiera att inga emojis förekommer i källkodsfilerna, mallarna eller dokumentationen."""

@@ -871,6 +871,16 @@
 
         let statDataTable = null;
 
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         function createStatRowNode(m) {
             const tr = document.createElement('tr');
             const time = new Date(m.timestamp).toLocaleString('sv-SE', {

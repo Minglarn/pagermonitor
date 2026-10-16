@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.07] - Reparation av Flodesskript (metaBarBadges), escapeHtml i Statistik och Utokad CSP connect-src
+
+- **Reparation av Flodesskript och SSE ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Aterstallde definitionen av `metaBarBadges` i `createAlarmRowNode()` vilket aveliminerade `ReferenceError: metaBarBadges is not defined` och aterstaller full funktion for bade initial meddelandeladdning och inkommande EventSource SSE-realtidsmeddelanden.
+- **escapeHtml i Statistikvyn ([templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Definierade `escapeHtml()` i `statistics.html` sa att `createStatRowNode()` och `loadRangeData()` renderar historiska meddelanderader utan `ReferenceError: escapeHtml is not defined`.
+- **Utokad Content Security Policy (CSP) connect-src ([app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Lade till `https://cdn.jsdelivr.net`, `https://cdnjs.cloudflare.com` och `https://unpkg.com` samt `ws:` och `wss:` i direktivet `connect-src` i CSP-headern for att tillata webblasarnedladdning av JavaScript sourcemaps (`leaflet.js.map`, `chart.umd.min.js.map`) utan sakerhetsblockering.
+- **Enhetstester ([tests/test_satc.py](file:///d:/antigravity/pager-monitor/tests/test_satc.py))**:
+  - Utokade tester som verifierar att `escapeHtml` ar definierad i `statistics.html`, att `metaBarBadges` finns i `index.html`, och att CSP `connect-src` tillater nodvandiga CDN-resurser. 111 enhetstester passerar och 0 emojis forekommer.
+
 ## [2026.10.16.06] - CSP Korrigering for Leaflet och Kartor, Tabellcells- och Badgelayout samt Layoutskiftsfri Flodespaus
 
 - **Content Security Policy (CSP) Uppdatering for Leaflet och Kartor ([app.py](file:///d:/antigravity/pager-monitor/app.py))**:

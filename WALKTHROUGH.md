@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.06`
+- **CalVer**: `2026.10.16.07`
 - **Date**: 2026-10-16
 - **Language**: English / Swedish
 
@@ -9,7 +9,16 @@
 
 ## Overview of Implemented Features
 
-### 0. CSP Korrigering for Leaflet Kartor, Tabellcells- och Badgelayout samt Layoutskiftsfri Flodespaus
+### 0. Reparation av Flodesskript (metaBarBadges), escapeHtml i Statistik och Utokad CSP connect-src
+- **Reparation av Flodesskript och SSE ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Aterstallde definitionen av `metaBarBadges` i `createAlarmRowNode()` sa att meddelandecellens badges skapas utan `ReferenceError: metaBarBadges is not defined`.
+  - Atgardar bade felet vid initial datainlasning och realtidsinjektion via Server-Sent Events (SSE).
+- **escapeHtml i Statistikvyn ([templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Definierade `escapeHtml()` i `statistics.html` sa att `loadRangeData()` renderar data och tabellrader utan krascher.
+- **Utokad Content Security Policy connect-src ([app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Lade till `https://cdn.jsdelivr.net`, `https://cdnjs.cloudflare.com` och `https://unpkg.com` samt `ws:` och `wss:` i direktivet `connect-src` i CSP-headern for att tillata hamtning av sourcemaps (`leaflet.js.map`, `chart.umd.min.js.map`).
+
+### 1. CSP Korrigering for Leaflet Kartor, Tabellcells- och Badgelayout samt Layoutskiftsfri Flodespaus
 - **Content Security Policy (CSP) for Leaflet och Kartor ([app.py](file:///d:/antigravity/pager-monitor/app.py))**:
   - `https://unpkg.com` tillagt i `script-src` och `style-src` for att tillata inlasning av Leaflet JS och CSS.
   - Kartservrar `https://*.tile.openstreetmap.org`, `https://tiles.openseamap.org` och `https://unpkg.com` tillagda i `img-src` och `connect-src` vilket loser felet med svarta kartor och blockerade kartresurser.

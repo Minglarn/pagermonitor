@@ -93,7 +93,7 @@ def set_security_headers(response):
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.datatables.net https://cdn.jsdelivr.net https://unpkg.com; "
         "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; "
         "img-src 'self' data: https://*.tile.openstreetmap.org https://tiles.openseamap.org https://unpkg.com; "
-        "connect-src 'self' https://*.tile.openstreetmap.org https://tiles.openseamap.org;"
+        "connect-src 'self' ws: wss: https://*.tile.openstreetmap.org https://tiles.openseamap.org https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com;"
     )
     return response
 
@@ -118,7 +118,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.16.06"
+APP_VERSION = "2026.10.16.07"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
