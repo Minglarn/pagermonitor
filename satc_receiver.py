@@ -4,6 +4,8 @@ import threading
 import time
 import logging
 import re
+import email.header
+import base64
 from datetime import datetime
 from database import (
     save_message, get_settings, get_connection, check_alert_words
@@ -181,6 +183,45 @@ def clean_control_characters(text):
     clean_str = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', str(text))
     return clean_str.strip()
 
+def decode_mime_headers(text: str) -> str:
+    """
+    Avkodar RFC 2047 MIME-kodade e-postheaders (t.ex. =?koi8-r?B?...?= eller =?utf-8?Q?...?=)
+    till läsbar UTF-8-text med Pythons inbyggda email.header.decode_header.
+    """
+    if not text or '=?' not in text:
+        return text
+
+    def _decode_match(m):
+        raw_word = m.group(0)
+        try:
+            parts = email.header.decode_header(raw_word)
+            out = []
+            for b, cs in parts:
+                if isinstance(b, bytes):
+                    out.append(b.decode(cs or 'utf-8', errors='replace'))
+                else:
+                    out.append(str(b))
+            return ''.join(out)
+        except Exception:
+            try:
+                charset = m.group(1).lower()
+                enc = m.group(2).upper()
+                payload = m.group(3)
+                if enc == 'B':
+                    pad = len(payload) % 4
+                    if pad:
+                        payload += '=' * (4 - pad)
+                    return base64.b64decode(payload).decode(charset, errors='replace')
+                elif enc == 'Q':
+                    import quopri
+                    return quopri.decodestring(payload.replace('_', ' ')).decode(charset, errors='replace')
+            except Exception:
+                pass
+        return raw_word
+
+    pattern = re.compile(r'=\?([^?]+)\?([BQbq])\?([^?]+)\?=', re.IGNORECASE)
+    return pattern.sub(_decode_match, str(text))
+
 def normalize_satc_priority(raw_priority, text=""):
     """
     Normaliserar prioritet:
@@ -353,6 +394,8 @@ def parse_satc_frame(payload, only_messages=True):
             return None
 
     raw_text = clean_control_characters(raw_text_uncleaned) if raw_text_uncleaned else None
+    if raw_text:
+        raw_text = decode_mime_headers(raw_text)
 
     # Identifiera specifika kontrollpakettyper från SatDump descriptor & rotfält
     # 1. Bulletin Board: descriptor.type == 7 eller frame_number + status eller channel_type_name == "NCS"

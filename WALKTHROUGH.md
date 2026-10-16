@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.04`
+- **CalVer**: `2026.10.16.05`
 - **Date**: 2026-10-16
 - **Language**: English / Swedish
 
@@ -9,15 +9,19 @@
 
 ## Overview of Implemented Features
 
-### 0. Inbäddad Minikarta (Leaflet) & Flödespaus vid Mus-hover
-- **Inbäddad Leaflet-Minikarta ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
-  - Varje meddelande med GPS- eller sjöfartskoordinater (t.ex. `Pos: 41.0277, 28.9880`) förses automatiskt med en interaktiv 260x165 px Leaflet-karta till höger i meddelandecellen.
-  - Kombinerar OpenStreetMap med OpenSeaMap-sjökortsoverlay och en tydlig röd cirkelmarkör.
-  - Klick på `Pos:`-badgen zoomar in kartan till zoomnivå 13 på koordinaten.
-  - Lazy-loading via `IntersectionObserver` så att kartor endast renderas när de faktiskt syns.
+### 0. Universell Leaflet-Minikarta, VDL2 Positionsbadge & RFC 2047 MIME-avkodning
+- **Universell Inbäddad Minikarta för Alla Protokoll ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Minikartan (260x165 px) visas nu till höger i meddelandecellen för samtliga protokoll (`VDL2`, `SATC`, `SONDE`, `ACARS`, `POCSAG` etc.) så fort giltiga koordinater förekommer.
+  - Dynamisk zoomnivå: zoom 8 för flygtrafik (`VDL2`, `ACARS`, `SONDE`), och zoom 9 för sjöfart (`SATC`).
+  - OpenSeaMap sjökortsoverlay appliceras automatiskt för `SATC`-meddelanden ovanpå OpenStreetMap.
+  - Tydlig cirkelmarkör med koordinat-tooltip. Klick på den gröna `Pos:`-badgen panorerar och zoomar till zoomnivå 12 på punkten.
+- **Automatisk `Pos: <lat>, <lon>`-badge och Positionsdetektering i VDL2 ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - `vdl2_receiver.py` söker i meddelandetexten efter mönster som `Pos 58.2317, 17.6117`, `Position: 57.7530, 18.3780` och `N 57.753, E 18.378` och extraherar koordinater till `lat`/`lon`, sätter `coord_badge` samt `function_code = 1`.
+  - Frontend detekterar koordinater universellt och skapar alltid en klickbar grön `Pos: <lat>, <lon>`-badge.
+- **RFC 2047 MIME-avkodning i Inmarsat STD-C ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Automatisk avkodning av MIME-kodade strängar (`=?koi8-r?B?...?=`, `=?utf-8?Q?...?=`) till UTF-8 via `email.header.decode_header` med automatisk återställning av base64-padding.
 - **Flödespaus vid Mus-hover ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
-  - När muspekaren förs över tabellen pausas realtidsflödet automatiskt och en svävande statusbricka "Flödet Pausat" tänds.
-  - Nya inkommande meddelanden buffras och spolas in utan fördröjning när musen lämnar flödet.
+  - När muspekaren förs över tabellen pausas realtidsflödet automatiskt och en svävande statusbricka "Flödet Pausat" tänds. Buffrade meddelanden spolas in i ordning när musen lämnar.
 - **Omfattande Dokumentationslyft ([README.md](file:///d:/antigravity/pager-monitor/README.md))**:
   - `README.md` har uppdaterats för att presentera alla nya protokoll (VDL2, RadioSonde, Inmarsat SATC) och gränssnittsfunktioner.
 

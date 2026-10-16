@@ -1209,36 +1209,71 @@
         const minimapInstances = new Map();
         let minimapObserver = null;
 
-        function extractCoordinatesFromText(text) {
-            if (!text || typeof text !== 'string') return null;
-
-            // 1. Redan formaterad Pos: lat, lon (t.ex. Pos: 41.0277, 28.9880)
-            const mPos = text.match(/Pos:\s*(-?\d+\.\d+),\s*(-?\d+\.\d+)/i);
-            if (mPos) {
-                return { lat: parseFloat(mPos[1]), lon: parseFloat(mPos[2]) };
+        function extractUniversalCoordinates(text, alarm) {
+            // 1. Prioritet 1: Kontrollera om koordinater redan finns i strukturerad metadata på alarm-objektet
+            if (alarm) {
+                if (alarm.lat !== undefined && alarm.lon !== undefined && alarm.lat !== null && alarm.lon !== null) {
+                    const pLat = Number(alarm.lat);
+                    const pLon = Number(alarm.lon);
+                    if (!isNaN(pLat) && !isNaN(pLon) && pLat >= -90 && pLat <= 90 && pLon >= -180 && pLon <= 180 && !(pLat === 0 && pLon === 0)) {
+                        return { lat: pLat, lon: pLon };
+                    }
+                }
             }
 
-            // 2. Grader och decimalminuter (t.ex. GPS POSN : 41 01.66 N 028 59.28 E eller 58-34.2N 016-12.5E)
+            if (!text || typeof text !== 'string') return null;
+
+            // 2. Prioritet 2: Redan formaterad Pos: lat, lon eller Position: lat, lon (t.ex. Pos 58.2317, 17.6117 eller Position: 57.7530, 18.3780)
+            const mPos = text.match(/(?:Pos(?:ition)?\s*:?\s*)(-?\d{1,2}\.\d{2,6})\s*,\s*(-?\d{1,3}\.\d{2,6})/i);
+            if (mPos) {
+                const lat = parseFloat(mPos[1]);
+                const lon = parseFloat(mPos[2]);
+                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && !(lat === 0 && lon === 0)) {
+                    return { lat, lon };
+                }
+            }
+
+            // 3. Prioritet 3: N/S lat, E/W lon (fångar N 57.753, E 18.378)
+            const mNSEW = text.match(/([NS])\s*(\d{1,2}\.\d{2,6})\s*,\s*([EW])\s*(\d{1,3}\.\d{2,6})/i);
+            if (mNSEW) {
+                let lat = parseFloat(mNSEW[2]);
+                if (mNSEW[1].toUpperCase() === 'S') lat = -lat;
+                let lon = parseFloat(mNSEW[4]);
+                if (mNSEW[3].toUpperCase() === 'W') lon = -lon;
+                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && !(lat === 0 && lon === 0)) {
+                    return { lat, lon };
+                }
+            }
+
+            // 4. Prioritet 4: Grader och decimalminuter (t.ex. GPS POSN : 41 01.66 N 028 59.28 E eller 58-34.2N 016-12.5E)
             const mDegMin = text.match(/(\d{1,2})[-°\s]+(\d{1,2}(?:\.\d+)?)[′'\s]*([NS])[\s,;/and]*(\d{1,3})[-°\s]+(\d{1,2}(?:\.\d+)?)[′'\s]*([EW])/i);
             if (mDegMin) {
                 let lat = parseInt(mDegMin[1], 10) + (parseFloat(mDegMin[2]) / 60.0);
                 if (mDegMin[3].toUpperCase() === 'S') lat = -lat;
                 let lon = parseInt(mDegMin[4], 10) + (parseFloat(mDegMin[5]) / 60.0);
                 if (mDegMin[6].toUpperCase() === 'W') lon = -lon;
-                return { lat, lon };
+                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && !(lat === 0 && lon === 0)) {
+                    return { lat, lon };
+                }
             }
 
-            // 3. Decimalgrader (t.ex. 58.5700N 016.2083E)
-            const mDec = text.match(/(\d{1,2}\.\d+)\s*([NS])[\s,;/and]*(\d{1,3}\.\d+)\s*([EW])/i);
+            // 5. Prioritet 5: Decimalgrader (t.ex. 58.5700N 016.2083E)
+            const mDec = text.match(/(\d{1,2}\.\d{2,6})\s*([NS])[\s,;/and]*(\d{1,3}\.\d{2,6})\s*([EW])/i);
             if (mDec) {
                 let lat = parseFloat(mDec[1]);
                 if (mDec[2].toUpperCase() === 'S') lat = -lat;
                 let lon = parseFloat(mDec[3]);
                 if (mDec[4].toUpperCase() === 'W') lon = -lon;
-                return { lat, lon };
+                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && !(lat === 0 && lon === 0)) {
+                    return { lat, lon };
+                }
             }
 
             return null;
+        }
+
+        function extractCoordinatesFromText(text) {
+            return extractUniversalCoordinates(text, null);
         }
 
         function getMinimapObserver() {
@@ -1273,10 +1308,14 @@
             const lon = parseFloat(containerEl.dataset.lon);
             if (isNaN(lat) || isNaN(lon)) return;
 
+            const proto = (containerEl.dataset.proto || '').toUpperCase();
+            // Zoomnivå 8 för flyg (VDL2/ACARS/SONDE), zoomnivå 9 för sjöfart (SATC)
+            const initialZoom = proto === 'SATC' ? 9 : 8;
+
             try {
                 const map = L.map(containerEl, {
                     center: [lat, lon],
-                    zoom: 9,
+                    zoom: initialZoom,
                     zoomControl: false,
                     attributionControl: false,
                     scrollWheelZoom: false
@@ -1287,18 +1326,23 @@
                     maxZoom: 18
                 }).addTo(map);
 
-                // Sjökortsoverlay: OpenSeaMap seamark
-                L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
-                    maxZoom: 18
-                }).addTo(map);
+                // För SATC-meddelanden: lägg även på OpenSeaMap seamark-overlay
+                if (proto === 'SATC') {
+                    L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+                        maxZoom: 18
+                    }).addTo(map);
+                }
 
-                // Tydlig cirkelmarkör på koordinaten
-                L.circleMarker([lat, lon], {
+                // Tydlig cirkelmarkör på koordinaten med tooltip
+                const marker = L.circleMarker([lat, lon], {
                     radius: 6,
                     color: '#ef4444',
                     fillColor: '#ef4444',
-                    fillOpacity: 0.85
+                    fillOpacity: 0.85,
+                    weight: 2
                 }).addTo(map);
+
+                marker.bindTooltip(`Pos: ${lat.toFixed(4)}, ${lon.toFixed(4)}`, { direction: 'top' });
 
                 containerEl._leaflet_map = map;
                 minimapInstances.set(containerEl.id, map);
@@ -1325,7 +1369,8 @@
                 map = containerEl._leaflet_map;
             }
             if (map) {
-                map.setView([lat, lon], 13, { animate: true });
+                // Klick på Pos-badgen panorerar och zoomar in minikartan till zoomnivå 12 på punkten
+                map.setView([lat, lon], 12, { animate: true });
                 map.invalidateSize();
             }
         }
@@ -2512,34 +2557,7 @@
                 const lesTag = satcLesVal ? `<span class="badge meta badge-les filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcLesVal)}')" title="Klicka för att söka jordstation: ${escapeHtml(satcLesVal)}">LES: ${escapeHtml(satcLesVal)}</span>` : '';
                 const serviceTag = satcServiceVal ? `<span class="badge meta badge-service filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcServiceVal)}')" title="Klicka för att filtrera: ${escapeHtml(satcServiceVal)}">${escapeHtml(satcServiceVal)}</span>` : '';
 
-                let coordTag = '';
-                let minimapHtml = '';
-
-                // Koordinater och minikarta
-                let latNum = null;
-                let lonNum = null;
-                if (alarm.lat !== undefined && alarm.lon !== undefined && alarm.lat !== null && alarm.lon !== null) {
-                    const pLat = Number(alarm.lat);
-                    const pLon = Number(alarm.lon);
-                    if (!isNaN(pLat) && !isNaN(pLon)) {
-                        latNum = pLat;
-                        lonNum = pLon;
-                    }
-                }
-                if (latNum === null || lonNum === null) {
-                    const ext = extractCoordinatesFromText(cleanMsg);
-                    if (ext) {
-                        latNum = ext.lat;
-                        lonNum = ext.lon;
-                    }
-                }
-
-                if (latNum !== null && lonNum !== null) {
-                    coordTag = `<span class="badge meta badge-coord filterable-badge" onclick="zoomMinimap('${alarm.id}', ${latNum}, ${lonNum}, event)" title="Geografisk position: klicka för att zooma in i minikartan">Pos: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}</span>`;
-                    minimapHtml = `<div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}"></div>`;
-                }
-
-                satcBadgesHtml = `${priorityTag}${navareaTag}${lesTag}${serviceTag}${coordTag}`;
+                satcBadgesHtml = `${priorityTag}${navareaTag}${lesTag}${serviceTag}`;
             }
 
             // Sätt filterattribut på raden
@@ -2580,27 +2598,19 @@
             const rawToggleBadge = msgObj.rawText ? `<span class="badge badge-raw-toggle" onclick="toggleRawData(this)" title="Visa eller dölj rådata">&lt;/&gt; Rådata</span>` : '';
             const rawBoxHtml = msgObj.rawText ? `<div class="raw-data-box" style="display: none;">${escapeHtml(msgObj.rawText)}</div>` : '';
 
-            // Om meddelandet har koordinater men inte är SATC:
-            let nonSatcCoordTag = '';
-            let nonSatcMinimapHtml = '';
-            if (!isSatc) {
-                let nonSatcLat = alarm.lat !== undefined && alarm.lat !== null ? Number(alarm.lat) : null;
-                let nonSatcLon = alarm.lon !== undefined && alarm.lon !== null ? Number(alarm.lon) : null;
-                if (nonSatcLat === null || nonSatcLon === null || isNaN(nonSatcLat) || isNaN(nonSatcLon)) {
-                    const ext = extractCoordinatesFromText(cleanMsg);
-                    if (ext) {
-                        nonSatcLat = ext.lat;
-                        nonSatcLon = ext.lon;
-                    }
-                }
-                if (nonSatcLat !== null && nonSatcLon !== null && !isNaN(nonSatcLat) && !isNaN(nonSatcLon)) {
-                    nonSatcCoordTag = `<span class="badge meta badge-coord filterable-badge" onclick="zoomMinimap('${alarm.id}', ${nonSatcLat}, ${nonSatcLon}, event)" title="Geografisk position: klicka för att zooma in i minikartan">Pos: ${nonSatcLat.toFixed(4)}, ${nonSatcLon.toFixed(4)}</span>`;
-                    nonSatcMinimapHtml = `<div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${nonSatcLat}" data-lon="${nonSatcLon}" data-msg-id="${alarm.id}"></div>`;
-                }
+            // Universell positionsdetektering och Leaflet-minikarta för ALLA protokoll
+            const universalCoords = extractUniversalCoordinates(cleanMsg, alarm);
+            let universalCoordTag = '';
+            let activeMinimapHtml = '';
+
+            if (universalCoords) {
+                const latNum = universalCoords.lat;
+                const lonNum = universalCoords.lon;
+                universalCoordTag = `<span class="badge meta badge-coord filterable-badge" onclick="zoomMinimap('${alarm.id}', ${latNum}, ${lonNum}, event)" title="Geografisk position: klicka för att zooma in i minikartan">Pos: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}</span>`;
+                activeMinimapHtml = `<div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}" data-proto="${escapeHtml(protoName)}"></div>`;
             }
 
-            const activeMinimapHtml = minimapHtml || nonSatcMinimapHtml;
-            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${satcBadgesHtml}${nonSatcCoordTag}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
+            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${satcBadgesHtml}${universalCoordTag}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
             const metaBarHtml = metaBarBadges ? `<div class="msg-meta-bar">${metaBarBadges}</div>` : '';
 
             let msgCellInner = '';

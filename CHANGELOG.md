@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.05] - Universell Leaflet-Minikarta för Alla Protokoll, VDL2 Positionsbadge och RFC 2047 MIME-avkodning
+
+- **Universell Inbäddad Minikarta (Leaflet) för ALLA Protokoll ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Minikartan (260x165 px i flexbox `.msg-cell-flex.has-minimap`) renderas nu universellt för alla protokoll (`VDL2`, `SATC`, `SONDE`, `ACARS`, `POCSAG` etc.) så fort ett meddelande innehåller en giltig geografisk position.
+  - Dynamisk zoom: zoomnivå 8 för flygtrafik (`VDL2`, `ACARS`, `SONDE`), och zoomnivå 9 för maritim trafik (`SATC`).
+  - OpenSeaMap sjökortsoverlay appliceras automatiskt för `SATC`-meddelanden ovanpå OpenStreetMap.
+  - Cirkelmarkör med tooltip `Pos: lat, lon`. Klick på den gröna `Pos:`-badgen panorerar och zoomar in kartan till zoomnivå 12.
+- **Automatisk `Pos: <lat>, <lon>`-badge och Universell Detektering ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - `vdl2_receiver.py` extraherar nu koordinater från text (`Pos 58.2317, 17.6117`, `Position: 57.7530, 18.3780`, `N 57.753, E 18.378`), sätter `lat` och `lon` i `metadata`, skapar `coord_badge`, samt sätter `function_code = 1`.
+  - Frontend identifierar koordinater ur strukturerad metadata eller textens positionsmönster, renderar den gröna `Pos:`-badgen och kopplar den till minikartan.
+- **RFC 2047 MIME-avkodning av E-postheaders i Inmarsat-C ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Ny hjälpfunktion `decode_mime_headers()` som använder Pythons `email.header.decode_header` med robust felhantering och base64-paddingåterställning för att automatiskt avkoda `=?charset?encoding?...?=`-sekvenser (t.ex. ryska KOI8-R eller UTF-8 headers) till läsbar UTF-8.
+- **Enhetstester och Kvalitetssäkring ([tests/test_satc.py](file:///d:/antigravity/pager-monitor/tests/test_satc.py), [tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
+  - Nya tester verifierar VDL2-positionsextrahering ur AMDAR, FMS och Positionsrapporter, RFC 2047 MIME-avkodning samt universella Leaflet-resurser och konfigurationer.
+  - 108 enhetstester passerar felfritt och 0 emojis förekommer i koden.
+
 ## [2026.10.16.04] - Inbaddad Leaflet-Minikarta for GPS-koordinater, Flodespaus vid Mus-hover och Uppdaterad README
 
 - **Inbaddad Leaflet-Minikarta for meddelanden med GPS/Position ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:

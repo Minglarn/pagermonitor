@@ -538,13 +538,37 @@ class TestSatCReceiver(unittest.TestCase):
         conn.commit()
         conn.close()
 
+    def test_satc_mime_header_decoding(self):
+        """Verifiera att RFC 2047 MIME-headers automatiskt avkodas till UTF-8."""
+        from satc_receiver import decode_mime_headers
+
+        # Rysk Inmarsat-C e-post header i KOI8-R Base64
+        # "Полуаршинов" i KOI8-R Base64 är "8M/M1cHS28nOz9c="
+        raw_header = "From: =?koi8-r?b?8M/M1cHS28nOz9c=?= <poluarshinov@marsat.ru>"
+        decoded = decode_mime_headers(raw_header)
+        self.assertIn("Полуаршинов", decoded)
+        self.assertNotIn("=?koi8-r", decoded)
+        self.assertIn("<poluarshinov@marsat.ru>", decoded)
+
+        # Svensk UTF-8 Q-encoding
+        raw_utf8 = "Subject: =?utf-8?Q?V=C3=A4derrapport_f=C3=B6r_Stockholm?="
+        decoded_utf8 = decode_mime_headers(raw_utf8)
+        self.assertEqual(decoded_utf8, "Subject: Väderrapport för Stockholm")
+
+        # Flerradig e-post med MIME-headers och brödtext
+        full_email = "From: =?koi8-r?b?8M/M1cHS28nOz9c=?= <test@marsat.ru>\nSubject: Provmeddelande\nDetta är brödtext"
+        decoded_email = decode_mime_headers(full_email)
+        self.assertIn("Полуаршинов", decoded_email)
+        self.assertIn("Provmeddelande", decoded_email)
+
     def test_satc_leaflet_minimap_and_hover_pause_in_ui(self):
         """
         Verifiera att index.html och style.css innehåller:
         1. Leaflet CSS och JS-inkludering.
         2. msg-minimap-container och msg-cell-flex has-minimap för inbäddade minikartor.
         3. hoverPausePill och setupHoverPause för paus vid mus-hover.
-        4. zoomMinimap och extractCoordinatesFromText funktioner.
+        4. zoomMinimap och extractUniversalCoordinates funktioner.
+        5. data-proto och OpenSeaMap-overlay för sjöfart (SATC).
         """
         base_dir = os.path.dirname(os.path.dirname(__file__))
         index_path = os.path.join(base_dir, 'templates', 'index.html')
@@ -572,9 +596,12 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn('isHoverPaused', index_html)
         self.assertIn('.hover-pause-pill', style_css)
 
-        # 4. Koordinathantering och klickbar zoom
+        # 4. Universell koordinathantering och klickbar zoom
         self.assertIn('zoomMinimap', index_html)
-        self.assertIn('extractCoordinatesFromText', index_html)
+        self.assertIn('extractUniversalCoordinates', index_html)
+        self.assertIn('data-proto', index_html)
+        self.assertIn('openseamap.org', index_html)
+        self.assertIn('setView([lat, lon], 12', index_html)
 
     def test_strict_no_emojis_in_source_code(self):
         """Verifiera att inga emojis förekommer i källkodsfilerna, mallarna eller dokumentationen."""

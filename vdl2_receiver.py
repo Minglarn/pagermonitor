@@ -1625,6 +1625,36 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
 
     raw_joined = "\n".join(message_lines).strip()
     full_message = fix_untranslated_routes(raw_joined, metadata=acars)
+
+    # Extrahera koordinater ur meddelandetexten om de inte redan fanns i telemetrin
+    if lat is None or lon is None:
+        m_pos = re.search(r'(?:\bPos(?:ition)?\b\s*:?\s*)(-?\d{1,2}\.\d{2,6})\s*,\s*(-?\d{1,3}\.\d{2,6})', full_message, re.IGNORECASE)
+        if m_pos:
+            try:
+                c_lat = float(m_pos.group(1))
+                c_lon = float(m_pos.group(2))
+                if -90 <= c_lat <= 90 and -180 <= c_lon <= 180 and not (c_lat == 0 and c_lon == 0):
+                    lat = round(c_lat, 4)
+                    lon = round(c_lon, 4)
+            except (ValueError, TypeError):
+                pass
+        if lat is None or lon is None:
+            m_nsew = re.search(r'\b([NS])\s*(\d{1,2}\.\d{2,6})\s*,\s*([EW])\s*(\d{1,3}\.\d{2,6})\b', full_message, re.IGNORECASE)
+            if m_nsew:
+                try:
+                    ns_dir, ns_val, ew_dir, ew_val = m_nsew.groups()
+                    c_lat = float(ns_val)
+                    if ns_dir.upper() == 'S':
+                        c_lat = -c_lat
+                    c_lon = float(ew_val)
+                    if ew_dir.upper() == 'W':
+                        c_lon = -c_lon
+                    if -90 <= c_lat <= 90 and -180 <= c_lon <= 180 and not (c_lat == 0 and c_lon == 0):
+                        lat = round(c_lat, 4)
+                        lon = round(c_lon, 4)
+                except (ValueError, TypeError):
+                    pass
+
     if not dst_airport and isinstance(acars, dict) and acars.get('dst_airport'):
         dst_airport = str(acars['dst_airport']).strip().upper()
         station_name = format_airport(dst_airport)
@@ -1894,11 +1924,16 @@ class VDL2Receiver:
         alert_match = check_alert_words(message)
         now_iso = datetime.now().isoformat()
 
+        lat_val = parsed.get('lat')
+        lon_val = parsed.get('lon')
+        has_pos = (lat_val is not None and lon_val is not None)
+        coord_badge = f"Pos: {lat_val:.4f}, {lon_val:.4f}" if has_pos else None
+
         # Förbered metadata för databas, SSE och MQTT
         metadata = {
             'protocol': protocol_type,
             'bitrate': bitrate,
-            'function': 1 if parsed.get('lat') else 0,
+            'function': 1 if has_pos else 0,
             'frequency': freq,
             'alert_word': alert_match['word'] if alert_match else None,
             'alert_color': alert_match['color'] if alert_match else None,
@@ -1913,8 +1948,9 @@ class VDL2Receiver:
             'ground_status': parsed.get('ground_status'),
             'label': parsed.get('label'),
             'label_desc': parsed.get('label_desc'),
-            'lat': parsed.get('lat'),
-            'lon': parsed.get('lon'),
+            'lat': lat_val,
+            'lon': lon_val,
+            'coord_badge': coord_badge,
             'alt_ft': parsed.get('alt_ft'),
             'snr': parsed.get('snr'),
             'is_miam': parsed.get('is_miam'),
@@ -1926,7 +1962,7 @@ class VDL2Receiver:
             address=address,
             message=message,
             alias=alias,
-            function_code=1 if parsed.get('lat') else 0,
+            function_code=1 if has_pos else 0,
             bitrate=f"{protocol_type} {bitrate}".strip(),
             frequency=freq,
             is_duplicate=is_duplicate,

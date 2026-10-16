@@ -1080,6 +1080,72 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertIn(raw_msg, res['message'])
         self.assertNotIn('\U0001f4ac', res['message'])
 
+    def test_vdl2_position_extraction_and_coord_badge(self):
+        """Verifiera att VDL2-meddelanden med Pos och Position i texten extraherar koordinater och Pos-badge."""
+        # 1. Pos 58.2317, 17.6117 (t.ex. AMDAR väderrapport)
+        amdar_text = "[AMDAR Väderrapport] Rutt: LOWW (Wien) -> ESSA (Stockholm) | Senaste (07:04 UTC): Pos 58.2317, 17.6117 | Höjd: 29 590 ft | Temp: -39.5°C"
+        frame_amdar = {
+            'vdl2': {
+                'freq': 136725000,
+                'avlc': {
+                    'src': {'addr': '44022D'},
+                    'acars': {
+                        'reg': 'OE-LXC',
+                        'flight': 'OS008F',
+                        'label': 'H2',
+                        'msg_text': amdar_text
+                    }
+                }
+            }
+        }
+        res_amdar = parse_vdl2_frame(frame_amdar)
+        self.assertIsNotNone(res_amdar)
+        self.assertAlmostEqual(res_amdar['lat'], 58.2317, places=4)
+        self.assertAlmostEqual(res_amdar['lon'], 17.6117, places=4)
+
+        # 2. Position: 58.6033, 16.1150 (t.ex. FMS Färddator-rapport)
+        fms_text = "[FMS Färddator-rapport] Flight: DY3195\nPosition: 58.6033, 16.1150 Nästa brytpunkt: SA706\nHöjd: FL340"
+        frame_fms = {
+            'vdl2': {
+                'freq': 136875000,
+                'avlc': {
+                    'src': {'addr': '4AC4FA'},
+                    'acars': {
+                        'reg': 'SE-RTZ',
+                        'flight': 'DY3195',
+                        'label': 'H1',
+                        'msg_text': fms_text
+                    }
+                }
+            }
+        }
+        res_fms = parse_vdl2_frame(frame_fms)
+        self.assertIsNotNone(res_fms)
+        self.assertAlmostEqual(res_fms['lat'], 58.6033, places=4)
+        self.assertAlmostEqual(res_fms['lon'], 16.1150, places=4)
+
+        # 3. Positionsrapport: N 57.753, E 18.378
+        nsew_text = "Positionsrapport: N 57.753, E 18.378 Höjd: FL330 (33039 ft)"
+        frame_nsew = {
+            'vdl2': {
+                'freq': 136875000,
+                'avlc': {
+                    'src': {'addr': '4CAF14'},
+                    'acars': {
+                        'reg': 'EI-HSE',
+                        'flight': 'SK1708',
+                        'label': '16',
+                        'msg_text': nsew_text
+                    }
+                }
+            }
+        }
+        res_nsew = parse_vdl2_frame(frame_nsew)
+        self.assertIsNotNone(res_nsew)
+        self.assertAlmostEqual(res_nsew['lat'], 57.753, places=3)
+        self.assertAlmostEqual(res_nsew['lon'], 18.378, places=3)
+
 if __name__ == '__main__':
     unittest.main()
+
 
