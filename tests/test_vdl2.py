@@ -1145,6 +1145,61 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertAlmostEqual(res_nsew['lat'], 57.753, places=3)
         self.assertAlmostEqual(res_nsew['lon'], 18.378, places=3)
 
+    def test_wizzair_ground_handling_and_route_not_blnd_deaf(self):
+        """
+        Verifiera att Wizz Air marktjänst/bränsle/PRM (Special Assistance):
+        1. Rutt detekteras som ESSA -> LHBP (inte falskt positivt som BLND -> DEAF).
+        2. dst_airport sätts till LHBP (Budapest/Ferenc Liszt), aldrig DEAF.
+        3. Läsbar fritext (Dear LHBP GH, we need the below Fuel Qty...) visas direkt i tabellcellen.
+        """
+        wizz_msg = (
+            "A321,014030,1,1,TB00000/REP057,00,00,1/kmLHBP / A321 A/C: HA-LTH  ETA:0925z\n\n"
+            " WZZ0006, ESSA-LHBP, 16OCT26, 07:44:41z\n\n"
+            "Dear LHBP GH,we need the below Fuel Qty\n"
+            "for the next flight of HA-LTH and the\n"
+            "Special Assistance (if applicable):\n"
+            "       WCHC: 01\n"
+            "       WCHS: 00\n"
+            "       WCHR: 00\n"
+            "  BLND/DEAF: 00\n\n"
+            "       FUEL UPLIFT REQUIRE:YES\n"
+            "    BLOCK FUEL QTY:      0 kg\n"
+            "     TAXI FUEL QTY:      0 kg\n"
+            "     TRIP FUEL QTY:      0 kg\n\n"
+            " FLIGHT TIME: 8888 (hh:mm)  CREW:2/5"
+        )
+        frame = {
+            'vdl2': {
+                'freq': 136775000,
+                'avlc': {
+                    'src': {'addr': '473408'},
+                    'acars': {
+                        'reg': 'HA-LTH',
+                        'flight': 'WZZ0006',
+                        'label': 'H1',
+                        'msg_text': wizz_msg
+                    }
+                }
+            }
+        }
+        res = parse_vdl2_frame(frame)
+        self.assertIsNotNone(res)
+        self.assertEqual(res['dst_airport'], 'LHBP')
+        self.assertNotEqual(res['dst_airport'], 'DEAF')
+        self.assertNotIn('BLND', res.get('station', ''))
+        self.assertNotIn('DEAF', res.get('station', ''))
+        self.assertIn('LHBP', res['station'])
+        self.assertIn('Budapest', res['station'])
+        self.assertIn('Rutt: ESSA (Stockholm/Arlanda) → LHBP (Budapest/Ferenc Liszt)', res['message'])
+        self.assertIn('ETA: 09:25 UTC', res['message'])
+
+        # Verifiera att läsbar fritext syns direkt utan att klicka på Rådata
+        main_body = res['message'].split('\nRådata:')[0]
+        self.assertIn('Dear LHBP GH,we need the below Fuel Qty', main_body)
+        self.assertIn('WCHC: 01', main_body)
+        self.assertIn('FUEL UPLIFT REQUIRE:YES', main_body)
+        self.assertNotIn('[FMS/Systemtelemetri] Kodat datapaket', res['message'])
+
 if __name__ == '__main__':
     unittest.main()
 

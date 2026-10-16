@@ -214,7 +214,7 @@ FALLBACK_AIRPORTS = {
     'LOWW': 'Wien/Schwechat',
     'LOWI': 'Innsbruck',
     'LKPR': 'Prag',
-    'LHBP': 'Budapest',
+    'LHBP': 'Budapest/Ferenc Liszt',
     'LROP': 'Bukarest/Otopeni',
     'LBSF': 'Sofia',
     'LGAV': 'Aten',
@@ -297,6 +297,72 @@ def _clean_airport_name(ap_dict: dict) -> str:
         return f"{city}/{clean}"
     return city or clean
 
+# Ord och förkortningar som har 4 versaler men INTE är ICAO-flygplatser
+INVALID_ICAO_WORDS = {
+    'BLND', 'DEAF', 'WCHC', 'WCHS', 'WCHR', 'TRUE', 'FALS', 'NONE', 'MALE', 'FEMA',
+    'CREW', 'PASS', 'HIGH', 'LOWS', 'OPEN', 'CLOS', 'FROM', 'DEST', 'FUEL', 'TAXI',
+    'TRIP', 'TIME', 'DATA', 'TEXT', 'DATE', 'INFO', 'LOAD', 'STAT', 'TYPE', 'CODE',
+    'NAME', 'NEXT', 'LAST', 'ACAR', 'VDL2', 'FREQ', 'CALL', 'FLIG', 'MSGS', 'WIND',
+    'TEMP', 'KNOT', 'FEET', 'AUTO', 'MANU', 'CONF', 'REQ', 'REQU', 'REPL', 'SEND',
+    'RECV', 'RCVD', 'NULL', 'POSI', 'POSN', 'FL00', 'FL10', 'FL20', 'FL30', 'FL40',
+    'KG00', 'LB00', 'TEST', 'FAIL', 'OKAY', 'WARN', 'STOP', 'WAIT', 'HOLD', 'GATE',
+    'MINS', 'SECS', 'DEGS', 'LEFT', 'RGHT', 'BACK', 'FORW', 'PACK', 'APPR', 'DEPT',
+    'ARRV', 'CLRC', 'PUSH', 'PULL', 'TAKE', 'LAND', 'CLMB', 'DESC', 'CRUS', 'EXEC',
+    'STAN', 'MAST', 'SLAV', 'CONT', 'SLOW', 'FAST', 'NORM', 'ABN',
+    'ELEV', 'FLAP', 'SLAT', 'RUDD', 'AILN', 'SPOI', 'GEAR', 'BRAK', 'TIRE', 'WHEL'
+}
+
+def is_valid_icao_code(code: str) -> bool:
+    """Validerar om en 4-ställig sträng är en trovärdig ICAO-flygplatskod."""
+    if not code or len(code) != 4 or not code.isupper() or not code.isalpha():
+        return False
+    if code in INVALID_ICAO_WORDS:
+        return False
+    if code in AIRPORTS:
+        return True
+    if _AIRPORTSDATA_ICAO and code in _AIRPORTSDATA_ICAO:
+        return True
+    # Kända internationella ICAO-prefix
+    KNOWN_PREFIXES = (
+        'ES', 'EN', 'EF', 'EK', 'EG', 'ED', 'ET', 'LF', 'LE', 'LI', 'LH',
+        'LO', 'LS', 'EH', 'EB', 'EP', 'LK', 'LT', 'LG', 'LP', 'LR', 'LB',
+        'LZ', 'LY', 'LD', 'LJ', 'BK', 'EY', 'EV', 'EE', 'BI', 'DA', 'DT',
+        'HE', 'LL', 'OE', 'OM', 'OB', 'OT', 'OK', 'OI', 'OO', 'OR', 'OS',
+        'RC', 'RJ', 'RK', 'RO', 'RP', 'VT', 'VV', 'WM', 'WS', 'YB', 'SA',
+        'SB', 'SC', 'SK', 'SP', 'SU', 'SV', 'UB', 'UG', 'UD', 'UK', 'UM'
+    )
+    if code.startswith(('K', 'C')) or code[:2] in KNOWN_PREFIXES:
+        return True
+    return False
+
+def is_valid_airport_pair(orig: str, dest: str) -> bool:
+    """Kontrollerar om två koder utgör ett giltigt flygplatspar och inte falska positiva som BLND/DEAF."""
+    if not orig or not dest or orig == dest:
+        return False
+    if not (is_valid_icao_code(orig) and is_valid_icao_code(dest)):
+        return False
+    return True
+
+def find_valid_route_pair(text: str):
+    """
+    Söker efter giltiga flygplatspar (t.ex. ESSA-LHBP eller ESSA/EKCH) och ignorerar icke-flygplatser.
+    Returnerar (orig, dest) eller None.
+    """
+    if not text:
+        return None
+    # 1. 4-ställiga ICAO-koder med bindestreck eller snedstreck
+    for m in re.finditer(r'\b([A-Z]{4})[-/]([A-Z]{4})\b', text):
+        orig, dest = m.group(1), m.group(2)
+        if is_valid_airport_pair(orig, dest):
+            return orig, dest
+    # 2. 3-ställiga koder som fallback om de inte är telemetriord
+    for m in re.finditer(r'\b([A-Z]{3})[-/]([A-Z]{3})\b', text):
+        orig, dest = m.group(1), m.group(2)
+        if orig not in ('MIN', 'SEC', 'DEG', 'KMH', 'UTC', 'ETA', 'FOB', 'ALT', 'POS') and \
+           dest not in ('MIN', 'SEC', 'DEG', 'KMH', 'UTC', 'ETA', 'FOB', 'ALT', 'POS'):
+            return orig, dest
+    return None
+
 def lookup_airport(icao_code: str) -> str:
     """Slår upp flygplatsnamn utifrån ICAO-kod (4 tecken)."""
     if not icao_code:
@@ -336,6 +402,9 @@ def fix_untranslated_routes(text: str, metadata: dict = None) -> str:
         dep_paren = m.group(2) or ''
         arr = m.group(3)
         arr_paren = m.group(4) or ''
+
+        if not is_valid_airport_pair(dep, arr):
+            return m.group(0)
 
         dep_str = f"{dep}{dep_paren}" if ('(' in dep_paren) else format_airport(dep)
         arr_str = f"{arr}{arr_paren}" if ('(' in arr_paren) else format_airport(arr)
@@ -1720,6 +1789,91 @@ def rule_free_text_header(text: str, label: str = None, metadata: dict = None) -
     return f"{summary}\nRådata: {stripped}"
 
 
+def rule_ground_handling_fuel_assistance(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    Marktjänst & Markoperationer: Ground Handling, Bränslebeställning (Fuel Uplift)
+    och Special Assistance / PRM (t.ex. WCHC, WCHS, WCHR, BLND/DEAF).
+    Vanligt hos flygbolag som Wizz Air, Ryanair, easyJet m.fl. under Label H1, 16, 80 etc.
+    Döljer ALDRIG läsbar fritext bakom Rådata!
+    """
+    stripped = text.strip()
+    gh_patterns = [
+        r'\bDear\s+[A-Z0-9]{3,4}\s+GH\b',
+        r'\bSpecial\s+Assistance\b',
+        r'\bFUEL\s+UPLIFT\b',
+        r'\b(?:BLOCK|TAXI|TRIP)\s+FUEL\s+QTY\b',
+        r'\b(?:WCHC|WCHS|WCHR):\s*\d+',
+        r'\bneed\s+the\s+below\s+Fuel\s+Qty\b',
+        r'\bGround\s+Handling\b'
+    ]
+    if not any(re.search(p, stripped, re.IGNORECASE) for p in gh_patterns):
+        return None
+
+    # 1. Rutt: Sök efter giltigt ICAO-ruttpar och ignorera falska som BLND/DEAF
+    route_pair = find_valid_route_pair(stripped)
+    route_str = ""
+    if route_pair:
+        orig, dest = route_pair
+        route_str = f"Rutt: {format_airport(orig)} → {format_airport(dest)}"
+        if isinstance(metadata, dict):
+            metadata['dst_airport'] = dest
+
+    # 2. Flight och registrering
+    m_flt = re.search(r'\b([A-Z0-9]{2,3}\d{1,4}[A-Z]?)\s*,\s*([A-Z]{4}[-/][A-Z]{4})', stripped)
+    if m_flt:
+        flt_code = m_flt.group(1).upper()
+        if isinstance(metadata, dict) and not metadata.get('flight'):
+            metadata['flight'] = flt_code
+
+    m_reg = re.search(r'A/C:\s*([A-Z0-9-]+)', stripped, re.IGNORECASE)
+    if m_reg and isinstance(metadata, dict) and not metadata.get('reg'):
+        metadata['reg'] = m_reg.group(1).upper()
+
+    # 3. ETA
+    eta_str = ""
+    m_eta = re.search(r'\bETA[:\s]*([01]\d|2[0-3])([0-5]\d)z?\b', stripped, re.IGNORECASE)
+    if m_eta:
+        eta_str = f"ETA: {m_eta.group(1)}:{m_eta.group(2)} UTC"
+
+    summary_items = ["Marktjänst / PRM & Bränsle"]
+    if route_str:
+        summary_items.append(route_str)
+    if eta_str:
+        summary_items.append(eta_str)
+
+    summary_header = " | ".join(summary_items)
+
+    # 4. Separera teknisk inledningsrad och bevara den fullständiga läsbara brödtexten synlig i tabellen
+    lines = stripped.splitlines()
+    body_lines = []
+    header_raw = []
+    in_body = False
+
+    for l in lines:
+        l_s = l.strip()
+        if not l_s:
+            if in_body:
+                body_lines.append("")
+            continue
+        # Känn igen starten på läsbart innehåll (flight/rutt eller Dear ...)
+        if re.search(r'\b(?:Dear\s+[A-Z0-9]{3,4}\s+GH|[A-Z0-9]{2,4}\s*,\s*[A-Z]{4}[-/][A-Z]{4})\b', l_s, re.IGNORECASE):
+            in_body = True
+        if in_body:
+            body_lines.append(l)
+        else:
+            header_raw.append(l)
+
+    if not body_lines:
+        body_lines = lines
+
+    readable_body = "\n".join(body_lines).strip()
+    raw_part = "\n".join(header_raw).strip()
+
+    if raw_part:
+        return f"{summary_header}\n\n{readable_body}\nRådata: {raw_part}"
+    return f"{summary_header}\n\n{readable_body}"
+
+
 def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: dict = None) -> str:
     """
     Operativa meddelanden (Label 80, RA, 10–4Z m.fl.) med rutt, /ETA, /FOB och pilotfritext.
@@ -1731,7 +1885,8 @@ def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: di
     """
     stripped = text.strip()
     has_eta_fob = bool(re.search(r'/(?:ETA|FOB)\s*\d+', stripped) or re.search(r'\bFOB\s*\d+', stripped))
-    has_route = bool(re.search(r'\b([A-Z]{4})/([A-Z]{4})\b', stripped))
+    route_pair = find_valid_route_pair(stripped)
+    has_route = bool(route_pair)
 
     # Krav 1: Begränsa Pilotmeddelande: till ENDAST konversations-labels (eller .FREE / FTX/)
     PILOT_ALLOWED_LABELS = {"80", "81", "82", "83", "RA", "AA", "10", "12", "13", "15"}
@@ -1741,12 +1896,10 @@ def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: di
     if not (has_eta_fob or (is_freetext_allowed and (has_route or 'ETA' in stripped or len(stripped.splitlines()) > 0))):
         return None
 
-    # 1. Rutt
+    # 1. Rutt (använd validerat par för att undvika falska positiva som BLND/DEAF)
     route_str = ""
-    m_route = re.search(r'\b([A-Z]{4})/([A-Z]{4})\b', stripped)
-    if m_route:
-        orig = m_route.group(1).upper()
-        dest = m_route.group(2).upper()
+    if route_pair:
+        orig, dest = route_pair
         orig_fmt = format_airport(orig)
         dest_fmt = format_airport(dest)
         route_str = f"Rutt: {orig_fmt} → {dest_fmt}"
@@ -1783,7 +1936,7 @@ def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: di
         )
         lines = [l.strip() for l in stripped.splitlines() if l.strip()]
         for l in lines:
-            if re.search(r'\b[A-Z]{4}/[A-Z]{4}\b', l) and (re.search(r'\bETA\b', l) or re.search(r'\.[A-Z0-9-]{3,}', l)):
+            if re.search(r'\b[A-Z]{4}[-/][A-Z]{4}\b', l) and (re.search(r'\bETA\b', l) or re.search(r'\.[A-Z0-9-]{3,}', l)):
                 continue
             if l.startswith('/') or l.startswith('#') or l.startswith(';'):
                 continue
@@ -1810,15 +1963,12 @@ def rule_operational_eta_fob_freetext(text: str, label: str = None, metadata: di
 
             # Krav 4: Exkluderingsregler mot telemetri och nyckel/värdepar (POS, LAT, LON etc.)
             l_upper = l.upper()
-            # 4a. Börjar med POS eller innehåller telemetrimönster som LAT, LON, ALT, FOB, CAS, UTC, TAT
             if l_upper.startswith('POS') or re.search(r'\b(?:LAT|LON|ALT|FOB|CAS|UTC|TAT)\s+[A-Z0-9\-]', l_upper):
                 continue
 
-            # 4b. Innehåller 2 eller fler kommatecken (,) i kombination med siffror (t.ex. ,LAT N058, ,ALT 37002)
             if comma_count >= 2 and re.search(r',\s*[A-Z0-9_\-]*\d+', l):
                 continue
 
-            # 4c. Består till mer än 25% av siffror
             digit_count = sum(1 for c in l if c.isdigit())
             if (digit_count / max(len(l), 1)) > 0.25:
                 continue
@@ -2102,6 +2252,7 @@ PARSER_RULES = [
     rule_label_83_csv_position,
     rule_label_83_eta_report,
     rule_lsconf_loadsheet,
+    rule_ground_handling_fuel_assistance,
     rule_free_text_header,
     rule_operational_eta_fob_freetext,
     rule_label_80_oooi_report,

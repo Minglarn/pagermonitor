@@ -22,12 +22,14 @@ try:
     from acars_human_parser import (
         parse_human_acars, AIRLINE_MAP, GROUND_STATIONS, ACARS_LABELS as PARSER_ACARS_LABELS,
         lookup_airline, lookup_ground_station, lookup_label, build_acars_metadata_header,
-        extract_acars_metadata, format_libacars_data
+        extract_acars_metadata, format_libacars_data, find_valid_route_pair, is_valid_airport_pair,
+        INVALID_ICAO_WORDS
     )
 except ImportError:
     AIRLINE_MAP = {}
     GROUND_STATIONS = {}
     PARSER_ACARS_LABELS = {}
+    INVALID_ICAO_WORDS = set()
     def parse_human_acars(msg, label=None, metadata=None, strip_prefix=False): return msg
     def lookup_airline(f): return ""
     def lookup_ground_station(a): return ""
@@ -35,6 +37,8 @@ except ImportError:
     def build_acars_metadata_header(avlc=None, acars=None, vdl2_frame=None): return ""
     def extract_acars_metadata(avlc=None, acars=None, vdl2_frame=None): return {}
     def format_libacars_data(a=None, x=None, v=None): return ""
+    def find_valid_route_pair(t): return None
+    def is_valid_airport_pair(o, d): return False
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +159,7 @@ AIRPORT_MAP = {
     'LOWW': 'Wien/Schwechat',
     'LOWI': 'Innsbruck',
     'LKPR': 'Prag',
-    'LHBP': 'Budapest',
+    'LHBP': 'Budapest/Ferenc Liszt',
     'LROP': 'Bukarest/Otopeni',
     'LBSF': 'Sofia',
     'LGAV': 'Aten',
@@ -414,7 +418,9 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
     # 6. Modulär Human ACARS Parser för specialiserade mönster (Label 38, H1 POSN, H1 RESREQ, 83 ETA, MM m.fl.)
     res = parse_human_acars(txt, label=lbl, metadata=acars_dict)
     if res == txt and '\nRådata:' not in res and lbl in ('H1', 'H2', 'DF', '5Z') and txt:
-        return f"[FMS/Systemtelemetri] Kodat datapaket ({len(txt)} tecken)\nRådata: {txt}"
+        is_readable = bool(re.search(r'\b[A-Za-z]{3,}\s+[A-Za-z]{3,}\b', txt))
+        if not is_readable:
+            return f"[FMS/Systemtelemetri] Kodat datapaket ({len(txt)} tecken)\nRådata: {txt}"
     return res
 
 def find_nested_key(data, target_key):
@@ -1013,23 +1019,29 @@ def extract_position_and_telemetry(text, vdl2_obj=None):
                 fl_str = f"FL{round(alt_num / 100)}"
                 res['telemetry_summary'] = (fl_str + f" | {res['telemetry_summary']}").strip(' |') if res['telemetry_summary'] else fl_str
 
-    # Sök efter rutt/flygplatser i texten (t.ex. ESSA/EFHK eller ARN-HEL)
-    m_route = re.search(r'\b([A-Z]{4})/([A-Z]{4})\b', raw_text)
-    if not m_route:
-        m_route = re.search(r'\b([A-Z]{3})[-/]([A-Z]{3})\b', raw_text)
-    if m_route:
-        orig = m_route.group(1).upper()
-        dest = m_route.group(2).upper()
-        if orig not in ('MIN', 'SEC', 'DEG', 'KMH') and dest not in ('MIN', 'SEC', 'DEG', 'KMH'):
-            res['telemetry']['route'] = f"{orig} -> {dest}"
-            r_str = f"Rutt: {format_airport(orig)} → {format_airport(dest)}"
-            if res['telemetry_summary']:
-                if r_str not in res['telemetry_summary']:
-                    res['telemetry_summary'] += f" | {r_str}"
-            else:
-                res['telemetry_summary'] = r_str
-            if not res.get('dst_airport'):
-                res['dst_airport'] = dest
+    # Sök efter rutt/flygplatser i texten (t.ex. ESSA-LHBP, ESSA/EFHK eller ARN-HEL)
+    route_pair = find_valid_route_pair(raw_text)
+    if route_pair:
+        orig, dest = route_pair
+        res['telemetry']['route'] = f"{orig} -> {dest}"
+        r_str = f"Rutt: {format_airport(orig)} → {format_airport(dest)}"
+        if res['telemetry_summary']:
+            if r_str not in res['telemetry_summary']:
+                res['telemetry_summary'] += f" | {r_str}"
+        else:
+            res['telemetry_summary'] = r_str
+        if not res.get('dst_airport'):
+            res['dst_airport'] = dest
+
+    # Sök efter ETA i texten (t.ex. ETA:0925z eller ETA 09:25)
+    m_eta = re.search(r'\bETA[:\s]*([01]\d|2[0-3])([0-5]\d)z?\b', raw_text, re.IGNORECASE)
+    if m_eta:
+        eta_str = f"ETA: {m_eta.group(1)}:{m_eta.group(2)} UTC"
+        if res['telemetry_summary']:
+            if eta_str not in res['telemetry_summary']:
+                res['telemetry_summary'] += f" | {eta_str}"
+        else:
+            res['telemetry_summary'] = eta_str
 
     # Sök efter FMS Destination och bana (PRG/DT..., INI/DT..., FTX/DT...)
     m_fms_dst = re.search(r'(?:PRG|INI|FTX)/DT([A-Z]{4})(?:,([0-9]{2}[LRC]?))?', raw_text)
@@ -1582,7 +1594,9 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
             # Parsa genom acars_human_parser med strip_prefix=True för ren text
             parsed_human = parse_human_acars(msg_text, label=label, metadata=acars, strip_prefix=True)
             if lbl_clean in ('H1', 'H2', 'DF', '5Z') and parsed_human == msg_text and '\nRådata:' not in parsed_human:
-                parsed_human = f"[FMS/Systemtelemetri] Kodat datapaket ({len(msg_text)} tecken)\nRådata: {msg_text}"
+                is_readable = bool(re.search(r'\b[A-Za-z]{3,}\s+[A-Za-z]{3,}\b', msg_text))
+                if not is_readable:
+                    parsed_human = f"[FMS/Systemtelemetri] Kodat datapaket ({len(msg_text)} tecken)\nRådata: {msg_text}"
         if parsed_human:
             message_lines.append(parsed_human)
 

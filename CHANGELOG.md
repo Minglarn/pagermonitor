@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.09] - Temamedveten Kartmodal, Synlig VDL2/ACARS Fritext och ICAO-validering mot BLND/DEAF
+
+- **Temamedveten och Högkontrast Kartmodal ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Åtgärdat den svårlästa kartmodalen (`#mapModal`) som tidigare hade hårdkodad mörk bakgrund och mörk text i ljust läge.
+  - Implementerat fullständig anpassning för både ljust och mörkt läge:
+    - Mörkt läge: bakgrund `#0d1117`, listpaneler `#111827`, kristallklar ljus text `#f1f5f9` / `#94a3b8` och cyanlänkar `#38bdf8`.
+    - Ljust läge (`[data-theme="light"]`): krispig vit bakgrund `#ffffff`, subtila lister `#f8fafc`, skarp mörk text `#0f172a` och metadata `#475569`, stängningskryss `#64748b` samt accentblå externa länkar `#0284c7`.
+- **VDL2 & ACARS Läsbar Fritext och ICAO-validering ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Förhindrat att läsbar fritext (som t.ex. marktjänst, bränslebeställning och PRM special assistance) döljs bakom `</> Rådata` eller maskeras som kodade datapaket.
+  - Ny regel `rule_ground_handling_fuel_assistance` som genererar en sammanfattningsrad överst med rutt och ETA, samtidigt som hela den läsbara brödtexten (`Dear LHBP GH, we need the below Fuel Qty...`) visas direkt i meddelandecellen.
+  - Robust ICAO-validering med `INVALID_ICAO_WORDS`, `is_valid_icao_code`, `is_valid_airport_pair` och `find_valid_route_pair`:
+    - Filtrerar strikt bort icke-flygplatsord som `BLND`, `DEAF`, `WCHC`, `WCHS`, `WCHR`, `FUEL`, `CREW`, etc.
+    - Eliminerar den felaktiga rutten `BLND → DEAF` och förhindrar att `DEAF` felaktigt sätts som destinationsflygplats.
+    - Stödjer bindestrecksrutter som `ESSA-LHBP` och mappar flygplatsen till `LHBP (Budapest/Ferenc Liszt)`.
+- **Tester och Kvalitetssäkring ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
+  - Nytt enhetstest `test_wizzair_ground_handling_and_route_not_blnd_deaf` verifierar att rutten detekteras som `ESSA → LHBP`, att destinationen är `LHBP` (inte `DEAF`), och att den läsbara fritexten visas direkt i meddelanderaden.
+  - Samtliga 112 enhetstester passerar utan anmärkning och noll emojis förekommer.
+
 ## [2026.10.16.08] - Kompakt Tabellcellslayout, Badges Låsta i Botten, Zoomnivå 6 för Minikartor och Stor Interaktiv Kart-modal
 
 - **Kompakta Tabellcellsmarginaler och Låsning av Badges i Botten ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:

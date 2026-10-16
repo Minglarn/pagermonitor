@@ -2929,17 +2929,17 @@ td.msg-cell {
     flex-direction: column !important;
     padding: 0 !important;
     overflow: hidden !important;
-    border-radius: 12px !important;
-    background: var(--panel-bg, #111827) !important;
+    border-radius: 14px !important;
+    background: var(--panel-bg, #0d1117) !important;
     border: 1px solid var(--panel-border, #1f2937) !important;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
 }
 
 .map-modal-header {
     padding: 16px 20px 12px 20px;
     border-bottom: 1px solid var(--panel-border, #1f2937);
     flex-shrink: 0;
-    background: var(--header-bg, #182234);
+    background: var(--table-header-bg, #111827);
 }
 
 .map-modal-title-row {
@@ -2947,13 +2947,15 @@ td.msg-cell {
     align-items: center;
     gap: 10px;
     margin-bottom: 6px;
+    padding-right: 32px;
 }
 
 .map-modal-title-row h2 {
     margin: 0;
     font-size: 1.15rem;
     font-weight: 700;
-    color: var(--text-primary, #ffffff);
+    color: var(--text-primary, #f1f5f9);
+    letter-spacing: -0.01em;
 }
 
 .map-modal-meta-row {
@@ -2985,7 +2987,7 @@ td.msg-cell {
     justify-content: space-between;
     padding: 12px 20px;
     border-top: 1px solid var(--panel-border, #1f2937);
-    background: var(--header-bg, #182234);
+    background: var(--table-header-bg, #111827);
     flex-shrink: 0;
 }
 
@@ -3009,6 +3011,51 @@ td.msg-cell {
 .map-external-link:hover {
     color: #7dd3fc;
     text-decoration: underline;
+}
+
+/* Light Theme Anpassningar för Kart-Modal */
+[data-theme="light"] .map-modal-content {
+    background: #ffffff !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+}
+
+[data-theme="light"] .map-modal-header {
+    background: #f8fafc !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .map-modal-title-row h2 {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .map-modal-meta-row {
+    color: #475569 !important;
+}
+
+[data-theme="light"] .large-modal-map {
+    background: #f1f5f9 !important;
+}
+
+[data-theme="light"] .map-modal-footer {
+    background: #f8fafc !important;
+    border-top: 1px solid #e2e8f0 !important;
+}
+
+[data-theme="light"] .map-external-link {
+    color: #0284c7 !important;
+}
+
+[data-theme="light"] .map-external-link:hover {
+    color: #0369a1 !important;
+}
+
+[data-theme="light"] .map-modal-content .close-btn {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .map-modal-content .close-btn:hover {
+    color: #0f172a !important;
 }
 
 /* ==========================================================================
