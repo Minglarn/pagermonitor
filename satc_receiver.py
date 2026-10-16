@@ -186,41 +186,42 @@ def clean_control_characters(text):
 def decode_mime_headers(text: str) -> str:
     """
     Avkodar RFC 2047 MIME-kodade e-postheaders (t.ex. =?koi8-r?B?...?= eller =?utf-8?Q?...?=)
-    till läsbar UTF-8-text med Pythons inbyggda email.header.decode_header.
+    till läsbar UTF-8-text.
     """
     if not text or '=?' not in text:
         return text
 
-    def _decode_match(m):
-        raw_word = m.group(0)
+    def _replace_mime(m):
+        charset = m.group(1).lower().strip()
+        encoding = m.group(2).upper().strip()
+        encoded_data = m.group(3).strip()
         try:
-            parts = email.header.decode_header(raw_word)
-            out = []
-            for b, cs in parts:
-                if isinstance(b, bytes):
-                    out.append(b.decode(cs or 'utf-8', errors='replace'))
-                else:
-                    out.append(str(b))
-            return ''.join(out)
+            if encoding == 'B':
+                pad = len(encoded_data) % 4
+                if pad:
+                    encoded_data += '=' * (4 - pad)
+                raw_bytes = base64.b64decode(encoded_data)
+                return raw_bytes.decode(charset, errors='replace')
+            elif encoding == 'Q':
+                import quopri
+                raw_bytes = quopri.decodestring(encoded_data.replace('_', ' '))
+                return raw_bytes.decode(charset, errors='replace')
         except Exception:
             try:
-                charset = m.group(1).lower()
-                enc = m.group(2).upper()
-                payload = m.group(3)
-                if enc == 'B':
-                    pad = len(payload) % 4
-                    if pad:
-                        payload += '=' * (4 - pad)
-                    return base64.b64decode(payload).decode(charset, errors='replace')
-                elif enc == 'Q':
-                    import quopri
-                    return quopri.decodestring(payload.replace('_', ' ')).decode(charset, errors='replace')
+                parts = email.header.decode_header(m.group(0))
+                out = []
+                for b, cs in parts:
+                    if isinstance(b, bytes):
+                        out.append(b.decode(cs or charset or 'utf-8', errors='replace'))
+                    else:
+                        out.append(str(b))
+                return ''.join(out)
             except Exception:
                 pass
-        return raw_word
+        return m.group(0)
 
-    pattern = re.compile(r'=\?([^?]+)\?([BQbq])\?([^?]+)\?=', re.IGNORECASE)
-    return pattern.sub(_decode_match, str(text))
+    pattern = re.compile(r'=\?([^?]+)\?([BbQq])\?([^?]+)\?=', re.IGNORECASE)
+    return pattern.sub(_replace_mime, str(text))
 
 def normalize_satc_priority(raw_priority, text=""):
     """
@@ -532,7 +533,7 @@ def parse_satc_frame(payload, only_messages=True):
         lat, lon = None, None
     else:
         # Faktiskt meddelandepaket med text
-        body_text = raw_text
+        body_text = decode_mime_headers(raw_text)
 
         # Extrahera Område (NAVAREA / METAREA / Area)
         navarea = payload.get("navarea") or payload.get("area") or payload.get("metarea") or payload.get("ocean_region")

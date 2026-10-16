@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.05`
+- **CalVer**: `2026.10.16.06`
 - **Date**: 2026-10-16
 - **Language**: English / Swedish
 
@@ -9,7 +9,21 @@
 
 ## Overview of Implemented Features
 
-### 0. Universell Leaflet-Minikarta, VDL2 Positionsbadge & RFC 2047 MIME-avkodning
+### 0. CSP Korrigering for Leaflet Kartor, Tabellcells- och Badgelayout samt Layoutskiftsfri Flodespaus
+- **Content Security Policy (CSP) for Leaflet och Kartor ([app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - `https://unpkg.com` tillagt i `script-src` och `style-src` for att tillata inlasning av Leaflet JS och CSS.
+  - Kartservrar `https://*.tile.openstreetmap.org`, `https://tiles.openseamap.org` och `https://unpkg.com` tillagda i `img-src` och `connect-src` vilket loser felet med svarta kartor och blockerade kartresurser.
+- **Tabellcells- och Badgelayout ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Cellinnehall i `<td class="msg-cell message-cell">` ar strukturerat med `.msg-row-layout` (`display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; width: 100%;`).
+  - Ny vansterdel `.msg-main-content` kapslar in `.msg-text`, `.raw-data-box` och `.msg-badges`.
+  - Fixar felet dar metadata-badgar tidigare hamnade pa fel rad (eller forflyttades till nasta meddelanderad) pa grund av felaktig vertikal flexbox-utstrackning.
+  - Avlagsnat overskottsmarginaler och satt kompakt cellpadding `8px 12px` med `vertical-align: top`.
+- **Layoutskiftsfri Flodespaus ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - `#hoverPausePill` har `position: absolute; top: 12px; left: 50%; transform: translateX(-50%);` och tar 0 pixlar i dokumentflodet vilket forhindrar att tabellrader hoppar nedat vid mus-hover.
+- **Robust RFC 2047 MIME-avkodning ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Base64 och Quoted-Printable MIME-avkodning med automatisk padding-korrigering for e-postheaders bade i mottagarbackend och direkt i frontendens formatering.
+
+### 1. Universell Leaflet-Minikarta, VDL2 Positionsbadge & RFC 2047 MIME-avkodning
 - **Universell Inbäddad Minikarta för Alla Protokoll ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
   - Minikartan (260x165 px) visas nu till höger i meddelandecellen för samtliga protokoll (`VDL2`, `SATC`, `SONDE`, `ACARS`, `POCSAG` etc.) så fort giltiga koordinater förekommer.
   - Dynamisk zoomnivå: zoom 8 för flygtrafik (`VDL2`, `ACARS`, `SONDE`), och zoom 9 för sjöfart (`SATC`).

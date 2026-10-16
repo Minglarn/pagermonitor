@@ -7,7 +7,7 @@ from satc_receiver import (
     SatCReceiver, parse_satc_frame, extract_coordinates,
     format_satc_frequency, normalize_satc_priority, classify_satc_service,
     send_test_satc_message, get_satc_status, clean_control_characters,
-    is_binary_or_gibberish
+    is_binary_or_gibberish, decode_mime_headers
 )
 
 def contains_emoji(text):
@@ -585,9 +585,12 @@ class TestSatCReceiver(unittest.TestCase):
 
         # 2. Minikarta markup och CSS
         self.assertIn('msg-minimap-container', index_html)
-        self.assertIn('has-minimap', index_html)
+        self.assertIn('msg-row-layout', index_html)
+        self.assertIn('msg-main-content', index_html)
+        self.assertIn('msg-badges', index_html)
         self.assertIn('.msg-minimap-container', style_css)
-        self.assertIn('.msg-cell-flex.has-minimap', style_css)
+        self.assertIn('.msg-row-layout', style_css)
+        self.assertIn('.msg-main-content', style_css)
 
         # 3. Flödespaus
         self.assertIn('hoverPausePill', index_html)
@@ -602,6 +605,26 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn('data-proto', index_html)
         self.assertIn('openseamap.org', index_html)
         self.assertIn('setView([lat, lon], 12', index_html)
+
+    def test_decode_mime_headers(self):
+        """Verifiera korrekt avkodning av RFC 2047 MIME-ord (t.ex. koi8-r, utf-8, windows-1251)."""
+        raw_koi8r = "From: =?koi8-r?B?58HTyd4g7chSydE=?= <mgasich@marsat.ru>"
+        decoded = decode_mime_headers(raw_koi8r)
+        self.assertNotIn("=?koi8-r?", decoded)
+        self.assertIn("<mgasich@marsat.ru>", decoded)
+        raw_qp = "Subject: =?utf-8?Q?Varning_f=C3=B6r_h=C3=A5rd_vind?="
+        decoded_qp = decode_mime_headers(raw_qp)
+        self.assertIn("Varning för hård vind", decoded_qp)
+
+    def test_csp_allows_leaflet_and_tiles(self):
+        """Verifiera att CSP-headern i app.py tillåter unpkg.com och OpenStreetMap/OpenSeaMap kartresurser."""
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        app_path = os.path.join(base_dir, 'app.py')
+        with open(app_path, 'r', encoding='utf-8') as f:
+            app_code = f.read()
+        self.assertIn("https://unpkg.com", app_code)
+        self.assertIn("tile.openstreetmap.org", app_code)
+        self.assertIn("tiles.openseamap.org", app_code)
 
     def test_strict_no_emojis_in_source_code(self):
         """Verifiera att inga emojis förekommer i källkodsfilerna, mallarna eller dokumentationen."""

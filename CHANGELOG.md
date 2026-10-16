@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.06] - CSP Korrigering for Leaflet och Kartor, Tabellcells- och Badgelayout samt Layoutskiftsfri Flodespaus
+
+- **Content Security Policy (CSP) Uppdatering for Leaflet och Kartor ([app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Lade till `https://unpkg.com` i `script-src` och `style-src` sa att Leaflet JavaScript och CSS tillats laddas utan att blockeras av webblasarens sakerhetspolicy.
+  - Lade till `https://*.tile.openstreetmap.org`, `https://tiles.openseamap.org` och `https://unpkg.com` i `img-src` och `connect-src` sa att kartplattor och markorikoner laddas utan att kartan blir svart.
+- **Atgard for Tabellcell- och Badgelayout ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Strukturerade om `<td class="msg-cell message-cell">` med `.msg-row-layout` och en dedikerad vanstersektion `.msg-main-content` som kapslar in text (`.msg-text`), radata (`.raw-data-box`) och badgar (`.msg-badges`).
+  - Satte `.msg-row-layout` till `align-items: flex-start` for att forhindra vertikal utstrackning som tidigare flyttade badgarna nedat till kanten av nasta tabellrad.
+  - Eliminerade overskottsmarginaler och satt `padding: 8px 12px !important; vertical-align: top !important;` pa meddelandecellen.
+- **Flodespaus utan Layoutskift ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Konfigurerade `#hoverPausePill` med `position: absolute; top: 12px; left: 50%; transform: translateX(-50%);` sa att indikatorn svavar ovanfor tabellen utan att ta upp hojd i dokumentflodet och utan att tabellraderna hoppar nedat nar muspekaren placeras over flodet.
+- **Robust RFC 2047 MIME-avkodning ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Forbattrad regex- och base64/quoted-printable-avkodare med automatisk padding-korrigering for MIME-kodade e-postrubriker (bland annat ryska KOI8-R och UTF-8) bade i backend och direkt i frontend for tidigare sparade meddelanden.
+- **Enhetstester ([tests/test_satc.py](file:///d:/antigravity/pager-monitor/tests/test_satc.py))**:
+  - Nya enhetstester for CSP-tillatelse for kartor, RFC 2047 MIME-avkodning och strikt DOM-layout. 110 enhetstester passerar felfritt och 0 emojis forekommer.
+
 ## [2026.10.16.05] - Universell Leaflet-Minikarta för Alla Protokoll, VDL2 Positionsbadge och RFC 2047 MIME-avkodning
 
 - **Universell Inbäddad Minikarta (Leaflet) för ALLA Protokoll ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:

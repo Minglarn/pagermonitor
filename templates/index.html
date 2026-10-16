@@ -694,27 +694,49 @@
         }
 
         table.dataTable.dashboard-dt th.col-msg,
-        table.dataTable.dashboard-dt td.msg-cell {
+        table.dataTable.dashboard-dt td.msg-cell,
+        table.dataTable.dashboard-dt td.message-cell {
             width: auto !important;
             word-break: break-word !important;
             overflow-wrap: anywhere !important;
-            padding: 0.5rem 0.85rem !important;
+            padding: 8px 12px !important;
             vertical-align: top !important;
-            height: 1px !important;
+            height: auto !important;
         }
 
-        .msg-content-wrapper {
+        .msg-row-layout {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            width: 100%;
+        }
+
+        .msg-main-content {
+            flex: 1;
+            min-width: 0;
             display: flex;
             flex-direction: column;
-            height: 100%;
-            min-height: 100%;
+            gap: 4px;
         }
 
-        .msg-cell .msg-text {
+        .msg-cell .msg-text,
+        .msg-main-content .msg-text {
             white-space: normal !important;
-            word-break: break-word;
-            overflow-wrap: anywhere;
-            line-height: 1.4;
+            word-break: break-word !important;
+            overflow-wrap: anywhere !important;
+            line-height: 1.4 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .msg-badges,
+        .msg-meta-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px;
+            margin-top: 4px;
         }
 
         .msg-summary {
@@ -2164,9 +2186,36 @@
             return highlighted;
         }
 
+        function decodeMimeWordsInText(str) {
+            if (!str || typeof str !== 'string' || !str.includes('=?')) return str;
+            return str.replace(/=\?([^?]+)\?([BbQq])\?([^?]+)\?=/gi, function(match, charset, enc, data) {
+                try {
+                    const encoding = enc.toUpperCase();
+                    if (encoding === 'B') {
+                        let pad = data.length % 4;
+                        let paddedData = data;
+                        if (pad) paddedData += '='.repeat(4 - pad);
+                        const binaryStr = atob(paddedData);
+                        const bytes = new Uint8Array(binaryStr.length);
+                        for (let i = 0; i < binaryStr.length; i++) {
+                            bytes[i] = binaryStr.charCodeAt(i);
+                        }
+                        const cs = charset.toLowerCase();
+                        let decoderLabel = cs;
+                        if (cs === 'koi8-r' || cs === 'koi8r') decoderLabel = 'koi8-r';
+                        else if (cs === 'utf-8' || cs === 'utf8') decoderLabel = 'utf-8';
+                        else if (cs.includes('8859')) decoderLabel = cs;
+                        const decoder = new TextDecoder(decoderLabel);
+                        return decoder.decode(bytes);
+                    }
+                } catch (e) {}
+                return match;
+            });
+        }
+
         function formatMessage(msgStr) {
             if (!msgStr) return { summaryHtml: '', rawText: '' };
-            let text = String(msgStr)
+            let text = decodeMimeWordsInText(String(msgStr))
                 .replace(/<CR><LF>/gi, '\n')
                 .replace(/[\u{1F4AC}\u{1F4AD}\u{1F5E8}]\s*/gu, '');
 
@@ -2610,30 +2659,17 @@
                 activeMinimapHtml = `<div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}" data-proto="${escapeHtml(protoName)}"></div>`;
             }
 
-            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${satcBadgesHtml}${universalCoordTag}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
-            const metaBarHtml = metaBarBadges ? `<div class="msg-meta-bar">${metaBarBadges}</div>` : '';
-
-            let msgCellInner = '';
-            if (activeMinimapHtml) {
-                msgCellInner = `
-                    <div class="msg-cell-flex has-minimap">
-                        <div class="msg-content-wrapper">
-                            <div class="msg-text msg-summary">${msgObj.summaryHtml}</div>
-                            ${rawBoxHtml}
-                            ${metaBarHtml}
-                        </div>
-                        ${activeMinimapHtml}
-                    </div>
-                `;
-            } else {
-                msgCellInner = `
-                    <div class="msg-content-wrapper">
-                        <div class="msg-text msg-summary">${msgObj.summaryHtml}</div>
+            const badgesHtml = metaBarBadges ? `<div class="msg-badges msg-meta-bar">${metaBarBadges}</div>` : '';
+            const msgCellInner = `
+                <div class="msg-row-layout">
+                    <div class="msg-main-content">
+                        <div class="msg-text msg-summary">${msgObj.summaryHtml.trim()}</div>
                         ${rawBoxHtml}
-                        ${metaBarHtml}
+                        ${badgesHtml}
                     </div>
-                `;
-            }
+                    ${activeMinimapHtml}
+                </div>
+            `;
 
             tr.innerHTML = `
                 <td class="id-cell">${alarm.id}</td>
@@ -2645,7 +2681,7 @@
                         <button type="button" class="alias-edit-icon-btn" onclick="openAliasModal('${escapeHtml(alarm.address)}')" title="Redigera alias för ${escapeHtml(alarm.address)}"><i class="fas fa-pen"></i></button>
                     </div>
                 </td>
-                <td class="msg-cell">${msgCellInner}</td>
+                <td class="msg-cell message-cell">${msgCellInner}</td>
 
                 <td class="actions-cell">
                     <div class="actions-wrapper">

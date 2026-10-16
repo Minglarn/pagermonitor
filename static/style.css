@@ -2829,19 +2829,48 @@ select.form-input option {
 }
 
 /* ==========================================================================
-   Inbäddad Minikarta (Leaflet) för meddelanden med GPS/Pos-koordinater
+   Meddelandecell Layout & Inbäddad Minikarta (Leaflet)
    ========================================================================== */
-.msg-cell-flex.has-minimap {
+.message-cell,
+td.msg-cell {
+    padding: 8px 12px !important;
+    vertical-align: top !important;
+    height: auto !important;
+}
+
+.msg-row-layout {
     display: flex;
+    align-items: flex-start;
     justify-content: space-between;
-    align-items: stretch;
-    gap: 16px;
+    gap: 12px;
     width: 100%;
 }
 
-.msg-cell-flex.has-minimap .msg-content-wrapper {
+.msg-main-content {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.msg-main-content .msg-text,
+.msg-cell .msg-text {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.4 !important;
+    word-break: break-word !important;
+    overflow-wrap: anywhere !important;
+    white-space: normal !important;
+}
+
+.msg-badges,
+.msg-meta-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
 }
 
 .msg-minimap-container {
@@ -2878,14 +2907,18 @@ select.form-input option {
 /* ==========================================================================
    Flödet Pausat - Hover-indikator över meddelandeflödet
    ========================================================================== */
+.table-container {
+    position: relative;
+}
+
 .hover-pause-container {
     position: relative;
     width: 100%;
 }
 
 .hover-pause-pill {
-    position: sticky;
-    top: 10px;
+    position: absolute;
+    top: 12px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1050;
@@ -2904,7 +2937,6 @@ select.form-input option {
     backdrop-filter: blur(8px);
     pointer-events: none;
     animation: fadeInHoverPill 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-    margin: 0 auto;
     width: max-content;
 }
 
