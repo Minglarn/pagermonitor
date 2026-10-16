@@ -166,12 +166,158 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertEqual(extract_coordinates("Inga koordinater här"), (None, None))
 
     def test_format_satc_frequency(self):
-        """Verifiera korrekt formatering av frekvenser för RF-grafen."""
+        """Verifiera korrekt formatering av frekvenser för RF-grafen inklusive station_id."""
+        self.assertEqual(format_satc_frequency("1.537.106"), "1537.106M")
+        self.assertEqual(format_satc_frequency("1.539.481."), "1539.481M")
+        self.assertEqual(format_satc_frequency(1539421000), "1539.421M")
+        self.assertEqual(format_satc_frequency("1539421000"), "1539.421M")
+        self.assertEqual(format_satc_frequency(1539.975), "1539.975M")
         self.assertEqual(format_satc_frequency(1537700000), "1537.700M")
         self.assertEqual(format_satc_frequency(1541450000), "1541.450M")
         self.assertEqual(format_satc_frequency("1537.700 MHz"), "1537.700M")
         self.assertEqual(format_satc_frequency("1537.7M"), "1537.700M")
         self.assertEqual(format_satc_frequency(None), "1537.700M")
+
+    def test_satdump_control_packets_filtering_and_formatting(self):
+        """
+        Verifierar de 4 skarpa SatDump-pakettyperna:
+        1. Bulletin Board (type 7)
+        2. Signalling Channel (type 6)
+        3. Announcement (type 1)
+        4. Logical Channel Assignment (type 3)
+        Filtreras bort vid satc_only_messages=True och formateras på svenska vid satc_only_messages=False.
+        """
+        bulletin_board = {
+            "channel_type": 1,
+            "channel_type_name": "NCS",
+            "descriptor": {"is_long": False, "is_medium": False, "is_short": True, "length": 14, "type": 7},
+            "empty_frame": True,
+            "frame_2_count": 0,
+            "frame_number": 1896,
+            "les_id": 44,
+            "les_name": "344, NCS",
+            "local_id": 0,
+            "network_version": 216,
+            "randomizing_interval": 10,
+            "sat_id": 3,
+            "sat_name": "Indian Ocean Region (IOR)",
+            "seconds_of_day": 16381.44,
+            "services": {"SafetyNet": True, "StoreFwd": True},
+            "source": {"app": {"name": "SatDump", "version": "1.2.3-65aa43cd"}, "station_id": "1.537.106"},
+            "status": {"in_service": True, "return_link_speed": 600},
+            "timestamp": 1792125181.44
+        }
+
+        signalling_channel = {
+            "descriptor": {"is_long": False, "is_medium": False, "is_short": True, "length": 13, "type": 6},
+            "services": {"InmarsatC": True},
+            "source": {"app": {"name": "SatDump", "version": "1.2.3-65aa43cd"}, "station_id": "1.537.106"},
+            "tdm_slots": [0, 0, 0, 2, 0, 0],
+            "timestamp": 1792125181.629,
+            "uplink_freq_mhz": 1641.025
+        }
+
+        announcement = {
+            "descriptor": {"is_long": False, "is_medium": True, "is_short": False, "length": 19, "type": 1},
+            "direction": "To Mobile",
+            "direction_b": 0,
+            "downlink_freq_mhz": 1539.975,
+            "last_count": 66,
+            "les_id": 17,
+            "les_name": "317, Morsviazsputnik, Russia",
+            "logical_channel_number": 209,
+            "mes_id": 14557376,
+            "message_reference_number": 603706,
+            "number_of_packets": 1,
+            "presentation": 7,
+            "priority": "Routine",
+            "priority_b": 0,
+            "sat_id": 3,
+            "sat_name": "Indian Ocean Region (IOR)",
+            "service": "Store And Forward",
+            "service_b": 0,
+            "source": {"app": {"name": "SatDump", "version": "1.2.3-65aa43cd"}, "station_id": "1.537.106"},
+            "sub_address": 0,
+            "timestamp": 1792125346.491
+        }
+
+        channel_assignment = {
+            "am_pm_bit": False,
+            "descriptor": {"is_long": False, "is_medium": True, "is_short": False, "length": 18, "type": 3},
+            "direction": "From Mobile",
+            "direction_b": 1,
+            "downlink_freq_mhz": 1539.915,
+            "duration": 1,
+            "frame_length": 1,
+            "frame_offset": 126,
+            "last_count": 112,
+            "les_id": 12,
+            "les_name": "312, Stratos Global (Burum), Netherlands",
+            "logical_channel_number": 114,
+            "mes_id": 8037449,
+            "message_channel": 11702,
+            "number_of_packets": 0,
+            "sat_id": 3,
+            "sat_name": "Indian Ocean Region (IOR)",
+            "service": "Store And Forward",
+            "service_b": 0,
+            "slot_number": 1,
+            "source": {"app": {"name": "SatDump", "version": "1.2.3-65aa43cd"}, "station_id": "1.539.421"},
+            "timestamp": 1792125346.1399999,
+            "uplink_freq_mhz": 6.9133116446886e-310
+        }
+
+        # A) Verifiera att samtliga 4 filtreras bort när only_messages=True
+        self.assertIsNone(parse_satc_frame(bulletin_board, only_messages=True))
+        self.assertIsNone(parse_satc_frame(signalling_channel, only_messages=True))
+        self.assertIsNone(parse_satc_frame(announcement, only_messages=True))
+        self.assertIsNone(parse_satc_frame(channel_assignment, only_messages=True))
+
+        # B) Verifiera svensk formatering och badgar när only_messages=False
+        # 1. Bulletin Board
+        res_bb = parse_satc_frame(bulletin_board, only_messages=False)
+        self.assertIsNotNone(res_bb)
+        self.assertEqual(res_bb['frequency'], '1537.106M')
+        self.assertIn('[ Bulletin Board (NCS) ]', res_bb['message'])
+        self.assertIn('Satellit: Indian Ocean Region (IOR)', res_bb['message'])
+        self.assertIn('LES: 344, NCS', res_bb['message'])
+        self.assertIn('Ram: #1896', res_bb['message'])
+        self.assertIn('Uplink: 600 bps', res_bb['message'])
+        self.assertIn('\nRådata: ', res_bb['message'])
+        self.assertEqual(res_bb['metadata']['sat_badge'], 'Sat: IOR')
+        self.assertEqual(res_bb['metadata']['les_badge'], 'LES: 344, NCS')
+        self.assertFalse(contains_emoji(res_bb['message']))
+
+        # 2. Signalling Channel
+        res_sig = parse_satc_frame(signalling_channel, only_messages=False)
+        self.assertIsNotNone(res_sig)
+        self.assertEqual(res_sig['frequency'], '1537.106M')
+        self.assertIn('[ Signalling Channel ]', res_sig['message'])
+        self.assertIn('Uplink: 1641.025 MHz | TDM-tidluckor', res_sig['message'])
+        self.assertFalse(contains_emoji(res_sig['message']))
+
+        # 3. Announcement
+        res_ann = parse_satc_frame(announcement, only_messages=False)
+        self.assertIsNotNone(res_ann)
+        self.assertEqual(res_ann['frequency'], '1537.106M')
+        self.assertIn('[ Upprop / Announcement ] Till terminal (MES): 14557376', res_ann['message'])
+        self.assertIn('Tjänst: Store And Forward (Routine)', res_ann['message'])
+        self.assertIn('Hänvisad downlink: 1539.975 MHz (Kanal #209)', res_ann['message'])
+        self.assertIn('Referens: #603706', res_ann['message'])
+        self.assertEqual(res_ann['metadata']['mes_badge'], 'MES: 14557376')
+        self.assertEqual(res_ann['metadata']['sat_badge'], 'Sat: IOR')
+        self.assertFalse(contains_emoji(res_ann['message']))
+
+        # 4. Logical Channel Assignment
+        res_lca = parse_satc_frame(channel_assignment, only_messages=False)
+        self.assertIsNotNone(res_lca)
+        self.assertEqual(res_lca['frequency'], '1539.421M')
+        self.assertIn('[ Kanalallokering ] Terminal (MES): 8037449', res_lca['message'])
+        self.assertIn('Tjänst: Store And Forward', res_lca['message'])
+        self.assertIn('Downlink: 1539.915 MHz (Kanal #114, Slot 1)', res_lca['message'])
+        self.assertEqual(res_lca['metadata']['mes_badge'], 'MES: 8037449')
+        self.assertEqual(res_lca['metadata']['les_badge'], 'LES: 312, Stratos Global (Burum), Netherlands')
+        self.assertFalse(contains_emoji(res_lca['message']))
 
     def test_send_test_satc_message_api(self):
         """Verifiera sändning av syntetiska testmeddelanden och status."""
@@ -193,16 +339,17 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn('status', status)
 
     def test_satc_configurable_host_ip(self):
-        """Verifiera att användaren kan konfigurera en specifik IP-adress istället för 0.0.0.0."""
+        """Verifiera att användaren kan konfigurera en specifik IP-adress istället för 0.0.0.0 samt default port 6558."""
         receiver = SatCReceiver()
         self.assertEqual(receiver.host, '0.0.0.0')
+        self.assertEqual(receiver.port, 6558)
 
         # Starta med anpassad IP
-        receiver.start(host='192.168.1.150', port=5558, enabled=False)
+        receiver.start(host='192.168.1.150', port=6558, enabled=False)
         self.assertEqual(receiver.host, '192.168.1.150')
         status = receiver.get_status()
         self.assertEqual(status['host'], '192.168.1.150')
-        self.assertEqual(status['port'], 5558)
+        self.assertEqual(status['port'], 6558)
         receiver.stop()
 
     def test_strict_no_emojis_in_source_code(self):

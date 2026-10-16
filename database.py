@@ -70,7 +70,7 @@ def get_default_settings():
         'sonde_db_interval': '5',
         'satc_enabled': 'true',
         'satc_host': '0.0.0.0',
-        'satc_port': '5558',
+        'satc_port': '6558',
         'satc_only_messages': 'true'
     }
 
@@ -200,6 +200,7 @@ def init_db():
     for key, val in defaults.items():
         c.execute('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)', (key, val))
     c.execute("UPDATE settings SET value='true' WHERE key='log_tetra_basestations' AND value='false'")
+    c.execute("UPDATE settings SET value='6558' WHERE key='satc_port' AND value='5558'")
     # Rensa automatiskt bort eventuella vanliga RDS-meddelanden (t.ex. låttexter från kommersiella FM-stationer)
     try:
         c.execute("DELETE FROM messages WHERE bitrate = 'RDS-PS' OR address LIKE 'RDS-%'")

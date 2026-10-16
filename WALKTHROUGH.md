@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.01`
+- **CalVer**: `2026.10.16.02`
 - **Date**: 2026-10-16
 - **Language**: English / Swedish
 
@@ -9,13 +9,23 @@
 
 ## Overview of Implemented Features
 
-### 0. Inmarsat STD-C / EGC / SafetyNET / SAR Mottagare (SatDump JSON_OUT)
+### 0. Inmarsat STD-C / EGC / SafetyNET / SAR Mottagare (SatDump 1.2.3 JSON_OUT)
+- **SatDump 1.2.3 inmarsat_stdc_parser Stöd ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Fullt stöd för skarpa JSON-paket från SatDump 1.2.3 på port 6558:
+    - **Bulletin Board (`type == 7`)**: Satellit, LES, ramnummer, returlänkhastighet.
+    - **Signalling Channel (`type == 6`)**: Uplink-frekvens och TDM-tidluckor.
+    - **Announcement (`type == 1`)**: Upprop till MES-terminal med hänvisad downlink, kanal och referens.
+    - **Logical Channel Assignment (`type == 3`)**: Kanalallokering med downlink-frekvens och slotnummer.
+  - Strikt filtrering vid `satc_only_messages=True` som garanterar att endast paket med faktisk text (EGC SafetyNET, SAR, etc.) släpps igenom till meddelandelistan, medan kontrollfält (`message_reference_number`, `message_channel`) exkluderas.
+  - Formatering på ren svenska för kontrollpaket vid `satc_only_messages=False`.
+  - Automatisk avkodning av `source.station_id` (t.ex. `1.537.106` eller `1.539.481.`) och Hz-tal till MHz (`1537.106M`, `1539.421M`) för RF Activity-grafen.
+  - Badgar för Satellit (`Sat: IOR`), LES (`LES: 312, Stratos Global`), Tjänst (`Service: Store And Forward`) och Terminal (`MES: 14557376`).
+  - Standardport uppdaterad till `6558` med automatisk migrering i databasen.
 - **Konfigurerbar IP och Multi-Protokoll Socket ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
   - Tillåter användaren att ange en godtycklig IP-adress eller värdnamn (`satc_host`) i inställningarna istället för att vara begränsad till hårdkodat `0.0.0.0`.
   - Stöder både lokal bindning (`0.0.0.0`) och specifik fjärrvärd/container (t.ex. `192.168.1.xxx` eller `127.0.0.1`).
   - Om en specifik IP anges aktiveras en dedikerad TCP-klienttråd med automatisk återanslutning mot SatDump, samtidigt som lokala UDP- och TCP-lyssnare hålls aktiva för inkommande push från containern.
   - Tar emot realtidsströmmar från `docker-satdump` (`inmarsat_std_c`) konfigurerad med `JSON_OUT`.
-  - Stöder automatisk filtrering av tomma TDM- och synkpaket via `satc_only_messages=True` för att förhindra spammande av signaleringskanaler.
 - **Svensk Avkodning, Sammanfattning och Geografisk Position**:
   - Extraherar metadata till badges: Prioritet (`DISTRESS`, `URGENCY`, `Safety`, `Routine`), NAVAREA/METAREA-områden, jordstationsnamn (LES, t.ex. Burum, Eik, Thermopylae) och kategorietiketter.
   - Robust koordinatkonvertering för sjöfartsformat (`58-34.2N 016-12.5E`, `58 34N 016 12E`, `5834N 01612E`, m.fl.) till decimalgrader för kartor och databas.

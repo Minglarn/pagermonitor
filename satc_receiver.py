@@ -136,12 +136,29 @@ def extract_coordinates(text):
     return None, None
 
 def format_satc_frequency(raw_freq):
-    """Formaterar frekvens till t.ex. 1537.700M så att den passar RF ACTIVITY och filter."""
+    """
+    Formaterar frekvens till standardiserat MHz-format för RF-aktivitet (t.ex. 1537.106M).
+    Stödjer:
+    - SatDump source.station_id: "1.537.106" eller "1.539.481." -> "1537.106M"
+    - Hz som heltal eller sträng: 1539421000 eller "1539421000" -> "1539.421M"
+    - MHz som float/sträng: 1539.975 -> "1539.975M"
+    - Fallback: "1537.700M"
+    """
     if not raw_freq:
         return "1537.700M"
-    s = str(raw_freq).strip().replace("MHz", "").replace("mhz", "").replace("Hz", "").replace("hz", "").replace("M", "").replace(" ", "")
+
+    s = str(raw_freq).strip()
+
+    # 1. SatDump station_id-mönster: ^1\.(\d{3})\.(\d{3})\.?$ (t.ex. "1.537.106" eller "1.539.481.")
+    m_station = re.match(r'^1\.(\d{3})\.(\d{3})\.?$', s)
+    if m_station:
+        g1, g2 = m_station.groups()
+        return f"1{g1}.{g2}M"
+
+    # Rensa bort eventuella enheter och mellanslag
+    s_clean = s.replace("MHz", "").replace("mhz", "").replace("Hz", "").replace("hz", "").replace("M", "").replace(" ", "")
     try:
-        val = float(s)
+        val = float(s_clean)
         if val > 1_000_000_000:
             return f"{val / 1e6:.3f}M"
         elif val > 1_000_000:
@@ -151,7 +168,7 @@ def format_satc_frequency(raw_freq):
         else:
             return f"{val:.3f}M"
     except (ValueError, TypeError):
-        return str(raw_freq).strip()
+        return s
 
 def normalize_satc_priority(raw_priority, text=""):
     """
@@ -214,21 +231,26 @@ def classify_satc_service(payload, text=""):
 def parse_satc_frame(payload, only_messages=True):
     """
     Parsar ett avkodat SatDump Inmarsat STD-C / EGC-ramverk i JSON-format.
+    Stödjer SatDump 1.2.3 inmarsat_stdc_parser descriptors (type 1, 3, 6, 7 m.fl.).
     Returnerar dict med parsed info eller None om ramen filtrerades bort.
     """
     if not isinstance(payload, dict):
         return None
 
-    # Extrahera rå meddelandetext ur alla tänkbara fält
+    # Extrahera descriptor om tillgänglig
+    desc = payload.get("descriptor") if isinstance(payload.get("descriptor"), dict) else {}
+    desc_type = desc.get("type")
+
+    # Extrahera faktisk brödtext ur explicita meddelandefält
+    # OBS: "message_reference_number" och "message_channel" är kontrollfält och INTE brödtext!
     raw_text = None
-    for k in ("message", "text", "msg", "payload", "data", "content", "body", "egc_text", "egc_message"):
+    for k in ("message", "text", "msg", "data", "content", "body", "egc_text", "egc_message", "ascii", "payload"):
         val = payload.get(k)
         if isinstance(val, str) and val.strip():
             raw_text = val.strip()
             break
         elif isinstance(val, dict):
-            # Möjlig nästlad struktur
-            for sub_k in ("text", "message", "msg", "payload", "data"):
+            for sub_k in ("text", "message", "msg", "data", "ascii"):
                 sub_val = val.get(sub_k)
                 if isinstance(sub_val, str) and sub_val.strip():
                     raw_text = sub_val.strip()
@@ -236,80 +258,67 @@ def parse_satc_frame(payload, only_messages=True):
         if raw_text:
             break
 
-    type_str = str(payload.get("type") or payload.get("packet_type") or payload.get("service") or "").strip()
+    # Identifiera specifika kontrollpakettyper från SatDump descriptor & rotfält
+    # 1. Bulletin Board: descriptor.type == 7 eller frame_number + status eller channel_type_name == "NCS"
+    is_bulletin_board = (desc_type == 7) or ("frame_number" in payload and "status" in payload) or (payload.get("channel_type_name") == "NCS")
+    # 2. Signalling Channel: descriptor.type == 6 eller tdm_slots finns
+    is_signalling_channel = (desc_type == 6) or ("tdm_slots" in payload)
+    # 3. Announcement: descriptor.type == 1 eller message_reference_number + mes_id finns
+    is_announcement = (desc_type == 1) or ("message_reference_number" in payload and "mes_id" in payload)
+    # 4. Logical Channel Assignment: descriptor.type == 3 eller message_channel + frame_offset finns
+    is_channel_assignment = (desc_type == 3) or ("message_channel" in payload and "frame_offset" in payload)
 
-    # Kontrollera om det är en tom TDM-synk-/signaleringsram
-    is_empty_signalling = False
-    if not raw_text:
-        is_empty_signalling = True
-    elif any(sig in type_str.lower() for sig in ("bulletin board", "signalling channel", "interstation", "tdm frame", "sync", "idle")):
-        if len(raw_text.strip()) < 5:
-            is_empty_signalling = True
+    is_control_packet = (not raw_text) or is_bulletin_board or is_signalling_channel or is_announcement or is_channel_assignment
 
-    if only_messages and is_empty_signalling:
-        logger.debug(f"[SATC] Ignorerar tom TDM- eller synkram: {type_str}")
+    # När only_messages är aktivt: släpp ENDAST igenom meddelanden med faktisk brödtext
+    if only_messages and (is_control_packet or not raw_text):
         return None
 
-    body_text = raw_text or f"TDM Händelse: {type_str}"
-
-    # Extrahera Frekvens
-    raw_freq = payload.get("freq") or payload.get("frequency") or payload.get("rx_freq")
+    # Extrahera Frekvens från source.station_id ("1.537.106"), downlink_freq_mhz, freq, etc.
+    raw_freq = None
+    source_obj = payload.get("source")
+    if isinstance(source_obj, dict):
+        raw_freq = source_obj.get("station_id")
+    if not raw_freq:
+        raw_freq = (
+            payload.get("station_id")
+            or payload.get("downlink_freq_mhz")
+            or payload.get("freq")
+            or payload.get("frequency")
+            or payload.get("uplink_freq_mhz")
+            or payload.get("rx_freq")
+        )
     freq_str = format_satc_frequency(raw_freq)
+
+    # Extrahera Satellit (sat_name)
+    sat_name = str(payload.get("sat_name") or "").strip()
+    sat_short = None
+    if sat_name:
+        m_sat = re.search(r'\(([^)]+)\)', sat_name)
+        sat_short = m_sat.group(1).strip() if m_sat else sat_name
 
     # Extrahera Jordstation (LES)
     les_id = payload.get("les_id") or payload.get("les")
-    les_name = payload.get("les_name") or payload.get("les_station")
+    les_name = str(payload.get("les_name") or payload.get("les_station") or "").strip()
 
     if not les_name and les_id is not None:
         try:
             les_id_int = int(les_id)
-            les_name = LES_MAP.get(les_id_int)
+            les_name = LES_MAP.get(les_id_int, "")
         except (ValueError, TypeError):
             pass
 
     les_display = les_name if les_name else (f"LES-{les_id}" if les_id is not None else None)
 
-    # Extrahera Område (NAVAREA / METAREA / Area)
-    navarea = payload.get("navarea") or payload.get("area") or payload.get("metarea") or payload.get("ocean_region")
-    if not navarea:
-        m_area = re.search(r'\b(NAVAREA\s+[A-Z0-9]+|METAREA\s+[A-Z0-9]+)\b', body_text, re.IGNORECASE)
-        if m_area:
-            navarea = m_area.group(1).upper()
+    # Extrahera Terminal-ID (mes_id)
+    mes_id = payload.get("mes_id")
 
-    navarea_str = str(navarea).strip() if navarea else ""
+    # Extrahera Tjänst
+    raw_service_str = str(payload.get("service") or payload.get("service_name") or "").strip()
 
     # Extrahera Prioritet
     raw_priority = payload.get("priority") or payload.get("priority_name") or payload.get("prio")
-    priority_norm, is_alert = normalize_satc_priority(raw_priority, body_text)
-
-    # Extrahera Tjänst / Kategori
-    service_title, service_badge, default_alias = classify_satc_service(payload, body_text)
-
-    # Extrahera Koordinater
-    lat, lon = extract_coordinates(body_text)
-
-    # Skapa Adress (Capcode) och Alias
-    # Adress: T.ex. "LES: Burum" eller "INMARSAT-C"
-    # Alias: T.ex. "SafetyNET (EGC)", "FleetNET", "SAR / Distress"
-    if les_display:
-        address = f"LES: {les_display}"
-    elif navarea_str:
-        address = f"EGC: {navarea_str}"
-    else:
-        address = "INMARSAT-C"
-
-    alias = default_alias
-
-    # Bygg svensk sammanfattningsrad överst
-    # T.ex. "[Inmarsat SafetyNET / Sjöfartsvarning] Område: NAVAREA I | Prioritet: Safety"
-    summary_parts = []
-    if navarea_str:
-        summary_parts.append(f"Område: {navarea_str}")
-    if les_display:
-        summary_parts.append(f"Jordstation: {les_display}")
-    summary_parts.append(f"Prioritet: {priority_norm}")
-
-    summary_header = f"[{service_title}] " + " | ".join(summary_parts)
+    priority_norm, is_alert = normalize_satc_priority(raw_priority, raw_text or "")
 
     # Skapa rådatasträng i kompakt JSON
     try:
@@ -317,8 +326,116 @@ def parse_satc_frame(payload, only_messages=True):
     except Exception:
         raw_json_str = str(payload)
 
-    # Bygg komplett meddelandetext med svensk sammanfattning och Rådata:
-    full_message = f"{summary_header}\n{body_text}\nRådata: {raw_json_str}"
+    # Hantera kontrollpaket när only_messages == False
+    if not raw_text:
+        if is_announcement:
+            service_desc = raw_service_str or "Store And Forward"
+            dl_freq = payload.get("downlink_freq_mhz", "-")
+            lcn = payload.get("logical_channel_number", "-")
+            ref_num = payload.get("message_reference_number", "-")
+            body_text = (
+                f"[ Upprop / Announcement ] Till terminal (MES): {mes_id} | "
+                f"Tjänst: {service_desc} ({priority_norm}) | "
+                f"Hänvisad downlink: {dl_freq} MHz (Kanal #{lcn}) | "
+                f"Referens: #{ref_num}"
+            )
+            service_title = "Inmarsat STD-C / Upprop"
+            service_badge = "Announcement"
+            default_alias = f"Announcement ({service_desc})"
+            address = f"MES: {mes_id}" if mes_id else (f"LES: {les_display}" if les_display else "INMARSAT-C")
+        elif is_channel_assignment:
+            service_desc = raw_service_str or "Store And Forward"
+            dl_freq = payload.get("downlink_freq_mhz", "-")
+            lcn = payload.get("logical_channel_number", "-")
+            slot = payload.get("slot_number", 0)
+            body_text = (
+                f"[ Kanalallokering ] Terminal (MES): {mes_id} | "
+                f"Tjänst: {service_desc} | "
+                f"Downlink: {dl_freq} MHz (Kanal #{lcn}, Slot {slot})"
+            )
+            service_title = "Inmarsat STD-C / Kanalallokering"
+            service_badge = "Channel Assign"
+            default_alias = f"Channel Assign ({service_desc})"
+            address = f"MES: {mes_id}" if mes_id else (f"LES: {les_display}" if les_display else "INMARSAT-C")
+        elif is_bulletin_board:
+            sat_disp = sat_name or "-"
+            les_disp = les_name or "-"
+            frame_num = payload.get("frame_number", "-")
+            speed = 600
+            if isinstance(payload.get("status"), dict):
+                speed = payload.get("status", {}).get("return_link_speed", 600)
+            body_text = (
+                f"[ Bulletin Board (NCS) ] Satellit: {sat_disp} | "
+                f"LES: {les_disp} | Ram: #{frame_num} | Uplink: {speed} bps"
+            )
+            service_title = "Inmarsat STD-C / Bulletin Board"
+            service_badge = "Bulletin Board"
+            default_alias = f"Bulletin Board ({sat_short or les_disp})"
+            address = f"LES: {les_disp}" if les_disp != "-" else "INMARSAT-C"
+        elif is_signalling_channel:
+            up_freq = payload.get("uplink_freq_mhz", "-")
+            body_text = f"[ Signalling Channel ] Uplink: {up_freq} MHz | TDM-tidluckor"
+            service_title = "Inmarsat STD-C / Signalling Channel"
+            service_badge = "Signalling"
+            default_alias = "Signalling Channel"
+            address = "Signalling Channel"
+        else:
+            type_str = str(payload.get("type") or desc_type or "Kontrollpaket").strip()
+            body_text = f"[ Kontrollpaket ] Typ: {type_str}"
+            service_title = "Inmarsat STD-C / Kontrollpaket"
+            service_badge = "Control"
+            default_alias = "Inmarsat-C"
+            address = f"LES: {les_display}" if les_display else "INMARSAT-C"
+
+        full_message = f"{body_text}\nRådata: {raw_json_str}"
+        alias = default_alias
+        navarea_str = ""
+        lat, lon = None, None
+    else:
+        # Faktiskt meddelandepaket med text
+        body_text = raw_text
+
+        # Extrahera Område (NAVAREA / METAREA / Area)
+        navarea = payload.get("navarea") or payload.get("area") or payload.get("metarea") or payload.get("ocean_region")
+        if not navarea:
+            m_area = re.search(r'\b(NAVAREA\s+[A-Z0-9]+|METAREA\s+[A-Z0-9]+)\b', body_text, re.IGNORECASE)
+            if m_area:
+                navarea = m_area.group(1).upper()
+
+        navarea_str = str(navarea).strip() if navarea else ""
+
+        # Extrahera Tjänst / Kategori
+        service_title, service_badge, default_alias = classify_satc_service(payload, body_text)
+
+        # Extrahera Koordinater ur meddelandetexten
+        lat, lon = extract_coordinates(body_text)
+
+        # Adress och Alias
+        if mes_id:
+            address = f"MES: {mes_id}"
+            alias = default_alias
+        elif les_display:
+            address = f"LES: {les_display}"
+            alias = default_alias
+        elif navarea_str:
+            address = f"EGC: {navarea_str}"
+            alias = default_alias
+        else:
+            address = "INMARSAT-C"
+            alias = default_alias
+
+        # Bygg svensk sammanfattningsrad överst
+        summary_parts = []
+        if sat_short:
+            summary_parts.append(f"Sat: {sat_short}")
+        if navarea_str:
+            summary_parts.append(f"Område: {navarea_str}")
+        if les_display:
+            summary_parts.append(f"Jordstation: {les_display}")
+        summary_parts.append(f"Prioritet: {priority_norm}")
+
+        summary_header = f"[{service_title}] " + " | ".join(summary_parts)
+        full_message = f"{summary_header}\n{body_text}\nRådata: {raw_json_str}"
 
     metadata = {
         'protocol': 'SATC',
@@ -328,12 +445,22 @@ def parse_satc_frame(payload, only_messages=True):
         'satc_service': service_badge,
         'is_alert': is_alert
     }
-    if navarea_str:
-        metadata['navarea'] = navarea_str
+    if sat_name:
+        metadata['sat_name'] = sat_name
+        metadata['sat_badge'] = f"Sat: {sat_short or sat_name}"
     if les_display:
         metadata['les_name'] = les_display
+        metadata['les_badge'] = f"LES: {les_display}"
     if les_id is not None:
         metadata['les_id'] = les_id
+    if mes_id is not None:
+        metadata['mes_id'] = mes_id
+        metadata['mes_badge'] = f"MES: {mes_id}"
+    if raw_service_str:
+        metadata['service'] = raw_service_str
+        metadata['service_badge'] = f"Service: {raw_service_str}"
+    if navarea_str:
+        metadata['navarea'] = navarea_str
     if lat is not None and lon is not None:
         metadata['lat'] = lat
         metadata['lon'] = lon
@@ -364,7 +491,7 @@ class SatCReceiver:
     """
     def __init__(self):
         self.host = '0.0.0.0'
-        self.port = 5558
+        self.port = 6558
         self.only_messages = True
         self.enabled = True
         self.running = False
@@ -381,7 +508,7 @@ class SatCReceiver:
         self.stats = {
             'status': 'stopped',
             'host': '0.0.0.0',
-            'port': 5558,
+            'port': 6558,
             'packets_received': 0,
             'messages_decoded': 0,
             'last_les': '-',
@@ -395,7 +522,7 @@ class SatCReceiver:
     def set_callback(self, cb):
         self.callback = cb
 
-    def start(self, host='0.0.0.0', port=5558, only_messages=True, enabled=True):
+    def start(self, host='0.0.0.0', port=6558, only_messages=True, enabled=True):
         self.host = str(host).strip() if host else '0.0.0.0'
         self.port = int(port)
         self.only_messages = (str(only_messages).lower() in ('true', '1', 'yes'))
@@ -457,7 +584,7 @@ class SatCReceiver:
 
         logger.info("[SATC] Inmarsat STD-C mottagare stoppad.")
 
-    def restart(self, host='0.0.0.0', port=5558, only_messages=True, enabled=True):
+    def restart(self, host='0.0.0.0', port=6558, only_messages=True, enabled=True):
         self.stop()
         time.sleep(0.3)
         self.start(host=host, port=port, only_messages=only_messages, enabled=enabled)
@@ -672,7 +799,7 @@ def init_satc(notify_callback=None):
     """Initierar Inmarsat STD-C-mottagaren från databasinställningar."""
     settings = get_settings()
     host = settings.get('satc_host', '0.0.0.0')
-    port = settings.get('satc_port', '5558')
+    port = settings.get('satc_port', '6558')
     only_messages = settings.get('satc_only_messages', 'true')
     enabled = settings.get('satc_enabled', 'true')
 
@@ -686,7 +813,7 @@ def restart_satc():
     settings = get_settings()
     satc_receiver.restart(
         host=settings.get('satc_host', '0.0.0.0'),
-        port=settings.get('satc_port', '5558'),
+        port=settings.get('satc_port', '6558'),
         only_messages=settings.get('satc_only_messages', 'true'),
         enabled=settings.get('satc_enabled', 'true')
     )

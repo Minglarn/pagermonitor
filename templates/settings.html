@@ -862,11 +862,11 @@
                                         <label style="display: block; font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.4rem;">
                                             Port (Både UDP och TCP)
                                         </label>
-                                        <input type="number" id="satc_port" class="form-input" value="5558" min="1" max="65535"
+                                        <input type="number" id="satc_port" class="form-input" value="6558" min="1" max="65535"
                                             style="width: 100%; padding: 0.55rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text-primary);"
                                             onchange="autoSaveSatcSettings()">
                                         <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
-                                            Port dit <code>docker-satdump</code> skickar sin <code>JSON_OUT</code> eller strömmar (standard <code>5558</code>).
+                                            Port dit <code>docker-satdump</code> skickar sin <code>JSON_OUT</code> eller strömmar (standard <code>6558</code>).
                                         </small>
                                     </div>
 
@@ -1691,7 +1691,7 @@
             const payload = {
                 satc_enabled: document.getElementById('satc_enabled').checked ? 'true' : 'false',
                 satc_host: (hostEl ? hostEl.value.trim() : '') || '0.0.0.0',
-                satc_port: document.getElementById('satc_port').value.trim() || '5558',
+                satc_port: document.getElementById('satc_port').value.trim() || '6558',
                 satc_only_messages: document.getElementById('satc_only_messages').checked ? 'true' : 'false'
             };
             saveSettings(payload).then(() => {

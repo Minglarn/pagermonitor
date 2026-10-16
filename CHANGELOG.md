@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.02] - SatDump 1.2.3 Paketklassificering, station_id Frekvensavkodning och Port 6558
+
+- **Stöd för SatDump 1.2.3 Paketstrukturer och Descriptors ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Implementerat exakt tolkning av SatDump `inmarsat_stdc_parser` JSON-strukturer baserat på `descriptor.type`:
+    - **Bulletin Board (`type == 7`)**: Satellit, LES, ramnummer och returlänkhastighet (`bps`).
+    - **Signalling Channel (`type == 6`)**: Uplink-frekvens och TDM-tidluckor (`tdm_slots`).
+    - **Announcement (`type == 1`)**: Upprop till MES-terminal med tjänst, prioritet, hänvisad downlink-frekvens, kanalnummer och referensnummer.
+    - **Logical Channel Assignment (`type == 3`)**: Kanalallokering för MES-terminal med tjänst, downlink-frekvens, kanalnummer och slotnummer.
+  - Strikt filtrering vid `satc_only_messages == True` som säkerställer att endast meddelanden med faktisk brödtext (EGC SafetyNET/FleetNET, personliga meddelanden) släpps igenom, samtidigt som kontrollfält som `message_reference_number` och `message_channel` inte misstas för text.
+  - Formatering på ren svenska för samtliga kontrollpakettyper när `satc_only_messages == False`.
+- **Frekvenskonvertering av `station_id` ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Utökat `format_satc_frequency()` för att automatiskt identifiera och konvertera SatDumps `source.station_id` (t.ex. `1.537.106` eller `1.539.481.`) samt råa Hz-tal (`1539421000`) direkt till korrekt MHz-representation (`1537.106M`, `1539.421M`) för RF Activity-grafen och frekvensfilter.
+- **Utökade Badgar och Metadata**:
+  - Tillagt stöd för badgar för Satellit (`Sat: IOR`), LES-kuststation (`LES: 312, Stratos Global (Burum), Netherlands`), Tjänst (`Service: Store And Forward`) och Terminal (`MES: 14557376`).
+- **Standardport uppdaterad till 6558 ([database.py](file:///d:/antigravity/pager-monitor/database.py), [satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py), [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+  - Uppdaterat default lyssnarport för SatC från 5558 till 6558 för att matcha SatDumps standardkonfiguration, inklusive automatisk databasmigrering i `init_db()`.
+- **Enhetstester och Emojiförbud ([tests/test_satc.py](file:///d:/antigravity/pager-monitor/tests/test_satc.py))**:
+  - Lagt till `test_satdump_control_packets_filtering_and_formatting` som testar alla 4 skarpa SatDump-pakettyper.
+  - Samtliga 138 tester passerar och 0 otillåtna emojis finns i kodbasen.
+
 ## [2026.10.16.01] - Konfigurerbar IP-adress för Inmarsat STD-C SatDump-mottagare
 
 - **Konfigurerbar Värd / IP-adress ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py), [app.py](file:///d:/antigravity/pager-monitor/app.py), [database.py](file:///d:/antigravity/pager-monitor/database.py), [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
