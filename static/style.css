@@ -3162,7 +3162,7 @@ td.msg-cell {
 }
 
 /* ==========================================================================
-   Flödet Pausat - Hover-indikator över meddelandeflödet
+   Flödet Pausat - Toast-indikator i mitten högst upp
    ========================================================================== */
 .table-container {
     position: relative;
@@ -3174,26 +3174,27 @@ td.msg-cell {
 }
 
 .hover-pause-pill {
-    position: absolute;
-    top: 12px;
+    position: fixed;
+    top: 18px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 1050;
+    z-index: 99999;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 9px;
     background: rgba(220, 38, 38, 0.95);
     color: #ffffff;
-    padding: 6px 18px;
+    padding: 7px 22px;
     border-radius: 9999px;
     font-size: 0.85rem;
     font-weight: 700;
     letter-spacing: 0.03em;
-    box-shadow: 0 4px 16px rgba(220, 38, 38, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3);
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45), 0 2px 10px rgba(220, 38, 38, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     pointer-events: none;
-    animation: fadeInHoverPill 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: toastSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     width: max-content;
 }
 
@@ -3216,10 +3217,10 @@ td.msg-cell {
     margin-left: 2px;
 }
 
-@keyframes fadeInHoverPill {
+@keyframes toastSlideDown {
     from {
         opacity: 0;
-        transform: translate(-50%, -8px) scale(0.95);
+        transform: translate(-50%, -20px) scale(0.95);
     }
     to {
         opacity: 1;

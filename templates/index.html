@@ -1203,14 +1203,6 @@
                         <div id="activeFilterChips" class="active-filter-chips" style="display: none;"></div>
                     </div>
 
-                    <!-- Flödet Pausat - Svävande indikator vid mus-hover -->
-                    <div id="hoverPausePill" class="hover-pause-pill" style="display: none;">
-                        <span class="hover-pause-dot"></span>
-                        <i class="fas fa-pause"></i>
-                        <span>Flödet Pausat</span>
-                        <span id="hoverPauseBufferBadge" class="hover-pause-badge" style="display: none;">0 nya</span>
-                    </div>
-
                     <table id="alarmsTable" class="dataTable dashboard-dt">
                         <thead>
                             <tr>
@@ -1234,6 +1226,14 @@
 
     <!-- Floating System Toast Container -->
     <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Flödet Pausat - Toast-indikator i mitten högst upp -->
+    <div id="hoverPausePill" class="hover-pause-pill toast-center-top" style="display: none;">
+        <span class="hover-pause-dot"></span>
+        <i class="fas fa-pause"></i>
+        <span>Flödet Pausat</span>
+        <span id="hoverPauseBufferBadge" class="hover-pause-badge" style="display: none;">0 nya</span>
+    </div>
 
     <!-- Scroll to Top Button -->
     <button id="scrollToTop" class="scroll-to-top" title="Scroll to Top" onclick="scrollToTop()">
@@ -1626,15 +1626,15 @@
 
         // Flödespaus vid mus-hover
         function setupHoverPause() {
-            const tableContainer = document.querySelector('.table-container') || document.getElementById('alarmsTable');
-            if (!tableContainer) return;
+            const tableElement = document.getElementById('alarmsTable');
+            if (!tableElement) return;
 
-            tableContainer.addEventListener('mouseenter', () => {
+            tableElement.addEventListener('mouseenter', () => {
                 isHoverPaused = true;
                 updateHoverPauseUI();
             });
 
-            tableContainer.addEventListener('mouseleave', () => {
+            tableElement.addEventListener('mouseleave', () => {
                 isHoverPaused = false;
                 updateHoverPauseUI();
                 if (!isLivePaused) {

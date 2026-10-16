@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.17] - Flödet Pausat Flyttad till Toast i Mitten Högst Upp
+
+- **Toast-notifiering for Flödespaus ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Flyttat `#hoverPausePill` ("Flödet Pausat") fran att ligga inuti `.table-container` till att visas som en global toast fixerad i mitten hogst upp pa skarmen (`position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 99999;`).
+  - Toasten ar helt frikopplad fran tabellflodet och tacker aldrig langre filterknapparna ("Alla protokoll", "Alla frekvenser", "Alla flygplatser", "Filtrera pa ACARS Label").
+  - `pointer-events: none` sakerstaller att alla klick och interaktioner passerar rakt igenom utan att störa anvandaren.
+  - Kopplat `setupHoverPause()` till `#alarmsTable` sa att musrorelser over filtermenyn ovanfor tabellen inte langre triggar onodig pausning.
+
 ## [2026.10.16.16] - Inbyggd UDP 5563-lyssnare for VDL2/acars_router och Session-isolerad TCP-klient
 
 - **Inbyggd UDP 5563-mottagare ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:

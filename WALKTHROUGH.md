@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.16`
+- **CalVer**: `2026.10.16.17`
 - **Date**: 2026-10-16
 - **Language**: English / Swedish
 
@@ -9,7 +9,14 @@
 
 ## Overview of Implemented Features
 
-### 0. Inbyggd UDP 5563-lyssnare for VDL2/acars_router och Session-isolerad TCP-klient
+### 0. Flödet Pausat Flyttad till Toast i Mitten Högst Upp
+- **Toast-notifiering for Flödespaus ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Flyttat `#hoverPausePill` ("Flödet Pausat") fran att ligga inuti `.table-container` till att visas som en global toast fixerad i mitten hogst upp pa skarmen (`position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 99999;`).
+  - Toasten ar helt frikopplad fran tabellflodet och tacker aldrig filterknapparna ("Alla protokoll", "Alla frekvenser", "Alla flygplatser", "Filtrera pa ACARS Label").
+  - `pointer-events: none` sakerstaller att alla klick och interaktioner passerar rakt igenom utan att störa anvandaren.
+  - Kopplat `setupHoverPause()` till `#alarmsTable` sa att musrorelser over filtermenyn ovanfor tabellen inte langre triggar onodig pausning.
+
+### 1. Inbyggd UDP 5563-lyssnare for VDL2/acars_router och Session-isolerad TCP-klient
 - **Inbyggd UDP 5563-mottagare ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
   - Startar automatiskt en bakgrundstråd som lyssnar pa UDP (SOCK_DGRAM) pa `0.0.0.0:5563` (dit `acars_router` skickar `AR_SEND_UDP_VDLM2`), samt pa konfigurerad port om `self.port != 5563`.
   - Inkommande UDP-datagram avkodas som UTF-8 och delas pa radbrytningar; JSON-objekt med `"vdl2"` tolkas och berikar statistiken samt liveflodet.
