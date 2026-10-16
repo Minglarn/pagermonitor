@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.12`
+- **CalVer**: `2026.10.16.13`
 - **Date**: 2026-10-16
 - **Language**: English / Swedish
 
@@ -9,7 +9,21 @@
 
 ## Overview of Implemented Features
 
-### 0. Fullt Stöd för HFDL (High Frequency Data Link) från dumphfdl (v1.7.0+)
+### 0. Separerad TCP Connect/Read Timeout, Skydd mot Reconnect-loop och Eliminering av EOF Logg-spam
+- **Separerad Connect- och Läs-timeout ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py), [satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Satt `sock.settimeout(5.0)` vid anslutningsupprättande (`sock.connect((host, port))`).
+  - Efter anslutning sätts `sock.settimeout(2.0)` och data läses via ren `sock.recv(4096)` istället för `makefile().readline()`, vilket förhindrar att Pythons `SocketIO` permanent skadas vid en read-timeout.
+  - Inuti den inre läsloopen fångas `(socket.timeout, TimeoutError)` direkt runt `sock.recv(4096)` och gör `continue` utan att stänga socketen eller återansluta.
+- **Bekräftad Anslutning & Eliminering av Logg-spam vid Omedelbar EOF**:
+  - Fördröjt "Ansluten till..."-loggning tills antingen första chunk med data har tagits emot ELLER minst 2.0 sekunder passerat utan att motparten stängt socketen.
+  - Vid omedelbar EOF (`chunk == b""` på första recv): loggar endast en gång på WARNING-nivå och aktiverar exponential backoff (3s -> 6s -> 12s -> 24s -> 30s) för att undvika logg-spam var 3:e sekund.
+- **Trådsäkerhet vid Omstart och Inställningsändringar**:
+  - Uppdaterat `stop()` i alla tre mottagare så att föregående arbetartråd inväntas (`thread.join(timeout=2.0)`/`1.5s`) innan en ny startas.
+  - Förhindrar att överblivna trådar tävlar om samma TCP-port eller socket.
+- **Enhetstest ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
+  - Nytt test `test_tcp_timeout_does_not_disconnect` simulerar upprepade `socket.timeout` och verifierar att anslutningen kvarstår utan att koppla ner eller återansluta. Samtliga 158 tester passerar.
+
+### 1. Fullt Stöd för HFDL (High Frequency Data Link) från dumphfdl (v1.7.0+)
 - **Ny Förstaklass-Mottagare: hfdl_receiver.py ([hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py))**:
   - Implementerat anslutningshantering: ansluter som TCP-klient med automatisk återanslutning vid specifik IP (standard `127.0.0.1:15556`), startar TCP-server vid `0.0.0.0`, och kör en bakgrunds-UDP-lyssnare på samma port.
   - Avkodar frekvenser från Hz till kHz (`8942000` -> `8942 kHz`, `8843.0` -> `8843 kHz`), beräknar SNR ur `sig_level - noise_level` (`+4.1 dB`), och bitrate (`HFDL-300bps`).

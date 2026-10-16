@@ -1768,7 +1768,7 @@ class VDL2Receiver:
                 logger.info("[VDL2] Mottagare är inaktiverad.")
                 return
 
-            if self.running:
+            if self.running and self.thread and self.thread.is_alive():
                 logger.info("[VDL2] Mottagaren körs redan.")
                 return
 
@@ -1778,6 +1778,7 @@ class VDL2Receiver:
             logger.info(f"[VDL2] Startar mottagare mot {self.host}:{self.port}...")
 
     def stop(self):
+        old_thread = None
         with self.lock:
             self.running = False
             self.stats['connected'] = False
@@ -1785,16 +1786,24 @@ class VDL2Receiver:
             if self.sock:
                 try:
                     self.sock.shutdown(socket.SHUT_RDWR)
+                except Exception:
+                    pass
+                try:
                     self.sock.close()
                 except Exception:
                     pass
                 self.sock = None
+            old_thread = self.thread
+            self.thread = None
+
+        if old_thread and old_thread.is_alive() and threading.current_thread() != old_thread:
+            old_thread.join(timeout=2.0)
         logger.info("[VDL2] Mottagare stoppad.")
 
     def restart(self, host=None, port=None, filter_empty=None, filter_links=None, enabled=None):
         logger.info("[VDL2] Startar om mottagare...")
         self.stop()
-        time.sleep(0.5)
+        time.sleep(0.3)
         self.start(host=host, port=port, filter_empty=filter_empty, filter_links=filter_links, enabled=enabled)
 
     def get_status(self):
@@ -1803,56 +1812,103 @@ class VDL2Receiver:
 
     def _worker_loop(self):
         backoff = 3
+        immediate_eof_warned = False
         while self.running:
+            s = None
             try:
                 self.stats['status_text'] = f"Ansluter till {self.host}:{self.port}..."
                 logger.info(f"[VDL2] Försöker ansluta till tcp://{self.host}:{self.port}...")
-                
+
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(15.0)
+                # Separera connect-timeout (5.0s)
+                s.settimeout(5.0)
                 s.connect((self.host, self.port))
-                s.settimeout(None)  # Blockera vid läsning
-                
+
+                # När anslutningen är upprättad: sätt sock.settimeout(2.0) för chunk-läsning
+                s.settimeout(2.0)
                 with self.lock:
                     self.sock = s
-                    self.stats['connected'] = True
-                    self.stats['status_text'] = f"Ansluten till {self.host}:{self.port}"
-                    self.stats['last_error'] = None
-                
-                backoff = 3
-                logger.info(f"[VDL2] Ansluten till dumpvdl2/acars_router på {self.host}:{self.port}!")
-                
-                file_obj = s.makefile('r', encoding='utf-8', errors='replace')
-                for line in file_obj:
-                    if not self.running:
-                        break
-                    line_str = line.strip()
-                    if not line_str:
-                        continue
-                    
-                    self.stats['packets_received'] += 1
+
+                connection_confirmed = False
+                buffer = ""
+
+                while self.running:
                     try:
-                        raw_json = json.loads(line_str)
-                    except json.JSONDecodeError:
+                        chunk = s.recv(4096)
+                    except (socket.timeout, TimeoutError):
+                        # Timeout vid läsning - motparten håller anslutningen öppen men det är tyst på frekvensen
+                        if not connection_confirmed:
+                            connection_confirmed = True
+                            with self.lock:
+                                self.stats['connected'] = True
+                                self.stats['status_text'] = f"Ansluten till {self.host}:{self.port}"
+                                self.stats['last_error'] = None
+                            backoff = 3
+                            immediate_eof_warned = False
+                            logger.info(f"[VDL2] Ansluten till dumpvdl2/acars_router på {self.host}:{self.port}!")
                         continue
-                    
-                    self._handle_frame(raw_json)
+
+                    if not chunk:
+                        # Motparten stängde anslutningen (EOF)
+                        if not connection_confirmed:
+                            if not immediate_eof_warned:
+                                logger.warning(f"[VDL2] Port {self.host}:{self.port} stängde anslutningen omedelbart (EOF). Kontrollera att mottagaren lyssnar. Nytt försök med backoff ({backoff}s).")
+                                immediate_eof_warned = True
+                            with self.lock:
+                                self.stats['connected'] = False
+                                self.stats['status_text'] = f"Fjärrvärd stängde anslutningen direkt. Nytt försök om {backoff}s..."
+                        else:
+                            logger.warning(f"[VDL2] Fjärrvärd stängde anslutningen ({self.host}:{self.port}). Återansluter om {backoff}s...")
+                            with self.lock:
+                                self.stats['connected'] = False
+                                self.stats['status_text'] = f"Frånkopplad av fjärrvärd. Återansluter om {backoff}s..."
+                        break
+
+                    # Om data mottagits är anslutningen aktiv och bekräftad
+                    if not connection_confirmed:
+                        connection_confirmed = True
+                        with self.lock:
+                            self.stats['connected'] = True
+                            self.stats['status_text'] = f"Ansluten till {self.host}:{self.port}"
+                            self.stats['last_error'] = None
+                        backoff = 3
+                        immediate_eof_warned = False
+                        logger.info(f"[VDL2] Ansluten till dumpvdl2/acars_router på {self.host}:{self.port}!")
+
+                    buffer += chunk.decode('utf-8', errors='replace')
+                    while "\n" in buffer:
+                        line_str, buffer = buffer.split("\n", 1)
+                        line_str = line_str.strip()
+                        if not line_str:
+                            continue
+
+                        self.stats['packets_received'] += 1
+                        try:
+                            raw_json = json.loads(line_str)
+                        except json.JSONDecodeError:
+                            continue
+
+                        self._handle_frame(raw_json)
 
             except Exception as e:
                 err_msg = str(e)
-                with self.lock:
-                    self.stats['connected'] = False
-                    self.stats['last_error'] = err_msg
-                    self.stats['status_text'] = f"Frånkopplad ({err_msg}). Försöker igen om {backoff}s..."
-                logger.warning(f"[VDL2] Nätverksavbrott mot {self.host}:{self.port}: {err_msg}. Nytt försök om {backoff}s.")
+                if self.running:
+                    with self.lock:
+                        self.stats['connected'] = False
+                        self.stats['last_error'] = err_msg
+                        self.stats['status_text'] = f"Frånkopplad ({err_msg}). Försöker igen om {backoff}s..."
+                    logger.warning(f"[VDL2] Nätverksavbrott mot {self.host}:{self.port}: {err_msg}. Nytt försök om {backoff}s.")
             finally:
                 with self.lock:
                     if self.sock:
                         try: self.sock.close()
                         except Exception: pass
                         self.sock = None
+                if s:
+                    try: s.close()
+                    except Exception: pass
 
-            # Paus med backoff vid fel
+            # Paus med exponential backoff vid fel
             for _ in range(backoff):
                 if not self.running:
                     break

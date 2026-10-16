@@ -823,29 +823,24 @@ class SatCReceiver:
         self.running = False
         self.stats['status'] = 'stopped'
 
-        # Stäng UDP-socket
-        if self.udp_sock:
-            try:
-                self.udp_sock.close()
-            except Exception:
-                pass
-            self.udp_sock = None
+        for s in (self.udp_sock, self.tcp_server_sock, self.tcp_client_sock):
+            if s:
+                try: s.shutdown(socket.SHUT_RDWR)
+                except Exception: pass
+                try: s.close()
+                except Exception: pass
 
-        # Stäng TCP-serversocket
-        if self.tcp_server_sock:
-            try:
-                self.tcp_server_sock.close()
-            except Exception:
-                pass
-            self.tcp_server_sock = None
+        self.udp_sock = None
+        self.tcp_server_sock = None
+        self.tcp_client_sock = None
 
-        # Stäng TCP-klientsocket
-        if self.tcp_client_sock:
-            try:
-                self.tcp_client_sock.close()
-            except Exception:
-                pass
-            self.tcp_client_sock = None
+        threads_to_join = [th for th in (self.udp_thread, self.tcp_server_thread, self.tcp_client_thread) if th and th.is_alive() and threading.current_thread() != th]
+        for th in threads_to_join:
+            th.join(timeout=1.5)
+
+        self.udp_thread = None
+        self.tcp_server_thread = None
+        self.tcp_client_thread = None
 
         logger.info("[SATC] Inmarsat STD-C mottagare stoppad.")
 
@@ -921,35 +916,77 @@ class SatCReceiver:
         När en specifik IP-adress eller värdnamn anges för SatDump, ansluter vi aktivt
         till dess TCP-server (likt VDL2) och läser strömmande JSON-rader med automatisk återanslutning.
         """
-        backoff = 2
+        backoff = 3
+        immediate_eof_warned = False
         while self.running:
+            sock = None
             try:
                 logger.info(f"[SATC] Försöker ansluta till SatDump TCP-ström på {self.host}:{self.port}...")
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                s.settimeout(5.0)
-                s.connect((self.host, self.port))
-                s.settimeout(None)
-                self.tcp_client_sock = s
-                backoff = 2
-                logger.info(f"[SATC] Ansluten till SatDump TCP på {self.host}:{self.port}")
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(5.0)
+                sock.connect((self.host, self.port))
+                sock.settimeout(2.0)
+                self.tcp_client_sock = sock
 
-                file_obj = s.makefile('r', encoding='utf-8', errors='replace')
-                for line in file_obj:
-                    if not self.running:
+                connection_confirmed = False
+                buffer = ""
+
+                while self.running:
+                    try:
+                        chunk = sock.recv(4096)
+                    except (socket.timeout, TimeoutError):
+                        if not connection_confirmed:
+                            connection_confirmed = True
+                            with self.lock:
+                                self.stats['status'] = 'connected'
+                                self.stats['error_message'] = None
+                            backoff = 3
+                            immediate_eof_warned = False
+                            logger.info(f"[SATC] Ansluten till SatDump TCP på {self.host}:{self.port}")
+                        continue
+
+                    if not chunk:
+                        if not connection_confirmed:
+                            if not immediate_eof_warned:
+                                logger.warning(f"[SATC] Port {self.host}:{self.port} stängde anslutningen omedelbart (EOF). Kontrollera att SatDump körs. Nytt försök om {backoff}s.")
+                                immediate_eof_warned = True
+                            with self.lock:
+                                self.stats['status'] = 'reconnecting'
+                        else:
+                            logger.warning(f"[SATC] Fjärrvärd stängde anslutningen ({self.host}:{self.port}). Nytt försök om {backoff}s.")
+                            with self.lock:
+                                self.stats['status'] = 'reconnecting'
                         break
-                    line_str = line.strip()
-                    if line_str:
-                        self._handle_raw_json(line_str)
+
+                    if not connection_confirmed:
+                        connection_confirmed = True
+                        with self.lock:
+                            self.stats['status'] = 'connected'
+                            self.stats['error_message'] = None
+                        backoff = 3
+                        immediate_eof_warned = False
+                        logger.info(f"[SATC] Ansluten till SatDump TCP på {self.host}:{self.port}")
+
+                    buffer += chunk.decode('utf-8', errors='replace')
+                    while '\n' in buffer:
+                        line_str, buffer = buffer.split('\n', 1)
+                        line_str = line_str.strip()
+                        if line_str:
+                            self._handle_raw_json(line_str)
             except Exception as e:
                 if self.running:
-                    logger.debug(f"[SATC] TCP-klientanslutning mot {self.host}:{self.port} avbröts eller misslyckades: {e}. Nytt försök om {backoff}s.")
+                    logger.warning(f"[SATC] TCP-klientanslutning mot {self.host}:{self.port} avbröts eller misslyckades: {e}. Nytt försök om {backoff}s.")
+                    with self.lock:
+                        self.stats['status'] = 'reconnecting'
+                        self.stats['error_message'] = str(e)
             finally:
                 if self.tcp_client_sock:
-                    try:
-                        self.tcp_client_sock.close()
-                    except Exception:
-                        pass
+                    try: self.tcp_client_sock.close()
+                    except Exception: pass
                     self.tcp_client_sock = None
+                if sock:
+                    try: sock.close()
+                    except Exception: pass
 
             for _ in range(backoff):
                 if not self.running:

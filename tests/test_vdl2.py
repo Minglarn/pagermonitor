@@ -1200,6 +1200,46 @@ class TestVDL2Receiver(unittest.TestCase):
         self.assertIn('FUEL UPLIFT REQUIRE:YES', main_body)
         self.assertNotIn('[FMS/Systemtelemetri] Kodat datapaket', res['message'])
 
+    def test_tcp_timeout_does_not_disconnect(self):
+        """Verifierar att socket.timeout / tystnad inte bryter TCP-anslutningen eller återansluter."""
+        import socket
+        from unittest.mock import MagicMock, patch
+        from vdl2_receiver import VDL2Receiver
+
+        receiver = VDL2Receiver()
+        receiver.host = "127.0.0.1"
+        receiver.port = 45555
+        receiver.running = True
+
+        mock_sock = MagicMock()
+        timeout_count = 0
+
+        def fake_recv(size):
+            nonlocal timeout_count
+            timeout_count += 1
+            if timeout_count in (1, 2, 4, 5):
+                raise socket.timeout("timed out waiting for data")
+            elif timeout_count == 3:
+                return b'{"vdl2":{"freq":136975000,"avlc":{"src":{"addr":"123456"}}}}\n'
+            else:
+                receiver.running = False
+                return b""
+
+        mock_sock.recv.side_effect = fake_recv
+
+        with patch('socket.socket', return_value=mock_sock):
+            # Kör worker_loop i en separat tråd eller direkt tills running sätts till False
+            receiver._worker_loop()
+
+        # Verifiera att connect endast anropades en gång (ingen återanslutningsloop vid timeout)
+        self.assertEqual(mock_sock.connect.call_count, 1)
+        # Verifiera att socket.timeout kastades flera gånger
+        self.assertGreaterEqual(timeout_count, 3)
+        # Verifiera att paketet från anrop 3 togs emot
+        self.assertEqual(receiver.stats['packets_received'], 1)
+        # Verifiera att status sattes till ansluten
+        self.assertTrue(mock_sock.settimeout.called)
+
 if __name__ == '__main__':
     unittest.main()
 
