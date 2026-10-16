@@ -699,16 +699,20 @@
             width: auto !important;
             word-break: break-word !important;
             overflow-wrap: anywhere !important;
-            padding: 8px 12px !important;
+            padding-top: 6px !important;
+            padding-bottom: 6px !important;
+            padding-left: 10px !important;
+            padding-right: 10px !important;
             vertical-align: top !important;
             height: auto !important;
         }
 
         .msg-row-layout {
             display: flex;
-            align-items: flex-start;
+            align-items: stretch;
             justify-content: space-between;
             gap: 12px;
+            min-height: 100%;
             width: 100%;
         }
 
@@ -717,7 +721,7 @@
             min-width: 0;
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            justify-content: space-between;
         }
 
         .msg-cell .msg-text,
@@ -725,7 +729,7 @@
             white-space: normal !important;
             word-break: break-word !important;
             overflow-wrap: anywhere !important;
-            line-height: 1.4 !important;
+            line-height: 1.35 !important;
             margin: 0 !important;
             padding: 0 !important;
         }
@@ -736,7 +740,9 @@
             flex-wrap: wrap;
             align-items: center;
             gap: 4px;
-            margin-top: 4px;
+            margin-top: auto !important;
+            padding-top: 6px;
+            margin-bottom: 0;
         }
 
         .msg-summary {
@@ -1216,6 +1222,38 @@
         </div>
     </div>
 
+    <!-- Stor Interaktiv Kart-Modal -->
+    <div id="mapModal" class="modal-overlay" onclick="handleMapModalOverlayClick(event)">
+        <div class="modal-content map-modal-content" onclick="event.stopPropagation()">
+            <button class="close-btn" onclick="closeMapModal()" title="Stäng kartvy">&times;</button>
+            <div class="modal-header map-modal-header">
+                <div class="map-modal-title-row">
+                    <span id="mapModalProtoBadge" class="badge meta badge-proto"></span>
+                    <h2 id="mapModalTitle">Geografisk Position</h2>
+                </div>
+                <div class="map-modal-meta-row">
+                    <span id="mapModalDetails" class="map-modal-details"></span>
+                    <span id="mapModalTime" class="map-modal-time"></span>
+                    <span id="mapModalCoords" class="badge meta badge-coord"></span>
+                </div>
+            </div>
+            <div class="map-modal-body">
+                <div id="largeModalMap" class="large-modal-map"></div>
+            </div>
+            <div class="map-modal-footer">
+                <div class="map-modal-links">
+                    <a id="mapModalOsmLink" href="#" target="_blank" rel="noopener noreferrer" class="map-external-link">
+                        <i class="fas fa-external-link-alt"></i> Öppna i OpenStreetMap
+                    </a>
+                    <a id="mapModalGmapsLink" href="#" target="_blank" rel="noopener noreferrer" class="map-external-link">
+                        <i class="fas fa-map-marker-alt"></i> Öppna i Google Maps
+                    </a>
+                </div>
+                <button type="button" class="primary-btn" onclick="closeMapModal()">Stäng</button>
+            </div>
+        </div>
+    </div>
+
 
 
     <script>
@@ -1331,8 +1369,8 @@
             if (isNaN(lat) || isNaN(lon)) return;
 
             const proto = (containerEl.dataset.proto || '').toUpperCase();
-            // Zoomnivå 8 för flyg (VDL2/ACARS/SONDE), zoomnivå 9 för sjöfart (SATC)
-            const initialZoom = proto === 'SATC' ? 9 : 8;
+            // Standardzoom 6 för regional överblick (Stockholm + Gotland + Östersjön etc.)
+            const initialZoom = 6;
 
             try {
                 const map = L.map(containerEl, {
@@ -1340,7 +1378,10 @@
                     zoom: initialZoom,
                     zoomControl: false,
                     attributionControl: false,
-                    scrollWheelZoom: false
+                    scrollWheelZoom: false,
+                    dragging: false,
+                    doubleClickZoom: false,
+                    touchZoom: false
                 });
 
                 // Baslager: OpenStreetMap
@@ -1357,7 +1398,7 @@
 
                 // Tydlig cirkelmarkör på koordinaten med tooltip
                 const marker = L.circleMarker([lat, lon], {
-                    radius: 6,
+                    radius: 5,
                     color: '#ef4444',
                     fillColor: '#ef4444',
                     fillOpacity: 0.85,
@@ -1369,6 +1410,14 @@
                 containerEl._leaflet_map = map;
                 minimapInstances.set(containerEl.id, map);
 
+                // Klick på minikartan öppnar den stora kart-modalen
+                containerEl.style.cursor = 'pointer';
+                containerEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    openMapModal(containerEl.dataset.msgId, lat, lon);
+                });
+
                 setTimeout(() => {
                     map.invalidateSize();
                 }, 150);
@@ -1377,24 +1426,138 @@
             }
         }
 
-        function zoomMinimap(msgId, lat, lon, event) {
+        let largeModalMapInstance = null;
+        let largeModalMarker = null;
+
+        window.openMapModal = function(msgId, lat, lon, event) {
             if (event) {
                 event.stopPropagation();
                 event.preventDefault();
             }
-            const containerEl = document.getElementById(`minimap-${msgId}`);
-            if (!containerEl) return;
 
-            let map = containerEl._leaflet_map || minimapInstances.get(containerEl.id);
-            if (!map) {
-                initMinimap(containerEl);
-                map = containerEl._leaflet_map;
+            const latNum = parseFloat(lat);
+            const lonNum = parseFloat(lon);
+            if (isNaN(latNum) || isNaN(lonNum)) return;
+
+            const modal = document.getElementById('mapModal');
+            if (!modal) return;
+
+            const alarm = (allAlarms || []).find(a => String(a.id) === String(msgId)) || {};
+            const protoName = getAlarmProtoName(alarm);
+
+            const protoBadge = document.getElementById('mapModalProtoBadge');
+            if (protoBadge) {
+                protoBadge.textContent = protoName;
+                protoBadge.className = `badge meta badge-proto proto-${protoName.toLowerCase()}`;
             }
-            if (map) {
-                // Klick på Pos-badgen panorerar och zoomar in minikartan till zoomnivå 12 på punkten
-                map.setView([lat, lon], 12, { animate: true });
-                map.invalidateSize();
+
+            const titleEl = document.getElementById('mapModalTitle');
+            const displayAddr = alarm.alias || alarm.address || 'Geografisk Position';
+            if (titleEl) {
+                titleEl.textContent = displayAddr;
             }
+
+            const detailsEl = document.getElementById('mapModalDetails');
+            if (detailsEl) {
+                const details = [];
+                if (alarm.flight) details.push(`Flight: ${alarm.flight}`);
+                if (alarm.reg) details.push(`Reg: ${alarm.reg}`);
+                if (alarm.frequency) details.push(`Freq: ${alarm.frequency}`);
+                if (alarm.bitrate) details.push(alarm.bitrate);
+                detailsEl.textContent = details.length > 0 ? details.join(' | ') : `Meddelande #${alarm.id || msgId}`;
+            }
+
+            const timeEl = document.getElementById('mapModalTime');
+            if (timeEl) {
+                timeEl.textContent = alarm.timestamp ? new Date(alarm.timestamp).toLocaleString('sv-SE') : '';
+            }
+
+            const coordsEl = document.getElementById('mapModalCoords');
+            if (coordsEl) {
+                coordsEl.textContent = `Pos: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}`;
+            }
+
+            // Direktlänkar till externa kartor
+            const osmLink = document.getElementById('mapModalOsmLink');
+            if (osmLink) {
+                osmLink.href = `https://www.openstreetmap.org/?mlat=${latNum}&mlon=${lonNum}#map=12/${latNum}/${lonNum}`;
+            }
+            const gmapsLink = document.getElementById('mapModalGmapsLink');
+            if (gmapsLink) {
+                gmapsLink.href = `https://www.google.com/maps?q=${latNum},${lonNum}`;
+            }
+
+            // Öppna modalen
+            modal.classList.add('show');
+
+            // Initiera eller uppdatera Leaflet-kartan
+            const mapContainer = document.getElementById('largeModalMap');
+            if (mapContainer && typeof L !== 'undefined') {
+                if (!largeModalMapInstance) {
+                    largeModalMapInstance = L.map(mapContainer, {
+                        center: [latNum, lonNum],
+                        zoom: 10,
+                        scrollWheelZoom: true,
+                        dragging: true,
+                        zoomControl: true
+                    });
+
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 18,
+                        attribution: '&copy; OpenStreetMap'
+                    }).addTo(largeModalMapInstance);
+
+                    L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+                        maxZoom: 18
+                    }).addTo(largeModalMapInstance);
+                } else {
+                    largeModalMapInstance.setView([latNum, lonNum], 10);
+                }
+
+                if (largeModalMarker) {
+                    largeModalMarker.remove();
+                }
+
+                largeModalMarker = L.marker([latNum, lonNum]).addTo(largeModalMapInstance);
+
+                const summaryText = alarm.message ? escapeHtml(alarm.message).substring(0, 160) : `Position: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}`;
+                largeModalMarker.bindPopup(`
+                    <div style="font-size: 0.85rem; line-height: 1.4;">
+                        <strong style="color: #0284c7;">${escapeHtml(displayAddr)}</strong> (${escapeHtml(protoName)})<br>
+                        <strong>Pos:</strong> ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}<br>
+                        <div style="margin-top: 4px; color: #475569; font-size: 0.8rem;">${summaryText}</div>
+                    </div>
+                `).openPopup();
+
+                setTimeout(() => {
+                    if (largeModalMapInstance) {
+                        largeModalMapInstance.invalidateSize();
+                        largeModalMapInstance.panTo([latNum, lonNum]);
+                    }
+                }, 200);
+            }
+        };
+
+        window.closeMapModal = function() {
+            const modal = document.getElementById('mapModal');
+            if (modal) modal.classList.remove('show');
+        };
+
+        window.handleMapModalOverlayClick = function(event) {
+            if (event.target === document.getElementById('mapModal')) {
+                closeMapModal();
+            }
+        };
+
+        // Escape-tangent för att stänga modal
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeMapModal();
+            }
+        });
+
+        function zoomMinimap(msgId, lat, lon, event) {
+            openMapModal(msgId, lat, lon, event);
         }
 
         function refreshMinimaps() {
@@ -2655,7 +2818,7 @@
             if (universalCoords) {
                 const latNum = universalCoords.lat;
                 const lonNum = universalCoords.lon;
-                universalCoordTag = `<span class="badge meta badge-coord filterable-badge" onclick="zoomMinimap('${alarm.id}', ${latNum}, ${lonNum}, event)" title="Geografisk position: klicka för att zooma in i minikartan">Pos: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}</span>`;
+                universalCoordTag = `<span class="badge meta badge-coord filterable-badge" onclick="zoomMinimap('${alarm.id}', ${latNum}, ${lonNum}, event)" title="Geografisk position: klicka för att visa i stor karta">Pos: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}</span>`;
                 activeMinimapHtml = `<div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}" data-proto="${escapeHtml(protoName)}"></div>`;
             }
 

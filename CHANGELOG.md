@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.08] - Kompakt Tabellcellslayout, Badges Låsta i Botten, Zoomnivå 6 för Minikartor och Stor Interaktiv Kart-modal
+
+- **Kompakta Tabellcellsmarginaler och Låsning av Badges i Botten ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Satt kompakt vertikal padding (`padding-top: 6px !important; padding-bottom: 6px !important;`) pa tabellceller for att eliminera onodigt dotutrymme mellan radavdelarna.
+  - Gjort `.msg-row-layout` till `align-items: stretch` och `.msg-main-content` till en vertikal flex-kolumn (`display: flex; flex-direction: column; justify-content: space-between;`).
+  - Satt `margin-top: auto !important; padding-top: 6px; margin-bottom: 0;` pa `.msg-badges` och `.msg-meta-bar` sa att badgarna ("pillren") alltid ligger klistrade mot botten av tabellraden utan att hanga i luften nar minikartan expanderar radhojden.
+  - Kompaktare minikarta (`width: 220px; min-width: 220px; height: 115px;`) for optimal vertikal rytm i flodet.
+- **Utzoomad Minikarta for Regional Overblick ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Andrat standardzoom pa minikartorna till `zoom: 6` sa att hela regionen (t.ex. Stockholm, Gotland och Ostersjon) syns direkt istallet for att enbart visa vatten eller en liten o.
+  - Avaktiverat scrollwheel-zoom, dragging och zoom-kontroller pa den lilla minikartan och aktiverat klickbar pekare (`cursor: pointer`).
+- **Stor Interaktiv Kart-Modal ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Ny modal (`#mapModal`) som oppnas direkt nar man klickar pa en minikarta eller den grona `Pos:`-badgen.
+  - Visar en stor, fullt interaktiv Leaflet-karta (`85vw` bred, max `1000px`, `75vh` hog) med OpenStreetMap och OpenSeaMap, komplett kartnavigering och cirkelmarkor med popup.
+  - Header med protokoll, adress/callsign, tidpunkt och exakta koordinater samt direktlankar till OpenStreetMap och Google Maps.
+  - Stangs via stangknapp, klick utanfor modalen eller `Escape`-tangenten.
+- **Enhetstester och Kvalitetssakring ([tests/test_satc.py](file:///d:/antigravity/pager-monitor/tests/test_satc.py))**:
+  - Nya enhetstester verifierar zoom 6, flex-direction och margin-top auto for bottenlasning, samt modal-markup och funktioner. 111 tester passerar felfritt och 0 emojis forekommer.
+
 ## [2026.10.16.07] - Reparation av Flodesskript (metaBarBadges), escapeHtml i Statistik och Utokad CSP connect-src
 
 - **Reparation av Flodesskript och SSE ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:

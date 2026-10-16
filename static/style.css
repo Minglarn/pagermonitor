@@ -2833,16 +2833,20 @@ select.form-input option {
    ========================================================================== */
 .message-cell,
 td.msg-cell {
-    padding: 8px 12px !important;
+    padding-top: 6px !important;
+    padding-bottom: 6px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
     vertical-align: top !important;
     height: auto !important;
 }
 
 .msg-row-layout {
     display: flex;
-    align-items: flex-start;
+    align-items: stretch;
     justify-content: space-between;
     gap: 12px;
+    min-height: 100%;
     width: 100%;
 }
 
@@ -2851,14 +2855,14 @@ td.msg-cell {
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    justify-content: space-between;
 }
 
 .msg-main-content .msg-text,
 .msg-cell .msg-text {
     margin: 0 !important;
     padding: 0 !important;
-    line-height: 1.4 !important;
+    line-height: 1.35 !important;
     word-break: break-word !important;
     overflow-wrap: anywhere !important;
     white-space: normal !important;
@@ -2870,13 +2874,15 @@ td.msg-cell {
     flex-wrap: wrap;
     align-items: center;
     gap: 4px;
-    margin-top: 4px;
+    margin-top: auto !important;
+    padding-top: 6px;
+    margin-bottom: 0;
 }
 
 .msg-minimap-container {
-    width: 260px;
-    min-width: 260px;
-    height: 165px;
+    width: 220px;
+    min-width: 220px;
+    height: 115px;
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid #cbd5e1;
@@ -2885,6 +2891,13 @@ td.msg-cell {
     background: #0f172a;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
     z-index: 1;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.msg-minimap-container:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
 [data-theme="dark"] .msg-minimap-container {
@@ -2902,6 +2915,100 @@ td.msg-cell {
     filter: brightness(1.15);
     transform: translateY(-1px);
     box-shadow: 0 2px 6px rgba(16, 185, 129, 0.35);
+}
+
+/* ==========================================================================
+   Stor Interaktiv Kart-Modal
+   ========================================================================== */
+.map-modal-content {
+    width: 85vw !important;
+    max-width: 1000px !important;
+    height: 75vh !important;
+    max-height: 850px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    border-radius: 12px !important;
+    background: var(--panel-bg, #111827) !important;
+    border: 1px solid var(--panel-border, #1f2937) !important;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5) !important;
+}
+
+.map-modal-header {
+    padding: 16px 20px 12px 20px;
+    border-bottom: 1px solid var(--panel-border, #1f2937);
+    flex-shrink: 0;
+    background: var(--header-bg, #182234);
+}
+
+.map-modal-title-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.map-modal-title-row h2 {
+    margin: 0;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-primary, #ffffff);
+}
+
+.map-modal-meta-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    font-size: 0.85rem;
+    color: var(--text-secondary, #94a3b8);
+}
+
+.map-modal-body {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    width: 100%;
+}
+
+.large-modal-map {
+    width: 100%;
+    height: 100%;
+    min-height: 350px;
+    background: #0f172a;
+}
+
+.map-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-top: 1px solid var(--panel-border, #1f2937);
+    background: var(--header-bg, #182234);
+    flex-shrink: 0;
+}
+
+.map-modal-links {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.map-external-link {
+    color: var(--accent, #38bdf8);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.15s ease;
+}
+
+.map-external-link:hover {
+    color: #7dd3fc;
+    text-decoration: underline;
 }
 
 /* ==========================================================================

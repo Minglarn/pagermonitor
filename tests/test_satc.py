@@ -593,6 +593,10 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn('.msg-row-layout', style_css)
         self.assertIn('.msg-main-content', style_css)
 
+        # 2b. Låsning av pillren längst ner (margin-top: auto) och vertikal flex-kolumn
+        self.assertIn('flex-direction: column', style_css)
+        self.assertIn('margin-top: auto', style_css)
+
         # 3. Flödespaus
         self.assertIn('hoverPausePill', index_html)
         self.assertIn('Flödet Pausat', index_html)
@@ -600,12 +604,17 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn('isHoverPaused', index_html)
         self.assertIn('.hover-pause-pill', style_css)
 
-        # 4. Universell koordinathantering och klickbar zoom
+        # 4. Universell koordinathantering, zoom 6 och stor Kart-modal
         self.assertIn('zoomMinimap', index_html)
         self.assertIn('extractUniversalCoordinates', index_html)
         self.assertIn('data-proto', index_html)
         self.assertIn('openseamap.org', index_html)
-        self.assertIn('setView([lat, lon], 12', index_html)
+        self.assertIn('initialZoom = 6', index_html)
+        self.assertIn('mapModal', index_html)
+        self.assertIn('openMapModal', index_html)
+        self.assertIn('closeMapModal', index_html)
+        self.assertIn('largeModalMap', index_html)
+        self.assertIn('.map-modal-content', style_css)
 
     def test_decode_mime_headers(self):
         """Verifiera korrekt avkodning av RFC 2047 MIME-ord (t.ex. koi8-r, utf-8, windows-1251)."""
