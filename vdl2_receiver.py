@@ -1826,8 +1826,6 @@ class VDL2Receiver:
             return dict(self.stats)
 
     def _worker_loop(self):
-        backoff = 3
-        immediate_eof_warned = False
         while self.running:
             sock = None
             try:
@@ -1841,53 +1839,26 @@ class VDL2Receiver:
 
                 with self.lock:
                     self.sock = sock
+                    self.stats['connected'] = True
+                    self.stats['status_text'] = f"Ansluten till {self.host}:{self.port}"
+                    self.stats['last_error'] = None
 
-                connection_confirmed = False
+                logger.info(f"[VDL2] Ansluten till dumpvdl2/acars_router på {self.host}:{self.port}!")
+
                 buffer = ""
-
                 while self.running:
                     try:
-                        chunk = sock.recv(4096)
+                        data = sock.recv(4096)
                     except (socket.timeout, TimeoutError):
-                        # Timeout vid läsning - motparten håller anslutningen öppen men det är tyst på frekvensen
-                        if not connection_confirmed:
-                            connection_confirmed = True
-                            with self.lock:
-                                self.stats['connected'] = True
-                                self.stats['status_text'] = f"Ansluten till {self.host}:{self.port}"
-                                self.stats['last_error'] = None
-                            backoff = 3
-                            immediate_eof_warned = False
-                            logger.info(f"[VDL2] Ansluten till dumpvdl2/acars_router på {self.host}:{self.port}!")
+                        # Helt normalt när inget flygplan sänder just nu - ligg kvar på anslutningen!
                         continue
 
-                    if not chunk:
-                        # Motparten stängde anslutningen (EOF)
-                        if not connection_confirmed:
-                            if not immediate_eof_warned:
-                                logger.warning(f"[VDL2] Port {self.host}:{self.port} stängde anslutningen omedelbart (EOF). Kontrollera att mottagaren lyssnar. Nytt försök med backoff ({backoff}s).")
-                                immediate_eof_warned = True
-                            with self.lock:
-                                self.stats['connected'] = False
-                                self.stats['status_text'] = f"Fjärrvärd stängde anslutningen direkt. Nytt försök om {backoff}s..."
-                        else:
-                            logger.warning(f"[VDL2] Fjärrvärd stängde anslutningen ({self.host}:{self.port}). Återansluter om {backoff}s...")
-                            with self.lock:
-                                self.stats['connected'] = False
-                                self.stats['status_text'] = f"Frånkopplad av fjärrvärd. Återansluter om {backoff}s..."
+                    if not data:
+                        # Endast om motparten faktiskt stänger socketen på riktigt
+                        logger.warning(f"[VDL2] Fjärrvärd stängde anslutningen ({self.host}:{self.port}).")
                         break
 
-                    if not connection_confirmed:
-                        connection_confirmed = True
-                        with self.lock:
-                            self.stats['connected'] = True
-                            self.stats['status_text'] = f"Ansluten till {self.host}:{self.port}"
-                            self.stats['last_error'] = None
-                        backoff = 3
-                        immediate_eof_warned = False
-                        logger.info(f"[VDL2] Ansluten till dumpvdl2/acars_router på {self.host}:{self.port}!")
-
-                    buffer += chunk.decode("utf-8", errors="replace")
+                    buffer += data.decode("utf-8", errors="replace")
                     while "\n" in buffer:
                         line, buffer = buffer.split("\n", 1)
                         line_str = line.strip()
@@ -1908,10 +1879,11 @@ class VDL2Receiver:
                     with self.lock:
                         self.stats['connected'] = False
                         self.stats['last_error'] = err_msg
-                        self.stats['status_text'] = f"Frånkopplad ({err_msg}). Försöker igen om {backoff}s..."
-                    logger.warning(f"[VDL2] Nätverksavbrott mot {self.host}:{self.port}: {err_msg}. Nytt försök om {backoff}s.")
+                        self.stats['status_text'] = f"Frånkopplad ({err_msg}). Försöker igen om 5s..."
+                    logger.warning(f"[VDL2] Nätverksavbrott mot {self.host}:{self.port}: {err_msg}. Nytt försök om 5s.")
             finally:
                 with self.lock:
+                    self.stats['connected'] = False
                     if self.sock:
                         try: self.sock.close()
                         except Exception: pass
@@ -1920,11 +1892,8 @@ class VDL2Receiver:
                     try: sock.close()
                     except Exception: pass
 
-            for _ in range(backoff):
-                if not self.running:
-                    break
-                time.sleep(1.0)
-            backoff = min(backoff * 2, 30)
+            if self.running:
+                time.sleep(5.0)
 
     def _handle_frame(self, raw_json):
         parsed = parse_vdl2_frame(raw_json, filter_empty=self.filter_empty, filter_links=self.filter_links)

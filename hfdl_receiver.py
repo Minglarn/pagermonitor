@@ -666,8 +666,6 @@ class HfdlReceiver:
 
     def _tcp_client_loop(self):
         """Kopplar upp TCP-anslutning mot dumphfdl och återansluter automatiskt vid avbrott."""
-        backoff = 3
-        immediate_eof_warned = False
         while self.running:
             sock = None
             try:
@@ -678,72 +676,50 @@ class HfdlReceiver:
                 sock.settimeout(5.0)
                 self.tcp_client_sock = sock
 
-                connection_confirmed = False
-                buffer = ""
+                with self.lock:
+                    self.stats['status'] = 'connected'
+                    self.stats['error_message'] = None
 
+                logger.info(f"[HFDL] Ansluten till dumphfdl på {self.host}:{self.port}!")
+
+                buffer = ""
                 while self.running:
                     try:
-                        chunk = sock.recv(4096)
+                        data = sock.recv(4096)
                     except (socket.timeout, TimeoutError):
-                        if not connection_confirmed:
-                            connection_confirmed = True
-                            with self.lock:
-                                self.stats['status'] = 'connected'
-                                self.stats['error_message'] = None
-                            backoff = 3
-                            immediate_eof_warned = False
-                            logger.info(f"[HFDL] TCP-anslutning etablerad till {self.host}:{self.port}")
+                        # Helt normalt när inget flygplan sänder just nu - ligg kvar på anslutningen!
                         continue
 
-                    if not chunk:
-                        if not connection_confirmed:
-                            if not immediate_eof_warned:
-                                logger.warning(f"[HFDL] Port {self.host}:{self.port} stängde anslutningen omedelbart (EOF). Kontrollera att dumphfdl körs. Nytt försök om {backoff}s.")
-                                immediate_eof_warned = True
-                            with self.lock:
-                                self.stats['status'] = 'reconnecting'
-                        else:
-                            logger.warning(f"[HFDL] Fjärrvärd stängde anslutningen ({self.host}:{self.port}). Nytt försök om {backoff}s.")
-                            with self.lock:
-                                self.stats['status'] = 'reconnecting'
+                    if not data:
+                        logger.warning(f"[HFDL] Fjärrvärd stängde anslutningen ({self.host}:{self.port}).")
                         break
 
-                    if not connection_confirmed:
-                        connection_confirmed = True
-                        with self.lock:
-                            self.stats['status'] = 'connected'
-                            self.stats['error_message'] = None
-                        backoff = 3
-                        immediate_eof_warned = False
-                        logger.info(f"[HFDL] TCP-anslutning etablerad till {self.host}:{self.port}")
-
-                    buffer += chunk.decode('utf-8', errors='replace')
+                    buffer += data.decode("utf-8", errors="replace")
                     while "\n" in buffer:
                         line, buffer = buffer.split("\n", 1)
-                        line = line.strip()
-                        if line:
-                            self._handle_raw_data(line.encode('utf-8'))
+                        line_str = line.strip()
+                        if line_str:
+                            self._handle_raw_data(line_str.encode('utf-8'))
 
             except Exception as e:
                 if self.running:
-                    logger.warning(f"[HFDL] Kunde inte ansluta till {self.host}:{self.port}: {e}. Nytt försök om {backoff}s.")
+                    logger.warning(f"[HFDL] Kunde inte ansluta till {self.host}:{self.port}: {e}. Nytt försök om 5s.")
                     with self.lock:
                         self.stats['status'] = 'reconnecting'
                         self.stats['error_message'] = str(e)
             finally:
-                if self.tcp_client_sock:
-                    try: self.tcp_client_sock.close()
-                    except Exception: pass
-                    self.tcp_client_sock = None
+                with self.lock:
+                    self.stats['status'] = 'disconnected'
+                    if self.tcp_client_sock:
+                        try: self.tcp_client_sock.close()
+                        except Exception: pass
+                        self.tcp_client_sock = None
                 if sock:
                     try: sock.close()
                     except Exception: pass
 
-            for _ in range(backoff):
-                if not self.running:
-                    break
-                time.sleep(1.0)
-            backoff = min(backoff * 2, 30)
+            if self.running:
+                time.sleep(5.0)
 
     def _tcp_server_loop(self):
         """Lyssnar som TCP-server när host är 0.0.0.0."""

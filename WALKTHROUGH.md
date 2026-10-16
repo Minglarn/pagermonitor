@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.14`
+- **CalVer**: `2026.10.16.15`
 - **Date**: 2026-10-16
 - **Language**: English / Swedish
 
@@ -9,7 +9,18 @@
 
 ## Overview of Implemented Features
 
-### 0. 10s/5s TCP Timeout, Eliminering av Lokal Portbindning vid Fjärr-IP och Trådblockering
+### 0. Återställd Ren och Stabil TCP-klient i VDL2, HFDL och SATC
+- **Klassisk och Stabil TCP-klient ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py), [satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Eliminerat all felaktig "omedelbar EOF"-detektering och krånglig backoff-logik som orsakade oönskade nedkopplingar.
+  - Återställt till en ren, klassisk TCP-klientloop:
+    - Uppkoppling sker med `sock.settimeout(10.0)` och loggar `Ansluten till {host}:{port}!` direkt vid framgångsrik `connect()`.
+    - Sätter `sock.settimeout(5.0)` för att kontrollera `self.running` var 5:e sekund utan att avbryta socketen.
+    - Vid `(socket.timeout, TimeoutError)`: fortsätter i loopen med `continue` (normalt vid tystnad på frekvensen).
+    - Endast om `sock.recv(4096)` returnerar `b""` (motparten faktiskt stängt socketen) avbryts loopen och återansluter efter 5 sekunder.
+- **Ingen Lokal Portbindning vid Specifik IP-adress**:
+  - Mottagarna agerar uteslutande som utgående TCP-klienter mot specificerad IP (t.ex. `192.168.1.242:15555`) och binder ingen lokal server-/UDP-socket.
+
+### 1. 10s/5s TCP Timeout, Eliminering av Lokal Portbindning vid Fjärr-IP och Trådblockering
 - **Robust TCP-klient i VDL2, HFDL och SATC ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py), [satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
   - Konfigurerat `sock.settimeout(10.0)` vid `sock.connect((host, port))` och `sock.settimeout(5.0)` för chunk-läsning (`sock.recv(4096)`).
   - Vid tystnad på frekvensen fångas `(socket.timeout, TimeoutError)` omedelbart och kör `continue` utan att koppla ner socketen.

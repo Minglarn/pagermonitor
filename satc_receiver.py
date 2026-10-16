@@ -914,8 +914,6 @@ class SatCReceiver:
         När en specifik IP-adress eller värdnamn anges för SatDump, ansluter vi aktivt
         till dess TCP-server (likt VDL2) och läser strömmande JSON-rader med automatisk återanslutning.
         """
-        backoff = 3
-        immediate_eof_warned = False
         while self.running:
             sock = None
             try:
@@ -926,71 +924,49 @@ class SatCReceiver:
                 sock.settimeout(5.0)
                 self.tcp_client_sock = sock
 
-                connection_confirmed = False
-                buffer = ""
+                with self.lock:
+                    self.stats['status'] = 'connected'
+                    self.stats['error_message'] = None
 
+                logger.info(f"[SATC] Ansluten till SatDump TCP på {self.host}:{self.port}!")
+
+                buffer = ""
                 while self.running:
                     try:
-                        chunk = sock.recv(4096)
+                        data = sock.recv(4096)
                     except (socket.timeout, TimeoutError):
-                        if not connection_confirmed:
-                            connection_confirmed = True
-                            with self.lock:
-                                self.stats['status'] = 'connected'
-                                self.stats['error_message'] = None
-                            backoff = 3
-                            immediate_eof_warned = False
-                            logger.info(f"[SATC] Ansluten till SatDump TCP på {self.host}:{self.port}")
+                        # Helt normalt vid tystnad - ligg kvar på anslutningen!
                         continue
 
-                    if not chunk:
-                        if not connection_confirmed:
-                            if not immediate_eof_warned:
-                                logger.warning(f"[SATC] Port {self.host}:{self.port} stängde anslutningen omedelbart (EOF). Kontrollera att SatDump körs. Nytt försök om {backoff}s.")
-                                immediate_eof_warned = True
-                            with self.lock:
-                                self.stats['status'] = 'reconnecting'
-                        else:
-                            logger.warning(f"[SATC] Fjärrvärd stängde anslutningen ({self.host}:{self.port}). Nytt försök om {backoff}s.")
-                            with self.lock:
-                                self.stats['status'] = 'reconnecting'
+                    if not data:
+                        logger.warning(f"[SATC] Fjärrvärd stängde anslutningen ({self.host}:{self.port}).")
                         break
 
-                    if not connection_confirmed:
-                        connection_confirmed = True
-                        with self.lock:
-                            self.stats['status'] = 'connected'
-                            self.stats['error_message'] = None
-                        backoff = 3
-                        immediate_eof_warned = False
-                        logger.info(f"[SATC] Ansluten till SatDump TCP på {self.host}:{self.port}")
-
-                    buffer += chunk.decode('utf-8', errors='replace')
+                    buffer += data.decode('utf-8', errors='replace')
                     while '\n' in buffer:
-                        line_str, buffer = buffer.split('\n', 1)
-                        line_str = line_str.strip()
+                        line, buffer = buffer.split('\n', 1)
+                        line_str = line.strip()
                         if line_str:
                             self._handle_raw_json(line_str)
             except Exception as e:
                 if self.running:
-                    logger.warning(f"[SATC] TCP-klientanslutning mot {self.host}:{self.port} avbröts eller misslyckades: {e}. Nytt försök om {backoff}s.")
+                    logger.warning(f"[SATC] TCP-klientanslutning mot {self.host}:{self.port} avbröts eller misslyckades: {e}. Nytt försök om 5s.")
                     with self.lock:
                         self.stats['status'] = 'reconnecting'
                         self.stats['error_message'] = str(e)
             finally:
-                if self.tcp_client_sock:
-                    try: self.tcp_client_sock.close()
-                    except Exception: pass
-                    self.tcp_client_sock = None
+                with self.lock:
+                    self.stats['status'] = 'disconnected'
+                    if self.tcp_client_sock:
+                        try: self.tcp_client_sock.close()
+                        except Exception: pass
+                        self.tcp_client_sock = None
                 if sock:
                     try: sock.close()
                     except Exception: pass
 
-            for _ in range(backoff):
-                if not self.running:
-                    break
-                time.sleep(1.0)
-            backoff = min(backoff * 2, 30)
+            if self.running:
+                time.sleep(5.0)
 
     def _handle_tcp_client(self, client_sock, client_addr):
         client_sock.settimeout(2.0)
