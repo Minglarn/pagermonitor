@@ -1713,7 +1713,7 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
 
 
 class VDL2Receiver:
-    """Hanterar TCP-klientanslutning till dumpvdl2 / acars_router och matar Pager-Monitor."""
+    """Hanterar TCP-klientanslutning och inbyggd UDP-mottagare till dumpvdl2 / acars_router."""
     def __init__(self):
         self.host = '192.168.1.242'
         self.port = 15555
@@ -1721,6 +1721,7 @@ class VDL2Receiver:
         self.filter_links = False
         self.enabled = True
         self.thread = None
+        self._thread_id = None
         self.running = False
         self.sock = None
         self.lock = threading.Lock()
@@ -1739,6 +1740,12 @@ class VDL2Receiver:
             'status_text': 'Initierar...'
         }
         
+        # Trådhantering och sessions-ID
+        self._worker_session = 0
+        self.udp_threads = []
+        self.udp_socks = []
+        self.last_udp_packet_time = 0
+
         # Cache för duplikathantering
         self.recent_cache = {}
         self.cache_lock = threading.Lock()
@@ -1747,7 +1754,7 @@ class VDL2Receiver:
         self.callback = cb
 
     def start(self, host=None, port=None, filter_empty=None, filter_links=None, enabled=None):
-        old_thread = None
+        old_threads = []
         with self.lock:
             if host is not None: self.host = str(host).strip()
             if port is not None:
@@ -1766,57 +1773,96 @@ class VDL2Receiver:
             if not self.enabled:
                 self.stats['connected'] = False
                 self.stats['status_text'] = 'Inaktiverad i inställningar'
-                logger.info("[VDL2] Mottagare är inaktiverad.")
+                logger.info('[VDL2] Mottagare är inaktiverad.')
                 return
 
-            if self.running and self.thread and self.thread.is_alive():
-                logger.info("[VDL2] Mottagaren körs redan.")
-                return
+            # Avbryt och samla ihop befintliga trådar om mottagaren redan var aktiv
+            self._worker_session += 1
+            cur_session = self._worker_session
+            self._thread_id = None
+            self.running = False
+
+            if self.sock:
+                try: self.sock.shutdown(socket.SHUT_RDWR)
+                except Exception: pass
+                try: self.sock.close()
+                except Exception: pass
+                self.sock = None
+
+            for us in self.udp_socks:
+                try: us.close()
+                except Exception: pass
+            self.udp_socks = []
 
             if self.thread and self.thread.is_alive():
-                old_thread = self.thread
-                self.running = False
-                if self.sock:
-                    try: self.sock.shutdown(socket.SHUT_RDWR)
-                    except Exception: pass
-                    try: self.sock.close()
-                    except Exception: pass
-                    self.sock = None
+                old_threads.append(self.thread)
+            for ut in self.udp_threads:
+                if ut and ut.is_alive():
+                    old_threads.append(ut)
+            self.thread = None
+            self.udp_threads = []
 
-        if old_thread and threading.current_thread() != old_thread:
-            old_thread.join(timeout=2.0)
+        # Vänta ut gamla trådar utanför låset så de terminerar helt
+        for th in old_threads:
+            if threading.current_thread() != th:
+                th.join(timeout=1.5)
 
         with self.lock:
             self.running = True
-            self.thread = threading.Thread(target=self._worker_loop, daemon=True, name="VDL2-Receiver-Thread")
+            session_id = cur_session
+
+            # 1. Starta utgående TCP-klienttråd
+            self.thread = threading.Thread(target=self._worker_loop, args=(session_id,), daemon=True, name='VDL2-Receiver-Thread')
             self.thread.start()
-            logger.info(f"[VDL2] Startar mottagare mot {self.host}:{self.port}...")
+
+            # 2. Starta alltid UDP-lyssnare på port 5563 (standard för dumpvdl2/acars_router VDLM2 UDP)
+            udp_ports = [5563]
+            if self.port != 5563 and self.port > 0:
+                udp_ports.append(self.port)
+
+            for u_port in udp_ports:
+                ut = threading.Thread(target=self._udp_listen_loop, args=(u_port, session_id), daemon=True, name=f'VDL2-UDP-{u_port}')
+                ut.start()
+                self.udp_threads.append(ut)
+
+            logger.info(f'[VDL2] Mottagare startad (TCP mot {self.host}:{self.port} + UDP på portar {udp_ports}).')
 
     def stop(self):
-        old_thread = None
+        old_threads = []
         with self.lock:
+            self._worker_session += 1
+            self._thread_id = None
             self.running = False
             self.stats['connected'] = False
             self.stats['status_text'] = 'Stoppad'
-            if self.sock:
-                try:
-                    self.sock.shutdown(socket.SHUT_RDWR)
-                except Exception:
-                    pass
-                try:
-                    self.sock.close()
-                except Exception:
-                    pass
-                self.sock = None
-            old_thread = self.thread
-            self.thread = None
 
-        if old_thread and old_thread.is_alive() and threading.current_thread() != old_thread:
-            old_thread.join(timeout=2.0)
-        logger.info("[VDL2] Mottagare stoppad.")
+            if self.sock:
+                try: self.sock.shutdown(socket.SHUT_RDWR)
+                except Exception: pass
+                try: self.sock.close()
+                except Exception: pass
+                self.sock = None
+
+            for us in self.udp_socks:
+                try: us.close()
+                except Exception: pass
+            self.udp_socks = []
+
+            if self.thread and self.thread.is_alive():
+                old_threads.append(self.thread)
+            for ut in self.udp_threads:
+                if ut and ut.is_alive():
+                    old_threads.append(ut)
+            self.thread = None
+            self.udp_threads = []
+
+        for th in old_threads:
+            if threading.current_thread() != th:
+                th.join(timeout=1.5)
+        logger.info('[VDL2] Mottagare stoppad.')
 
     def restart(self, host=None, port=None, filter_empty=None, filter_links=None, enabled=None):
-        logger.info("[VDL2] Startar om mottagare...")
+        logger.info('[VDL2] Startar om mottagare...')
         self.stop()
         time.sleep(0.3)
         self.start(host=host, port=port, filter_empty=filter_empty, filter_links=filter_links, enabled=enabled)
@@ -1825,75 +1871,192 @@ class VDL2Receiver:
         with self.lock:
             return dict(self.stats)
 
-    def _worker_loop(self):
-        while self.running:
-            sock = None
+    def _udp_listen_loop(self, port=5563, session_id=None):
+        """Lyssnar på inkommande UDP-datagram från t.ex. acars_router på port 5563."""
+        if session_id is None:
+            session_id = self._worker_session
+
+        sock = None
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            sock.bind(('0.0.0.0', port))
+            sock.settimeout(2.0)
+            logger.info(f'[VDL2] UDP-lyssnare aktiv på 0.0.0.0:{port}')
+        except Exception as e:
+            logger.warning(f'[VDL2] Kunde inte starta UDP-lyssnare på port {port}: {e}')
+            if sock:
+                try: sock.close()
+                except Exception: pass
+            return
+
+        with self.lock:
+            self.udp_socks.append(sock)
+
+        while self.running and session_id == self._worker_session:
             try:
-                self.stats['status_text'] = f"Ansluter till {self.host}:{self.port}..."
-                logger.info(f"[VDL2] Försöker ansluta till tcp://{self.host}:{self.port}...")
+                data, addr = sock.recvfrom(65535)
+                if not data:
+                    continue
 
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(10.0)
-                sock.connect((self.host, self.port))
-                sock.settimeout(5.0)
-
+                self.last_udp_packet_time = time.time()
                 with self.lock:
-                    self.sock = sock
                     self.stats['connected'] = True
-                    self.stats['status_text'] = f"Ansluten till {self.host}:{self.port}"
+                    self.stats['status_text'] = f'Aktiv (UDP {port})'
                     self.stats['last_error'] = None
 
-                logger.info(f"[VDL2] Ansluten till dumpvdl2/acars_router på {self.host}:{self.port}!")
-
-                buffer = ""
-                while self.running:
+                text = data.decode('utf-8', errors='replace')
+                for line in text.split('\n'):
+                    line_str = line.strip()
+                    if not line_str:
+                        continue
                     try:
-                        data = sock.recv(4096)
-                    except (socket.timeout, TimeoutError):
-                        # Helt normalt när inget flygplan sänder just nu - ligg kvar på anslutningen!
+                        raw_json = json.loads(line_str)
+                    except json.JSONDecodeError:
                         continue
 
-                    if not data:
-                        # Endast om motparten faktiskt stänger socketen på riktigt
-                        logger.warning(f"[VDL2] Fjärrvärd stängde anslutningen ({self.host}:{self.port}).")
-                        break
-
-                    buffer += data.decode("utf-8", errors="replace")
-                    while "\n" in buffer:
-                        line, buffer = buffer.split("\n", 1)
-                        line_str = line.strip()
-                        if not line_str:
-                            continue
-
+                    if 'vdl2' in raw_json:
                         self.stats['packets_received'] += 1
+                        self._handle_frame(raw_json)
+                    elif 'hfdl' in raw_json:
                         try:
-                            raw_json = json.loads(line_str)
-                        except json.JSONDecodeError:
+                            from hfdl_receiver import hfdl_receiver
+                            if hfdl_receiver and hfdl_receiver.running:
+                                hfdl_receiver.stats['packets_received'] += 1
+                                hfdl_receiver._handle_raw_data(line_str.encode('utf-8'))
+                        except Exception:
+                            pass
+            except (socket.timeout, TimeoutError):
+                continue
+            except Exception as e:
+                if self.running and session_id == self._worker_session:
+                    logger.debug(f'[VDL2] UDP fel ({port}): {e}')
+                time.sleep(0.5)
+
+        try:
+            sock.close()
+        except Exception:
+            pass
+
+    def _worker_loop(self, session_id=None):
+        """Klassisk, ren TCP-klientloop med isolerad session och Hairpin-NAT detektering."""
+        if session_id is None:
+            session_id = self._worker_session
+
+        current_thread_id = threading.current_thread().ident
+        with self.lock:
+            if not self.running or session_id != self._worker_session:
+                return
+            self._thread_id = current_thread_id
+
+        try:
+            tcp_backoff = 5
+            while self.running and session_id == self._worker_session and self._thread_id == current_thread_id:
+                sock = None
+                t_connect = 0
+                has_udp_active = (time.time() - self.last_udp_packet_time < 30.0)
+                is_udp_listening = bool(self.udp_socks or self.udp_threads)
+
+                try:
+                    if not has_udp_active:
+                        self.stats['status_text'] = f'Ansluter till {self.host}:{self.port}...'
+                        if tcp_backoff < 60:
+                            logger.info(f'[VDL2] Försöker ansluta till tcp://{self.host}:{self.port}...')
+                        else:
+                            logger.debug(f'[VDL2] Försöker ansluta till tcp://{self.host}:{self.port}...')
+
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    sock.settimeout(10.0)
+                    sock.connect((self.host, self.port))
+                    t_connect = time.time()
+                    sock.settimeout(5.0)
+
+                    with self.lock:
+                        self.sock = sock
+                        self.stats['connected'] = True
+                        self.stats['status_text'] = f'Ansluten till {self.host}:{self.port}'
+                        self.stats['last_error'] = None
+
+                    tcp_backoff = 5
+                    if not has_udp_active:
+                        logger.info(f'[VDL2] Ansluten till dumpvdl2/acars_router på {self.host}:{self.port}!')
+
+                    buffer = ''
+                    while self.running and session_id == self._worker_session and self._thread_id == current_thread_id:
+                        try:
+                            data = sock.recv(4096)
+                        except (socket.timeout, TimeoutError):
+                            # Helt normalt vid tystnad på frekvensen: ENDAST continue och ALDRIG bryta eller logga fel
                             continue
 
-                        self._handle_frame(raw_json)
+                        if not data:
+                            conn_duration = time.time() - t_connect
+                            if conn_duration < 0.5:
+                                # Omedelbar nedkoppling (Docker Hairpin NAT)
+                                if is_udp_listening:
+                                    logger.debug(f'[VDL2] TCP {self.host}:{self.port} stängdes omedelbart (Hairpin NAT). UDP är aktiv på 5563, ökar TCP-backoff till 60s.')
+                                    tcp_backoff = 60
+                                else:
+                                    logger.warning(f'[VDL2] Fjärrvärd stängde anslutningen ({self.host}:{self.port}). Kontrollera att porten är öppen eller skicka UDP till port 5563.')
+                                    tcp_backoff = 30
+                            else:
+                                logger.warning(f'[VDL2] Fjärrvärd stängde anslutningen ({self.host}:{self.port}).')
+                            break
 
-            except Exception as e:
-                err_msg = str(e)
-                if self.running:
+                        buffer += data.decode('utf-8', errors='replace')
+                        while '\n' in buffer:
+                            line, buffer = buffer.split('\n', 1)
+                            line_str = line.strip()
+                            if not line_str:
+                                continue
+
+                            self.stats['packets_received'] += 1
+                            try:
+                                raw_json = json.loads(line_str)
+                            except json.JSONDecodeError:
+                                continue
+
+                            self._handle_frame(raw_json)
+
+                except (socket.timeout, TimeoutError):
+                    # connect() timade ut
+                    if not self.running or session_id != self._worker_session or self._thread_id != current_thread_id:
+                        break
+                    if is_udp_listening:
+                        logger.debug(f'[VDL2] Timeout vid TCP-anslutning mot {self.host}:{self.port}. UDP-lyssnare är aktiv, ökar TCP-backoff till 60s.')
+                        tcp_backoff = 60
+                    else:
+                        logger.warning(f'[VDL2] Nätverksavbrott mot {self.host}:{self.port}: connect timed out. Nytt försök om {tcp_backoff}s.')
+                except Exception as e:
+                    err_msg = str(e)
+                    if self.running and session_id == self._worker_session and self._thread_id == current_thread_id:
+                        with self.lock:
+                            if not (time.time() - self.last_udp_packet_time < 30.0):
+                                self.stats['connected'] = False
+                                self.stats['last_error'] = err_msg
+                                self.stats['status_text'] = f'Frånkopplad ({err_msg}). Försöker igen om {tcp_backoff}s...'
+                                logger.warning(f'[VDL2] Nätverksavbrott mot {self.host}:{self.port}: {err_msg}. Nytt försök om {tcp_backoff}s.')
+                finally:
                     with self.lock:
-                        self.stats['connected'] = False
-                        self.stats['last_error'] = err_msg
-                        self.stats['status_text'] = f"Frånkopplad ({err_msg}). Försöker igen om 5s..."
-                    logger.warning(f"[VDL2] Nätverksavbrott mot {self.host}:{self.port}: {err_msg}. Nytt försök om 5s.")
-            finally:
-                with self.lock:
-                    self.stats['connected'] = False
-                    if self.sock:
-                        try: self.sock.close()
+                        if not (time.time() - self.last_udp_packet_time < 30.0):
+                            self.stats['connected'] = False
+                        if self.sock:
+                            try: self.sock.close()
+                            except Exception: pass
+                            self.sock = None
+                    if sock:
+                        try: sock.close()
                         except Exception: pass
-                        self.sock = None
-                if sock:
-                    try: sock.close()
-                    except Exception: pass
 
-            if self.running:
-                time.sleep(5.0)
+                for _ in range(tcp_backoff):
+                    if not self.running or session_id != self._worker_session or self._thread_id != current_thread_id:
+                        break
+                    time.sleep(1.0)
+        finally:
+            with self.lock:
+                if self._thread_id == current_thread_id:
+                    self._thread_id = None
+
 
     def _handle_frame(self, raw_json):
         parsed = parse_vdl2_frame(raw_json, filter_empty=self.filter_empty, filter_links=self.filter_links)

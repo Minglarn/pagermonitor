@@ -1240,6 +1240,88 @@ class TestVDL2Receiver(unittest.TestCase):
         # Verifiera att status sattes till ansluten
         self.assertTrue(mock_sock.settimeout.called)
 
+    def test_udp_vdl2_packet_reception(self):
+        """Verifierar att UDP-paket med 'vdl2' avkodas, sätter connected=True och räknar upp packets_received."""
+        import socket
+        import json
+        from unittest.mock import MagicMock, patch
+        from vdl2_receiver import VDL2Receiver
+
+        receiver = VDL2Receiver()
+        receiver.running = True
+        receiver._worker_session = 1
+
+        sample_packet = json.dumps({
+            "vdl2": {
+                "freq": 136975000,
+                "sig_level": -10.0,
+                "avlc": {
+                    "src": {"addr": "461F50"},
+                    "acars": {
+                        "reg": ".OH-LWI",
+                        "flight": "AY1338",
+                        "label": "H1",
+                        "msg_text": "POSN59100E018000,FL360,ARN,HEL"
+                    }
+                }
+            }
+        }).encode('utf-8')
+
+        mock_sock = MagicMock()
+        call_count = 0
+        def fake_recvfrom(bufsize):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return (sample_packet, ('192.168.1.242', 5563))
+            else:
+                receiver.running = False
+                raise socket.timeout()
+
+        mock_sock.recvfrom.side_effect = fake_recvfrom
+
+        with patch('socket.socket', return_value=mock_sock):
+            receiver._udp_listen_loop(port=5563, session_id=1)
+
+        self.assertTrue(receiver.stats['connected'])
+        self.assertIn('UDP 5563', receiver.stats['status_text'])
+        self.assertEqual(receiver.stats['packets_received'], 1)
+        self.assertGreater(receiver.stats['messages_decoded'], 0)
+        self.assertEqual(receiver.stats['last_flight'], 'AY1338')
+
+    def test_single_thread_enforcement_on_restart(self):
+        """Verifierar att endast en tråd kan vara aktiv åt gången och att gamla sessioner avbryts vid omstart."""
+        import socket
+        from unittest.mock import patch, MagicMock
+        from vdl2_receiver import VDL2Receiver
+
+        receiver = VDL2Receiver()
+
+        mock_sock = MagicMock()
+        mock_sock.recv.side_effect = socket.timeout
+
+        with patch('socket.socket', return_value=mock_sock):
+            # Starta första gången
+            receiver.start(host="127.0.0.1", port=45555, enabled=True)
+            first_session = receiver._worker_session
+            first_thread = receiver.thread
+            self.assertIsNotNone(first_thread)
+
+            # Starta om
+            receiver.restart(host="127.0.0.1", port=45556, enabled=True)
+            second_session = receiver._worker_session
+            second_thread = receiver.thread
+
+            self.assertGreater(second_session, first_session)
+            self.assertIsNotNone(second_thread)
+            self.assertNotEqual(first_thread, second_thread)
+
+            # Stoppa och verifiera att allt avslutas
+            receiver.stop()
+            self.assertFalse(receiver.running)
+            self.assertIsNone(receiver.thread)
+            self.assertIsNone(receiver._thread_id)
+
 if __name__ == '__main__':
     unittest.main()
 

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.16] - Inbyggd UDP 5563-lyssnare for VDL2/acars_router och Session-isolerad TCP-klient
+
+- **Inbyggd UDP 5563-mottagare ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Startar automatiskt en bakgrundstråd som lyssnar pa UDP (SOCK_DGRAM) pa `0.0.0.0:5563` (standardporten dit `acars_router` skickar `AR_SEND_UDP_VDLM2`), samt pa konfigurerad port om `self.port != 5563`.
+  - Inkommande UDP-datagram avkodas som UTF-8 och delas pa radbrytningar; JSON-objekt med `"vdl2"` tolkas och berikar statistiken samt liveflodet.
+  - Paket med `"hfdl"` vidarebefordras automatiskt till `hfdl_receiver` om den ar aktiv.
+  - Satter mottagarstatus till `Aktiv (UDP 5563)` och `connected = True` sa snart UDP-trafik tas emot.
+- **Isolering mot Docker Hairpin NAT & Tyst Exponential Backoff**:
+  - Vid omedelbar nedkoppling (`< 0.5s`, Docker Hairpin NAT) da containern och vardtjansten delar samma IP, undertrycks repetitiv WARNING-loggning om UDP-lyssnaren pa 5563 ar igang. TCP-backoffen okas tyst till 60s pa DEBUG-niva.
+  - Om `connect()` timar ut nar UDP ar aktiv, loggas detta pa DEBUG-niva utan att varna var 5:e sekund.
+- **Tradsakerhet och Garanterad Enskild Arbetartrad**:
+  - Implementerat strikt sessionshantering (`_worker_session`) och trad-ID-verifiering (`_thread_id == current_thread_id`) i bade TCP-klientloopen och UDP-lyssnaren.
+  - `stop()` och `start()` avbryter aktiva sockets och invantar (`join`) tidigare tradar innan nya startas, vilket garanterar att tva arbetartradar aldrig kan kora parallellt.
+  - I lasloopen hanteras `(socket.timeout, TimeoutError)` exklusivt med `continue` utan att logga natverksavbrott eller stanga anslutningen.
+- **Enhetstester ([tests/test_vdl2.py](file:///d:/antigravity/pager-monitor/tests/test_vdl2.py))**:
+  - `test_udp_vdl2_packet_reception`: Verifierar att syntetiska UDP-datagram pa port 5563 avkodas korrekt, raknar upp `packets_received` och markerar status som ansluten.
+  - `test_single_thread_enforcement_on_restart`: Verifierar att omstart terminerar gamla sessioner och endast tillater en aktiv arbetartrad.
+
 ## [2026.10.16.15] - Återställd Ren och Stabil TCP-klient i VDL2, HFDL och SATC
 
 - **Klassisk och Stabil TCP-klient ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py), [satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
