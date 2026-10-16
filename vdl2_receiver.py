@@ -1747,6 +1747,7 @@ class VDL2Receiver:
         self.callback = cb
 
     def start(self, host=None, port=None, filter_empty=None, filter_links=None, enabled=None):
+        old_thread = None
         with self.lock:
             if host is not None: self.host = str(host).strip()
             if port is not None:
@@ -1772,6 +1773,20 @@ class VDL2Receiver:
                 logger.info("[VDL2] Mottagaren körs redan.")
                 return
 
+            if self.thread and self.thread.is_alive():
+                old_thread = self.thread
+                self.running = False
+                if self.sock:
+                    try: self.sock.shutdown(socket.SHUT_RDWR)
+                    except Exception: pass
+                    try: self.sock.close()
+                    except Exception: pass
+                    self.sock = None
+
+        if old_thread and threading.current_thread() != old_thread:
+            old_thread.join(timeout=2.0)
+
+        with self.lock:
             self.running = True
             self.thread = threading.Thread(target=self._worker_loop, daemon=True, name="VDL2-Receiver-Thread")
             self.thread.start()
@@ -1814,27 +1829,25 @@ class VDL2Receiver:
         backoff = 3
         immediate_eof_warned = False
         while self.running:
-            s = None
+            sock = None
             try:
                 self.stats['status_text'] = f"Ansluter till {self.host}:{self.port}..."
                 logger.info(f"[VDL2] Försöker ansluta till tcp://{self.host}:{self.port}...")
 
-                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                # Separera connect-timeout (5.0s)
-                s.settimeout(5.0)
-                s.connect((self.host, self.port))
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(10.0)
+                sock.connect((self.host, self.port))
+                sock.settimeout(5.0)
 
-                # När anslutningen är upprättad: sätt sock.settimeout(2.0) för chunk-läsning
-                s.settimeout(2.0)
                 with self.lock:
-                    self.sock = s
+                    self.sock = sock
 
                 connection_confirmed = False
                 buffer = ""
 
                 while self.running:
                     try:
-                        chunk = s.recv(4096)
+                        chunk = sock.recv(4096)
                     except (socket.timeout, TimeoutError):
                         # Timeout vid läsning - motparten håller anslutningen öppen men det är tyst på frekvensen
                         if not connection_confirmed:
@@ -1864,7 +1877,6 @@ class VDL2Receiver:
                                 self.stats['status_text'] = f"Frånkopplad av fjärrvärd. Återansluter om {backoff}s..."
                         break
 
-                    # Om data mottagits är anslutningen aktiv och bekräftad
                     if not connection_confirmed:
                         connection_confirmed = True
                         with self.lock:
@@ -1875,10 +1887,10 @@ class VDL2Receiver:
                         immediate_eof_warned = False
                         logger.info(f"[VDL2] Ansluten till dumpvdl2/acars_router på {self.host}:{self.port}!")
 
-                    buffer += chunk.decode('utf-8', errors='replace')
+                    buffer += chunk.decode("utf-8", errors="replace")
                     while "\n" in buffer:
-                        line_str, buffer = buffer.split("\n", 1)
-                        line_str = line_str.strip()
+                        line, buffer = buffer.split("\n", 1)
+                        line_str = line.strip()
                         if not line_str:
                             continue
 
@@ -1904,11 +1916,10 @@ class VDL2Receiver:
                         try: self.sock.close()
                         except Exception: pass
                         self.sock = None
-                if s:
-                    try: s.close()
+                if sock:
+                    try: sock.close()
                     except Exception: pass
 
-            # Paus med exponential backoff vid fel
             for _ in range(backoff):
                 if not self.running:
                     break

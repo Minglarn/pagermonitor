@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.13`
+- **CalVer**: `2026.10.16.14`
 - **Date**: 2026-10-16
 - **Language**: English / Swedish
 
@@ -9,7 +9,18 @@
 
 ## Overview of Implemented Features
 
-### 0. Separerad TCP Connect/Read Timeout, Skydd mot Reconnect-loop och Eliminering av EOF Logg-spam
+### 0. 10s/5s TCP Timeout, Eliminering av Lokal Portbindning vid Fjärr-IP och Trådblockering
+- **Robust TCP-klient i VDL2, HFDL och SATC ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py), [satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Konfigurerat `sock.settimeout(10.0)` vid `sock.connect((host, port))` och `sock.settimeout(5.0)` för chunk-läsning (`sock.recv(4096)`).
+  - Vid tystnad på frekvensen fångas `(socket.timeout, TimeoutError)` omedelbart och kör `continue` utan att koppla ner socketen.
+  - Eliminerat `sock.makefile()` permanent till förmån för en ren byte-chunk-buffer.
+- **Ingen Lokal Portbindning när Host är en IP-adress ([hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py), [satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - När mottagarkonfigurationen har en specifik IP-adress (t.ex. `192.168.1.242` eller `127.0.0.1`), startas **ENDAST** utgående TCP-klient och ingen lokal server/UDP-socket binds på porten.
+  - Förhindrar portkollisioner med `acars_router` eller `dumphfdl` som körs lokalt på maskinen.
+- **Garanterad Trådblockering & Isolering**:
+  - Vid `start()` stoppas och inväntas eventuell gammal tråd innan ny startas, vilket garanterar att endast EN arbetartråd körs per mottagare.
+
+### 1. Separerad TCP Connect/Read Timeout, Skydd mot Reconnect-loop och Eliminering av EOF Logg-spam
 - **Separerad Connect- och Läs-timeout ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py), [satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
   - Satt `sock.settimeout(5.0)` vid anslutningsupprättande (`sock.connect((host, port))`).
   - Efter anslutning sätts `sock.settimeout(2.0)` och data läses via ren `sock.recv(4096)` istället för `makefile().readline()`, vilket förhindrar att Pythons `SocketIO` permanent skadas vid en read-timeout.

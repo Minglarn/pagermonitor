@@ -804,16 +804,14 @@ class SatCReceiver:
         self.stats['port'] = self.port
         self.stats['error_message'] = None
 
-        # Starta UDP-lyssnartråd
-        self.udp_thread = threading.Thread(target=self._udp_listen_loop, daemon=True, name="SatC-UDP-Receiver")
-        self.udp_thread.start()
-
-        # Starta TCP-servertråd
-        self.tcp_server_thread = threading.Thread(target=self._tcp_server_loop, daemon=True, name="SatC-TCP-Server")
-        self.tcp_server_thread.start()
-
-        # Om host inte är 0.0.0.0, starta även utgående TCP-klienttråd ifall SatDump agerar server
-        if self.host not in ('0.0.0.0', ''):
+        # Om host är 0.0.0.0 eller tom kör vi som server (binder porten)
+        if self.host in ('0.0.0.0', ''):
+            self.udp_thread = threading.Thread(target=self._udp_listen_loop, daemon=True, name="SatC-UDP-Receiver")
+            self.udp_thread.start()
+            self.tcp_server_thread = threading.Thread(target=self._tcp_server_loop, daemon=True, name="SatC-TCP-Server")
+            self.tcp_server_thread.start()
+        else:
+            # När host är satt till en specifik IP ska mottagaren ENDAST ansluta utåt som TCP-klient (ingen lokal portbindning!)
             self.tcp_client_thread = threading.Thread(target=self._tcp_client_loop, daemon=True, name="SatC-TCP-Client")
             self.tcp_client_thread.start()
 
@@ -923,9 +921,9 @@ class SatCReceiver:
             try:
                 logger.info(f"[SATC] Försöker ansluta till SatDump TCP-ström på {self.host}:{self.port}...")
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(5.0)
+                sock.settimeout(10.0)
                 sock.connect((self.host, self.port))
-                sock.settimeout(2.0)
+                sock.settimeout(5.0)
                 self.tcp_client_sock = sock
 
                 connection_confirmed = False

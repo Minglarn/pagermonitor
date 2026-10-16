@@ -585,16 +585,14 @@ class HfdlReceiver:
         self.stats['port'] = self.port
         self.stats['error_message'] = None
 
-        # Starta UDP-lyssnare
-        self.udp_thread = threading.Thread(target=self._udp_listen_loop, daemon=True, name="HFDL-UDP-Receiver")
-        self.udp_thread.start()
-
-        # Om host är 0.0.0.0, starta TCP-server
+        # Om host är 0.0.0.0 eller tom kör vi som server (binder porten)
         if self.host in ('0.0.0.0', ''):
+            self.udp_thread = threading.Thread(target=self._udp_listen_loop, daemon=True, name="HFDL-UDP-Receiver")
+            self.udp_thread.start()
             self.tcp_server_thread = threading.Thread(target=self._tcp_server_loop, daemon=True, name="HFDL-TCP-Server")
             self.tcp_server_thread.start()
         else:
-            # Annars anslut som TCP-klient med automatisk återanslutning mot dumphfdl servern
+            # När host är satt till en specifik IP ska mottagaren ENDAST ansluta utåt som TCP-klient (ingen lokal portbindning!)
             self.tcp_client_thread = threading.Thread(target=self._tcp_client_loop, daemon=True, name="HFDL-TCP-Client")
             self.tcp_client_thread.start()
 
@@ -675,9 +673,9 @@ class HfdlReceiver:
             try:
                 logger.info(f"[HFDL] Ansluter som TCP-klient till {self.host}:{self.port}...")
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(5.0)
+                sock.settimeout(10.0)
                 sock.connect((self.host, self.port))
-                sock.settimeout(2.0)
+                sock.settimeout(5.0)
                 self.tcp_client_sock = sock
 
                 connection_confirmed = False
