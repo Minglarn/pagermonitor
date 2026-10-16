@@ -119,7 +119,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.16.17"
+APP_VERSION = "2026.10.16.18"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
@@ -294,13 +294,16 @@ def get_messages():
             limit = 500
     search_query = request.args.get('search', default=None, type=str)
     alerts_only = request.args.get('alerts_only', default='0').lower() in ('1', 'true')
+    protocol = request.args.get('protocol', default=None, type=str)
+    ensure_protocols = request.args.get('ensure_protocols', default='1').lower() in ('1', 'true')
     
     settings = database.get_settings()
     dup_handling = settings.get('duplicate_handling', 'merge')
     include_dups = request.args.get('include_duplicates', '0').lower() in ('1', 'true')
     exclude_duplicates = (dup_handling == 'hide') and not include_dups
 
-    messages = get_recent_messages(limit, before_id, since_id=since_id, search=search_query, alerts_only=alerts_only, exclude_duplicates=exclude_duplicates)
+    should_balance = (ensure_protocols and not protocol and not before_id and not since_id and not search_query)
+    messages = get_recent_messages(limit, before_id, since_id=since_id, search=search_query, alerts_only=alerts_only, exclude_duplicates=exclude_duplicates, protocol=protocol, ensure_active_protocols=should_balance)
     return jsonify(messages)
 
 @app.route('/api/messages/clear', methods=['POST'])

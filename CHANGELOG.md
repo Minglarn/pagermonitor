@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.18] - Protokollretention i Filterlistan och Balanserad Hämtning vid UI-reload
+
+- **Garanterad Retention av Aktiverade Protokoll ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Åtgärdat felet där protokoll med låg frekvens (t.ex. SAT-C eller HFDL) försvann från dropdown-menyn "Välj protokoll" vid sidomladdning på grund av att de senaste 500 meddelandena dominerades av högfrekvent VDL2-trafik.
+  - Aktiverade protokoll (`POCSAG`, `VDL2`, `HFDL`, `SATC`, `SONDE`) behålls nu alltid i filterlistan med korrekt antal `(0)` om inga meddelanden råkar synas i den aktuella vyn.
+  - Vid filtrering på ett protokoll som saknar rader i tabellminnet hämtar gränssnittet automatiskt de senaste raderna via `/api/messages?protocol=<PROTO>` så att trafiken visas omedelbart.
+- **Protokollbalansering och Filtrering i Backend ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Lagt till stöd för `protocol`-filter i `get_recent_messages()` och `/api/messages`.
+  - Implementerat automatisk protokollbalansering (`ensure_active_protocols`): om en aktiv protokolltyp (t.ex. SAT-C eller HFDL) har få meddelanden i den senaste batchen, inkluderas upp till 50 nyligen mottagna meddelanden från databasen för varje aktivt protokoll.
+  - Utökat initial hämtning till 1000 meddelanden.
+
 ## [2026.10.16.17] - Flödet Pausat Flyttad till Toast i Mitten Högst Upp
 
 - **Toast-notifiering for Flödespaus ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:

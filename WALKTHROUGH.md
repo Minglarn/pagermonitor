@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.17`
+- **CalVer**: `2026.10.16.18`
 - **Date**: 2026-10-16
 - **Language**: English / Swedish
 
@@ -9,7 +9,17 @@
 
 ## Overview of Implemented Features
 
-### 0. Flödet Pausat Flyttad till Toast i Mitten Högst Upp
+### 0. Protokollretention i Filterlistan och Balanserad Hämtning vid UI-reload
+- **Garanterad Retention av Aktiverade Protokoll ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Åtgärdat felet där protokoll med låg frekvens (t.ex. SAT-C eller HFDL) försvann från dropdown-menyn "Välj protokoll" vid sidomladdning på grund av att de senaste 500 meddelandena dominerades av högfrekvent VDL2-trafik.
+  - Aktiverade protokoll (`POCSAG`, `VDL2`, `HFDL`, `SATC`, `SONDE`) behålls nu alltid i filterlistan med korrekt antal `(0)` om inga meddelanden råkar synas i den aktuella vyn.
+  - Vid filtrering på ett protokoll som saknar rader i tabellminnet hämtar gränssnittet automatiskt de senaste raderna via `/api/messages?protocol=<PROTO>` så att trafiken visas omedelbart.
+- **Protokollbalansering och Filtrering i Backend ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Lagt till stöd för `protocol`-filter i `get_recent_messages()` och `/api/messages`.
+  - Implementerat automatisk protokollbalansering (`ensure_active_protocols`): om en aktiv protokolltyp (t.ex. SAT-C eller HFDL) har få meddelanden i den senaste batchen, inkluderas upp till 50 nyligen mottagna meddelanden från databasen för varje aktivt protokoll.
+  - Utökat initial hämtning till 1000 meddelanden.
+
+### 1. Flödet Pausat Flyttad till Toast i Mitten Högst Upp
 - **Toast-notifiering for Flödespaus ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
   - Flyttat `#hoverPausePill` ("Flödet Pausat") fran att ligga inuti `.table-container` till att visas som en global toast fixerad i mitten hogst upp pa skarmen (`position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 99999;`).
   - Toasten ar helt frikopplad fran tabellflodet och tacker aldrig filterknapparna ("Alla protokoll", "Alla frekvenser", "Alla flygplatser", "Filtrera pa ACARS Label").

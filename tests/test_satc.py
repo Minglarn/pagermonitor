@@ -742,5 +742,22 @@ class TestSatCReceiver(unittest.TestCase):
                 code = f.read()
             self.assertFalse(contains_emoji(code), f"Fel: otillåtna emojis hittades i {rel_path}!")
 
+    def test_satc_protocol_filter_retention_and_api(self):
+        """Verifiera att get_recent_messages stöder protocol='SATC' och att UI behåller SAT-C i filterlistan."""
+        import database
+        satc_msgs = database.get_recent_messages(limit=50, protocol='SATC')
+        for m in satc_msgs:
+            self.assertEqual(m.get('protocol'), 'SATC')
+
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        idx_path = os.path.join(base_dir, 'templates', 'index.html')
+        with open(idx_path, 'r', encoding='utf-8') as f:
+            idx_html = f.read()
+
+        # Verifiera att SATC alltid inkluderas bland aktiverade protokoll
+        self.assertIn("if (isSatcEnabled || protoCounts['SATC']) enabledProtocols.push('SATC');", idx_html)
+        # Verifiera att rader hämtas asynkront vid behov om ett protokoll saknar rader i tabellen
+        self.assertIn("fetch(`/api/messages?protocol=${encodeURIComponent(val)}&limit=200`)", idx_html)
+
 if __name__ == '__main__':
     unittest.main()

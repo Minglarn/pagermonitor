@@ -417,7 +417,7 @@ def reindex_messages(already_open_conn=None):
         conn.commit()
         conn.close()
 
-def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, alerts_only=False, exclude_duplicates=False):
+def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, alerts_only=False, exclude_duplicates=False, protocol=None, ensure_active_protocols=False):
     conn = get_connection()
     c = conn.cursor()
     
@@ -448,6 +448,25 @@ def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, 
                 AND WORD_MATCH(aw.word, m.message) = 1
             )
         ''')
+
+    if protocol:
+        p_up = str(protocol).strip().upper()
+        if p_up in ('SATC', 'INMARSAT'):
+            where_clauses.append("(m.bitrate LIKE '%SATC%' OR m.bitrate LIKE '%INMARSAT%' OR m.address LIKE 'SATC%' OR m.address LIKE 'LES:%')")
+        elif p_up in ('VDL2', 'VDL', 'ACARS'):
+            where_clauses.append("(m.bitrate LIKE '%VDL%' OR m.bitrate LIKE '%ACARS%')")
+        elif p_up == 'HFDL':
+            where_clauses.append("(m.bitrate LIKE '%HFDL%')")
+        elif p_up == 'SONDE':
+            where_clauses.append("(m.bitrate LIKE '%SONDE%')")
+        elif p_up == 'TETRA':
+            where_clauses.append("(m.bitrate LIKE '%TETRA%' OR m.address LIKE 'RAKEL-%' OR m.address LIKE 'TETRA-%')")
+        elif p_up in ('RDS', 'TMC', 'RDS-TMC'):
+            where_clauses.append("(m.bitrate LIKE '%RDS%' OR m.bitrate LIKE '%TMC%' OR m.address LIKE 'E4:%' OR m.address LIKE 'TMC-%')")
+        elif p_up == 'AFSK':
+            where_clauses.append("(m.bitrate LIKE '%AFSK%' OR m.bitrate LIKE '%UFSK%' OR m.address = 'AFSK')")
+        elif p_up == 'POCSAG':
+            where_clauses.append("(m.bitrate LIKE '%POCSAG%' OR (m.bitrate GLOB '[0-9]*' AND m.bitrate != '') OR m.address GLOB '[0-9]*')")
 
     if before_id:
         where_clauses.append('m.id < ?')
@@ -513,6 +532,8 @@ def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, 
                 msg['protocol'] = 'VDL2'
             elif 'SONDE' in b_val:
                 msg['protocol'] = 'SONDE'
+            elif 'HFDL' in b_val:
+                msg['protocol'] = 'HFDL'
             elif 'SATC' in b_val or 'INMARSAT' in b_val or str(msg['address']).startswith('SATC') or str(msg['address']).startswith('LES:'):
                 msg['protocol'] = 'SATC'
             elif 'AFSK' in b_val or 'UFSK' in b_val or msg['address'] == 'AFSK':
@@ -545,6 +566,30 @@ def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, 
                 pass
             
         messages.append(msg)
+
+    if ensure_active_protocols and limit and limit > 0:
+        proto_counts = {}
+        for m in messages:
+            p = m.get('protocol') or 'POCSAG'
+            proto_counts[p] = proto_counts.get(p, 0) + 1
+
+        existing_ids = {m['id'] for m in messages}
+        important_protos = ['SATC', 'HFDL', 'SONDE', 'POCSAG', 'VDL2']
+        for p_name in important_protos:
+            if proto_counts.get(p_name, 0) < 20:
+                extra = get_recent_messages(
+                    limit=50,
+                    alerts_only=alerts_only,
+                    exclude_duplicates=exclude_duplicates,
+                    protocol=p_name,
+                    ensure_active_protocols=False
+                )
+                for em in extra:
+                    if em['id'] not in existing_ids:
+                        messages.append(em)
+                        existing_ids.add(em['id'])
+        messages.sort(key=lambda x: x['id'], reverse=True)
+
     return messages
 
 def get_alert_words():
