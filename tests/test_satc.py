@@ -597,6 +597,18 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn('flex-direction: column', style_css)
         self.assertIn('margin-top: auto', style_css)
 
+        # 2c. Edge-to-edge minikarta och eliminering av dödutrymme
+        self.assertIn('white-space: normal !important;', index_html)
+        self.assertIn('padding: 0 !important;', index_html)
+        self.assertIn('height: 1px !important;', index_html)
+        self.assertIn('align-self: stretch !important;', index_html)
+        self.assertIn('border-radius: 0 !important;', index_html)
+        self.assertIn('style.css?v={{ app_version }}', index_html)
+        self.assertRegex(index_html, r'const msgCellInner = `<div class="msg-row-layout">')
+        self.assertNotIn('const msgCellInner = `\n', index_html)
+        self.assertNotIn('white-space: pre-wrap;', style_css.split('.msg-cell {')[2])
+        self.assertIn('white-space: normal;', style_css.split('.msg-cell {')[2])
+
         # 3. Flödespaus
         self.assertIn('hoverPausePill', index_html)
         self.assertIn('Flödet Pausat', index_html)

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PagerMonitor Dashboard</title>
-    <link rel="stylesheet" href="/static/style.css?v=3">
+    <link rel="stylesheet" href="/static/style.css?v={{ app_version }}">
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Fira+Code:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inconsolata:wght@400;700&family=JetBrains+Mono:wght@400;500;800&family=Roboto+Mono:wght@400;500;700&family=Source+Code+Pro:wght@400;600;800&family=Space+Mono:wght@400;700&family=Ubuntu+Mono:wght@400;700&family=Courier+Prime:wght@400;700&family=Share+Tech+Mono&family=Anonymous+Pro:wght@400;700&family=VT323&display=swap"
         rel="stylesheet">
@@ -606,7 +606,8 @@
             max-width: 65px !important;
             white-space: nowrap !important;
             text-align: center !important;
-            padding: 0.6rem 0.4rem !important;
+            padding: 6px 8px !important;
+            vertical-align: middle !important;
         }
 
         table.dataTable.dashboard-dt th.col-time,
@@ -615,7 +616,8 @@
             min-width: 105px !important;
             max-width: 120px !important;
             white-space: nowrap !important;
-            padding: 0.6rem 0.5rem !important;
+            padding: 6px 8px !important;
+            vertical-align: middle !important;
         }
 
         table.dataTable.dashboard-dt th.col-meta,
@@ -624,7 +626,7 @@
             min-width: 95px !important;
             max-width: 120px !important;
             white-space: nowrap !important;
-            padding: 0.5rem 0.55rem !important;
+            padding: 6px 8px !important;
             vertical-align: middle !important;
         }
 
@@ -654,7 +656,8 @@
             max-width: 180px !important;
             white-space: normal !important;
             line-height: 1.35 !important;
-            padding: 0.6rem 0.6rem !important;
+            padding: 6px 8px !important;
+            vertical-align: middle !important;
         }
 
         table.dataTable.dashboard-dt td.addr-cell .badge {
@@ -693,35 +696,43 @@
             padding: 4px 2px !important;
         }
 
-        table.dataTable.dashboard-dt th.col-msg,
+        table.dataTable.dashboard-dt th.col-msg {
+            width: auto !important;
+        }
+
         table.dataTable.dashboard-dt td.msg-cell,
         table.dataTable.dashboard-dt td.message-cell {
             width: auto !important;
+            white-space: normal !important;
             word-break: break-word !important;
             overflow-wrap: anywhere !important;
-            padding-top: 6px !important;
-            padding-bottom: 6px !important;
-            padding-left: 10px !important;
-            padding-right: 10px !important;
+            padding: 0 !important;
             vertical-align: top !important;
-            height: auto !important;
+            height: 1px !important; /* Krävs på <td> för att barn med height: 100% ska fylla hela radhöjden */
         }
 
         .msg-row-layout {
-            display: flex;
-            align-items: stretch;
-            justify-content: space-between;
-            gap: 12px;
-            min-height: 100%;
-            width: 100%;
+            display: flex !important;
+            align-items: stretch !important;
+            justify-content: space-between !important;
+            gap: 12px !important;
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            white-space: normal !important;
         }
 
         .msg-main-content {
-            flex: 1;
-            min-width: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            padding: 6px 10px !important;
+            margin: 0 !important;
+            white-space: normal !important;
         }
 
         .msg-cell .msg-text,
@@ -736,13 +747,31 @@
 
         .msg-badges,
         .msg-meta-bar {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 4px;
+            display: flex !important;
+            flex-wrap: wrap !important;
+            align-items: center !important;
+            gap: 4px !important;
             margin-top: auto !important;
-            padding-top: 6px;
-            margin-bottom: 0;
+            padding-top: 6px !important;
+            margin-bottom: 0 !important;
+            white-space: normal !important;
+        }
+
+        .msg-minimap-container {
+            width: 240px !important;
+            min-width: 240px !important;
+            min-height: 96px !important;
+            height: auto !important;
+            align-self: stretch !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            border-left: 1px solid var(--panel-border, #cbd5e1) !important;
+            flex-shrink: 0 !important;
+            cursor: pointer !important;
+            position: relative !important;
+            z-index: 1 !important;
         }
 
         .msg-summary {
@@ -2824,16 +2853,7 @@
 
             const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${satcBadgesHtml}${universalCoordTag}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
             const badgesHtml = metaBarBadges ? `<div class="msg-badges msg-meta-bar">${metaBarBadges}</div>` : '';
-            const msgCellInner = `
-                <div class="msg-row-layout">
-                    <div class="msg-main-content">
-                        <div class="msg-text msg-summary">${msgObj.summaryHtml.trim()}</div>
-                        ${rawBoxHtml}
-                        ${badgesHtml}
-                    </div>
-                    ${activeMinimapHtml}
-                </div>
-            `;
+            const msgCellInner = `<div class="msg-row-layout"><div class="msg-main-content"><div class="msg-text msg-summary">${msgObj.summaryHtml.trim()}</div>${rawBoxHtml}${badgesHtml}</div>${activeMinimapHtml}</div>`;
 
             tr.innerHTML = `
                 <td class="id-cell">${alarm.id}</td>

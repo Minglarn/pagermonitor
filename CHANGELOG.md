@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.10] - Edge-to-Edge Minikarta, Eliminering av Dödutrymme och Dynamisk CSS-Cachebusting
+
+- **Dynamisk CSS Cache-Busting med app_version ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Ersatt den hårdkodade länkningen `/static/style.css?v=3` med `/static/style.css?v={{ app_version }}` så att webbläsaren omedelbart laddar ny CSS vid versionsuppdateringar.
+- **Eliminering av Tomrum & Radbrytningar i DOM ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Skrivit om `msgCellInner` och `tr.innerHTML` i `createAlarmRowNode()` så att HTML-strukturen skapas på en enda rad utan onödiga radbrytningar och mellanslag mellan taggarna.
+- **Fullständig Edge-to-Edge Tabellcellslayout & Kant-till-kant Minikarta ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Ändrat `.msg-cell` i [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css) från `white-space: pre-wrap;` till `white-space: normal;` vilket eliminerar oavsiktliga tomma rader.
+  - På `td.msg-cell` och `td.message-cell`: satt `padding: 0 !important;`, `height: 1px !important;` samt `white-space: normal !important;`, vilket möjliggör för flex-barnet att sträcka sig över 100% av radens höjd.
+  - `.msg-row-layout` och `.msg-main-content` har `height: 100% !important;`, `align-items: stretch !important;` och intern padding `6px 10px !important;`.
+  - `.msg-minimap-container` har `width: 240px !important; min-width: 240px !important; height: auto !important; align-self: stretch !important; border-radius: 0 !important; border: none !important; border-left: 1px solid var(--panel-border, #cbd5e1) !important;` och löper nu kant-i-kant från toppen till botten av raden.
+  - Kompakt padding på övriga kolumner (`td.id-cell`, `td.ts-cell`, `td.meta-cell`, `td.addr-cell`): `padding: 6px 8px !important; vertical-align: middle !important;`.
+- **Enhetstester och Kvalitetssäkring ([tests/test_satc.py](file:///d:/antigravity/pager-monitor/tests/test_satc.py))**:
+  - Nya tester verifierar `white-space: normal !important;`, `padding: 0 !important;`, `height: 1px !important;`, `align-self: stretch !important;`, `border-radius: 0 !important;`, dynamisk `app_version` och enkellinje `msgCellInner`. Samtliga 112 tester passerar felfritt.
+
 ## [2026.10.16.09] - Temamedveten Kartmodal, Synlig VDL2/ACARS Fritext och ICAO-validering mot BLND/DEAF
 
 - **Temamedveten och Högkontrast Kartmodal ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
