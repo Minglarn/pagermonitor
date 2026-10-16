@@ -30,6 +30,7 @@ from sdr_processor import start_sdr_thread, restart_sdr, on_new_message, get_sdr
 from vdl2_receiver import init_vdl2, restart_vdl2, get_vdl2_status, send_test_vdl2_message
 from sonde_receiver import init_sonde, restart_sonde, get_sonde_status, get_active_sondes_api, send_test_sonde_message
 from satc_receiver import init_satc, restart_satc, get_satc_status, send_test_satc_message
+from hfdl_receiver import init_hfdl, restart_hfdl, get_hfdl_status, send_test_hfdl_message
 from log_streamer import setup_log_capture, log_manager
 
 # Setup basic logging
@@ -118,7 +119,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.16.11"
+APP_VERSION = "2026.10.16.12"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
@@ -437,6 +438,23 @@ def satc_test():
         logger.error(f"Error sending test SATC message: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/hfdl/status')
+def hfdl_status():
+    """Returnerar aktuell lyssnarstatus och telemetri för HFDL-mottagaren."""
+    return jsonify(get_hfdl_status())
+
+@app.route('/api/hfdl/test', methods=['POST'])
+def hfdl_test():
+    """Skickar ett syntetiskt HFDL-testmeddelande till databas och realtidsflöde."""
+    try:
+        data = request.get_json(silent=True) or {}
+        pkt_type = data.get('type', 'frequency_data')
+        res = send_test_hfdl_message(pkt_type=pkt_type)
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Error sending test HFDL message: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/api/settings/defaults')
 def settings_defaults():
     return jsonify(get_default_settings())
@@ -458,7 +476,8 @@ def handle_settings():
             'tetra_scan_mode', 'tetra_dwell_time', 'tetra_skip_encrypted',
             'vdl2_enabled', 'vdl2_host', 'vdl2_port', 'vdl2_filter_empty', 'vdl2_filter_links',
             'sonde_enabled', 'sonde_udp_port', 'sonde_db_interval',
-            'satc_enabled', 'satc_host', 'satc_port', 'satc_only_messages'
+            'satc_enabled', 'satc_host', 'satc_port', 'satc_only_messages',
+            'hfdl_enabled', 'hfdl_host', 'hfdl_port', 'hfdl_only_messages'
         ]
         sdr_restart_keys = {
             'frequency', 'gain', 'device_serial', 'multimon_verbosity', 
@@ -470,10 +489,12 @@ def handle_settings():
         vdl2_keys = {'vdl2_enabled', 'vdl2_host', 'vdl2_port', 'vdl2_filter_empty', 'vdl2_filter_links'}
         sonde_keys = {'sonde_enabled', 'sonde_udp_port', 'sonde_db_interval'}
         satc_keys = {'satc_enabled', 'satc_host', 'satc_port', 'satc_only_messages'}
+        hfdl_keys = {'hfdl_enabled', 'hfdl_host', 'hfdl_port', 'hfdl_only_messages'}
         sdr_restart_needed = False
         vdl2_restart_needed = False
         sonde_restart_needed = False
         satc_restart_needed = False
+        hfdl_restart_needed = False
         for key in allowed_keys:
             if key in data:
                 update_setting(key, data[key])
@@ -485,6 +506,8 @@ def handle_settings():
                     sonde_restart_needed = True
                 if key in satc_keys:
                     satc_restart_needed = True
+                if key in hfdl_keys:
+                    hfdl_restart_needed = True
         
         if sdr_restart_needed:
             restart_sdr()
@@ -494,6 +517,8 @@ def handle_settings():
             restart_sonde()
         if satc_restart_needed:
             restart_satc()
+        if hfdl_restart_needed:
+            restart_hfdl()
             
         return jsonify({"status": "success"})
     
@@ -671,6 +696,7 @@ on_new_message(notify_clients)
 init_vdl2(notify_clients)
 init_sonde(notify_clients)
 init_satc(notify_clients)
+init_hfdl(notify_clients)
 
 @app.route('/stream')
 def stream():

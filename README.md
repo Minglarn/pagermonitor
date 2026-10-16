@@ -1,6 +1,6 @@
 # PagerMonitor
 
-[![Version](https://img.shields.io/badge/version-2026.10.16.08-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2026.10.16.12-blue.svg)](CHANGELOG.md)
 [![GitHub last commit](https://img.shields.io/github/last-commit/Minglarn/pagermonitor)](https://github.com/Minglarn/pagermonitor/commits/main)
 [![GitHub issues](https://img.shields.io/github/issues/Minglarn/pagermonitor)](https://github.com/Minglarn/pagermonitor/issues)
 [![GitHub stars](https://img.shields.io/github/stars/Minglarn/pagermonitor?style=social)](https://github.com/Minglarn/pagermonitor/stargazers)
@@ -16,7 +16,13 @@ PagerMonitor ar en komplett, containeriserad Software Defined Radio (SDR) overva
 
 ## Protokoll som Stods
 
-### 1. Inmarsat STD-C / EGC / SafetyNET / SAR (SATC)
+### 1. HFDL - High Frequency Data Link (Kortvågs-flygdata)
+* **dumphfdl Integration**: Tar emot och avkodar JSON-strömmar från `dumphfdl` (v1.7.0+, standard TCP/UDP port `15556`).
+* **Omfattande Dataavkodning**: Avkodar Frekvens- & Hörbarhetsrapporter (vilka markstationer runt jorden som flygplanet hör), Prestandarapporter (paketstatistik 300-1800 bps, spdu squitter och frekvensbytesorsaker) och kapslade ACARS-meddelanden.
+* **Smart Flygplans-cache**: Sammanfogar `ac_info` (`icao`, `regnr`, `model`, `typecode`, `owner`) från inloggningspaket till efterföljande ACARS- och positionsrapporter.
+* **Geografisk Kartvisualisering**: Placerar flygplan på den inbäddade kvadratiska minikartan och kartmodalen vid mottagen position.
+
+### 2. Inmarsat STD-C / EGC / SafetyNET / SAR (SATC)
 * **SatDump Integration**: Tar emot och avkodar radseparerade JSON-datastrommar fran SatDump (`inmarsat_stdc_parser`, standardport `6558` over UDP/TCP eller via anpassad fjarr-IP).
 * **Maritima Larm och Varningar**: Full avkodning av SafetyNET, Navigationsvarningar (NAVWARN/NAVAREA), Vaderskrivelser (METAREA), Flottmeddelanden (FleetNET), och Sjorraddningslarm (SAR / Distress Relay).
 * **Automatisk Jordstations- och Satellitidentifiering**: Identifierar Inmarsat-satelliter (t.ex. IOR, AOR-E) och Land Earth Stations (LES, t.ex. Burum, Eik, Aussaguel, Goonhilly).

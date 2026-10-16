@@ -102,7 +102,11 @@ def get_default_settings():
         'satc_enabled': 'true',
         'satc_host': '0.0.0.0',
         'satc_port': '6558',
-        'satc_only_messages': 'true'
+        'satc_only_messages': 'true',
+        'hfdl_enabled': 'false',
+        'hfdl_host': '127.0.0.1',
+        'hfdl_port': '15556',
+        'hfdl_only_messages': 'true'
     }
 
 def init_db():

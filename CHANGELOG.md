@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.12] - Fullt Stöd för HFDL (High Frequency Data Link) från dumphfdl
+
+- **Ny Förstaklass-Mottagare: hfdl_receiver.py ([hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py))**:
+  - Implementerat fullt stöd för `dumphfdl` (v1.7.0+) med TCP-klient (automatisk återanslutningsslinga), TCP-server fallback vid `0.0.0.0`, och parallell UDP-lyssnare på port `15556`.
+  - Stöd för frekvensomvandling från Hz till kHz (`8942000` -> `8942 kHz`, `8843.0` -> `8843 kHz`), SNR-beräkning (`sig_level - noise_level` -> `+4.1 dB`) och bitrate-märkning (`HFDL-300bps`).
+  - **Smart Flygplans-cache (`HFDL_AC_CACHE`) med TTL 1800s**: Sammanfogar och bevarar flygplansdata (`icao`, `regnr`, `model`, `typecode`, `owner`, senaste `pos`) från `Logon resume`/`Logon request` till efterföljande `Performance data`- och `acars`-paket.
+  - **Avancerad Paketavkodning**:
+    - **Typ A (Frequency data / hfnpdu 213)**: Svensk formatering med flygplansmodell, regnr, flight, position och UTC-tid, samt kompakt och tydlig redovisning av markstationer som flygplanet faktiskt hör (`Hörd GS: {namn} ({hörda kHz}) [Lyssnar: {lyssnade kHz}]` vs `Lyssnar GS: {namn} ({antal} frekv)`).
+    - **Typ B (Performance data / hfnpdu 209)**: Visar flight, aktiv HF-kanal, markstation, position, rx-statistik för 300/600/1200/1800 bps, spdu squitter-statistik och orsak till frekvensbyte.
+    - **Typ C (Kapslad ACARS / hfnpdu 255)**: Renser inledande punkter i registreringar (`.SE-DMR` -> `SE-DMR`), tolkar ACARS-etiketter (t.ex. `Label: Q0 (ACARS Länkbekräftelse)`), block och meddelandenummer, samt visar läsbar fritext.
+    - **Filtrering (`hfdl_only_messages`)**: Filtrerar bort tomma markstations-squitters och tomma synkramar.
+- **Gränssnitt, Badges & Styling ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Ny protokollbricka `HFDL` i varm bärnsten/orange (`proto-hfdl`) för både mörkt och ljust tema.
+  - Specialanpassade klickbara metadata-badges längst ner på raden: Frekvens (`8843 kHz`), Bitrate (`300bps`), SNR (`+4.1 dB`), Registrering (`SE-DMR`), Flight (`SAS949`), ICAO (`4A91B2`), Flygplansmodell (`badge-ac-model`), Markstation (`badge-gs`) och ACARS Label / HFDL Pakettyp (`badge-hfdl-type`).
+  - Automatisk universell positionsdetektering som renderar den inbäddade kvadratiska Leaflet-minikartan till höger om raden med vertikal linje och öppnar stor kartmodal vid klick.
+  - Ny flik och kontrollkort i **Settings -> Receivers** för HFDL med live telemetri-status, paketräknare, IP-adress, port och filter för tomma squitters.
+- **Backend API & Databas ([app.py](file:///d:/antigravity/pager-monitor/app.py), [database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+  - Nya inställningar: `hfdl_enabled`, `hfdl_host`, `hfdl_port`, `hfdl_only_messages`.
+  - Nya API-endpoints: `/api/hfdl/status` och `/api/hfdl/test`.
+  - Integrerat i SSE-larmflödet med automatisk bakgrundsomstart vid ändrade inställningar.
+- **Enhetstester ([tests/test_hfdl.py](file:///d:/antigravity/pager-monitor/tests/test_hfdl.py))**:
+  - Verifierar alla 4 skarpa referenspaket (`CCA876`, `SAS949 SE-DMR`, `THY8EL TC-LHA` och `SK0949 .SE-DMR Enveloped ACARS Q0`).
+  - Verifierar cacheberikning, frekvenslistning av markstationer, koordinatframställning och strikt 0 emojis. Samtliga 157 tester passerar.
+
 ## [2026.10.16.11] - Vertikal Kartavdelare, Kvadratisk Minikarta och STD-C Kanal-till-MES Korrelering
 
 - **Vertikal Avdelare och Kvadratisk Minikarta ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:

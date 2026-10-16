@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.11`
+- **CalVer**: `2026.10.16.12`
 - **Date**: 2026-10-16
 - **Language**: English / Swedish
 
@@ -9,7 +9,26 @@
 
 ## Overview of Implemented Features
 
-### 0. Vertikal Kartavdelare, Kvadratisk Minikarta och STD-C Kanal-till-MES Korrelering
+### 0. Fullt Stöd för HFDL (High Frequency Data Link) från dumphfdl (v1.7.0+)
+- **Ny Förstaklass-Mottagare: hfdl_receiver.py ([hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py))**:
+  - Implementerat anslutningshantering: ansluter som TCP-klient med automatisk återanslutning vid specifik IP (standard `127.0.0.1:15556`), startar TCP-server vid `0.0.0.0`, och kör en bakgrunds-UDP-lyssnare på samma port.
+  - Avkodar frekvenser från Hz till kHz (`8942000` -> `8942 kHz`, `8843.0` -> `8843 kHz`), beräknar SNR ur `sig_level - noise_level` (`+4.1 dB`), och bitrate (`HFDL-300bps`).
+  - **Smart Flygplans-cache (`HFDL_AC_CACHE`) med TTL 1800s**: Sammanfogar flygplansinformation (`icao`, `regnr`, `model`, `typecode`, `owner`, senaste `pos`) från inloggningspaket till efterföljande paket så att de berikas automatiskt även när bara registrering eller flightnummer skickas.
+  - **Avancerad Paketavkodning**:
+    - **Typ A (Frequency data / hfnpdu 213)**: Detaljerad svensk rapport över markstationer runt jorden som flygplanet faktiskt hör (`Hörd GS: {namn} ({hörda kHz}) [Lyssnar: {lyssnade kHz}]` vs `Lyssnar GS: {namn} ({antal} frekv)`).
+    - **Typ B (Performance data / hfnpdu 209)**: Visar flight, markstation, tid, position, flight leg, aktiv HF-kanal, paketstatistik (300/600/1200/1800 bps), spdu squitter-statistik och frekvensbytesorsak.
+    - **Typ C (Kapslad ACARS / hfnpdu 255)**: Renser bort inledande punkt (`.SE-DMR` -> `SE-DMR`), tolkar ACARS-etiketter (`Label: Q0 (ACARS Länkbekräftelse)`), block och sekvenser samt visar läsbar fritext.
+    - **Filtrering (`hfdl_only_messages`)**: Filtrerar bort tomma markstations-squitters och tomma synkramar.
+- **Gränssnitt, Badges & Styling ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Ny protokollbricka `HFDL` i varm orange/bärnsten (`proto-hfdl`).
+  - Metadata-badges för frekvens, bitrate, SNR, registrering, flight, ICAO, flygplansmodell (`badge-ac-model`), markstation (`badge-gs`) och ACARS-etikett / HFDL-pakettyp (`badge-hfdl-type`).
+  - Integrerad med universella positionsdetekteringen och den inbäddade kvadratiska Leaflet-minikartan med vertikal avdelare.
+  - Ny flik och telemetrikort i Settings -> Receivers för HFDL med live telemetri-status, paketräknare och filterväxlare.
+- **Enhetstester ([tests/test_hfdl.py](file:///d:/antigravity/pager-monitor/tests/test_hfdl.py))**:
+  - Testar alla 4 skarpa referenspaketen (`CCA876`, `SAS949 SE-DMR`, `THY8EL TC-LHA` och `SK0949 .SE-DMR Enveloped ACARS Q0`).
+  - Verifierar cacheberikning, markstationslistning, koordinatvisning och strikt 0 emojis. Samtliga 157 tester passerar.
+
+### 1. Vertikal Kartavdelare, Kvadratisk Minikarta och STD-C Kanal-till-MES Korrelering
 - **Vertikal Avdelare och Kvadratisk Minikarta ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
   - Infört `.msg-minimap-cell` som omsluter minikartan längst till höger i meddelandecellen med en vertikal avdelare (`border-left: 1px solid var(--panel-border)`) som sträcker sig från radens topp till botten (`align-self: stretch !important;`).
   - Minikartan (`.msg-minimap-container`) har nu kvadratiska proportioner (`130px` x `115px`), rundade hörn (`border-radius: 6px !important;`) och behaglig luft/marginal mot topp, botten och sidor med `padding: 6px 8px !important;`.

@@ -880,6 +880,31 @@ th:first-child,
     border: 1px solid rgba(45, 212, 191, 0.45);
 }
 
+.badge.meta.badge-proto.proto-hfdl {
+    background: rgba(249, 115, 22, 0.18);
+    color: #fb923c;
+    border: 1px solid rgba(251, 146, 60, 0.45);
+}
+
+.badge.meta.badge-gs {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.4);
+}
+
+.badge.meta.badge-ac-model {
+    background: rgba(139, 92, 246, 0.16);
+    color: #c4b5fd;
+    border: 1px solid rgba(196, 181, 253, 0.4);
+    font-weight: 600;
+}
+
+.badge.meta.badge-hfdl-type {
+    background: rgba(245, 158, 11, 0.16);
+    color: #fcd34d;
+    border: 1px solid rgba(252, 211, 77, 0.4);
+}
+
 .badge.meta.badge-satc-priority.badge-distress {
     background: rgba(239, 68, 68, 0.25);
     color: #f87171;
@@ -1062,6 +1087,30 @@ th:first-child,
     background: #ccfbf1;
     color: #0f766e;
     border: 1px solid #5eead4;
+}
+
+[data-theme="light"] .badge.meta.badge-proto.proto-hfdl {
+    background: #ffedd5;
+    color: #c2410c;
+    border: 1px solid #fdba74;
+}
+
+[data-theme="light"] .badge.meta.badge-gs {
+    background: #d1fae5;
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+[data-theme="light"] .badge.meta.badge-ac-model {
+    background: #ede9fe;
+    color: #5b21b6;
+    border: 1px solid #c4b5fd;
+}
+
+[data-theme="light"] .badge.meta.badge-hfdl-type {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
 }
 
 [data-theme="light"] .badge.meta.badge-satc-priority.badge-distress {
