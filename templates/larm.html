@@ -784,6 +784,23 @@
             }
         }
 
+        // Hjälpfunktion för att extrahera endast faktisk brödtext för larmordskontroll
+        function getAlertSearchableText(text) {
+            if (!text) return '';
+            let s = String(text);
+            const rIdx = s.search(/(?:\r?\n|\s*\|\s*)Rådata:/i);
+            if (rIdx !== -1) {
+                s = s.substring(0, rIdx);
+            } else {
+                const fIdx = s.search(/\bRådata:/i);
+                if (fIdx !== -1) {
+                    s = s.substring(0, fIdx);
+                }
+            }
+            s = s.replace(/^\[(?:Inmarsat|EGC|STD-C|SafetyNET|FleetNET|SAR|Upprop|Kanalallokering|Bulletin Board|Signalling Channel|Kontrollpaket)[^\]\n]*\][^\n]*\r?\n?/i, '');
+            return s.trim();
+        }
+
         // Hjälpfunktion för att matcha hela ord (Unicode-säker för å, ä, ö)
         function checkAlertWordMatch(word, text) {
             if (!word || !text) return false;
@@ -794,11 +811,13 @@
             return regex.test(text);
         }
 
-        // Find matching alert word in message (endast hela ord)
+        // Find matching alert word in message (endast hela ord på faktisk brödtext)
         function findMatchingAlert(msgText) {
             if (!alertWords || !alertWords.length || !msgText) return null;
+            const searchBody = getAlertSearchableText(msgText);
+            if (!searchBody) return null;
             for (const aw of alertWords) {
-                if (aw.is_active && checkAlertWordMatch(aw.word, msgText)) {
+                if (aw.is_active && checkAlertWordMatch(aw.word, searchBody)) {
                     return aw;
                 }
             }
@@ -861,6 +880,11 @@
                     let lineEscaped = escapeHtml(cleanLine);
                     let highlighted = highlightMessage(lineEscaped);
                     return `<div class="pilot-freetext-highlight">${highlighted}</div>`;
+                }
+                // Skydda syntetiska metadatarubriker från felaktig larmordsmarkering
+                if (/^\[(?:Inmarsat|EGC|STD-C|SafetyNET|FleetNET|SAR|Upprop|Kanalallokering|Bulletin Board|Signalling Channel|Kontrollpaket)/i.test(cleanLine)) {
+                    let segEscaped = escapeHtml(cleanLine);
+                    return segEscaped.replace(/^(\[[^\]]+\])(\s*)/, '<strong class="msg-label">$1</strong>$2');
                 }
                 const rawSegments = line.split(/\s*\|\s*/);
                 const formattedSegments = rawSegments.map(seg => {

@@ -2,11 +2,12 @@ import unittest
 import re
 import json
 import os
-from database import init_db, get_connection
+from database import init_db, get_connection, check_alert_words, extract_body_for_alert_matching, save_alert_word
 from satc_receiver import (
     SatCReceiver, parse_satc_frame, extract_coordinates,
     format_satc_frequency, normalize_satc_priority, classify_satc_service,
-    send_test_satc_message, get_satc_status
+    send_test_satc_message, get_satc_status, clean_control_characters,
+    is_binary_or_gibberish
 )
 
 def contains_emoji(text):
@@ -97,7 +98,8 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertEqual(parsed['address'], 'LES: Burum')
         self.assertEqual(parsed['alias'], 'SAR / Distress')
         self.assertEqual(parsed['priority'], 'DISTRESS')
-        self.assertTrue(parsed['is_alert'])
+        # Larmflaggan (is_alert) styrs nu uteslutande av användarens larmordslista, inte av SATC-prioritet ensamt
+        self.assertFalse(parsed['is_alert'])
         self.assertEqual(parsed['service_badge'], 'EGC: SAR (Sjöräddning)')
 
         # Verifiera koordinater
@@ -351,6 +353,190 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertEqual(status['host'], '192.168.1.150')
         self.assertEqual(status['port'], 6558)
         receiver.stop()
+
+    def test_satc_fragment_filtering(self):
+        """
+        Verifiera att ofullständiga delpaket (Multi-part fragments) filtreras bort när satc_only_messages=True:
+        - 'EGC Double Header 1', 'EGC Double Header 2', 'Message Packet' ignoreras.
+        - Endast 'Full Message' och 'Full EGC Message' sparas.
+        - Meddelanden utan pkt_name släpps igenom om de inte har fragmentindikatorer.
+        """
+        # Delramar med pkt_name
+        frag_dh1 = {
+            "station": "SatDump",
+            "pkt_name": "EGC Double Header 1",
+            "text": "LES21 Marlink 10"
+        }
+        frag_dh2 = {
+            "station": "SatDump",
+            "pkt_name": "EGC Double Header 2",
+            "text": ".10.107.29... NA"
+        }
+        frag_msg = {
+            "station": "SatDump",
+            "pkt_name": "Message Packet",
+            "text": "VIGATE WITH CAUT"
+        }
+        full_egc = {
+            "station": "SatDump",
+            "pkt_name": "Full EGC Message",
+            "text": "LES21 Marlink 10.10.107.29... NAVIGATE WITH CAUTION IN VICINITY 58-34N 016-12E"
+        }
+        full_msg = {
+            "station": "SatDump",
+            "pkt_name": "Full Message",
+            "text": "COMPLETE STD-C MESSAGE DATA"
+        }
+
+        # Filtreras när only_messages=True
+        self.assertIsNone(parse_satc_frame(frag_dh1, only_messages=True))
+        self.assertIsNone(parse_satc_frame(frag_dh2, only_messages=True))
+        self.assertIsNone(parse_satc_frame(frag_msg, only_messages=True))
+
+        # Släpps igenom när det är Full Message / Full EGC Message
+        res_full_egc = parse_satc_frame(full_egc, only_messages=True)
+        self.assertIsNotNone(res_full_egc)
+        self.assertIn("NAVIGATE WITH CAUTION", res_full_egc['message'])
+
+        res_full_msg = parse_satc_frame(full_msg, only_messages=True)
+        self.assertIsNotNone(res_full_msg)
+        self.assertIn("COMPLETE STD-C MESSAGE DATA", res_full_msg['message'])
+
+        # Paket med continuation eller is_fragment
+        frag_cont = {
+            "station": "SatDump",
+            "continuation": True,
+            "text": "PARTIAL DATA"
+        }
+        self.assertIsNone(parse_satc_frame(frag_cont, only_messages=True))
+
+        # Paket utan pkt_name men komplett text släpps igenom
+        no_pkt_name = {
+            "station": "SatDump",
+            "text": "SINGLE STANDALONE MESSAGE"
+        }
+        res_standalone = parse_satc_frame(no_pkt_name, only_messages=True)
+        self.assertIsNotNone(res_standalone)
+        self.assertIn("SINGLE STANDALONE MESSAGE", res_standalone['message'])
+
+    def test_clean_control_characters(self):
+        """
+        Verifiera att icke-utskrivbara binära kontrolltecken (ASCII < 32 utom \n, \r, \t samt 0x7F)
+        rensas bort från brödtexten så att krypterade eller råa paket hålls rena.
+        """
+        dirty_text = "HELLO\x00\x02WORLD\x18\x7F!\nRAD 2\tTABELL\r\nSLUT\x1F"
+        cleaned = clean_control_characters(dirty_text)
+        self.assertEqual(cleaned, "HELLOWORLD!\nRAD 2\tTABELL\r\nSLUT")
+
+        # Testa även i parse_satc_frame (utan only_messages för råa tecken)
+        frame = {
+            "station": "SatDump",
+            "pkt_name": "Full Message",
+            "text": "RAW\x00\x02CLEANED\x18TEXT"
+        }
+        parsed = parse_satc_frame(frame, only_messages=False)
+        self.assertIsNotNone(parsed)
+        self.assertIn("RAWCLEANEDTEXT", parsed['message'])
+        self.assertNotIn("\x00", parsed['message'])
+        self.assertNotIn("\x02", parsed['message'])
+        self.assertNotIn("\x18", parsed['message'])
+
+    def test_satc_binary_and_gibberish_filtering(self):
+        """
+        Verifiera att strikta binär- och skräpfiltret (is_binary_or_gibberish) filtrerar bort:
+        1. Ryska 5PRCRYPTO/5PSCRYPTO-paket med kontrolltecken.
+        2. Binär telemetri tolkad som ASCII (inga 4-bokstavsord, hög andel specialtecken).
+        3. Verifiera samtidigt att riktiga e-postmeddelanden släpps igenom!
+        """
+        # Paket 1: Rysk 5PSCRYPTO med binära kontrolltecken från skarp drift
+        pkg1_text = "\u0002\u0000\u0000\u0004  \u0018 ,\b.\u000b\u0010D\u0006\u0018P\u0004 X\thj\u0000  4273152303*\u0001@\u0000\u00005PSCRYPTO 2.1\r\n0 0200 7 kWO TO 0R> | < ] ]3 E ZD3"
+        self.assertTrue(is_binary_or_gibberish(pkg1_text))
+        frame1 = {
+            "station": "SatDump",
+            "pkt_name": "Full Message",
+            "text": pkg1_text
+        }
+        self.assertIsNone(parse_satc_frame(frame1, only_messages=True))
+
+        # Paket 2: Binär telemetri tolkad som ASCII från skarp drift
+        pkg2_text = "H0 2 l5 &0 N c0 vVb AL 9 E$ @ P'I"
+        self.assertTrue(is_binary_or_gibberish(pkg2_text))
+        frame2 = {
+            "station": "SatDump",
+            "pkt_name": "Full Message",
+            "text": pkg2_text
+        }
+        self.assertIsNone(parse_satc_frame(frame2, only_messages=True))
+
+        # Riktigt e-postmeddelande 1 från skarp drift (släpps igenom)
+        real_email1 = "NL BURUM LES 12-OCT-2026 14:22:00 123456\r\nSubject: INMS email Inactivity detected for terminal 427315230\r\nPlease verify connection status."
+        self.assertFalse(is_binary_or_gibberish(real_email1))
+        frame_real1 = {
+            "station": "SatDump",
+            "pkt_name": "Full Message",
+            "text": real_email1
+        }
+        res_real1 = parse_satc_frame(frame_real1, only_messages=True)
+        self.assertIsNotNone(res_real1)
+        self.assertIn("Inactivity detected", res_real1['message'])
+
+        # Riktigt e-postmeddelande 2 från skarp drift (släpps igenom)
+        real_email2 = "Subject: SAT C TEST ON PHOENIX LES BURUM\r\nTEST MESSAGE FROM SHIP STATION\r\nMSG WELL RCVD OK"
+        self.assertFalse(is_binary_or_gibberish(real_email2))
+        frame_real2 = {
+            "station": "SatDump",
+            "pkt_name": "Full Message",
+            "text": real_email2
+        }
+        res_real2 = parse_satc_frame(frame_real2, only_messages=True)
+        self.assertIsNotNone(res_real2)
+        self.assertIn("SAT C TEST ON PHOENIX", res_real2['message'])
+
+    def test_alert_words_isolated_from_raw_data_and_synthetic_header(self):
+        """
+        Verifiera att larmordsmatchning ENDAST sker mot den faktiska brödtexten:
+        - Ord i Rådata (t.ex. 'SafetyNet', 'MaritimeDistressAlerting') triggar INTE larm om de bara finns i JSON.
+        - Ord i det syntetiska huvudet (t.ex. '[Inmarsat STD-C / Textmeddelande] Prioritet: Safety') triggar INTE larm.
+        - När ett larmord finns i brödtexten ska det däremot trigga larm.
+        """
+        # Rensa eventuella kvardröjande larmord från tidigare körningar
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("DELETE FROM alert_words WHERE word IN ('SafetyNet', 'MaritimeDistressAlerting', 'TESTUNIKBOTTEN')")
+        conn.commit()
+        conn.close()
+
+        # Skapa ett meddelande med syntetiskt huvud, harmlös brödtext och rå-JSON med känsliga nycklar
+        msg_with_raw = (
+            "[Inmarsat SafetyNET / Sjöfartsvarning] Område: NAVAREA I | Prioritet: Safety\n"
+            "VÄDERPROGNOS FÖR TESTUNIKBOTTEN: GOD SIKT OCH LÄTT VIND.\n"
+            "Rådata: {\"SafetyNet\": true, \"MaritimeDistressAlerting\": true, \"emergency_flag\": 1}"
+        )
+
+        # Kontrollera extrahering av brödtext för larmordsmatchning
+        isolated_body = extract_body_for_alert_matching(msg_with_raw)
+        self.assertEqual(isolated_body.strip(), "VÄDERPROGNOS FÖR TESTUNIKBOTTEN: GOD SIKT OCH LÄTT VIND.")
+
+        # Om användaren har lagt till "SafetyNet" eller "MaritimeDistressAlerting" som larmord,
+        # ska det INTE trigga på msg_with_raw eftersom det endast finns i Rådata
+        save_alert_word("SafetyNet", "#ff0000")
+        save_alert_word("MaritimeDistressAlerting", "#ff0000")
+
+        matches = check_alert_words(msg_with_raw)
+        self.assertFalse(matches, "Larmord i Rådata ska inte trigga larm!")
+
+        # Om brödtexten däremot innehåller ett larmord, t.ex. "TESTUNIKBOTTEN":
+        save_alert_word("TESTUNIKBOTTEN", "#ff0000")
+        matches_body = check_alert_words(msg_with_raw)
+        self.assertIsNotNone(matches_body)
+        self.assertEqual(matches_body.get('word'), "TESTUNIKBOTTEN")
+
+        # Städa upp
+        conn = get_connection()
+        c = conn.cursor()
+        c.execute("DELETE FROM alert_words WHERE word IN ('SafetyNet', 'MaritimeDistressAlerting', 'TESTUNIKBOTTEN', 'BOTTENHAVET')")
+        conn.commit()
+        conn.close()
 
     def test_strict_no_emojis_in_source_code(self):
         """Verifiera att inga emojis förekommer i källkodsfilerna eller mallarna."""

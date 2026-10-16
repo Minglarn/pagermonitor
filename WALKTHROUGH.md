@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.02`
+- **CalVer**: `2026.10.16.03`
 - **Date**: 2026-10-16
 - **Language**: English / Swedish
 
@@ -10,13 +10,24 @@
 ## Overview of Implemented Features
 
 ### 0. Inmarsat STD-C / EGC / SafetyNET / SAR Mottagare (SatDump 1.2.3 JSON_OUT)
+- **Strikt Delpaket- och Fragmentfiltrering ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Vid `satc_only_messages == True` ignoreras ofullständiga delpaket och delramar som sänds innan hela meddelandet satts ihop (t.ex. `EGC Double Header 1`, `EGC Double Header 2`, `Message Packet`), samt paket med fragment- eller fortsättningsflaggor.
+  - Endast sammanslagna kompletta meddelanden (`Full Message`, `Full EGC Message`) sparas i databasen och presenteras i gränssnittet.
+- **Strikt Binär- och Gibberishfilter (`is_binary_or_gibberish`) ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Identifierar och kastar krypterade ryska paket (`5PRCRYPTO`, `5PSCRYPTO`).
+  - Filtrerar bort paket med fler än 2 binära kontrolltecken (`ASCII < 32` exklusive `\r`, `\n`, `\t` samt `0x7F`) eller mer än 5 % kontrolltecken i den råa strängen.
+  - Läsbarhets- och ordfilter: kastar telemetri med > 12 % specialtecken (`|<>]}[{$&@^~`) eller färre än 2 giltiga ord med minst 4 bokstäver (t.ex. `H0 2 l5 &0 N c0 vVb AL 9 E$ @ P'I`).
+  - Tvättar automatiskt bort eventuella icke-utskrivbara kontrolltecken (`clean_control_characters`) ur visningstexten.
+- **Isolerad Larmordsmatchning och Rosa Radfärgning ([database.py](file:///d:/antigravity/pager-monitor/database.py), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - All egen rosa/röd radbakgrund för SATC har tagits bort. En tabellrad blir **ENDAST** rosa/pulserande om den matchar ett ord ur användarens aktiva larmordslista (`Alert words`).
+  - Larmordsmatchningen körs uteslutande mot den rena brödtexten (`extract_body_for_alert_matching` / `getAlertSearchableText`), och ignorerar både syntetiska headers (`[Inmarsat...]`) och den dolda rå-JSON-strängen (`\nRådata:`).
+  - Förhindrar falsklarm från JSON-attribut som `"SafetyNet": true` eller `"MaritimeDistressAlerting": true`.
 - **SatDump 1.2.3 inmarsat_stdc_parser Stöd ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
   - Fullt stöd för skarpa JSON-paket från SatDump 1.2.3 på port 6558:
     - **Bulletin Board (`type == 7`)**: Satellit, LES, ramnummer, returlänkhastighet.
     - **Signalling Channel (`type == 6`)**: Uplink-frekvens och TDM-tidluckor.
     - **Announcement (`type == 1`)**: Upprop till MES-terminal med hänvisad downlink, kanal och referens.
     - **Logical Channel Assignment (`type == 3`)**: Kanalallokering med downlink-frekvens och slotnummer.
-  - Strikt filtrering vid `satc_only_messages=True` som garanterar att endast paket med faktisk text (EGC SafetyNET, SAR, etc.) släpps igenom till meddelandelistan, medan kontrollfält (`message_reference_number`, `message_channel`) exkluderas.
   - Formatering på ren svenska för kontrollpaket vid `satc_only_messages=False`.
   - Automatisk avkodning av `source.station_id` (t.ex. `1.537.106` eller `1.539.481.`) och Hz-tal till MHz (`1537.106M`, `1539.421M`) för RF Activity-grafen.
   - Badgar för Satellit (`Sat: IOR`), LES (`LES: 312, Stratos Global`), Tjänst (`Service: Store And Forward`) och Terminal (`MES: 14557376`).
@@ -33,7 +44,6 @@
 - **Settings och UI-Integration**:
   - Konfigurationsflik `Inmarsat STD-C / EGC` i Settings med telemetrimätare och testknappar.
   - Protokollnamnet `SATC` visas i filtermenyn när `satc_enabled` är aktivt och döljs helt om inaktiverat.
-  - Kritiska nödmeddelanden (`DISTRESS` / `URGENCY`) färgas i rött med larmpuls.
   - Frekvenser (t.ex. `1537.700M`) integreras sömlöst i RF Activity-vattenfallet.
 
 ### 1. Dedicated Alarms Page & Dashboard with DataTables 2

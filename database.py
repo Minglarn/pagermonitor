@@ -10,12 +10,43 @@ from datetime import datetime
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'messages.db')
 
+def extract_body_for_alert_matching(text):
+    """
+    Extraherar den faktiska meddelandebrödtexten för larmordsmatchning.
+    Rensar bort:
+    1. Dold rådata (allt från Rådata: till slutet) så att JSON-nycklar/värden som "SafetyNet" inte triggar larmord.
+    2. Syntetiska metadatarubriker inom klamrar (t.ex. [Inmarsat STD-C ...] Prioritet: Safety) överst.
+    """
+    if not text:
+        return ""
+    s = str(text)
+    # Klipp bort Rådata
+    m_raw = re.search(r'(?:\r?\n|\s*\|\s*)Rådata:\s*', s, re.IGNORECASE)
+    if m_raw:
+        s = s[:m_raw.start()]
+    else:
+        m_raw2 = re.search(r'\bRådata:\s*', s, re.IGNORECASE)
+        if m_raw2:
+            s = s[:m_raw2.start()]
+
+    # Klipp bort syntetiska huvuden t.ex. [Inmarsat STD-C / ...] ... \n
+    s = re.sub(
+        r'^\[(?:Inmarsat|EGC|STD-C|SafetyNET|FleetNET|SAR|Upprop|Kanalallokering|Bulletin Board|Signalling Channel|Kontrollpaket)[^\]\n]*\][^\n]*\r?\n?',
+        '',
+        s,
+        flags=re.IGNORECASE
+    )
+    return s.strip()
+
 def regex_word_match(pattern, text):
     if not pattern or not text:
         return 0
+    clean_text = extract_body_for_alert_matching(text)
+    if not clean_text:
+        return 0
     # Match whole word with word boundary (Unicode-aware for Swedish characters)
     regex = rf'(?<![a-zA-Z0-9åäöÅÄÖ]){re.escape(str(pattern))}(?![a-zA-Z0-9åäöÅÄÖ])'
-    return 1 if re.search(regex, str(text), re.IGNORECASE) else 0
+    return 1 if re.search(regex, clean_text, re.IGNORECASE) else 0
 
 def get_connection(timeout=30.0):
     """Create a sqlite3 connection with WAL mode, busy timeout, and Unicode-aware helper functions."""
@@ -545,11 +576,14 @@ def check_alert_words(message):
     """
     if not message:
         return None
+    body_text = extract_body_for_alert_matching(message)
+    if not body_text:
+        return None
     alerts = get_alert_words()
     # Sort by length descending to match longest word first (standard practice)
     alerts.sort(key=lambda x: len(x['word']), reverse=True)
     
-    msg_str = str(message)
+    msg_str = body_text
     for alert in alerts:
         if not alert['is_active'] or not alert.get('word'):
             continue

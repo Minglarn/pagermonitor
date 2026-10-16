@@ -6,7 +6,7 @@ import logging
 import re
 from datetime import datetime
 from database import (
-    save_message, get_settings, get_connection
+    save_message, get_settings, get_connection, check_alert_words
 )
 
 try:
@@ -170,18 +170,30 @@ def format_satc_frequency(raw_freq):
     except (ValueError, TypeError):
         return s
 
+def clean_control_characters(text):
+    """
+    Rensar bort icke-utskrivbara binära kontrolltecken (ASCII < 32 utom \n, \r, \t)
+    samt DEL (0x7F) ur text så att brödtexten hålls ren och läsbar.
+    """
+    if not text:
+        return ""
+    # Ta bort ASCII 0x00-0x08, 0x0B-0x0C, 0x0E-0x1F, 0x7F
+    clean_str = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', str(text))
+    return clean_str.strip()
+
 def normalize_satc_priority(raw_priority, text=""):
     """
     Normaliserar prioritet:
     DISTRESS, URGENCY, Safety, Routine.
+    Observera att radfärgning/alert styrs separat av användarens aktiva larmordslista.
     """
     p_str = str(raw_priority or "").strip().upper()
     t_str = str(text or "").upper()
 
     if p_str in ("3", "DISTRESS") or "DISTRESS" in p_str or "MAYDAY" in p_str or "MAYDAY" in t_str or "DISTRESS" in t_str:
-        return "DISTRESS", True
+        return "DISTRESS", False
     if p_str in ("2", "URGENCY") or "URGENCY" in p_str or "PAN PAN" in p_str or "PAN PAN" in t_str or "PAN-PAN" in t_str:
-        return "URGENCY", True
+        return "URGENCY", False
     if p_str in ("1", "SAFETY") or "SAFETY" in p_str or "SECURITE" in p_str or "SECURITE" in t_str:
         return "Safety", False
     if p_str in ("0", "ROUTINE") or "ROUTINE" in p_str:
@@ -228,6 +240,51 @@ def classify_satc_service(payload, text=""):
     # STD-C Textmeddelande
     return "Inmarsat STD-C / Textmeddelande", "STD-C: Textmeddelande", "Inmarsat-C"
 
+def is_binary_or_gibberish(raw_text: str) -> bool:
+    """
+    Identifierar binära, telemetriska eller krypterade Inmarsat STD-C-paket
+    som SatDump felaktigt tolkar som ASCII-text.
+    Returnerar True om texten är skräp/binär och bör filtreras bort när satc_only_messages är aktivt.
+    """
+    if not raw_text or not isinstance(raw_text, str):
+        return True
+
+    # 1. Krypterade ryska paket (5PRCRYPTO eller 5PSCRYPTO)
+    upper_raw = raw_text.upper()
+    if "5PRCRYPTO" in upper_raw or "5PSCRYPTO" in upper_raw:
+        return True
+
+    # 2. Hög andel binära kontrolltecken i råtexten (innan städning)
+    # Kontrolltecken: ASCII < 32 exklusive \r (13), \n (10), \t (9), samt 0x7F (127)
+    control_chars = [ch for ch in raw_text if (ord(ch) < 32 and ch not in ('\r', '\n', '\t')) or ord(ch) == 127]
+    control_count = len(control_chars)
+    total_len = len(raw_text)
+
+    if control_count > 2:
+        return True
+    if total_len > 0 and (control_count / total_len) > 0.05:
+        return True
+
+    # 3. Läsbarhets- och ordfilter (Gibberish-detektering)
+    cleaned_text = clean_control_characters(raw_text).strip()
+    if not cleaned_text:
+        return True
+
+    # Räkna andelen vanliga tecken jämfört med typiska telemetri-specialtecken: | < > ] [ $ & @ ^ ~ ` { }
+    visible_chars = [ch for ch in cleaned_text if not ch.isspace()]
+    if visible_chars:
+        special_chars_set = set("|<>]}[{$&@^~`")
+        special_count = sum(1 for ch in visible_chars if ch in special_chars_set)
+        if (special_count / len(visible_chars)) > 0.12:
+            return True
+
+    # Kontrollera förekomst av riktiga ord med minst 4 bokstäver
+    words = re.findall(r'[A-Za-z]{4,}', cleaned_text)
+    if len(words) < 2:
+        return True
+
+    return False
+
 def parse_satc_frame(payload, only_messages=True):
     """
     Parsar ett avkodat SatDump Inmarsat STD-C / EGC-ramverk i JSON-format.
@@ -237,26 +294,65 @@ def parse_satc_frame(payload, only_messages=True):
     if not isinstance(payload, dict):
         return None
 
-    # Extrahera descriptor om tillgänglig
+    # Extrahera descriptor och pkt_name om tillgängligt
     desc = payload.get("descriptor") if isinstance(payload.get("descriptor"), dict) else {}
     desc_type = desc.get("type")
+    pkt_name = str(payload.get("pkt_name") or payload.get("packet_name") or "").strip()
+    pkt_name_lower = pkt_name.lower()
 
-    # Extrahera faktisk brödtext ur explicita meddelandefält
+    # Kontrollera om det är ett ofullständigt delpaket/fragment
+    is_fragment = False
+    if pkt_name:
+        # Om SatDump angett pkt_name: kompletta sammanslagna meddelanden innehåller alltid "full"
+        # (t.ex. "Full Message" eller "Full EGC Message").
+        # Paket som "EGC Double Header 1", "EGC Double Header 2", "EGC Single Header", "Message Packet" etc.
+        # saknar "full" och är ofullständiga delpaket.
+        if "full" not in pkt_name_lower:
+            is_fragment = True
+    else:
+        # Om pkt_name saknas: kontrollera fragment- och fortsättningsflaggor
+        if payload.get("continuation") is True or payload.get("is_continuation") is True:
+            is_fragment = True
+        elif payload.get("is_fragment") is True or payload.get("fragment") is True:
+            is_fragment = True
+        elif "packet_number" in payload and "number_of_packets" in payload:
+            try:
+                pkt_num = int(payload.get("packet_number", 0))
+                num_pkts = int(payload.get("number_of_packets", 0))
+                if num_pkts > 1 and pkt_num < num_pkts:
+                    is_fragment = True
+            except (ValueError, TypeError):
+                pass
+
+    # När only_messages är aktivt: ignorera ofullständiga delpaket/fragment
+    if only_messages and is_fragment:
+        logger.debug(f"[SATC] Ignorerar ofullständigt delpaket/fragment: pkt_name={pkt_name}")
+        return None
+
+    # Extrahera faktisk brödtext ur explicita meddelandefält innan städning
     # OBS: "message_reference_number" och "message_channel" är kontrollfält och INTE brödtext!
-    raw_text = None
+    raw_text_uncleaned = None
     for k in ("message", "text", "msg", "data", "content", "body", "egc_text", "egc_message", "ascii", "payload"):
         val = payload.get(k)
         if isinstance(val, str) and val.strip():
-            raw_text = val.strip()
+            raw_text_uncleaned = val
             break
         elif isinstance(val, dict):
             for sub_k in ("text", "message", "msg", "data", "ascii"):
                 sub_val = val.get(sub_k)
                 if isinstance(sub_val, str) and sub_val.strip():
-                    raw_text = sub_val.strip()
+                    raw_text_uncleaned = sub_val
                     break
-        if raw_text:
+        if raw_text_uncleaned:
             break
+
+    # När only_messages är aktivt: kontrollera binärt skräp / telemetri / kryptering på den råa texten
+    if only_messages and raw_text_uncleaned:
+        if is_binary_or_gibberish(raw_text_uncleaned):
+            logger.debug("[SATC] Ignorerar binärt/krypterat skräppaket")
+            return None
+
+    raw_text = clean_control_characters(raw_text_uncleaned) if raw_text_uncleaned else None
 
     # Identifiera specifika kontrollpakettyper från SatDump descriptor & rotfält
     # 1. Bulletin Board: descriptor.type == 7 eller frame_number + status eller channel_type_name == "NCS"
@@ -740,15 +836,25 @@ class SatCReceiver:
         message = parsed['message']
         frequency = parsed['frequency']
         bitrate = parsed['bitrate']
-        metadata = parsed['metadata']
 
-        # Spara till databas
+        # Kontrollera larmord ENDAST mot den faktiska brödtexten
+        body_to_check = parsed.get('body_text') or ""
+        alert_match = check_alert_words(body_to_check)
+        is_alert_hit = bool(alert_match)
+
+        metadata = dict(parsed['metadata'])
+        metadata['is_alert'] = is_alert_hit
+        if alert_match:
+            metadata['alert_word'] = alert_match.get('word')
+            metadata['alert_color'] = alert_match.get('color')
+
+        # Spara till databas (function_code=1 ENDAST vid träff i användarens larmordslista)
         try:
             msg_id, timestamp = save_message(
                 address=address,
                 message=message,
                 alias=alias,
-                function_code=1 if parsed['is_alert'] else 0,
+                function_code=1 if is_alert_hit else 0,
                 bitrate=bitrate,
                 frequency=frequency,
                 metadata=metadata
@@ -780,6 +886,11 @@ class SatCReceiver:
             'address': address,
             'message': message,
             'alias': alias,
+            'frequency': frequency,
+            'bitrate': bitrate,
+            'is_alert': is_alert_hit,
+            'alert_word': alert_match.get('word') if alert_match else None,
+            'alert_color': alert_match.get('color') if alert_match else None,
             'is_duplicate': False,
             'repeat_count': 1,
             'last_timestamp': timestamp

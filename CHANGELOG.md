@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.03] - Strikt Filtrering av Delpaket, Binär- och Gibberishfilter samt Isolering av Larmord till Brödtext
+
+- **Ta bort all SATC-specifik radbakgrundsfärg ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - En rad i tabellen blir nu **ENDAST** rosa/röd om den matchar ett aktivt larmord från användarens bevakningslista (`Alert words`).
+  - Borttaget all hårdkodad radfärgning för `DISTRESS` och `URGENCY` (`isSatcCritical`). SATC-prioritet visas som tidigare via badgen `Priority: DISTRESS/URGENCY/Safety/Routine`.
+- **Isolering av larmordsmatchning till ren brödtext ([database.py](file:///d:/antigravity/pager-monitor/database.py), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - `extract_body_for_alert_matching()` och `getAlertSearchableText()` strippar bort både syntetiska headers (`[Inmarsat...]`) och den dolda rå-JSON-strängen (`\nRådata: {...}`).
+  - Förhindrar falsklarm från dolda JSON-fält som `"SafetyNet": true` eller `"MaritimeDistressAlerting": true`.
+- **Filtrering av ofullständiga delpaket / Multi-part fragments ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Vid `satc_only_messages == True` ignoreras delpaket med `pkt_name` som inte innehåller `"Full"` (t.ex. `EGC Double Header 1`, `EGC Double Header 2`, `Message Packet`), samt paket med fragmentindikatorer.
+  - Endast sammanslagna kompletta meddelanden (`Full Message`, `Full EGC Message`) sparas i databasen.
+- **Strikt binär- och skräpfilter (`is_binary_or_gibberish`) ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Filtrerar bort krypterade ryska paket (`5PRCRYPTO` / `5PSCRYPTO`).
+  - Filtrerar bort paket med fler än 2 binära kontrolltecken (`ASCII < 32` utom `\n`, `\r`, `\t` samt `0x7F`) eller > 5 % kontrolltecken i rådata.
+  - Läsbarhets-/ordfilter som kastar telemetri med > 12 % specialtecken eller färre än 2 riktiga ord med >= 4 bokstäver (t.ex. `H0 2 l5 &0 N c0 vVb AL 9 E$ @ P'I`).
+  - Tvättar bort icke-utskrivbara kontrolltecken (`clean_control_characters`) ur visningstexten.
+- **Enhetstester och Emojiförbud ([tests/test_satc.py](file:///d:/antigravity/pager-monitor/tests/test_satc.py))**:
+  - Lagt till tester för `is_binary_or_gibberish`, `clean_control_characters`, fragmentfiltrering och larmordsisolering.
+  - Samtliga 142 tester i testsviten passerar felfritt och 0 otillåtna emojis förekommer i systemet.
+
 ## [2026.10.16.02] - SatDump 1.2.3 Paketklassificering, station_id Frekvensavkodning och Port 6558
 
 - **Stöd för SatDump 1.2.3 Paketstrukturer och Descriptors ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:

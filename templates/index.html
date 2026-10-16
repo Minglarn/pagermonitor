@@ -1879,6 +1879,23 @@
                 .replace(/'/g, '&#39;');
         }
 
+        // Hjälpfunktion för att extrahera endast faktisk brödtext för larmordskontroll
+        function getAlertSearchableText(text) {
+            if (!text) return '';
+            let s = String(text);
+            const rIdx = s.search(/(?:\r?\n|\s*\|\s*)Rådata:/i);
+            if (rIdx !== -1) {
+                s = s.substring(0, rIdx);
+            } else {
+                const fIdx = s.search(/\bRådata:/i);
+                if (fIdx !== -1) {
+                    s = s.substring(0, fIdx);
+                }
+            }
+            s = s.replace(/^\[(?:Inmarsat|EGC|STD-C|SafetyNET|FleetNET|SAR|Upprop|Kanalallokering|Bulletin Board|Signalling Channel|Kontrollpaket)[^\]\n]*\][^\n]*\r?\n?/i, '');
+            return s.trim();
+        }
+
         // Hjälpfunktion för att matcha hela ord (Unicode-säker för å, ä, ö)
         function checkAlertWordMatch(word, text) {
             if (!word || !text) return false;
@@ -1935,6 +1952,11 @@
                     let lineEscaped = escapeHtml(cleanLine);
                     let highlighted = highlightMessage(lineEscaped);
                     return `<div class="pilot-freetext-highlight">${highlighted}</div>`;
+                }
+                // Skydda syntetiska metadatarubriker från felaktig larmordsmarkering
+                if (/^\[(?:Inmarsat|EGC|STD-C|SafetyNET|FleetNET|SAR|Upprop|Kanalallokering|Bulletin Board|Signalling Channel|Kontrollpaket)/i.test(cleanLine)) {
+                    let segEscaped = escapeHtml(cleanLine);
+                    return segEscaped.replace(/^(\[[^\]]+\])(\s*)/, '<strong class="msg-label">$1</strong>$2');
                 }
                 const rawSegments = line.split(/\s*\|\s*/);
                 const formattedSegments = rawSegments.map(seg => {
@@ -2323,18 +2345,13 @@
             tr.setAttribute('data-navarea', satcNavareaVal || '');
             tr.setAttribute('data-les', satcLesVal || '');
 
-            // Ordbevakning och SATC Distress/Urgency-larm
+            // Ordbevakning - endast aktiva larmord i brödtexten får färga raden
             if (isBasestation) {
                 tr.classList.add('basestation-row');
             } else {
-                const hasAlert = alertWords.some(aw => aw.is_active && checkAlertWordMatch(aw.word, cleanMsg));
-                const isSatcCritical = isSatc && (
-                    alarm.is_alert ||
-                    (satcPriorityVal && (satcPriorityVal.toUpperCase() === 'DISTRESS' || satcPriorityVal.toUpperCase() === 'URGENCY')) ||
-                    cleanMsg.includes('Prioritet: DISTRESS') || cleanMsg.includes('Prioritet: URGENCY') ||
-                    cleanMsg.includes('DISTRESS ALERT')
-                );
-                if (hasAlert || isSatcCritical) {
+                const alertSearchText = getAlertSearchableText(cleanMsg);
+                const hasAlert = alertWords.some(aw => aw.is_active && checkAlertWordMatch(aw.word, alertSearchText));
+                if (hasAlert) {
                     tr.classList.add('alert-row', 'alert-pulse-bg');
                 }
             }
