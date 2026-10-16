@@ -1,13 +1,12 @@
 # PagerMonitor
 
-[![Version](https://img.shields.io/badge/version-2026.10.14.31-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2026.10.16.04-blue.svg)](CHANGELOG.md)
 [![GitHub last commit](https://img.shields.io/github/last-commit/Minglarn/pagermonitor)](https://github.com/Minglarn/pagermonitor/commits/main)
 [![GitHub issues](https://img.shields.io/github/issues/Minglarn/pagermonitor)](https://github.com/Minglarn/pagermonitor/issues)
 [![GitHub stars](https://img.shields.io/github/stars/Minglarn/pagermonitor?style=social)](https://github.com/Minglarn/pagermonitor/stargazers)
 [![Docker](https://img.shields.io/badge/docker-GHCR-blue.svg?logo=docker&logoColor=white)](https://github.com/Minglarn/pagermonitor/pkgs/container/pagermonitor)
 
-
-PagerMonitor is a complete, containerized Software Defined Radio (SDR) platform designed to capture, decode, and monitor POCSAG pager transmissions. The system features a modern real-time dark web interface, dynamic receiver configuration, multi-SDR receiver support, a CapCode alias management engine, automated database maintenance, and a dedicated alarms view for monitored keywords.
+PagerMonitor ar en komplett, containeriserad Software Defined Radio (SDR) overvakningsplattform for realtidsmottagning, avkodning och analys av tradlosa radio- och satellitprotokoll. Systemet har ett modernt morkt webbgransnitt (OLED/Glassmorphism), dynamisk multi-SDR-hantering, avancerad ordbevakning, inbaddade interaktiva sjokort/kartor (Leaflet), och fullt stod for MQTT-integration till t.ex. Home Assistant eller Node-RED.
 
 <p align="center">
   <img src="docs/screenshots/dashboard_preview.png" alt="PagerMonitor Real-time Monitor" width="100%">
@@ -15,86 +14,96 @@ PagerMonitor is a complete, containerized Software Defined Radio (SDR) platform 
 
 ---
 
-## Core Features
+## Protokoll som Stods
 
-* **Multi-SDR Support**: Run and monitor multiple RTL-SDR devices simultaneously. Assign individual receivers to distinct frequencies and sample rates, managed independently from a unified web interface.
-* **Dedicated Alarms View**: A standalone page that aggregates all messages matching your monitored alert keywords in real time, complete with color-coded alert badges.
-* **Real-time Docker & System Console**: Universal bottom-docked terminal available across all views that streams 100% of container and Python logs via SSE, with ANSI/log-level color badges, word-wrap toggling, autoscroll, and real-time text filtering.
-* **Decoding & Noise Filtering**: Powered by `multimon-ng` for decoding POCSAG 512, 1200, and 2400 baud. Features an intelligent entropy-based junk filter that discards noise and corrupted frames while preserving short legitimate messages.
-* **Character Set Support**: Built-in support for European and Swedish character sets (converting legacy pager representations to Å, Ä, and Ö) alongside clean newline formatting.
-* **Real-time Live Stream**: Modern user interface utilizing `Server-Sent Events (SSE)` for instantaneous message delivery without page reloads. Includes infinite scrolling for full database history browsing.
-* **CapCode Aliases & Muting**: Map numeric pager addresses (e.g. `1234567`) to descriptive names (e.g. `Station Central`). Mute noisy or unwanted addresses directly from the interface.
-* **Watchlist & Alert Words**: Configure custom comma-separated watchwords (e.g. `FIRE, ACCIDENT, CPR, AMBULANCE`). Matched messages are highlighted and streamed to the dedicated Alarms tab.
-* **Database Stats & Automated Retention**: Comprehensive database metric cards (total messages, watchlist hits, storage footprint, date ranges, duplicates, protected rows) and scheduled auto-pruning.
-* **HTTP Security & Hardening**: Optional HTTP Basic Authentication configurable via environment variables, hardened HTTP response headers (X-Frame-Options, X-Content-Type-Options, Content Security Policy), and request payload size caps to guard against denial of service.
-* **MQTT Integration**: Automatically forwards decoded messages to any local or remote MQTT broker (e.g. Home Assistant or Node-RED). Aliases and alert tags are included in the JSON payload.
-* **Deduplication Engine**: Automatically identifies and flags duplicate transmissions occurring within a configurable 60-second window to prevent repetitive notifications.
+### 1. Inmarsat STD-C / EGC / SafetyNET / SAR (SATC)
+* **SatDump Integration**: Tar emot och avkodar radseparerade JSON-datastrommar fran SatDump (`inmarsat_stdc_parser`, standardport `6558` over UDP/TCP eller via anpassad fjarr-IP).
+* **Maritima Larm och Varningar**: Full avkodning av SafetyNET, Navigationsvarningar (NAVWARN/NAVAREA), Vaderskrivelser (METAREA), Flottmeddelanden (FleetNET), och Sjorraddningslarm (SAR / Distress Relay).
+* **Automatisk Jordstations- och Satellitidentifiering**: Identifierar Inmarsat-satelliter (t.ex. IOR, AOR-E) och Land Earth Stations (LES, t.ex. Burum, Eik, Aussaguel, Goonhilly).
+* **Inbaddad Leaflet-Minikarta**: Meddelanden med GPS-koordinater renderas automatiskt med en interaktiv minikarta till hoger i meddelandecellen. Kartan kombinerar OpenStreetMap med OpenSeaMap-sjokortsoverlay for full maritim kontext. Klick pa positionsbadgen zoomar direkt in till zoomniva 13.
+* **Strikt Filtrering av Delpaket och Krypto**: Ignorerar ofullstandiga multi-part fragment och filtrerar automatiskt bort krypterade paket (t.ex. ryska `5PRCRYPTO`/`5PSCRYPTO`) och binar telemetri tolkad som ASCII.
+
+### 2. VDL2 / ACARS (VHF Data Link Mode 2)
+* **Flygkommunikation**: Tar emot avkodade VDL2- och ACARS-ramar fran `dumpvdl2` via UDP-stromning.
+* **Rutt- och Flygplatsavkodning**: Extraherar ICAO-flygplatser (t.ex. ESSA Arlanda, ESGG Landvetter, EGLL Heathrow) och presenterar flygplatsetiketter.
+* **Flygdata & Pilotmeddelanden**: Visar flygnummer (Flight), flygplanets registrering (Tail/Reg), ICAO-adress (24-bit hex), ACARS-labels, och markerar pilotmeddelanden.
+* **Flerfrekvensstod**: Hanterar flera samtida VDL2-kanaler (t.ex. 136.725 MHz, 136.875 MHz, 136.975 MHz).
+
+### 3. RadioSonde (Vadersonder & Ballonger)
+* **Atmosfarisk Telemetri**: Tar emot sonddata fran `radiosonde_auto_rx` over UDP.
+* **Sensordata**: Visar sondens serienummer, frekvens, GPS-position (lat/lon), flyghojd (MSL), temperatur, relativ luftfuktighet, stighastighet och beraknad burst/landning.
+
+### 4. POCSAG (Personsokare)
+* **Avkodning via multimon-ng**: Stod for POCSAG 512, 1200 och 2400 baud.
+* **Entropibaserat Brusfilter**: Filtrerar automatiskt bort felaktiga ramar och radiostorningar utan att tappa korta giltiga larm.
+* **Europeisk Teckenuppsattning**: Full konvertering for svenska tecken (A, A, O).
+
+### 5. TETRA & RDS-TMC
+* **TETRA RAKEL Overvakning**: Logger for TETRA-basstationer och natverkshandelser, med mojlighet att filtrera bort repetitiv basstationstelemetri.
+* **RDS-TMC**: Avkodning av trafikmeddelanden fran FM-sandare.
 
 ---
 
-## MQTT Payload & Home Automation
+## Funktioner i Webbgransnittet
 
-### JSON Payload Example
+* **Flodespaus vid Mus-hover**: Nar muspekaren placeras over meddelandeflodet pausas tabellen automatiskt och en svavande statusbricka ("Flodet Pausat") tands. Nya meddelanden buffras i bakgrunden och spolas in direkt nar musen lamnar flodet.
+* **DataTables 2 med Sticky Headers**: Blixtsnabb sortering, paginering och fritextsokning i realtid med ladda-fler historik.
+* **RF Activity Ribbon**: Visar ett 60-minuters spektrumnarvaro-vattenfall for alla aktiva kanaler och frekvenser med klickbara snabbfilter.
+* **Dedikerad Larmvy (`/alarms`)**: Samlar alla meddelanden som triggat pa anvandarens aktiva larmord med fargkodade larmbadgar och prioritetspuls.
+* **CapCode & Adress-Alias**: Koppla numeriska adresser eller ICAO-koder till vardagliga namn (t.ex. "Raddningstjanst", "SAS Flight SK142").
+* **Live Docker Console**: Inbyggd realtidsterminal i nederkant som visar containerloggar via SSE med niva-markeringar och filtrering.
+* **Databasstatistik och Autorensning**: KPI-kort over databasens storlek, meddelandevolym och automatisk schemalagd rensning av gamla data.
+
+---
+
+## MQTT & Hemautomation
+
+PagerMonitor publicerar varje avkodat meddelande automatiskt till valfri MQTT-broker (t.ex. Mosquitto eller Home Assistant).
+
+### Exempel pa JSON-payload
 ```json
 {
-  "timestamp": "2026-10-11T14:30:00.000000",
-  "address": "1234567",
-  "message": "ALARM: COMMERCIAL BUILDING FIRE\nSTATION STREET 1\nUNITS 1 AND 2 DISPATCHED",
-  "alias": "Fire Department",
-  "bitrate": "1200",
-  "function": 3,
-  "frequency": "169.8M",
-  "alert_word": "FIRE",
-  "alert_color": "#ef4444",
-  "sdr_name": "Receiver 1",
+  "timestamp": "2026-10-16T08:59:26.000000",
+  "address": "LES: 312, Stratos Global (Burum)",
+  "message": "[Inmarsat STD-C / Textmeddelande] Sat: IOR | Jordstation: Burum | Prioritet: Routine\nWEEKLY GMDSS TEST IN PORT - CARNIVAL LEGEND\nGPS POSN : 41 01.66 N 028 59.28 E",
+  "alias": "Inmarsat-C",
+  "bitrate": "SATC-600",
+  "frequency": "1539.421M",
+  "protocol": "SATC",
+  "priority": "Routine",
+  "lat": 41.02767,
+  "lon": 28.98800,
+  "alert_word": null,
   "is_duplicate": false
 }
 ```
 
-### Home Assistant Automation Example
+### Home Assistant Automation (Exempel)
 ```yaml
-alias: "PagerMonitor: Send Priority Alert"
-description: "Dispatches mobile notification when a monitored keyword is hit"
+alias: "PagerMonitor: Maritimt eller flyglarm"
+description: "Skickar mobilnotis vid SAR-larm eller bevakat larmord"
 triggers:
   - trigger: mqtt
     topic: pagermonitor/alarms
 conditions:
   - condition: template
     value_template: >-
-      {{ trigger.payload_json.alert_word | length > 0 and
-      trigger.payload_json.is_duplicate == false }}
+      {{ trigger.payload_json.alert_word | length > 0 or
+         trigger.payload_json.priority == 'DISTRESS' }}
 actions:
-  - action: notify.mobile_devices_notification
+  - action: notify.notify
     data:
-      title: >-
-        {{ trigger.payload_json.alert_word }}: {{ trigger.payload_json.alias if
-        trigger.payload_json.alias != '' else trigger.payload_json.address }}
+      title: "LARM: {{ trigger.payload_json.alias }}"
       message: "{{ trigger.payload_json.message }}"
       data:
-        color: "{{ trigger.payload_json.alert_color }}"
-        tag: "pagermonitor-{{ trigger.payload_json.address }}"
         priority: high
-        ttl: 0
-mode: queued
-max: 10
 ```
 
 ---
 
-## System Architecture
+## Snabbstart med Docker Compose
 
-The application runs in an isolated container compiled from source (`librtlsdr` and `multimon-ng`) for maximum performance and driver compatibility:
-
-1. **Flask Backend**: Serves the web interface, REST API, authentication middleware, and Server-Sent Events stream.
-2. **SDR Supervisor**: Python background supervisor managing `rtl_fm` and `multimon-ng` subprocesses. Changing radio parameters in the UI triggers seamless live restarts.
-3. **Automated Scheduler**: Background maintenance thread executing database retention checks every 6 hours.
-4. **SQLite Database**: Messages, CapCode aliases, alert words, and SDR settings are persisted inside `/app/data/pagermonitor.db`.
-
----
-
-## Quickstart with Docker Compose
-
-Preconfigured deployment via [docker-compose.yml](docker-compose.yml):
+Anvand filen `docker-compose.yml` for enkel distribution:
 
 ```yaml
 services:
@@ -103,63 +112,42 @@ services:
     container_name: pagermonitor
     restart: unless-stopped
     devices:
-      # Grants container access to the host USB SDR dongles on Linux
       - /dev/bus/usb:/dev/bus/usb
     volumes:
       - ./data:/app/data
     environment:
-      - MQTT_BROKER=${MQTT_BROKER:-127.0.0.1}
-      - MQTT_PORT=${MQTT_PORT:-1883}
-      - MQTT_USER=${MQTT_USER:-}
-      - MQTT_PASS=${MQTT_PASS:-}
-      - MQTT_TOPIC=${MQTT_TOPIC:-pagermonitor/alarms}
-      - TZ=${TZ:-Europe/Stockholm}
-      # HTTP Basic Authentication (leave AUTH_PASS empty to disable)
-      - AUTH_USER=${AUTH_USER:-admin}
-      - AUTH_PASS=${AUTH_PASS:-}
+      - MQTT_BROKER=127.0.0.1
+      - MQTT_PORT=1883
+      - MQTT_TOPIC=pagermonitor/alarms
+      - TZ=Europe/Stockholm
+      - AUTH_USER=admin
+      - AUTH_PASS=
     ports:
-      - "7090:5000"
+      - "7090:5000"   # Webbgranssnitt
+      - "6558:6558/udp" # Inmarsat STD-C SatDump UDP
+      - "6558:6558"     # Inmarsat STD-C SatDump TCP
+      - "5555:5555/udp" # VDL2 dumpvdl2 UDP
+      - "5556:5556/udp" # RadioSonde auto_rx UDP
 ```
 
-### 1. Hardware Requirements (Linux / Raspberry Pi)
-Ensure Docker has access to your USB RTL-SDR dongles:
-
+### Starta tjansten
 ```bash
-lsusb
-```
-
-*(Tip: Blacklist default Linux DVB-T kernel drivers if they block RTL-SDR: `sudo rmmod dvb_usb_rtl28xxu`)*
-
-### 2. Configure Environment Variables
-Copy the example file and update your configuration:
-
-```bash
-cp .env.example .env
-nano .env
-```
-
-If running behind an authenticating reverse proxy (like Nginx Proxy Manager), leave `AUTH_PASS` blank. If deploying directly, provide a strong password for `AUTH_PASS`.
-
-### 3. Launch Container
-```bash
-# Start in background
+# Starta i bakgrunden
 docker compose up -d
 
-# Inspect live logs
+# Folj live-loggar
 docker compose logs -f
 ```
 
+Oppna webblasaren pa: **`http://<SERVER_IP>:7090`**
+
 ---
 
-## Web Interface Overview
+## Menyöversikt i Webbgränssnittet
 
-Access the web interface at:
-**`http://<SERVER_IP>:7090`**
-
-### Navigation
-* **Dashboard**: Real-time live feed of incoming pager traffic.
-* **Alarms**: Dedicated view for messages triggering watchlist hits.
-* **Aliases**: Map CapCodes to readable names and toggle muting.
-* **Alert Words**: Manage keywords that trigger alarms and highlighted badges.
-* **Statistics**: Historical graphs, hourly frequency charts, and daily logs.
-* **Settings**: Configure SDR hardware, audio filters, and inspect **Database Stat** KPI cards & automated data retention.
+* **Monitor (`/`)**: Huvudfloedet i realtid med inbaddade Leaflet-minikartor, snabbfilter och RF-aktivitet.
+* **Larm (`/alarms`)**: Separat vy for meddelanden som matchat aktiva larmord.
+* **Alias (`/aliases`)**: Hantera CapCodes, adresser, flygbolag och muting.
+* **Larmord (`/alert_words`)**: Konfigurera bevakningsord och farger.
+* **Statistik (`/statistics`)**: Protokollfordelning, timdiagram och stationsstatistik.
+* **Installningar (`/settings`)**: Konfigurera SDR-enheter, VDL2/RadioSonde/SATC-portar och databasunderhall.

@@ -16,6 +16,10 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
 
+    <!-- Leaflet CSS & JS for Inmarsat/SATC Minikarta -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
         /* Custom OLED / Glassmorphism styling for DataTables */
         .dt-container {
@@ -1120,6 +1124,14 @@
                         <div id="activeFilterChips" class="active-filter-chips" style="display: none;"></div>
                     </div>
 
+                    <!-- Flödet Pausat - Svävande indikator vid mus-hover -->
+                    <div id="hoverPausePill" class="hover-pause-pill" style="display: none;">
+                        <span class="hover-pause-dot"></span>
+                        <i class="fas fa-pause"></i>
+                        <span>Flödet Pausat</span>
+                        <span id="hoverPauseBufferBadge" class="hover-pause-badge" style="display: none;">0 nya</span>
+                    </div>
+
                     <table id="alarmsTable" class="dataTable dashboard-dt">
                         <thead>
                             <tr>
@@ -1189,8 +1201,213 @@
         let alertWords = [];
         let allAlarms = [];
         let isLivePaused = false;
+        let isHoverPaused = false;
         let pausedQueue = [];
         let hideBasestations = localStorage.getItem('hide_tetra_basestations') === 'true'; // default: false (visas som standard)
+
+        // Leaflet Minikart-instanser och IntersectionObserver för lazy-init
+        const minimapInstances = new Map();
+        let minimapObserver = null;
+
+        function extractCoordinatesFromText(text) {
+            if (!text || typeof text !== 'string') return null;
+
+            // 1. Redan formaterad Pos: lat, lon (t.ex. Pos: 41.0277, 28.9880)
+            const mPos = text.match(/Pos:\s*(-?\d+\.\d+),\s*(-?\d+\.\d+)/i);
+            if (mPos) {
+                return { lat: parseFloat(mPos[1]), lon: parseFloat(mPos[2]) };
+            }
+
+            // 2. Grader och decimalminuter (t.ex. GPS POSN : 41 01.66 N 028 59.28 E eller 58-34.2N 016-12.5E)
+            const mDegMin = text.match(/(\d{1,2})[-°\s]+(\d{1,2}(?:\.\d+)?)[′'\s]*([NS])[\s,;/and]*(\d{1,3})[-°\s]+(\d{1,2}(?:\.\d+)?)[′'\s]*([EW])/i);
+            if (mDegMin) {
+                let lat = parseInt(mDegMin[1], 10) + (parseFloat(mDegMin[2]) / 60.0);
+                if (mDegMin[3].toUpperCase() === 'S') lat = -lat;
+                let lon = parseInt(mDegMin[4], 10) + (parseFloat(mDegMin[5]) / 60.0);
+                if (mDegMin[6].toUpperCase() === 'W') lon = -lon;
+                return { lat, lon };
+            }
+
+            // 3. Decimalgrader (t.ex. 58.5700N 016.2083E)
+            const mDec = text.match(/(\d{1,2}\.\d+)\s*([NS])[\s,;/and]*(\d{1,3}\.\d+)\s*([EW])/i);
+            if (mDec) {
+                let lat = parseFloat(mDec[1]);
+                if (mDec[2].toUpperCase() === 'S') lat = -lat;
+                let lon = parseFloat(mDec[3]);
+                if (mDec[4].toUpperCase() === 'W') lon = -lon;
+                return { lat, lon };
+            }
+
+            return null;
+        }
+
+        function getMinimapObserver() {
+            if (!minimapObserver && 'IntersectionObserver' in window) {
+                minimapObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            initMinimap(entry.target);
+                            minimapObserver.unobserve(entry.target);
+                        }
+                    });
+                }, { rootMargin: '200px 0px' });
+            }
+            return minimapObserver;
+        }
+
+        function registerMinimap(containerEl) {
+            if (!containerEl || containerEl._leaflet_map || minimapInstances.has(containerEl.id)) return;
+            const observer = getMinimapObserver();
+            if (observer) {
+                observer.observe(containerEl);
+            } else {
+                initMinimap(containerEl);
+            }
+        }
+
+        function initMinimap(containerEl) {
+            if (!containerEl || containerEl._leaflet_map || minimapInstances.has(containerEl.id)) return;
+            if (typeof L === 'undefined') return;
+
+            const lat = parseFloat(containerEl.dataset.lat);
+            const lon = parseFloat(containerEl.dataset.lon);
+            if (isNaN(lat) || isNaN(lon)) return;
+
+            try {
+                const map = L.map(containerEl, {
+                    center: [lat, lon],
+                    zoom: 9,
+                    zoomControl: false,
+                    attributionControl: false,
+                    scrollWheelZoom: false
+                });
+
+                // Baslager: OpenStreetMap
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 18
+                }).addTo(map);
+
+                // Sjökortsoverlay: OpenSeaMap seamark
+                L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+                    maxZoom: 18
+                }).addTo(map);
+
+                // Tydlig cirkelmarkör på koordinaten
+                L.circleMarker([lat, lon], {
+                    radius: 6,
+                    color: '#ef4444',
+                    fillColor: '#ef4444',
+                    fillOpacity: 0.85
+                }).addTo(map);
+
+                containerEl._leaflet_map = map;
+                minimapInstances.set(containerEl.id, map);
+
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 150);
+            } catch (e) {
+                console.error('Fel vid initiering av Leaflet-minikarta:', e);
+            }
+        }
+
+        function zoomMinimap(msgId, lat, lon, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+            const containerEl = document.getElementById(`minimap-${msgId}`);
+            if (!containerEl) return;
+
+            let map = containerEl._leaflet_map || minimapInstances.get(containerEl.id);
+            if (!map) {
+                initMinimap(containerEl);
+                map = containerEl._leaflet_map;
+            }
+            if (map) {
+                map.setView([lat, lon], 13, { animate: true });
+                map.invalidateSize();
+            }
+        }
+
+        function refreshMinimaps() {
+            // Städa bort kartor för noder som raderats ur DOM
+            for (const [id, map] of minimapInstances.entries()) {
+                if (!document.getElementById(id)) {
+                    try { map.remove(); } catch (e) {}
+                    minimapInstances.delete(id);
+                }
+            }
+            document.querySelectorAll('.msg-minimap-container').forEach(el => {
+                registerMinimap(el);
+            });
+        }
+
+        // Flödespaus vid mus-hover
+        function setupHoverPause() {
+            const tableContainer = document.querySelector('.table-container') || document.getElementById('alarmsTable');
+            if (!tableContainer) return;
+
+            tableContainer.addEventListener('mouseenter', () => {
+                isHoverPaused = true;
+                updateHoverPauseUI();
+            });
+
+            tableContainer.addEventListener('mouseleave', () => {
+                isHoverPaused = false;
+                updateHoverPauseUI();
+                if (!isLivePaused) {
+                    flushPausedMessages();
+                }
+            });
+        }
+
+        function updateHoverPauseUI() {
+            const pill = document.getElementById('hoverPausePill');
+            const bufferBadge = document.getElementById('hoverPauseBufferBadge');
+            if (isHoverPaused) {
+                if (pill) pill.style.display = 'inline-flex';
+                if (bufferBadge) {
+                    if (pausedQueue.length > 0) {
+                        bufferBadge.style.display = 'inline-block';
+                        bufferBadge.textContent = `${pausedQueue.length} nya`;
+                    } else {
+                        bufferBadge.style.display = 'none';
+                    }
+                }
+            } else {
+                if (pill) pill.style.display = 'none';
+            }
+        }
+
+        function flushPausedMessages() {
+            if (pausedQueue.length === 0) return;
+            const rowsToAdd = [];
+            while (pausedQueue.length > 0) {
+                const item = pausedQueue.shift();
+                if (!allAlarms.some(a => a.id === item.id)) {
+                    allAlarms.unshift(item);
+                    if (allAlarms.length > 1000) allAlarms.pop();
+
+                    const newRow = createAlarmRowNode(item);
+                    newRow.classList.add('new-msg-pulse');
+                    rowsToAdd.push(newRow);
+                }
+            }
+            if (dataTable && rowsToAdd.length > 0) {
+                dataTable.rows.add(rowsToAdd);
+                dataTable.order([[1, 'desc']]).draw(false);
+                scheduleDropdownRefresh();
+                refreshMinimaps();
+            }
+            const badge = document.getElementById('livePauseBadge');
+            const bannerCount = document.getElementById('pausedBannerCount');
+            const bar = document.getElementById('pausedNotificationBar');
+            if (badge) { badge.style.display = 'none'; badge.textContent = '0'; }
+            if (bannerCount) bannerCount.textContent = '0';
+            if (bar) bar.style.display = 'none';
+            updateHoverPauseUI();
+        }
 
         // Filter state for Real-time Monitor (Multi-Select Sets)
         const activeFilters = {
@@ -1793,9 +2010,7 @@
             const btn = document.getElementById('livePauseBtn');
             const icon = document.getElementById('livePauseIcon');
             const text = document.getElementById('livePauseText');
-            const badge = document.getElementById('livePauseBadge');
             const bar = document.getElementById('pausedNotificationBar');
-            const bannerCount = document.getElementById('pausedBannerCount');
 
             if (isLivePaused) {
                 if (btn) btn.classList.add('is-paused');
@@ -1808,29 +2023,11 @@
                 if (icon) { icon.classList.remove('fa-play'); icon.classList.add('fa-pause'); }
                 if (text) text.textContent = 'Live';
                 if (btn) btn.title = 'Pause real-time feed';
-                if (badge) { badge.style.display = 'none'; badge.textContent = '0'; }
-                if (bar) bar.style.display = 'none';
-                if (bannerCount) bannerCount.textContent = '0';
-
-                // Flush queued messages into table (in order)
-                if (pausedQueue.length > 0) {
-                    const rowsToAdd = [];
-                    while (pausedQueue.length > 0) {
-                        const data = pausedQueue.shift();
-                        if (!allAlarms.some(a => a.id === data.id)) {
-                            allAlarms.unshift(data);
-                            if (allAlarms.length > 1000) allAlarms.pop();
-
-                            const newRow = createAlarmRowNode(data);
-                            newRow.classList.add('new-msg-pulse');
-                            rowsToAdd.push(newRow);
-                        }
-                    }
-                    if (dataTable && rowsToAdd.length > 0) {
-                        dataTable.rows.add(rowsToAdd).draw(false);
-                    }
+                if (!isHoverPaused) {
+                    flushPausedMessages();
                 }
             }
+            updateHoverPauseUI();
         }
 
         function toggleActivityRibbon() {
@@ -2316,14 +2513,30 @@
                 const serviceTag = satcServiceVal ? `<span class="badge meta badge-service filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcServiceVal)}')" title="Klicka för att filtrera: ${escapeHtml(satcServiceVal)}">${escapeHtml(satcServiceVal)}</span>` : '';
 
                 let coordTag = '';
-                let latVal = alarm.lat;
-                let lonVal = alarm.lon;
-                if (latVal !== undefined && lonVal !== undefined && latVal !== null && lonVal !== null) {
-                    const latNum = Number(latVal);
-                    const lonNum = Number(lonVal);
-                    if (!isNaN(latNum) && !isNaN(lonNum)) {
-                        coordTag = `<span class="badge meta badge-coord" title="Geografisk position">Pos: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}</span>`;
+                let minimapHtml = '';
+
+                // Koordinater och minikarta
+                let latNum = null;
+                let lonNum = null;
+                if (alarm.lat !== undefined && alarm.lon !== undefined && alarm.lat !== null && alarm.lon !== null) {
+                    const pLat = Number(alarm.lat);
+                    const pLon = Number(alarm.lon);
+                    if (!isNaN(pLat) && !isNaN(pLon)) {
+                        latNum = pLat;
+                        lonNum = pLon;
                     }
+                }
+                if (latNum === null || lonNum === null) {
+                    const ext = extractCoordinatesFromText(cleanMsg);
+                    if (ext) {
+                        latNum = ext.lat;
+                        lonNum = ext.lon;
+                    }
+                }
+
+                if (latNum !== null && lonNum !== null) {
+                    coordTag = `<span class="badge meta badge-coord filterable-badge" onclick="zoomMinimap('${alarm.id}', ${latNum}, ${lonNum}, event)" title="Geografisk position: klicka för att zooma in i minikartan">Pos: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}</span>`;
+                    minimapHtml = `<div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}"></div>`;
                 }
 
                 satcBadgesHtml = `${priorityTag}${navareaTag}${lesTag}${serviceTag}${coordTag}`;
@@ -2367,8 +2580,50 @@
             const rawToggleBadge = msgObj.rawText ? `<span class="badge badge-raw-toggle" onclick="toggleRawData(this)" title="Visa eller dölj rådata">&lt;/&gt; Rådata</span>` : '';
             const rawBoxHtml = msgObj.rawText ? `<div class="raw-data-box" style="display: none;">${escapeHtml(msgObj.rawText)}</div>` : '';
 
-            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${satcBadgesHtml}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
+            // Om meddelandet har koordinater men inte är SATC:
+            let nonSatcCoordTag = '';
+            let nonSatcMinimapHtml = '';
+            if (!isSatc) {
+                let nonSatcLat = alarm.lat !== undefined && alarm.lat !== null ? Number(alarm.lat) : null;
+                let nonSatcLon = alarm.lon !== undefined && alarm.lon !== null ? Number(alarm.lon) : null;
+                if (nonSatcLat === null || nonSatcLon === null || isNaN(nonSatcLat) || isNaN(nonSatcLon)) {
+                    const ext = extractCoordinatesFromText(cleanMsg);
+                    if (ext) {
+                        nonSatcLat = ext.lat;
+                        nonSatcLon = ext.lon;
+                    }
+                }
+                if (nonSatcLat !== null && nonSatcLon !== null && !isNaN(nonSatcLat) && !isNaN(nonSatcLon)) {
+                    nonSatcCoordTag = `<span class="badge meta badge-coord filterable-badge" onclick="zoomMinimap('${alarm.id}', ${nonSatcLat}, ${nonSatcLon}, event)" title="Geografisk position: klicka för att zooma in i minikartan">Pos: ${nonSatcLat.toFixed(4)}, ${nonSatcLon.toFixed(4)}</span>`;
+                    nonSatcMinimapHtml = `<div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${nonSatcLat}" data-lon="${nonSatcLon}" data-msg-id="${alarm.id}"></div>`;
+                }
+            }
+
+            const activeMinimapHtml = minimapHtml || nonSatcMinimapHtml;
+            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${satcBadgesHtml}${nonSatcCoordTag}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
             const metaBarHtml = metaBarBadges ? `<div class="msg-meta-bar">${metaBarBadges}</div>` : '';
+
+            let msgCellInner = '';
+            if (activeMinimapHtml) {
+                msgCellInner = `
+                    <div class="msg-cell-flex has-minimap">
+                        <div class="msg-content-wrapper">
+                            <div class="msg-text msg-summary">${msgObj.summaryHtml}</div>
+                            ${rawBoxHtml}
+                            ${metaBarHtml}
+                        </div>
+                        ${activeMinimapHtml}
+                    </div>
+                `;
+            } else {
+                msgCellInner = `
+                    <div class="msg-content-wrapper">
+                        <div class="msg-text msg-summary">${msgObj.summaryHtml}</div>
+                        ${rawBoxHtml}
+                        ${metaBarHtml}
+                    </div>
+                `;
+            }
 
             tr.innerHTML = `
                 <td class="id-cell">${alarm.id}</td>
@@ -2380,7 +2635,7 @@
                         <button type="button" class="alias-edit-icon-btn" onclick="openAliasModal('${escapeHtml(alarm.address)}')" title="Redigera alias för ${escapeHtml(alarm.address)}"><i class="fas fa-pen"></i></button>
                     </div>
                 </td>
-                <td class="msg-cell"><div class="msg-content-wrapper"><div class="msg-text msg-summary">${msgObj.summaryHtml}</div>${rawBoxHtml}${metaBarHtml}</div></td>
+                <td class="msg-cell">${msgCellInner}</td>
 
                 <td class="actions-cell">
                     <div class="actions-wrapper">
@@ -2398,6 +2653,14 @@
                     </div>
                 </td>
             `;
+
+            if (activeMinimapHtml) {
+                const mapEl = tr.querySelector('.msg-minimap-container');
+                if (mapEl) {
+                    registerMinimap(mapEl);
+                }
+            }
+
             return tr;
         }
 
@@ -2451,6 +2714,14 @@
 
                 if (result.status === 'success') {
                     allAlarms = allAlarms.filter(a => a.id !== msgId);
+                    const mapContainer = document.getElementById(`minimap-${msgId}`);
+                    if (mapContainer) {
+                        const map = mapContainer._leaflet_map || minimapInstances.get(mapContainer.id);
+                        if (map) {
+                            try { map.remove(); } catch (e) {}
+                        }
+                        minimapInstances.delete(mapContainer.id);
+                    }
                     if (dataTable) {
                         const tr = $(btn).closest('tr');
                         dataTable.row(tr).remove().draw(false);
@@ -2705,6 +2976,14 @@
                 window.scrollToTop();
             });
 
+            // Lyssna på DataTables draw för att refresha och lazy-inita minikartor
+            dataTable.on('draw.dt', function () {
+                refreshMinimaps();
+            });
+
+            // Aktivera flödespaus när musen förs över tabellen
+            setupHoverPause();
+
             // Scroll to top button visibility check
             const tableContainer = document.querySelector('.table-container');
             const topBtn = document.getElementById('scrollToTop');
@@ -2741,6 +3020,7 @@
                     const rowNodes = allAlarms.map(a => createAlarmRowNode(a));
                     dataTable.rows.add(rowNodes).draw();
                     populateFilterDropdowns();
+                    refreshMinimaps();
                 }
 
                 // Initialize Waterfall Manager with initial messages
@@ -2826,7 +3106,8 @@
                     window.WaterfallManager.recordMessage(data, true);
                 }
 
-                if (isLivePaused) {
+                const isPaused = isLivePaused || isHoverPaused;
+                if (isPaused) {
                     if (!pausedQueue.some(p => p.id === data.id)) {
                         pausedQueue.push(data);
                         const badge = document.getElementById('livePauseBadge');
@@ -2837,7 +3118,8 @@
                             badge.style.display = 'inline-flex';
                         }
                         if (bannerCount) bannerCount.textContent = pausedQueue.length;
-                        if (bar) bar.style.display = 'flex';
+                        if (bar && isLivePaused) bar.style.display = 'flex';
+                        updateHoverPauseUI();
                     }
                 } else {
                     if (!allAlarms.some(a => a.id === data.id)) {
@@ -2852,6 +3134,7 @@
                             dataTable.order([[1, 'desc']]).draw(false);
                         }
                         scheduleDropdownRefresh();
+                        refreshMinimaps();
                     }
                 }
             }

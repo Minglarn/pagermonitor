@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.04] - Inbaddad Leaflet-Minikarta for GPS-koordinater, Flodespaus vid Mus-hover och Uppdaterad README
+
+- **Inbaddad Leaflet-Minikarta for meddelanden med GPS/Position ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Nar ett meddelande innehaller giltiga GPS/Pos-koordinater (t.ex. `Pos: 41.0277, 28.9880`) visas en dedikerad 260x165 px Leaflet-minikarta direkt till hoger i meddelanderutan via en responsiv flexbox-layout (`.msg-cell-flex.has-minimap`).
+  - Kombinerar OpenStreetMap baslager med OpenSeaMap sjokortsoverlay for komplett maritim och nautisk kontext.
+  - Placerar en distinkt cirkelmarkor (`#ef4444`) pa positionen.
+  - Klick pa `Pos:`-badgen zoomar och centrerar minikartan direkt till zoomniva 13.
+  - Minnes- och prestandahanterat via `IntersectionObserver` (lazy-load) och automatisk stanning (`map.remove()`) vid radering/omritning.
+  - Rader utan position renderas som vanligt utan kart-container.
+- **Flodespaus vid Mus-hover ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Nar anvandaren for muspekaren over meddelandeflodet (`.table-container`) pausas tabellen automatiskt och en svavande statusbricka (`#hoverPausePill`) med texten "Flodet Pausat" och raknare for buffrade meddelanden visas.
+  - Inkommande SSE-meddelanden sparas sakert i buffer utan att tabellen hoppar eller ror sig.
+  - Sa fort musen lamnar flodet spolas samtliga buffrade meddelanden in i ordning i tabellen.
+- **Fullstandig Dokumentationsuppdatering ([README.md](file:///d:/antigravity/pager-monitor/README.md))**:
+  - Skrivit om `README.md` for att lyfta fram samtliga nya funktioner och protokoll: VDL2/ACARS, RadioSonde, Inmarsat STD-C/EGC/SafetyNET/SAR med SatDump, inbaddade Leaflet-minikartor, RF Activity Ribbon, samt uppdaterade portar och docker-compose-exempel.
+- **Enhetstester och Emojiforbud ([tests/test_satc.py](file:///d:/antigravity/pager-monitor/tests/test_satc.py))**:
+  - Lagt till tester for Leaflet-resurser, minikarta-markup, zoom-funktioner och hover-paus.
+  - 143 tester passerar felfritt och 0 otillatna emojis finns i projektet.
+
 ## [2026.10.16.03] - Strikt Filtrering av Delpaket, Binär- och Gibberishfilter samt Isolering av Larmord till Brödtext
 
 - **Ta bort all SATC-specifik radbakgrundsfärg ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
@@ -206,9 +225,9 @@ and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
   - Användare kan kryssa i och ur flera val i följd utan att menyn stängs. Klick utanför stänger dropdown-menyn.
   - Dynamiska räknare för varje alternativ (`(15)` osv.) och en smidig "Rensa"-knapp överst i varje popover-meny.
   - Knapparnas text uppdateras dynamiskt (t.ex. `Alla frekvenser`, `Frekvens: 136.725M`, `Frekvenser (3)`) med tydlig accentmarkering (`active-filter-select`) vid aktiva filter.
-- **Tydliga Aktiva Filter-Chips med `✕` och "Rensa alla"**:
-  - Varje valt filter renderas nu som ett klickbart filter-chip (`[ Frekvens: 136.725M ✕ ]`, `[ Label: H1 ✕ ]`, etc.) ovanför tabellen.
-  - Klick på chipets `✕` tar bort det specifika värdet ur motsvarande filter-Set.
+- **Tydliga Aktiva Filter-Chips med `x` och "Rensa alla"**:
+  - Varje valt filter renderas nu som ett klickbart filter-chip (`[ Frekvens: 136.725M x ]`, `[ Label: H1 x ]`, etc.) ovanför tabellen.
+  - Klick på chipets `x` tar bort det specifika värdet ur motsvarande filter-Set.
   - En röd "Rensa alla"-knapp nollställer samtliga filter och fritextsökning med ett enda klick.
 - **Klick-på-badge Toggle-Stöd**:
   - Klick på badges i tabellcellerna (frekvens, SNR/ACARS, label, flygplats) togglar nu värdet in och ut ur respektive `Set` utan att rensa bort andra redan valda filter.
@@ -270,7 +289,7 @@ and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
     - Klick på **Flygplats-badge** sätter flygplatsfiltret till flygplatsens ICAO-kod.
     - Klick på **Registrering / Flight / ICAO-badge** filtrerar snabbsökningen.
 - **Aktiva filter-chips & Rensa filter-knapp (`templates/index.html`)**:
-  - Visar interaktiva filter-taggar med `✕` för varje aktivt filter samt en röd `Rensa filter`-knapp.
+  - Visar interaktiva filter-taggar med `x` för varje aktivt filter samt en röd `Rensa filter`-knapp.
   - Live SSE-meddelanden filtreras i realtid utan att aktiva filter nollställs.
 - **UI-fix: Tydlig avdelare och kollaps-indikator för Rådata (`index.html`, `larm.html`, `statistics.html`)**:
   - Åtgärdat onödigt vertikalt avstånd mellan meddelandetext och "Visa rådata" genom att ta bort oavsiktliga radbrytningar och nollställa cellens whitespace-arv (`.msg-text { white-space: normal; }`).

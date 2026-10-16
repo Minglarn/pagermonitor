@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.03`
+- **CalVer**: `2026.10.16.04`
 - **Date**: 2026-10-16
 - **Language**: English / Swedish
 
@@ -9,7 +9,19 @@
 
 ## Overview of Implemented Features
 
-### 0. Inmarsat STD-C / EGC / SafetyNET / SAR Mottagare (SatDump 1.2.3 JSON_OUT)
+### 0. Inbäddad Minikarta (Leaflet) & Flödespaus vid Mus-hover
+- **Inbäddad Leaflet-Minikarta ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Varje meddelande med GPS- eller sjöfartskoordinater (t.ex. `Pos: 41.0277, 28.9880`) förses automatiskt med en interaktiv 260x165 px Leaflet-karta till höger i meddelandecellen.
+  - Kombinerar OpenStreetMap med OpenSeaMap-sjökortsoverlay och en tydlig röd cirkelmarkör.
+  - Klick på `Pos:`-badgen zoomar in kartan till zoomnivå 13 på koordinaten.
+  - Lazy-loading via `IntersectionObserver` så att kartor endast renderas när de faktiskt syns.
+- **Flödespaus vid Mus-hover ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - När muspekaren förs över tabellen pausas realtidsflödet automatiskt och en svävande statusbricka "Flödet Pausat" tänds.
+  - Nya inkommande meddelanden buffras och spolas in utan fördröjning när musen lämnar flödet.
+- **Omfattande Dokumentationslyft ([README.md](file:///d:/antigravity/pager-monitor/README.md))**:
+  - `README.md` har uppdaterats för att presentera alla nya protokoll (VDL2, RadioSonde, Inmarsat SATC) och gränssnittsfunktioner.
+
+### 1. Inmarsat STD-C / EGC / SafetyNET / SAR Mottagare (SatDump 1.2.3 JSON_OUT)
 - **Strikt Delpaket- och Fragmentfiltrering ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
   - Vid `satc_only_messages == True` ignoreras ofullständiga delpaket och delramar som sänds innan hela meddelandet satts ihop (t.ex. `EGC Double Header 1`, `EGC Double Header 2`, `Message Packet`), samt paket med fragment- eller fortsättningsflaggor.
   - Endast sammanslagna kompletta meddelanden (`Full Message`, `Full EGC Message`) sparas i databasen och presenteras i gränssnittet.
@@ -2169,9 +2181,9 @@
   - Användare kan öppna menyn och kryssa i/ur flera val utan att menyn stängs.
   - Varje meny har en smidig "Rensa"-knapp i toppen samt dynamiska meddelanderäknare för varje alternativ.
   - Dropdown-knapparnas text uppdateras dynamiskt (t.ex. `Alla frekvenser`, `Frekvens: 136.725M`, `Frekvenser (3)`) med tydlig accentfärg och border vid aktiva val (`active-filter-select`).
-- **Tydliga Aktiva Filter-Chips med `✕` ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
-  - För varje valt filter renderas ett klickbart filter-chip (`[ Frekvens: 136.725M ✕ ]`, `[ Label: H1 ✕ ]`, etc.) ovanför tabellen.
-  - Klick på `✕` tar bort det enskilda valet ur filtret.
+- **Tydliga Aktiva Filter-Chips med `x` ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - För varje valt filter renderas ett klickbart filter-chip (`[ Frekvens: 136.725M x ]`, `[ Label: H1 x ]`, etc.) ovanför tabellen.
+  - Klick på `x` tar bort det enskilda valet ur filtret.
   - "Rensa alla"-knappen nollställer samtliga aktiva filter samt fritextsökning med ett klick.
 - **Klick-på-badge Toggle-Stöd ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
   - Klick på badges i tabellcellerna (frekvens, SNR/ACARS, label, flygplats) togglar nu värdet in och ut ur filtret utan att skriva över övriga valda filter.

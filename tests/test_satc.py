@@ -538,13 +538,54 @@ class TestSatCReceiver(unittest.TestCase):
         conn.commit()
         conn.close()
 
+    def test_satc_leaflet_minimap_and_hover_pause_in_ui(self):
+        """
+        Verifiera att index.html och style.css innehåller:
+        1. Leaflet CSS och JS-inkludering.
+        2. msg-minimap-container och msg-cell-flex has-minimap för inbäddade minikartor.
+        3. hoverPausePill och setupHoverPause för paus vid mus-hover.
+        4. zoomMinimap och extractCoordinatesFromText funktioner.
+        """
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        index_path = os.path.join(base_dir, 'templates', 'index.html')
+        css_path = os.path.join(base_dir, 'static', 'style.css')
+
+        with open(index_path, 'r', encoding='utf-8') as f:
+            index_html = f.read()
+        with open(css_path, 'r', encoding='utf-8') as f:
+            style_css = f.read()
+
+        # 1. Leaflet resurser
+        self.assertIn('leaflet.css', index_html)
+        self.assertIn('leaflet.js', index_html)
+
+        # 2. Minikarta markup och CSS
+        self.assertIn('msg-minimap-container', index_html)
+        self.assertIn('has-minimap', index_html)
+        self.assertIn('.msg-minimap-container', style_css)
+        self.assertIn('.msg-cell-flex.has-minimap', style_css)
+
+        # 3. Flödespaus
+        self.assertIn('hoverPausePill', index_html)
+        self.assertIn('Flödet Pausat', index_html)
+        self.assertIn('setupHoverPause', index_html)
+        self.assertIn('isHoverPaused', index_html)
+        self.assertIn('.hover-pause-pill', style_css)
+
+        # 4. Koordinathantering och klickbar zoom
+        self.assertIn('zoomMinimap', index_html)
+        self.assertIn('extractCoordinatesFromText', index_html)
+
     def test_strict_no_emojis_in_source_code(self):
-        """Verifiera att inga emojis förekommer i källkodsfilerna eller mallarna."""
+        """Verifiera att inga emojis förekommer i källkodsfilerna, mallarna eller dokumentationen."""
         base_dir = os.path.dirname(os.path.dirname(__file__))
         check_files = [
             'satc_receiver.py',
             'app.py',
             'database.py',
+            'README.md',
+            'CHANGELOG.md',
+            'WALKTHROUGH.md',
             os.path.join('templates', 'settings.html'),
             os.path.join('templates', 'index.html'),
             os.path.join('templates', 'larm.html'),
