@@ -169,6 +169,8 @@ def test_settings_autosave_api(client):
 
 def test_messages_limit_options(client):
     """Verifiera att /api/messages hanterar limit-parametrar korrekt (standard 500, explicit limit, och 'all')."""
+    with database.get_connection() as conn:
+        conn.execute("DELETE FROM messages")
     for i in range(550):
         database.save_message("1000000", f"Volume test #{i}")
 

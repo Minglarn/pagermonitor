@@ -584,11 +584,13 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn('leaflet.js', index_html)
 
         # 2. Minikarta markup och CSS
+        self.assertIn('msg-minimap-cell', index_html)
         self.assertIn('msg-minimap-container', index_html)
         self.assertIn('msg-row-layout', index_html)
         self.assertIn('msg-main-content', index_html)
         self.assertIn('msg-badges', index_html)
         self.assertIn('metaBarBadges', index_html)
+        self.assertIn('.msg-minimap-cell', style_css)
         self.assertIn('.msg-minimap-container', style_css)
         self.assertIn('.msg-row-layout', style_css)
         self.assertIn('.msg-main-content', style_css)
@@ -597,12 +599,16 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn('flex-direction: column', style_css)
         self.assertIn('margin-top: auto', style_css)
 
-        # 2c. Edge-to-edge minikarta och eliminering av dödutrymme
+        # 2c. Avdelad minikarta med vertikal linje och kvadratisk ruta med marginaler
         self.assertIn('white-space: normal !important;', index_html)
         self.assertIn('padding: 0 !important;', index_html)
         self.assertIn('height: 1px !important;', index_html)
-        self.assertIn('align-self: stretch !important;', index_html)
-        self.assertIn('border-radius: 0 !important;', index_html)
+        self.assertIn('align-self: stretch !important;', style_css.split('.msg-minimap-cell {')[1])
+        self.assertIn('border-left', style_css.split('.msg-minimap-cell {')[1])
+        self.assertIn('border-radius: 6px !important;', index_html)
+        self.assertIn('border-radius: 6px !important;', style_css)
+        self.assertIn('width: 130px !important;', style_css.split('.msg-minimap-container {')[1])
+        self.assertIn('height: 115px !important;', style_css.split('.msg-minimap-container {')[1])
         self.assertIn('style.css?v={{ app_version }}', index_html)
         self.assertRegex(index_html, r'const msgCellInner = `<div class="msg-row-layout">')
         self.assertNotIn('const msgCellInner = `\n', index_html)
@@ -627,6 +633,63 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn('closeMapModal', index_html)
         self.assertIn('largeModalMap', index_html)
         self.assertIn('.map-modal-content', style_css)
+
+    def test_satc_announcement_to_full_message_correlation(self):
+        """
+        Verifiera att ett Announcement-paket (type: 1, les_id: 12, logical_channel_number: 164, mes_id: 2895141)
+        följt av ett Full Message-paket (type: 42, les_id: 12, logical_channel_number: 164, utan mes_id)
+        automatiskt kopplar ihop MES: 2895141 med textmeddelandet även när satc_only_messages=True!
+        """
+        # 1. Signalerings-/uppropspaket (Announcement)
+        announcement_pkt = {
+            "pkt_name": "Announcement",
+            "descriptor": {"type": 1},
+            "les_id": 12,
+            "logical_channel_number": 164,
+            "mes_id": 2895141,
+            "downlink_freq_mhz": 1537.106,
+            "service": "Store And Forward"
+        }
+        # Med only_messages=True filtreras signaleringspaketet bort (inget meddelande sparas)
+        res_announcement = parse_satc_frame(announcement_pkt, only_messages=True)
+        self.assertIsNone(res_announcement)
+
+        # 2. Efterföljande textmeddelande (Full Message) på samma kanal och LES, men utan mes_id
+        full_msg_pkt = {
+            "pkt_name": "Full Message",
+            "descriptor": {"type": 42},
+            "les_id": 12,
+            "logical_channel_number": 164,
+            "message": "DISTRESS ALERT RELAY / VESSEL MOTOR FAILURE POS 58-34N 016-12E",
+            "priority": "DISTRESS"
+        }
+        res_msg = parse_satc_frame(full_msg_pkt, only_messages=True)
+        self.assertIsNotNone(res_msg)
+
+        # Kontrollera att fartygets terminal-ID kopplades ihop från minnescachen
+        self.assertEqual(res_msg['mes_id'], '2895141')
+        self.assertEqual(res_msg['address'], 'MES: 2895141')
+        self.assertIn('MES ID: 2895141', res_msg['message'])
+        self.assertEqual(res_msg['metadata']['mes_id'], '2895141')
+        self.assertEqual(res_msg['metadata']['mes_badge'], 'MES: 2895141')
+        self.assertEqual(res_msg['metadata']['logical_channel_number'], 164)
+        self.assertEqual(res_msg['metadata']['channel_badge'], 'Ch: #164')
+
+        # 3. Paket på en okänd kanal utan cachat mes_id ska ändå visa Kanal i meddelande och metadata
+        uncached_pkt = {
+            "pkt_name": "Full Message",
+            "descriptor": {"type": 42},
+            "les_id": 10,
+            "logical_channel_number": 888,
+            "message": "GENERAL NOTICE TEST",
+            "priority": "ROUTINE"
+        }
+        res_uncached = parse_satc_frame(uncached_pkt, only_messages=True)
+        self.assertIsNotNone(res_uncached)
+        self.assertIsNone(res_uncached['mes_id'])
+        self.assertIn('Kanal: #888', res_uncached['message'])
+        self.assertEqual(res_uncached['metadata']['logical_channel_number'], 888)
+        self.assertEqual(res_uncached['metadata']['channel_badge'], 'Ch: #888')
 
     def test_decode_mime_headers(self):
         """Verifiera korrekt avkodning av RFC 2047 MIME-ord (t.ex. koi8-r, utf-8, windows-1251)."""

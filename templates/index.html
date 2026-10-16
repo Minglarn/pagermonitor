@@ -730,7 +730,7 @@
             display: flex !important;
             flex-direction: column !important;
             justify-content: space-between !important;
-            padding: 6px 10px !important;
+            padding: 7px 10px !important;
             margin: 0 !important;
             white-space: normal !important;
         }
@@ -757,21 +757,43 @@
             white-space: normal !important;
         }
 
-        .msg-minimap-container {
-            width: 240px !important;
-            min-width: 240px !important;
-            min-height: 96px !important;
-            height: auto !important;
+        .msg-minimap-cell {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
             align-self: stretch !important;
+            padding: 6px 8px !important;
+            margin: 0 !important;
+            border-left: 1px solid var(--panel-border, #1f2937) !important;
+            background: rgba(15, 23, 42, 0.25) !important;
+            flex-shrink: 0 !important;
+        }
+
+        [data-theme="light"] .msg-minimap-cell {
+            border-left: 1px solid #cbd5e1 !important;
+            background: rgba(241, 245, 249, 0.6) !important;
+        }
+
+        .msg-minimap-container {
+            width: 130px !important;
+            min-width: 130px !important;
+            height: 115px !important;
+            min-height: 115px !important;
             margin: 0 !important;
             padding: 0 !important;
-            border-radius: 0 !important;
-            border: none !important;
-            border-left: 1px solid var(--panel-border, #cbd5e1) !important;
+            border-radius: 6px !important;
+            border: 1px solid var(--panel-border, #334155) !important;
+            overflow: hidden !important;
             flex-shrink: 0 !important;
             cursor: pointer !important;
             position: relative !important;
             z-index: 1 !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        [data-theme="light"] .msg-minimap-container {
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
         }
 
         .msg-summary {
@@ -2766,6 +2788,8 @@
             let satcNavareaVal = alarm.navarea || alarm.area || '';
             let satcLesVal = alarm.les_name || alarm.les || '';
             let satcServiceVal = alarm.satc_service || alarm.service_name || '';
+            let satcMesVal = alarm.mes_id || (alarm.metadata && alarm.metadata.mes_id) || '';
+            let satcChannelVal = alarm.logical_channel_number || (alarm.metadata && alarm.metadata.logical_channel_number) || '';
 
             if (isSatc) {
                 if (!satcPriorityVal && cleanMsg) {
@@ -2778,6 +2802,17 @@
                 }
                 if (!satcLesVal && alarm.address && alarm.address.startsWith('LES:')) {
                     satcLesVal = alarm.address.substring(4).trim();
+                }
+                if (!satcMesVal && cleanMsg) {
+                    const mM = cleanMsg.match(/\bMES(?:\s*ID)?:\s*([0-9A-Za-z]+)/i);
+                    if (mM) satcMesVal = mM[1].trim();
+                }
+                if (!satcMesVal && alarm.address && alarm.address.startsWith('MES:')) {
+                    satcMesVal = alarm.address.substring(4).trim();
+                }
+                if (!satcChannelVal && cleanMsg) {
+                    const cM = cleanMsg.match(/\b(?:Kanal|Ch):\s*#?([0-9]+)/i);
+                    if (cM) satcChannelVal = cM[1].trim();
                 }
 
                 let priorityTag = '';
@@ -2794,11 +2829,13 @@
                     priorityTag = `<span class="badge meta badge-satc-priority ${pClass} filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcPriorityVal)}')" title="Klicka för att söka prioritet: ${escapeHtml(satcPriorityVal)}">Priority: ${escapeHtml(satcPriorityVal)}</span>`;
                 }
 
+                const mesTag = satcMesVal ? `<span class="badge meta badge-mes filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcMesVal)}')" title="Klicka för att filtrera på terminal: ${escapeHtml(satcMesVal)}">MES: ${escapeHtml(satcMesVal)}</span>` : '';
+                const chTag = satcChannelVal ? `<span class="badge meta badge-ch filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcChannelVal)}')" title="Klicka för att filtrera på kanal: ${escapeHtml(satcChannelVal)}">Ch: #${escapeHtml(satcChannelVal)}</span>` : '';
                 const navareaTag = satcNavareaVal ? `<span class="badge meta badge-navarea filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcNavareaVal)}')" title="Klicka för att söka område: ${escapeHtml(satcNavareaVal)}">${escapeHtml(satcNavareaVal)}</span>` : '';
                 const lesTag = satcLesVal ? `<span class="badge meta badge-les filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcLesVal)}')" title="Klicka för att söka jordstation: ${escapeHtml(satcLesVal)}">LES: ${escapeHtml(satcLesVal)}</span>` : '';
                 const serviceTag = satcServiceVal ? `<span class="badge meta badge-service filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcServiceVal)}')" title="Klicka för att filtrera: ${escapeHtml(satcServiceVal)}">${escapeHtml(satcServiceVal)}</span>` : '';
 
-                satcBadgesHtml = `${priorityTag}${navareaTag}${lesTag}${serviceTag}`;
+                satcBadgesHtml = `${priorityTag}${mesTag}${chTag}${navareaTag}${lesTag}${serviceTag}`;
             }
 
             // Sätt filterattribut på raden
@@ -2816,6 +2853,8 @@
             tr.setAttribute('data-priority', satcPriorityVal || '');
             tr.setAttribute('data-navarea', satcNavareaVal || '');
             tr.setAttribute('data-les', satcLesVal || '');
+            tr.setAttribute('data-mes', satcMesVal || '');
+            tr.setAttribute('data-channel', satcChannelVal || '');
 
             // Ordbevakning - endast aktiva larmord i brödtexten får färga raden
             if (isBasestation) {
@@ -2848,7 +2887,7 @@
                 const latNum = universalCoords.lat;
                 const lonNum = universalCoords.lon;
                 universalCoordTag = `<span class="badge meta badge-coord filterable-badge" onclick="zoomMinimap('${alarm.id}', ${latNum}, ${lonNum}, event)" title="Geografisk position: klicka för att visa i stor karta">Pos: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}</span>`;
-                activeMinimapHtml = `<div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}" data-proto="${escapeHtml(protoName)}"></div>`;
+                activeMinimapHtml = `<div class="msg-minimap-cell"><div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}" data-proto="${escapeHtml(protoName)}"></div></div>`;
             }
 
             const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${satcBadgesHtml}${universalCoordTag}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;

@@ -39,6 +39,97 @@ LES_MAP = {
     328: "Fucino"
 }
 
+# Minnes-cache för Inmarsat STD-C: logical_channel_number -> mes_id
+CHANNEL_CACHE_TTL = 600
+CHANNEL_MES_CACHE = {}
+CHANNEL_MES_LOCK = threading.Lock()
+
+def cache_channel_mes(payload):
+    """
+    Sparar logical_channel_number -> mes_id från signalerings-/uppropspaket
+    (t.ex. Announcement descriptor.type == 1 m.fl.).
+    Nycklas på (les_id, logical_channel_number) och som fallback logical_channel_number.
+    """
+    if not isinstance(payload, dict):
+        return
+
+    desc = payload.get("descriptor") if isinstance(payload.get("descriptor"), dict) else {}
+    lcn = payload.get("logical_channel_number")
+    if lcn is None:
+        lcn = payload.get("lcn") or payload.get("logical_channel")
+    if lcn is None and isinstance(desc, dict):
+        lcn = desc.get("logical_channel_number") or desc.get("lcn")
+
+    mes_id = payload.get("mes_id")
+    if mes_id is None:
+        mes_id = payload.get("mes") or payload.get("terminal_id")
+    if mes_id is None and isinstance(desc, dict):
+        mes_id = desc.get("mes_id") or desc.get("mes")
+
+    if lcn is not None and mes_id is not None:
+        try:
+            lcn_int = int(lcn)
+            mes_str = str(mes_id).strip()
+            if mes_str:
+                les_id = payload.get("les_id") or payload.get("les")
+                if les_id is None and isinstance(desc, dict):
+                    les_id = desc.get("les_id") or desc.get("les")
+                les_id_int = None
+                if les_id is not None:
+                    try:
+                        les_id_int = int(les_id)
+                    except (ValueError, TypeError):
+                        pass
+
+                raw_service = payload.get("service") or payload.get("service_name") or ""
+                now = time.time()
+                data = {
+                    'mes_id': mes_str,
+                    'service': str(raw_service),
+                    'timestamp': now
+                }
+                with CHANNEL_MES_LOCK:
+                    # Rensa gamla poster om cachen vuxit över gränsen
+                    if len(CHANNEL_MES_CACHE) > 1000:
+                        expired = [k for k, v in CHANNEL_MES_CACHE.items() if now - v.get('timestamp', 0) > CHANNEL_CACHE_TTL]
+                        for k in expired:
+                            CHANNEL_MES_CACHE.pop(k, None)
+                    if les_id_int is not None:
+                        CHANNEL_MES_CACHE[(les_id_int, lcn_int)] = data
+                    CHANNEL_MES_CACHE[lcn_int] = data
+        except (ValueError, TypeError):
+            pass
+
+def lookup_channel_mes(les_id, lcn):
+    """
+    Slår upp mes_id baserat på (les_id, lcn) eller lcn som fallback om posten är yngre än CHANNEL_CACHE_TTL.
+    """
+    if lcn is None:
+        return None
+    try:
+        lcn_int = int(lcn)
+    except (ValueError, TypeError):
+        return None
+
+    les_id_int = None
+    if les_id is not None:
+        try:
+            les_id_int = int(les_id)
+        except (ValueError, TypeError):
+            pass
+
+    now = time.time()
+    with CHANNEL_MES_LOCK:
+        if les_id_int is not None and (les_id_int, lcn_int) in CHANNEL_MES_CACHE:
+            entry = CHANNEL_MES_CACHE[(les_id_int, lcn_int)]
+            if now - entry.get('timestamp', 0) <= CHANNEL_CACHE_TTL:
+                return entry
+        if lcn_int in CHANNEL_MES_CACHE:
+            entry = CHANNEL_MES_CACHE[lcn_int]
+            if now - entry.get('timestamp', 0) <= CHANNEL_CACHE_TTL:
+                return entry
+    return None
+
 def extract_coordinates(text):
     """
     Extraherar sjöfarts- och SAR-koordinater ur text.
@@ -336,6 +427,10 @@ def parse_satc_frame(payload, only_messages=True):
     if not isinstance(payload, dict):
         return None
 
+    # Spara korrelation mellan logical_channel_number och mes_id från signaleringspaket
+    # Alltid INNAN fragment- eller only_messages-filtret kastar paketet!
+    cache_channel_mes(payload)
+
     # Extrahera descriptor och pkt_name om tillgängligt
     desc = payload.get("descriptor") if isinstance(payload.get("descriptor"), dict) else {}
     desc_type = desc.get("type")
@@ -450,8 +545,29 @@ def parse_satc_frame(payload, only_messages=True):
 
     les_display = les_name if les_name else (f"LES-{les_id}" if les_id is not None else None)
 
+    # Extrahera logiskt kanalnummer
+    lcn = payload.get("logical_channel_number")
+    if lcn is None:
+        lcn = payload.get("lcn") or payload.get("logical_channel")
+    if lcn is None and isinstance(desc, dict):
+        lcn = desc.get("logical_channel_number") or desc.get("lcn")
+    try:
+        lcn_val = int(lcn) if lcn is not None else None
+    except (ValueError, TypeError):
+        lcn_val = None
+
     # Extrahera Terminal-ID (mes_id)
     mes_id = payload.get("mes_id")
+    if mes_id is None and isinstance(desc, dict):
+        mes_id = desc.get("mes_id") or desc.get("mes")
+    if mes_id is not None:
+        mes_id = str(mes_id).strip()
+
+    # Berika meddelandepaket från minnes-cachen om mes_id saknas men lcn finns
+    if not mes_id and lcn_val is not None:
+        cached_info = lookup_channel_mes(les_id, lcn_val)
+        if cached_info:
+            mes_id = cached_info.get('mes_id')
 
     # Extrahera Tjänst
     raw_service_str = str(payload.get("service") or payload.get("service_name") or "").strip()
@@ -471,12 +587,12 @@ def parse_satc_frame(payload, only_messages=True):
         if is_announcement:
             service_desc = raw_service_str or "Store And Forward"
             dl_freq = payload.get("downlink_freq_mhz", "-")
-            lcn = payload.get("logical_channel_number", "-")
             ref_num = payload.get("message_reference_number", "-")
+            lcn_disp = lcn_val if lcn_val is not None else payload.get("logical_channel_number", "-")
             body_text = (
                 f"[ Upprop / Announcement ] Till terminal (MES): {mes_id} | "
                 f"Tjänst: {service_desc} ({priority_norm}) | "
-                f"Hänvisad downlink: {dl_freq} MHz (Kanal #{lcn}) | "
+                f"Hänvisad downlink: {dl_freq} MHz (Kanal #{lcn_disp}) | "
                 f"Referens: #{ref_num}"
             )
             service_title = "Inmarsat STD-C / Upprop"
@@ -486,12 +602,12 @@ def parse_satc_frame(payload, only_messages=True):
         elif is_channel_assignment:
             service_desc = raw_service_str or "Store And Forward"
             dl_freq = payload.get("downlink_freq_mhz", "-")
-            lcn = payload.get("logical_channel_number", "-")
             slot = payload.get("slot_number", 0)
+            lcn_disp = lcn_val if lcn_val is not None else payload.get("logical_channel_number", "-")
             body_text = (
                 f"[ Kanalallokering ] Terminal (MES): {mes_id} | "
                 f"Tjänst: {service_desc} | "
-                f"Downlink: {dl_freq} MHz (Kanal #{lcn}, Slot {slot})"
+                f"Downlink: {dl_freq} MHz (Kanal #{lcn_disp}, Slot {slot})"
             )
             service_title = "Inmarsat STD-C / Kanalallokering"
             service_badge = "Channel Assign"
@@ -572,6 +688,10 @@ def parse_satc_frame(payload, only_messages=True):
             summary_parts.append(f"Område: {navarea_str}")
         if les_display:
             summary_parts.append(f"Jordstation: {les_display}")
+        if mes_id:
+            summary_parts.append(f"MES ID: {mes_id}")
+        elif lcn_val is not None:
+            summary_parts.append(f"Kanal: #{lcn_val}")
         summary_parts.append(f"Prioritet: {priority_norm}")
 
         summary_header = f"[{service_title}] " + " | ".join(summary_parts)
@@ -596,6 +716,9 @@ def parse_satc_frame(payload, only_messages=True):
     if mes_id is not None:
         metadata['mes_id'] = mes_id
         metadata['mes_badge'] = f"MES: {mes_id}"
+    if lcn_val is not None:
+        metadata['logical_channel_number'] = lcn_val
+        metadata['channel_badge'] = f"Ch: #{lcn_val}"
     if raw_service_str:
         metadata['service'] = raw_service_str
         metadata['service_badge'] = f"Service: {raw_service_str}"
@@ -618,6 +741,8 @@ def parse_satc_frame(payload, only_messages=True):
         'service_badge': service_badge,
         'navarea': navarea_str,
         'les': les_display,
+        'mes_id': mes_id,
+        'logical_channel_number': lcn_val,
         'lat': lat,
         'lon': lon,
         'body_text': body_text

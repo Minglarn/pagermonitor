@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.10`
+- **CalVer**: `2026.10.16.11`
 - **Date**: 2026-10-16
 - **Language**: English / Swedish
 
@@ -9,7 +9,24 @@
 
 ## Overview of Implemented Features
 
-### 0. Edge-to-Edge Minikarta, Eliminering av Dödutrymme och Dynamisk CSS-Cachebusting
+### 0. Vertikal Kartavdelare, Kvadratisk Minikarta och STD-C Kanal-till-MES Korrelering
+- **Vertikal Avdelare och Kvadratisk Minikarta ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Infört `.msg-minimap-cell` som omsluter minikartan längst till höger i meddelandecellen med en vertikal avdelare (`border-left: 1px solid var(--panel-border)`) som sträcker sig från radens topp till botten (`align-self: stretch !important;`).
+  - Minikartan (`.msg-minimap-container`) har nu kvadratiska proportioner (`130px` x `115px`), rundade hörn (`border-radius: 6px !important;`) och behaglig luft/marginal mot topp, botten och sidor med `padding: 6px 8px !important;`.
+  - Anpassat för både mörkt och ljust tema (`[data-theme="light"] .msg-minimap-cell` och `.msg-minimap-container`).
+  - Behållit den kompakta layouten på `.msg-main-content` och `.msg-badges` (`margin-top: auto !important; padding-top: 6px !important;`).
+- **Inmarsat STD-C Korrelering mellan logical_channel_number och mes_id ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Implementerat en trådsäker minnescache `CHANNEL_MES_CACHE` med TTL på 600 sekunder (`CHANNEL_CACHE_TTL = 600`).
+  - Fångar upp och sparar `logical_channel_number` och fartygets `mes_id` från signalerings-/uppropspaket (`Announcement`, `descriptor.type == 1` m.fl.) allra först i `parse_satc_frame()` innan `satc_only_messages`-filtret hinner kasta kontrollpaketen.
+  - När ett efterföljande textmeddelande (`pkt_name == "Full Message"`, `descriptor.type == 42`) anländer med `logical_channel_number` men saknar `mes_id`, slås fartygets ID upp ur minnescachen.
+  - Berikar meddelandet med `MES ID: {mes_id}` i sammanfattningsraden, sätter terminal-ID som avsändaradress (`MES: {mes_id}`) och genererar klickbara filter-badgar för både `MES: {mes_id}` och `Ch: #{logical_channel_number}`.
+  - Visar `Kanal: #{logical_channel_number}` om cachen inte hunnit fånga något `mes_id`.
+- **Enhetstester och Kvalitetssäkring ([tests/test_satc.py](file:///d:/antigravity/pager-monitor/tests/test_satc.py), [tests/test_security_and_larm.py](file:///d:/antigravity/pager-monitor/tests/test_security_and_larm.py))**:
+  - Nytt test `test_satc_announcement_to_full_message_correlation` verifierar att `Announcement` följt av `Full Message` automatiskt kopplar ihop `mes_id` även med `satc_only_messages=True`.
+  - Uppdaterat UI-tester för `.msg-minimap-cell` och `.msg-minimap-container` med 130px x 115px och border-radius 6px.
+  - Samtliga 150 tester i pytest passerar utan fel och strikt utan emojis.
+
+### 1. Edge-to-Edge Minikarta, Eliminering av Dödutrymme och Dynamisk CSS-Cachebusting
 - **Dynamisk CSS Cache-Busting med app_version ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
   - Ersatt den hårdkodade länkningen `/static/style.css?v=3` med `/static/style.css?v={{ app_version }}` så att webbläsaren omedelbart laddar ny CSS vid versionsuppdateringar.
 - **Eliminering av Tomrum & Radbrytningar i DOM ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
