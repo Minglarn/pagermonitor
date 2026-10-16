@@ -444,6 +444,18 @@ def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, 
         where_clauses.append('(m.is_duplicate IS NULL OR m.is_duplicate = 0)')
         
     if alerts_only:
+        c.execute('SELECT word FROM alert_words WHERE is_active = 1')
+        active_words = [r[0].strip() for r in c.fetchall() if r[0] and r[0].strip()]
+        if not active_words:
+            conn.close()
+            return []
+
+        # Supersnabb LIKE pre-filtrering i SQLite som eliminerar 99.9% av rader (Unicode-säker för Å, Ä, Ö)
+        like_parts = ['UPPER_UNICODE(m.message) LIKE ?' for _ in active_words]
+        where_clauses.append(f"({' OR '.join(like_parts)})")
+        for w in active_words:
+            params.append(f'%{w.upper()}%')
+
         where_clauses.append('''
             EXISTS (
                 SELECT 1 FROM alert_words aw
@@ -574,7 +586,7 @@ def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, 
             
         messages.append(msg)
 
-    if ensure_active_protocols and limit and limit > 0:
+    if ensure_active_protocols and limit and limit > 0 and not alerts_only:
         proto_counts = {}
         for m in messages:
             p = m.get('protocol') or 'POCSAG'

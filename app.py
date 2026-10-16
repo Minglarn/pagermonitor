@@ -126,7 +126,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.16.19"
+APP_VERSION = "2026.10.16.21"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
@@ -309,7 +309,7 @@ def get_messages():
     include_dups = request.args.get('include_duplicates', '0').lower() in ('1', 'true')
     exclude_duplicates = (dup_handling == 'hide') and not include_dups
 
-    should_balance = (ensure_protocols and not protocol and not before_id and not since_id and not search_query)
+    should_balance = (ensure_protocols and not protocol and not before_id and not since_id and not search_query and not alerts_only)
     messages = get_recent_messages(limit, before_id, since_id=since_id, search=search_query, alerts_only=alerts_only, exclude_duplicates=exclude_duplicates, protocol=protocol, ensure_active_protocols=should_balance)
     return jsonify(messages)
 
