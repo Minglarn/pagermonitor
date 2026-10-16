@@ -1,6 +1,6 @@
 # PagerMonitor
 
-[![Version](https://img.shields.io/badge/version-2026.10.16.18-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2026.10.16.20-blue.svg)](CHANGELOG.md)
 [![GitHub last commit](https://img.shields.io/github/last-commit/Minglarn/pagermonitor)](https://github.com/Minglarn/pagermonitor/commits/main)
 [![GitHub issues](https://img.shields.io/github/issues/Minglarn/pagermonitor)](https://github.com/Minglarn/pagermonitor/issues)
 [![GitHub stars](https://img.shields.io/github/stars/Minglarn/pagermonitor?style=social)](https://github.com/Minglarn/pagermonitor/stargazers)
@@ -16,35 +16,44 @@ PagerMonitor ar en komplett, containeriserad Software Defined Radio (SDR) overva
 
 ## Protokoll som Stods
 
-### 1. HFDL - High Frequency Data Link (Kortvågs-flygdata)
+### 1. VHF ACARS & Payload Sub-parsing (VHF Flygkommunikation)
+* **acarsdec / acars_router Integration**: Tar emot och avkodar radseparerad JSON via TCP-klient (standard port `15550`, konfigurerbart via miljövariabler eller inställningar).
+* **Payload Sub-parsing**: Automatisk detaljavkodning av strukturerade meddelandenyttolaster:
+  * **FM-rapporter (FM1, FM2, FM3)**: Avkodar tidsstämplar (UTC), beräknad ankomsttid (ETA), koordinater (lat/lon) och höjd (ft).
+  * **OOOI-rapporter**: Identifierar flygfashändelser (OUT, OFF, ON, IN), flygplatser och bränslemängd (FOB).
+  * **Väderrapporter**: Extraherar ICAO-flygplatser och identifierar METAR, TAF och ATIS.
+* **Strukturerade Fält & Badges**: Fälten sparas under `decoded_fields` och renderas snyggt i frontend med badges och expanderbar råtext.
+* **Dedikerad Mottagarflik**: Övervakas och konfigureras i inställningsgränssnittet under fliken VHF ACARS med testfunktion och anslutningsstatus.
+
+### 2. HFDL - High Frequency Data Link (Kortvågs-flygdata)
 * **dumphfdl Integration**: Tar emot och avkodar JSON-strömmar från `dumphfdl` (v1.7.0+, standard TCP/UDP port `15556`).
 * **Omfattande Dataavkodning**: Avkodar Frekvens- & Hörbarhetsrapporter (vilka markstationer runt jorden som flygplanet hör), Prestandarapporter (paketstatistik 300-1800 bps, spdu squitter och frekvensbytesorsaker) och kapslade ACARS-meddelanden.
 * **Smart Flygplans-cache**: Sammanfogar `ac_info` (`icao`, `regnr`, `model`, `typecode`, `owner`) från inloggningspaket till efterföljande ACARS- och positionsrapporter.
 * **Geografisk Kartvisualisering**: Placerar flygplan på den inbäddade kvadratiska minikartan och kartmodalen vid mottagen position.
 
-### 2. Inmarsat STD-C / EGC / SafetyNET / SAR (SATC)
+### 3. Inmarsat STD-C / EGC / SafetyNET / SAR (SATC)
 * **SatDump Integration**: Tar emot och avkodar radseparerade JSON-datastrommar fran SatDump (`inmarsat_stdc_parser`, standardport `6558` over UDP/TCP eller via anpassad fjarr-IP).
 * **Maritima Larm och Varningar**: Full avkodning av SafetyNET, Navigationsvarningar (NAVWARN/NAVAREA), Vaderskrivelser (METAREA), Flottmeddelanden (FleetNET), och Sjorraddningslarm (SAR / Distress Relay).
 * **Automatisk Jordstations- och Satellitidentifiering**: Identifierar Inmarsat-satelliter (t.ex. IOR, AOR-E) och Land Earth Stations (LES, t.ex. Burum, Eik, Aussaguel, Goonhilly).
 * **Inbaddad Leaflet-Minikarta**: Meddelanden med GPS-koordinater renderas automatiskt med en interaktiv minikarta till hoger i meddelandecellen. Kartan kombinerar OpenStreetMap med OpenSeaMap-sjokortsoverlay for full maritim kontext. Klick pa positionsbadgen zoomar direkt in till zoomniva 13.
 * **Strikt Filtrering av Delpaket och Krypto**: Ignorerar ofullstandiga multi-part fragment och filtrerar automatiskt bort krypterade paket (t.ex. ryska `5PRCRYPTO`/`5PSCRYPTO`) och binar telemetri tolkad som ASCII.
 
-### 2. VDL2 / ACARS (VHF Data Link Mode 2)
-* **Flygkommunikation**: Tar emot avkodade VDL2- och ACARS-ramar fran `dumpvdl2` via UDP-stromning.
+### 4. VDL2 / ACARS (VHF Data Link Mode 2)
+* **Flygkommunikation**: Tar emot avkodade VDL2- och ACARS-ramar fran `dumpvdl2` via UDP-stromning och TCP.
 * **Rutt- och Flygplatsavkodning**: Extraherar ICAO-flygplatser (t.ex. ESSA Arlanda, ESGG Landvetter, EGLL Heathrow) och presenterar flygplatsetiketter.
 * **Flygdata & Pilotmeddelanden**: Visar flygnummer (Flight), flygplanets registrering (Tail/Reg), ICAO-adress (24-bit hex), ACARS-labels, och markerar pilotmeddelanden.
 * **Flerfrekvensstod**: Hanterar flera samtida VDL2-kanaler (t.ex. 136.725 MHz, 136.875 MHz, 136.975 MHz).
 
-### 3. RadioSonde (Vadersonder & Ballonger)
+### 5. RadioSonde (Vadersonder & Ballonger)
 * **Atmosfarisk Telemetri**: Tar emot sonddata fran `radiosonde_auto_rx` over UDP.
 * **Sensordata**: Visar sondens serienummer, frekvens, GPS-position (lat/lon), flyghojd (MSL), temperatur, relativ luftfuktighet, stighastighet och beraknad burst/landning.
 
-### 4. POCSAG (Personsokare)
+### 6. POCSAG (Personsokare)
 * **Avkodning via multimon-ng**: Stod for POCSAG 512, 1200 och 2400 baud.
 * **Entropibaserat Brusfilter**: Filtrerar automatiskt bort felaktiga ramar och radiostorningar utan att tappa korta giltiga larm.
 * **Europeisk Teckenuppsattning**: Full konvertering for svenska tecken (A, A, O).
 
-### 5. TETRA & RDS-TMC
+### 7. TETRA & RDS-TMC
 * **TETRA RAKEL Overvakning**: Logger for TETRA-basstationer och natverkshandelser, med mojlighet att filtrera bort repetitiv basstationstelemetri.
 * **RDS-TMC**: Avkodning av trafikmeddelanden fran FM-sandare.
 

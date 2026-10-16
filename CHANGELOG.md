@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.20] - VHF ACARS Ingestion och Payload Sub-parsing
+
+- **Dedikerad VHF ACARS Mottagare ([acars_receiver.py](file:///d:/antigravity/pager-monitor/acars_receiver.py))**:
+  - Implementerat en robust TCP-klient som ansluter till `acars_router` / acarsdec på `192.168.1.242:15550` (konfigurerbart via miljövariabler `ACARS_HOST` och `ACARS_PORT` samt via inställningsgränssnittet).
+  - Automatisk återanslutning med exponential backoff (1s upp till 30s) och keepalive vid nätverksavbrott.
+  - Avkodar JSON-strömmar (`flight`, `tail`, `label`, `text`, `freq`, `station_id`, `timestamp`, `level`, `error`, `mode`, `ack`, `block_id`, `msgno`).
+  - Flerfaldigt duplikatskydd med rullande tidsfönster (`recent_cache`) för att förhindra dubbellagring vid upprepade radioöverföringar.
+  - Integrerad publicering till MQTT (`publish_message`) och direkt SSE-utsändning (`acars_receiver.set_callback`) till anslutna webbläsare.
+- **Detaljavkodning av Meddelandetext / Payload Sub-parsing ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Implementerat `parse_acars_payload(text, label, metadata)` med automatisk identifiering av strukturerade nyttolaster:
+    - **FM-rapporter (FM1, FM2, FM3)**: Avkodar tidsstämpel (UTC), beräknad ankomsttid (ETA), koordinater (lat/lon) och höjd (ft) samt övriga telemetriparametrar.
+    - **OOOI-rapporter**: Identifierar händelserna `OUT` (Pushback), `OFF` (Start), `ON` (Landning) och `IN` (Gate) samt flygplatskod och bränslemängd (FOB).
+    - **Väderrapporter**: Extraherar ICAO-flygplatser och avkodar `METAR`, `TAF` och `ATIS` (Arrival/Departure).
+  - Strukturerade fält sparas i meddelandets JSON-metadata under nyckeln `decoded_fields`.
+  - Positionsdata (`lat`, `lon`), höjd (`alt_ft`) och `eta` lyfts automatiskt upp i rotstrukturen för kartvisualisering.
+- **Gränssnitt och Meddelandekort ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Nya visuella badges/piller för avkodade fält: Rapporttyp (`badge-report-type`), ETA (`badge-eta`), Höjd (`badge-alt`), Tid (`badge-time`), OOOI (`badge-oooi`), FOB (`badge-fob`), Väder (`badge-wx`), och Övrigt (`badge-extra`).
+  - Möjlighet att fälla ut och granska råtexten med bevarad full spårbarhet.
+  - Separering av protokollfilter för `ACARS` (VHF ACARS) och `VDL2` (VHF Data Link Mode 2) med dedikerade protokollbadgar.
+- **Inställningar & Statusvy ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Ny flik "VHF ACARS" (`tab-acars`) i inställningsmenyn med anslutningskort, paket- och meddelanderäknare, senast mottagna flyg/registrering/frekvens, och statusindikator.
+  - Testknapp för att injicera syntetiska VHF ACARS-meddelanden (`/api/acars/test`).
+  - Automatisk sparning och omstart av mottagaren vid ändring av värd och port.
+- **Tester ([tests/test_acars.py](file:///d:/antigravity/pager-monitor/tests/test_acars.py))**:
+  - Enhetstester för payload sub-parsing (FM3, FM1, FM2, OOOI, METAR, ATIS), JSON-avkodning, metadata-berikning och mottagarstatus.
+
 ## [2026.10.16.18] - Protokollretention i Filterlistan och Balanserad Hämtning vid UI-reload
 
 - **Garanterad Retention av Aktiverade Protokoll ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:

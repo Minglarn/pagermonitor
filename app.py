@@ -31,6 +31,7 @@ from vdl2_receiver import init_vdl2, restart_vdl2, get_vdl2_status, send_test_vd
 from sonde_receiver import init_sonde, restart_sonde, get_sonde_status, get_active_sondes_api, send_test_sonde_message
 from satc_receiver import init_satc, restart_satc, get_satc_status, send_test_satc_message
 from hfdl_receiver import init_hfdl, restart_hfdl, get_hfdl_status, send_test_hfdl_message
+from acars_receiver import init_acars, restart_acars, get_acars_status, send_test_acars_message
 from log_streamer import setup_log_capture, log_manager
 
 # Setup basic logging
@@ -47,6 +48,12 @@ log.setLevel(logging.ERROR)
 app = Flask(__name__)
 # Limit maximum payload size for incoming HTTP requests to prevent DoS memory exhaustion
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB
+
+APP_VERSION = "2026.10.16.20"
+
+@app.context_processor
+def inject_version():
+    return {'app_version': APP_VERSION}
 
 # Authentication via environment variables (configured in docker-compose.yml or .env)
 AUTH_USER = os.environ.get('AUTH_USER', '').strip()
@@ -119,7 +126,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.16.18"
+APP_VERSION = "2026.10.16.19"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
@@ -458,6 +465,21 @@ def hfdl_test():
         logger.error(f"Error sending test HFDL message: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/acars/status')
+def acars_status():
+    """Returnerar aktuell anslutningsstatus och telemetri för VHF ACARS."""
+    return jsonify(get_acars_status())
+
+@app.route('/api/acars/test', methods=['POST'])
+def acars_test():
+    """Skickar ett syntetiskt VHF ACARS-meddelande till databas och realtidsflöde."""
+    try:
+        res = send_test_acars_message()
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Error sending test ACARS message: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/api/settings/defaults')
 def settings_defaults():
     return jsonify(get_default_settings())
@@ -480,7 +502,8 @@ def handle_settings():
             'vdl2_enabled', 'vdl2_host', 'vdl2_port', 'vdl2_filter_empty', 'vdl2_filter_links',
             'sonde_enabled', 'sonde_udp_port', 'sonde_db_interval',
             'satc_enabled', 'satc_host', 'satc_port', 'satc_only_messages',
-            'hfdl_enabled', 'hfdl_host', 'hfdl_port', 'hfdl_only_messages'
+            'hfdl_enabled', 'hfdl_host', 'hfdl_port', 'hfdl_only_messages',
+            'acars_enabled', 'acars_host', 'acars_port'
         ]
         sdr_restart_keys = {
             'frequency', 'gain', 'device_serial', 'multimon_verbosity', 
@@ -493,11 +516,13 @@ def handle_settings():
         sonde_keys = {'sonde_enabled', 'sonde_udp_port', 'sonde_db_interval'}
         satc_keys = {'satc_enabled', 'satc_host', 'satc_port', 'satc_only_messages'}
         hfdl_keys = {'hfdl_enabled', 'hfdl_host', 'hfdl_port', 'hfdl_only_messages'}
+        acars_keys = {'acars_enabled', 'acars_host', 'acars_port'}
         sdr_restart_needed = False
         vdl2_restart_needed = False
         sonde_restart_needed = False
         satc_restart_needed = False
         hfdl_restart_needed = False
+        acars_restart_needed = False
         for key in allowed_keys:
             if key in data:
                 update_setting(key, data[key])
@@ -511,6 +536,8 @@ def handle_settings():
                     satc_restart_needed = True
                 if key in hfdl_keys:
                     hfdl_restart_needed = True
+                if key in acars_keys:
+                    acars_restart_needed = True
         
         if sdr_restart_needed:
             restart_sdr()
@@ -522,6 +549,8 @@ def handle_settings():
             restart_satc()
         if hfdl_restart_needed:
             restart_hfdl()
+        if acars_restart_needed:
+            restart_acars()
             
         return jsonify({"status": "success"})
     
@@ -700,6 +729,7 @@ init_vdl2(notify_clients)
 init_sonde(notify_clients)
 init_satc(notify_clients)
 init_hfdl(notify_clients)
+init_acars(notify_clients)
 
 @app.route('/stream')
 def stream():
@@ -773,16 +803,16 @@ def stream_logs():
 
 if __name__ == '__main__':
     print(r"""
-╔═══════════════════════════════════════════════════════════════════════════╗
-║ ___                                                      _                ║
-║(  _`\                           /'\_/`\               _ ( )_              ║
-║| |_) )  _ _    __     __   _ __ |     |   _     ___  (_)| ,_)   _    _ __ ║
-║| ,__/'/'_` ) /'_ `\ /'__`\( '__)| (_) | /'_`\ /' _ `\| || |   /'_`\ ( '__)║
-║| |   ( (_| |( (_) |(  ___/| |   | | | |( (_) )| ( ) || || |_ ( (_) )| |   ║
-║(_)   `\__,_)`\__  |`\____)(_)   (_) (_)`\___/'(_) (_)(_)`\__)`\___/'(_)   ║
-║             ( )_) |                                                       ║
-║              \___/'                                                       ║
-╚═══════════════════════════════════════════════════════════════════════════╝
++---------------------------------------------------------------------------+
+| ___                                                      _                |
+|(  _`\                           /'\_/`\               _ ( )_              |
+|| |_) )  _ _    __     __   _ __ |     |   _     ___  (_)| ,_)   _    _ __ |
+|| ,__/'/'_` ) /'_ `\ /'__`\( '__)| (_) | /'_`\ /' _ `\| || |   /'_`\ ( '__)|
+|| |   ( (_| |( (_) |(  ___/| |   | | | |( (_) )| ( ) || || |_ ( (_) )| |   |
+|(_)   `\__,_)`\__  |`\____)(_)   (_) (_)`\___/'(_) (_)(_)`\__)`\___/'(_)   |
+|             ( )_) |                                                       |
+|              \___/'                                                       |
++---------------------------------------------------------------------------+
 """)
     logger.info("=================================================================")
     logger.info(f" PagerMonitor v{APP_VERSION} (CalVer) - Starting container service...")

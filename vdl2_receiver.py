@@ -1708,7 +1708,8 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
         'snr_db': snr_db,
         'is_miam': is_miam,
         'telemetry': telemetry_data,
-        'dst_airport': dst_airport
+        'dst_airport': dst_airport,
+        'decoded_fields': acars.get('decoded_fields') if isinstance(acars, dict) else None
     }
 
 
@@ -2167,7 +2168,9 @@ class VDL2Receiver:
             'alt_ft': parsed.get('alt_ft'),
             'snr': parsed.get('snr'),
             'is_miam': parsed.get('is_miam'),
-            'telemetry': parsed.get('telemetry')
+            'telemetry': parsed.get('telemetry'),
+            'decoded_fields': parsed.get('decoded_fields'),
+            'eta': parsed.get('decoded_fields', {}).get('eta') if isinstance(parsed.get('decoded_fields'), dict) else None
         }
 
         # Spara till databas

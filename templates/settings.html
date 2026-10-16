@@ -113,6 +113,9 @@
                         <button class="tab-trigger" onclick="switchTab('hfdl')">
                             <i class="fas fa-plane-departure" style="margin-right: 6px;"></i> HFDL / Kortvåg
                         </button>
+                        <button class="tab-trigger" onclick="switchTab('acars')">
+                            <i class="fas fa-plane-arrival" style="margin-right: 6px;"></i> VHF ACARS
+                        </button>
                     </div>
 
                     <!-- TAB 1: SDR RECEIVERS -->
@@ -1001,6 +1004,94 @@
                         </div>
                     </div>
 
+                    <!-- TAB 8: VHF ACARS -->
+                    <div id="tab-acars" class="tab-content">
+                        <div class="settings-card" style="padding: 1.5rem; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; margin-bottom: 1.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+                                <div>
+                                    <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">VHF ACARS (acarsdec / acars_router)</h3>
+                                    <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
+                                        Ta emot lokal och regional flygdata, ACARS-meddelanden och telemetri över VHF från din acarsdec/acars_router-instans via TCP (port 15550).
+                                    </p>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <button type="button" class="secondary-btn" onclick="sendTestAcarsAlert()" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; font-size: 0.82rem;">
+                                        <i class="fas fa-paper-plane"></i> Test ACARS
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- ACARS Telemetry & Status Badges -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Status</div>
+                                    <div id="acarsStatusBadge" style="display: inline-block; padding: 0.3rem 0.75rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem; background: rgba(148, 163, 184, 0.15); color: #cbd5e1;">Laddar...</div>
+                                    <div id="acarsStatusText" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; word-break: break-all;">-</div>
+                                </div>
+
+                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Mottagna Paket</div>
+                                    <div id="acarsPacketsCount" style="font-size: 1.6rem; font-weight: 800; color: #818cf8;">0</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Råa JSON-paket</div>
+                                </div>
+
+                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Avkodade Meddelanden</div>
+                                    <div id="acarsMessagesCount" style="font-size: 1.6rem; font-weight: 800; color: #10b981;">0</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">VHF ACARS-meddelanden</div>
+                                </div>
+
+                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Senaste Aktivitet</div>
+                                    <div id="acarsLastFlight" style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); word-break: break-all;">-</div>
+                                    <div id="acarsLastTime" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Ingen aktivitet ännu</div>
+                                </div>
+                            </div>
+
+                            <!-- ACARS Configuration Form -->
+                            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">Aktivera VHF ACARS-mottagare</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                                            Ansluter som TCP-klient till acars_router för inkommande JSON-strömmar från acarsdec.
+                                        </div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="acars_enabled" checked onchange="autoSaveAcarsSettings()">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
+                                    <div>
+                                        <label style="display: block; font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.4rem;">
+                                            Värddator / IP-adress
+                                        </label>
+                                        <input type="text" id="acars_host" class="form-input" value="192.168.1.242" placeholder="t.ex. 192.168.1.242"
+                                            style="width: 100%; padding: 0.55rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text-primary);"
+                                            onchange="autoSaveAcarsSettings()">
+                                        <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+                                            IP-adress eller värdnamn till maskinen där <code>acars_router</code> körs (t.ex. iridium).
+                                        </small>
+                                    </div>
+
+                                    <div>
+                                        <label style="display: block; font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.4rem;">
+                                            TCP-port
+                                        </label>
+                                        <input type="number" id="acars_port" class="form-input" value="15550" placeholder="15550"
+                                            style="width: 100%; padding: 0.55rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text-primary);"
+                                            onchange="autoSaveAcarsSettings()">
+                                        <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+                                            TCP-port för acarsdec JSON-output (standard <code>15550</code>).
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div id="statusMessage" class="status-message"></div>
                 </div>
             </main>
@@ -1148,6 +1239,7 @@
         let sondePollInterval = null;
         let satcPollInterval = null;
         let hfdlPollInterval = null;
+        let acarsPollInterval = null;
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-trigger').forEach(btn => btn.classList.remove('active'));
@@ -1182,6 +1274,11 @@
                 if (!hfdlPollInterval) {
                     hfdlPollInterval = setInterval(loadHfdlStatus, 3000);
                 }
+            } else if (tabId === 'acars') {
+                loadAcarsStatus();
+                if (!acarsPollInterval) {
+                    acarsPollInterval = setInterval(loadAcarsStatus, 3000);
+                }
             }
 
             if (tabId !== 'vdl2' && vdl2PollInterval) {
@@ -1199,6 +1296,10 @@
             if (tabId !== 'hfdl' && hfdlPollInterval) {
                 clearInterval(hfdlPollInterval);
                 hfdlPollInterval = null;
+            }
+            if (tabId !== 'acars' && acarsPollInterval) {
+                clearInterval(acarsPollInterval);
+                acarsPollInterval = null;
             }
         }
 
@@ -1608,6 +1709,13 @@
                     const hfdlFiltEl = document.getElementById('hfdl_only_messages');
                     if (hfdlFiltEl) hfdlFiltEl.checked = (data.hfdl_only_messages !== 'false');
 
+                    const acarsEnEl = document.getElementById('acars_enabled');
+                    if (acarsEnEl) acarsEnEl.checked = (data.acars_enabled !== 'false');
+                    const acarsHostEl = document.getElementById('acars_host');
+                    if (acarsHostEl && data.acars_host) acarsHostEl.value = data.acars_host;
+                    const acarsPortEl = document.getElementById('acars_port');
+                    if (acarsPortEl && data.acars_port) acarsPortEl.value = data.acars_port;
+
                     document.getElementById('filterSensitivityGroup').style.display =
                         (data.garbage_filter !== 'false') ? 'block' : 'none';
 
@@ -1932,6 +2040,97 @@
             } catch (err) {
                 console.error('Error sending test HFDL message:', err);
                 showStatus('Kunde inte skicka test-HFDL.', 'error');
+            }
+        }
+
+        function loadAcarsStatus() {
+            fetch('/api/acars/status')
+                .then(r => r.json())
+                .then(data => {
+                    const badge = document.getElementById('acarsStatusBadge');
+                    const text = document.getElementById('acarsStatusText');
+                    const packets = document.getElementById('acarsPacketsCount');
+                    const messages = document.getElementById('acarsMessagesCount');
+                    const flight = document.getElementById('acarsLastFlight');
+                    const time = document.getElementById('acarsLastTime');
+
+                    if (badge) {
+                        if (data.status === 'running' || data.status === 'connected') {
+                            badge.style.background = 'rgba(99, 102, 241, 0.2)';
+                            badge.style.color = '#818cf8';
+                            badge.innerText = (data.status === 'connected') ? `Ansluten (${data.host}:${data.port})` : `Aktiv (${data.host}:${data.port})`;
+                        } else if (data.status === 'connecting' || data.status === 'reconnecting') {
+                            badge.style.background = 'rgba(234, 179, 8, 0.2)';
+                            badge.style.color = '#eab308';
+                            badge.innerText = `Ansluter (${data.host}:${data.port})`;
+                        } else if (data.status === 'disabled') {
+                            badge.style.background = 'rgba(148, 163, 184, 0.15)';
+                            badge.style.color = '#94a3b8';
+                            badge.innerText = 'Inaktiverad';
+                        } else {
+                            badge.style.background = 'rgba(239, 68, 68, 0.2)';
+                            badge.style.color = '#f87171';
+                            badge.innerText = 'Fel / Stoppad';
+                        }
+                    }
+                    if (text) text.innerText = data.error_message ? `Fel: ${data.error_message}` : `TCP ${data.host || '192.168.1.242'}:${data.port}`;
+                    if (packets) packets.innerText = (data.packets_received || 0).toLocaleString();
+                    if (messages) messages.innerText = (data.messages_decoded || 0).toLocaleString();
+                    if (flight) {
+                        let disp = '-';
+                        if (data.last_flight && data.last_flight !== '-') {
+                            disp = data.last_flight;
+                            if (data.last_tail && data.last_tail !== '-') disp += ` (${data.last_tail})`;
+                        } else if (data.last_tail && data.last_tail !== '-') {
+                            disp = data.last_tail;
+                        }
+                        flight.innerText = disp;
+                    }
+                    if (time) {
+                        if (data.last_message_time && data.last_message_time !== 'Ingen aktivitet ännu') {
+                            let tStr = `Senaste: ${data.last_message_time}`;
+                            if (data.last_freq && data.last_freq !== '-') {
+                                tStr += ` (${data.last_freq})`;
+                            }
+                            time.innerText = tStr;
+                        } else {
+                            time.innerText = 'Ingen aktivitet ännu';
+                        }
+                    }
+                })
+                .catch(err => console.error('Could not fetch ACARS status:', err));
+        }
+
+        function autoSaveAcarsSettings() {
+            const hostEl = document.getElementById('acars_host');
+            const portEl = document.getElementById('acars_port');
+            const enabledEl = document.getElementById('acars_enabled');
+            const payload = {
+                acars_enabled: (enabledEl && enabledEl.checked) ? 'true' : 'false',
+                acars_host: (hostEl ? hostEl.value.trim() : '') || '192.168.1.242',
+                acars_port: (portEl ? portEl.value.trim() : '') || '15550'
+            };
+            saveSettings(payload).then(() => {
+                setTimeout(loadAcarsStatus, 600);
+            });
+        }
+
+        async function sendTestAcarsAlert() {
+            try {
+                const res = await fetch('/api/acars/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    showStatus(data.message || 'Syntetiskt VHF ACARS-meddelande skickat!', 'success');
+                    loadAcarsStatus();
+                } else {
+                    showStatus('Fel vid sändning av test-ACARS: ' + (data.message || 'Okänt fel'), 'error');
+                }
+            } catch (err) {
+                console.error('Error sending test ACARS message:', err);
+                showStatus('Kunde inte skicka test-ACARS.', 'error');
             }
         }
 

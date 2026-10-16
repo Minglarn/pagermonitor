@@ -20,5 +20,9 @@ services:
       # HTTP-autentisering för att skydda webbgränssnittet
       - AUTH_USER=${AUTH_USER:-admin}
       - AUTH_PASS=${AUTH_PASS:-}
+      # VHF ACARS mottagarkonfiguration
+      - ACARS_HOST=${ACARS_HOST:-192.168.1.242}
+      - ACARS_PORT=${ACARS_PORT:-15550}
+      - ACARS_ENABLED=${ACARS_ENABLED:-true}
     ports:
       - "7090:5000"

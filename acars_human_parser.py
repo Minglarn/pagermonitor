@@ -620,6 +620,273 @@ def format_libacars_data(acars_dict: dict = None, xid_dict: dict = None, vdl2_fr
 # MODULÄRA REGLER FÖR ACARS HUMAN PARSER (PORTADE FRÅN AIRFRAMES OCH ACARSHUB)
 # ============================================================================
 
+def parse_acars_payload(text: str, label: str = None, metadata: dict = None) -> dict:
+    """
+    Detaljavkodar meddelandetext (Payload Sub-parsing) för ACARS/VDL2.
+    Identifierar och bryter ner kända strukturerade format:
+      1. FM-rapporter (FM1, FM2, FM3, FMA m.fl.) med tid, ETA, koordinater, höjd och parametrar.
+      2. OOOI-rapporter (OUT, OFF, ON, IN) med fas, flygplats, tider och bränsle (FOB).
+      3. Väder (WX / WXRQ / METAR / TAF / ATIS) med begärda/rapporterade ICAO-flygplatser och data.
+    Returnerar en strukturerad ordbok eller None om inget känt format matchas.
+    Om metadata skickas med berikas det automatiskt med decoded_fields, lat, lon, alt_ft, eta.
+    """
+    if not text or not isinstance(text, str):
+        return None
+
+    stripped = text.strip()
+    lbl = (label or '').strip().upper()
+    result = None
+
+    # -------------------------------------------------------------------------
+    # 1. FM-rapporter (FM1, FM2, FM3, FMA):
+    # Exempel: "FM3 194836,2147,N 57.686,E 18.017,33186,  399,80"
+    # -------------------------------------------------------------------------
+    m_fm = re.search(
+        r'\b(FM[0-9A-Z]?)\s+(\d{6})\s*,\s*(\d{4})\s*,\s*([NS])\s*(\d{1,2}(?:\.\d+)?)\s*,\s*([EW])\s*(\d{1,3}(?:\.\d+)?)\s*,\s*(\d+)(?:,\s*(.+))?',
+        stripped,
+        re.IGNORECASE
+    )
+    if m_fm:
+        fm_type = m_fm.group(1).upper()
+        raw_time = m_fm.group(2)
+        raw_eta = m_fm.group(3)
+        ns_hemi = m_fm.group(4).upper()
+        raw_lat = float(m_fm.group(5))
+        ew_hemi = m_fm.group(6).upper()
+        raw_lon = float(m_fm.group(7))
+        raw_alt = int(m_fm.group(8))
+        raw_extra = (m_fm.group(9) or '').strip()
+        if raw_extra:
+            raw_extra = re.sub(r',\s*', ', ', raw_extra)
+
+        lat = -raw_lat if ns_hemi == 'S' else raw_lat
+        lon = -raw_lon if ew_hemi == 'W' else raw_lon
+
+        hh, mm, ss = raw_time[:2], raw_time[2:4], raw_time[4:6]
+        time_utc = f"{hh}:{mm}:{ss}"
+
+        eta_hh, eta_mm = raw_eta[:2], raw_eta[2:4]
+        eta_formatted = f"{eta_hh}:{eta_mm}:00"
+
+        alt_fmt = f"{raw_alt:,} ft".replace(',', ' ')
+        pos_str = f"Lat {raw_lat:.3f}, Lon {raw_lon:.3f}" if (ns_hemi == 'N' and ew_hemi == 'E') else f"Lat {lat:.3f}, Lon {lon:.3f}"
+
+        fields = {
+            "Typ": f"Flight Report ({fm_type})",
+            "Meddelandetid (UTC)": time_utc,
+            "ETA (Beräknad ankomst)": eta_formatted,
+            "Position": pos_str,
+            "Höjd": alt_fmt
+        }
+        if raw_extra:
+            fields["Övrig data"] = raw_extra
+
+        result = {
+            'report_type': f"Flight Report ({fm_type})",
+            'type_code': fm_type,
+            'msg_time_utc': time_utc,
+            'time_utc': time_utc,
+            'eta': eta_formatted,
+            'eta_utc': eta_formatted,
+            'lat': lat,
+            'lon': lon,
+            'pos_str': pos_str,
+            'altitude_ft': raw_alt,
+            'altitude_str': alt_fmt,
+            'extra_data': raw_extra,
+            'extra': raw_extra,
+            'fields': fields
+        }
+
+    # -------------------------------------------------------------------------
+    # 2. OOOI-rapporter (OUT, OFF, ON, IN):
+    # Exempel: "OUT/ESSA/1234", "OFF ESSA 1245", "ON/EKCH/1330", "IN EKCH 1338", "OUT /ESSA 1015 /FOB 14500"
+    # -------------------------------------------------------------------------
+    elif True:
+        m_oooi = re.search(
+            r'(?:^|[\r\n/])\s*(OUT|OFF|ON|IN)(?:[\s/]+([A-Z]{3,4}))?(?:[\s/]+(\d{2}:?\d{2}(?::?\d{2})?))?',
+            stripped,
+            re.IGNORECASE
+        )
+        if m_oooi and (lbl in ('80', '81', '82', '83', 'Q1', 'Q2', '15', '16', '_D') or re.match(r'^(OUT|OFF|ON|IN)\b', stripped, re.IGNORECASE) or '/OUT' in stripped or '/OFF' in stripped or '/ON' in stripped or '/IN' in stripped):
+            event = m_oooi.group(1).upper()
+            ap = m_oooi.group(2)
+            ap_code = ap.upper() if ap and len(ap) in (3, 4) and ap.isalpha() else None
+            if not ap_code:
+                for w in re.findall(r'\b([A-Z]{4})\b', stripped):
+                    if is_valid_icao_code(w):
+                        ap_code = w
+                        break
+            tm_raw = m_oooi.group(3)
+            tm_formatted = None
+            if tm_raw:
+                digits = re.sub(r'\D', '', tm_raw)
+                if len(digits) == 4:
+                    tm_formatted = f"{digits[:2]}:{digits[2:4]}:00"
+                elif len(digits) >= 6:
+                    tm_formatted = f"{digits[:2]}:{digits[2:4]}:{digits[4:6]}"
+                else:
+                    tm_formatted = tm_raw
+
+            desc_map = {
+                'OUT': 'Pushback från gate (OUT)',
+                'OFF': 'Startat från bana (OFF)',
+                'ON': 'Landat på bana (ON)',
+                'IN': 'Parkerat vid gate (IN)'
+            }
+            event_desc = desc_map.get(event, event)
+
+            # Extrahera FOB om det finns
+            fob_str = None
+            fob_val_raw = None
+            m_fob = re.search(r'(?:/FOB\s*|\bFOB\s*[:=]?\s*)(\d{3,5})\b', stripped)
+            if m_fob:
+                fob_val_raw = m_fob.group(1)
+                val = int(fob_val_raw)
+                fob_kg = val * 100 if len(fob_val_raw) == 3 else (val * 10 if len(fob_val_raw) == 4 else val)
+                fob_str = f"{fob_kg:,} kg".replace(',', ' ')
+
+            fields = {
+                "Typ": f"OOOI ({event})",
+                "Händelse": event_desc
+            }
+            if ap_code:
+                fields["Flygplats"] = format_airport(ap_code)
+            if tm_formatted:
+                fields["Tid (UTC)"] = tm_formatted
+            if fob_str:
+                fields["Bränsle (FOB)"] = fob_str
+
+            result = {
+                'report_type': f"OOOI ({event})",
+                'type_code': event,
+                'oooi_event': event,
+                'oooi_desc': event_desc,
+                'airport': ap_code,
+                'msg_time_utc': tm_formatted,
+                'time_utc': tm_formatted,
+                'fob': fob_str,
+                'fuel_on_board': fob_val_raw or fob_str,
+                'fields': fields
+            }
+
+        # -------------------------------------------------------------------------
+        # 3. Väder (WX / WXRQ / METAR / TAF / ATIS):
+        # Exempel: "/ARN.TI2/026ESSA0700A", "METAR ESSA 161950Z ...", "WXRQ ESSA EKCH"
+        # -------------------------------------------------------------------------
+        else:
+            m_atis = re.search(r'/([A-Z]{4})\.TI2/(?:\d{1,4}\1)?([AD])?', stripped, re.IGNORECASE)
+            if m_atis or lbl in ('5U', '57', 'WX', '30', '5D', 'B9', 'A9') or 'METAR' in stripped.upper() or 'ATIS' in stripped.upper() or 'TAF' in stripped.upper():
+                found_airports = []
+                atis_icao = None
+                atis_type = None
+
+                if m_atis:
+                    atis_icao = m_atis.group(1).upper()
+                    found_airports.append(atis_icao)
+                    atis_type = m_atis.group(2).upper() if m_atis.group(2) else ""
+
+                # Hitta övriga ICAO-koder
+                for m in re.finditer(r'\b([A-Z]{4})\b', stripped):
+                    c = m.group(1).upper()
+                    if is_valid_icao_code(c) and c not in found_airports:
+                        found_airports.append(c)
+
+                is_metar = bool(re.search(r'\bMETAR\b', stripped, re.IGNORECASE))
+                is_taf = bool(re.search(r'\bTAF\b', stripped, re.IGNORECASE))
+                is_atis = bool(atis_icao or lbl in ('5D', 'B9', 'A9') or '.TI2' in stripped or re.search(r'\bATIS\b', stripped, re.IGNORECASE))
+
+                if is_metar:
+                    rep_type = "Väderrapport (METAR)"
+                    w_type = "METAR"
+                elif is_taf:
+                    rep_type = "Flygplatsprognos (TAF)"
+                    w_type = "TAF"
+                elif is_atis:
+                    rep_type = "Flygplatsväder (ATIS)"
+                    w_type = "ATIS"
+                elif 'WXRQ' in stripped or 'WX REQ' in stripped:
+                    rep_type = "Väderbegäran (WXRQ)"
+                    w_type = "WXRQ"
+                else:
+                    rep_type = "Väderdata"
+                    w_type = "WX"
+
+                fields = {
+                    "Typ": rep_type
+                }
+                if found_airports:
+                    fields["Flygplatser"] = ", ".join([format_airport(a) for a in found_airports])
+                if atis_type:
+                    fields["ATIS-typ"] = "Arrival (Landning)" if atis_type == 'A' else ("Departure (Start)" if atis_type == 'D' else atis_type)
+
+                primary_ap = found_airports[0] if found_airports else None
+                result = {
+                    'report_type': rep_type,
+                    'type_code': 'WX',
+                    'airport': primary_ap,
+                    'wx_airport': primary_ap,
+                    'airports': found_airports,
+                    'weather_type': w_type,
+                    'wx_type': w_type,
+                    'fields': fields
+                }
+
+    if result and isinstance(metadata, dict):
+        metadata['decoded_fields'] = result
+        if result.get('lat') is not None and result.get('lon') is not None:
+            metadata['lat'] = result['lat']
+            metadata['lon'] = result['lon']
+        if result.get('altitude_ft') is not None:
+            metadata['alt_ft'] = result['altitude_ft']
+        if result.get('eta'):
+            metadata['eta'] = result['eta']
+
+    return result
+
+
+def rule_fm_flight_report(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    Avkodar strukturerade FM-rapporter (FM1, FM2, FM3):
+    Exempel: FM3 194836,2147,N 57.686,E 18.017,33186,  399,80
+    Presenterande fält:
+      - Typ: Flight Report (FM3)
+      - Meddelandetid (UTC): 19:48:36
+      - ETA: 21:47:00
+      - Position: Lat 57.686, Lon 18.017
+      - Höjd: 33 186 ft
+      - Övrigt: 399, 80
+    """
+    parsed = parse_acars_payload(text, label=label)
+    if not parsed or not parsed.get('type_code', '').startswith('FM'):
+        return None
+
+    if isinstance(metadata, dict):
+        metadata['decoded_fields'] = parsed
+        if parsed.get('lat') is not None and parsed.get('lon') is not None:
+            metadata['lat'] = parsed['lat']
+            metadata['lon'] = parsed['lon']
+        if parsed.get('altitude_ft') is not None:
+            metadata['alt_ft'] = parsed['altitude_ft']
+        if parsed.get('eta'):
+            metadata['eta'] = parsed['eta']
+
+    parts = []
+    if parsed.get('msg_time_utc'):
+        parts.append(f"Tid: {parsed['msg_time_utc']} UTC")
+    if parsed.get('eta'):
+        parts.append(f"ETA: {parsed['eta']}")
+    if parsed.get('altitude_str'):
+        parts.append(f"Höjd: {parsed['altitude_str']}")
+    if parsed.get('pos_str'):
+        parts.append(f"Position: {parsed['pos_str']}")
+    if parsed.get('extra_data'):
+        parts.append(f"Övrigt: {parsed['extra_data']}")
+
+    summary = "   ".join(parts)
+    return f"{parsed['report_type']}   {summary}\nRådata: {text.strip()}"
+
+
 def rule_libacars_structured(text: str, label: str = None, metadata: dict = None) -> str:
     """Regel som nyttjar färdigtolkad data från libacars i metadata-objektet."""
     if not isinstance(metadata, dict):
@@ -2229,6 +2496,7 @@ def rule_h1_h2_df_fallback(text: str, label: str = None, metadata: dict = None) 
 # Lista av regler som exekveras i prioritetsordning
 PARSER_RULES = [
     rule_libacars_structured,
+    rule_fm_flight_report,
     rule_miam_airbus_telemetry,
     rule_label_sa_media_advisory,
     rule_label_b6_cpdlc,
@@ -2289,6 +2557,19 @@ def parse_human_acars(message: str, label: str = None, metadata: dict = None, st
         m_lbl = re.search(r'\[([A-Z0-9_]{1,4})(?::|\])', prefix)
         if m_lbl:
             label = m_lbl.group(1)
+
+    # Om metadata skickades in, prova att extrahera strukturerad payload om ej redan gjorts
+    if isinstance(metadata, dict) and not metadata.get('decoded_fields'):
+        payload_sub = parse_acars_payload(core_text, label=label)
+        if payload_sub:
+            metadata['decoded_fields'] = payload_sub
+            if payload_sub.get('lat') is not None and payload_sub.get('lon') is not None and not metadata.get('lat'):
+                metadata['lat'] = payload_sub['lat']
+                metadata['lon'] = payload_sub['lon']
+            if payload_sub.get('altitude_ft') is not None and not metadata.get('alt_ft'):
+                metadata['alt_ft'] = payload_sub['altitude_ft']
+            if payload_sub.get('eta') and not metadata.get('eta'):
+                metadata['eta'] = payload_sub['eta']
 
     # Kör kärntexten mot samtliga regler
     out_msg = None

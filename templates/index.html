@@ -1768,7 +1768,9 @@
                 return 'TETRA';
             } else if (rawProto.includes('RDS') || rawProto.includes('TMC') || rawBitrate.toUpperCase().includes('RDS') || rawBitrate.toUpperCase().includes('TMC') || addrUpper.startsWith('E4:') || addrUpper.startsWith('TMC-') || aliasUpper.startsWith('RDS') || msgUpper.includes('RDS-TMC')) {
                 return 'RDS';
-            } else if (rawProto.includes('VDL') || rawBitrate.toUpperCase().includes('VDL') || rawProto.includes('ACARS') || rawBitrate.toUpperCase().includes('ACARS') || msgUpper.includes('VDL2') || msgUpper.includes('ACARS')) {
+            } else if (rawProto === 'ACARS' || rawBitrate.toUpperCase().includes('VHF-ACARS') || rawBitrate.toUpperCase() === 'ACARS' || (alarm && alarm.source_type === 'ACARS')) {
+                return 'ACARS';
+            } else if (rawProto.includes('VDL') || rawBitrate.toUpperCase().includes('VDL') || msgUpper.includes('VDL2')) {
                 return 'VDL2';
             } else if (rawProto.includes('SONDE') || rawBitrate.toUpperCase().includes('SONDE') || msgUpper.includes('VÄDERBALLONG') || msgUpper.includes('RADIOSOND')) {
                 return 'SONDE';
@@ -2094,12 +2096,14 @@
 
         function populateFilterDropdowns() {
             const isVdl2Enabled = (appSettings.vdl2_enabled !== 'false');
+            const isAcarsEnabled = (appSettings.acars_enabled !== 'false');
             const isSatcEnabled = (appSettings.satc_enabled !== 'false');
+            const isAeroEnabled = (isVdl2Enabled || isAcarsEnabled);
 
-            // Show or hide VDL2 dropdown wrappers based on Settings
+            // Show or hide VDL2/ACARS dropdown wrappers based on Settings
             const vdl2Wrappers = document.querySelectorAll('.vdl2-only-filter');
             vdl2Wrappers.forEach(el => {
-                el.style.display = isVdl2Enabled ? 'inline-flex' : 'none';
+                el.style.display = isAeroEnabled ? 'inline-flex' : 'none';
             });
 
             // Show or hide SATC dropdown wrappers based on Settings
@@ -2108,7 +2112,7 @@
                 el.style.display = isSatcEnabled ? 'inline-flex' : 'none';
             });
 
-            if (!isVdl2Enabled) {
+            if (!isAeroEnabled) {
                 if (activeFilters.labels.size > 0) activeFilters.labels.clear();
                 if (activeFilters.airports.size > 0) activeFilters.airports.clear();
             }
@@ -2132,12 +2136,13 @@
 
                 // Basprotokoll som alltid ska finnas i listan om de är aktiverade i systemet
                 const enabledProtocols = ['POCSAG'];
+                if (isAcarsEnabled || protoCounts['ACARS']) enabledProtocols.push('ACARS');
                 if (isVdl2Enabled) enabledProtocols.push('VDL2');
                 if (isHfdlEnabled || protoCounts['HFDL']) enabledProtocols.push('HFDL');
                 if (isSatcEnabled || protoCounts['SATC']) enabledProtocols.push('SATC');
                 if (isSondeEnabled || protoCounts['SONDE']) enabledProtocols.push('SONDE');
 
-                const preferredOrder = ['POCSAG', 'VDL2', 'HFDL', 'SATC', 'SONDE', 'TETRA', 'RDS', 'AFSK'];
+                const preferredOrder = ['POCSAG', 'ACARS', 'VDL2', 'HFDL', 'SATC', 'SONDE', 'TETRA', 'RDS', 'AFSK'];
                 let activeProtos = [];
                 preferredOrder.forEach(p => {
                     if (enabledProtocols.includes(p) || protoCounts[p]) {
@@ -2147,6 +2152,9 @@
                 Object.keys(protoCounts).forEach(p => {
                     if (!activeProtos.includes(p)) activeProtos.push(p);
                 });
+                if (!isAcarsEnabled && !protoCounts['ACARS']) {
+                    activeProtos = activeProtos.filter(p => p !== 'ACARS');
+                }
                 if (!isVdl2Enabled) {
                     activeProtos = activeProtos.filter(p => p !== 'VDL2');
                 }
@@ -2650,7 +2658,10 @@
             } else if (rawProto.includes('RDS') || rawProto.includes('TMC') || rawBitrate.toUpperCase().includes('RDS') || rawBitrate.toUpperCase().includes('TMC') || addrUpper.startsWith('E4:') || addrUpper.startsWith('TMC-') || aliasUpper.startsWith('RDS') || msgUpper.includes('RDS-TMC')) {
                 protoName = 'RDS';
                 protoClass = 'proto-rds';
-            } else if (rawProto.includes('VDL') || rawBitrate.toUpperCase().includes('VDL') || rawProto.includes('ACARS') || rawBitrate.toUpperCase().includes('ACARS') || msgUpper.includes('VDL2') || msgUpper.includes('ACARS')) {
+            } else if (rawProto === 'ACARS' || rawBitrate.toUpperCase().includes('VHF-ACARS') || rawBitrate.toUpperCase() === 'ACARS' || (alarm && alarm.source_type === 'ACARS')) {
+                protoName = 'ACARS';
+                protoClass = 'proto-acars';
+            } else if (rawProto.includes('VDL') || rawBitrate.toUpperCase().includes('VDL') || msgUpper.includes('VDL2')) {
                 protoName = 'VDL2';
                 protoClass = 'proto-vdl2';
             } else if (rawProto.includes('SONDE') || rawBitrate.toUpperCase().includes('SONDE') || msgUpper.includes('VÄDERBALLONG') || msgUpper.includes('RADIOSOND')) {
@@ -2693,6 +2704,8 @@
                         formattedBitrate = bStr.substring(5);
                     } else if (bStr.toUpperCase() === 'VDL2') {
                         formattedBitrate = '';
+                    } else if (bStr.toUpperCase() === 'VHF-ACARS' || bStr.toUpperCase() === 'ACARS') {
+                        formattedBitrate = 'VHF';
                     } else if (bStr.toUpperCase().startsWith('SONDE-')) {
                         formattedBitrate = bStr.substring(6);
                     } else if (bStr.toUpperCase() === 'SONDE') {
@@ -2967,6 +2980,50 @@
                 hfdlBadgesHtml = `${regTag}${flightTag}${icaoTag}${modelTag}${gsTag}${hfdlTypeTag}`;
             }
 
+            // VHF ACARS Metadata Badges
+            let acarsBadgesHtml = '';
+            const isAcars = protoName === 'ACARS';
+            let acarsStationVal = alarm.station || alarm.station_id || (alarm.metadata && (alarm.metadata.station || alarm.metadata.station_id)) || '';
+            let acarsMsgNoVal = alarm.msgno || (alarm.metadata && alarm.metadata.msgno) || '';
+
+            if (isAcars) {
+                if (!flightVal && alarm.flight) flightVal = alarm.flight;
+                if (!flightVal && alarm.metadata && alarm.metadata.flight) flightVal = alarm.metadata.flight;
+                if (!flightVal && alarm.address) {
+                    const mFl = alarm.address.match(/^([A-Z0-9]{2,8})\b/i);
+                    if (mFl && mFl[1] !== 'ACARS' && mFl[1] !== 'GS') flightVal = mFl[1].toUpperCase();
+                }
+
+                if (!regVal && (alarm.reg || alarm.tail)) regVal = String(alarm.reg || alarm.tail).replace(/^\.+/, '');
+                if (!regVal && alarm.metadata && (alarm.metadata.reg || alarm.metadata.tail)) regVal = String(alarm.metadata.reg || alarm.metadata.tail).replace(/^\.+/, '');
+                if (!regVal && alarm.address) {
+                    const mReg = alarm.address.match(/\(([A-Z0-9.-]+)\)/i);
+                    if (mReg) regVal = mReg[1].replace(/^\.+/, '').toUpperCase();
+                }
+
+                if (!labelVal && alarm.label) labelVal = alarm.label;
+                if (!labelVal && alarm.metadata && alarm.metadata.label) labelVal = alarm.metadata.label;
+                if (!labelDescVal && alarm.label_desc) labelDescVal = alarm.label_desc;
+                if (!labelDescVal && alarm.metadata && alarm.metadata.label_desc) labelDescVal = alarm.metadata.label_desc;
+
+                const regTag = regVal ? `<span class="badge meta badge-reg filterable-badge" onclick="filterByQuickSearch('${escapeHtml(regVal)}')" title="Klicka för att söka registrering: ${escapeHtml(regVal)}">${escapeHtml(regVal)}</span>` : '';
+                const flightTag = flightVal ? `<span class="badge meta badge-flight filterable-badge" onclick="filterByQuickSearch('${escapeHtml(flightVal)}')" title="Klicka för att söka flight: ${escapeHtml(flightVal)}">${escapeHtml(flightVal)}</span>` : '';
+                const stTag = acarsStationVal ? `<span class="badge meta badge-station filterable-badge" onclick="filterByQuickSearch('${escapeHtml(acarsStationVal)}')" title="Klicka för att söka markstation: ${escapeHtml(acarsStationVal)}">GS: ${escapeHtml(acarsStationVal)}</span>` : '';
+                const msgNoTag = acarsMsgNoVal ? `<span class="badge meta" title="ACARS Meddelandenummer">#${escapeHtml(acarsMsgNoVal)}</span>` : '';
+
+                let labelTag = '';
+                if (labelVal) {
+                    let labelBadgeText = labelVal;
+                    if (labelDescVal) {
+                        let shortDesc = labelDescVal.split('/')[0].trim().replace('-rapport', '').replace('rapport', '').trim();
+                        labelBadgeText = `${labelVal} (${shortDesc})`;
+                    }
+                    labelTag = `<span class="badge meta badge-label filterable-badge" onclick="filterByLabel('${escapeHtml(labelVal)}')" title="Klicka för att filtrera på ACARS Label: ${escapeHtml(labelVal)}">Label: ${escapeHtml(labelBadgeText)}</span>`;
+                }
+
+                acarsBadgesHtml = `${regTag}${flightTag}${labelTag}${stTag}${msgNoTag}`;
+            }
+
             // Sätt filterattribut på raden
             tr.setAttribute('data-proto-name', protoName);
             tr.setAttribute('data-frequency', alarm.frequency || '');
@@ -2997,8 +3054,8 @@
                 }
             }
 
-            // Dölj Alpha/Num för VDL2, SATC och HFDL
-            const funcLabel = (!isVdl2 && !isSatc && !isHfdl && alarm.function !== undefined) ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
+            // Dölj Alpha/Num för VDL2, SATC, HFDL och ACARS
+            const funcLabel = (!isVdl2 && !isSatc && !isHfdl && !isAcars && alarm.function !== undefined) ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
             const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
             const freqTag = alarm.frequency ? `<span class="badge meta badge-freq filterable-badge" onclick="filterByFrequency('${escapeHtml(alarm.frequency)}')" title="Klicka för att filtrera på frekvens: ${escapeHtml(alarm.frequency)}">${escapeHtml(alarm.frequency)}</span>` : '';
             const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
@@ -3020,9 +3077,47 @@
                 activeMinimapHtml = `<div class="msg-minimap-cell"><div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}" data-proto="${escapeHtml(protoName)}"></div></div>`;
             }
 
-            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${satcBadgesHtml}${hfdlBadgesHtml}${universalCoordTag}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
+            // Avkodade strukturerade payload-fält (FM3, OOOI, WX m.fl.)
+            const decodedFields = alarm.decoded_fields || (alarm.metadata && alarm.metadata.decoded_fields);
+            let decodedFieldsHtml = '';
+            if (decodedFields && typeof decodedFields === 'object') {
+                let pills = [];
+                if (decodedFields.report_type) {
+                    pills.push(`<span class="badge meta badge-report-type" title="Rapporttyp">${escapeHtml(decodedFields.report_type)}</span>`);
+                }
+                if (decodedFields.msg_time_utc) {
+                    pills.push(`<span class="badge meta badge-time" title="Meddelandetid (UTC)"><i class="far fa-clock"></i> ${escapeHtml(decodedFields.msg_time_utc)} UTC</span>`);
+                }
+                if (decodedFields.eta) {
+                    pills.push(`<span class="badge meta badge-eta" title="Beräknad ankomsttid (ETA)"><i class="fas fa-plane-arrival"></i> ETA: ${escapeHtml(decodedFields.eta)}</span>`);
+                }
+                if (decodedFields.altitude_str) {
+                    pills.push(`<span class="badge meta badge-alt" title="Höjd (Altitude)"><i class="fas fa-arrows-alt-v"></i> Höjd: ${escapeHtml(decodedFields.altitude_str)}</span>`);
+                }
+                if (decodedFields.pos_str) {
+                    pills.push(`<span class="badge meta badge-coord" title="Position">${escapeHtml(decodedFields.pos_str)}</span>`);
+                }
+                if (decodedFields.oooi_desc) {
+                    pills.push(`<span class="badge meta badge-oooi" title="OOOI-händelse">${escapeHtml(decodedFields.oooi_desc)}</span>`);
+                }
+                if (decodedFields.airport) {
+                    pills.push(`<span class="badge meta badge-station filterable-badge" onclick="filterByQuickSearch('${escapeHtml(decodedFields.airport)}')" title="Klicka för att filtrera på flygplats: ${escapeHtml(decodedFields.airport)}">Flygplats: ${escapeHtml(decodedFields.airport)}</span>`);
+                }
+                if (decodedFields.fob) {
+                    pills.push(`<span class="badge meta badge-fob" title="Bränsle ombord (FOB)"><i class="fas fa-gas-pump"></i> FOB: ${escapeHtml(decodedFields.fob)}</span>`);
+                }
+                if (decodedFields.extra_data) {
+                    pills.push(`<span class="badge meta badge-extra" title="Övrig data">${escapeHtml(decodedFields.extra_data)}</span>`);
+                }
+
+                if (pills.length > 0) {
+                    decodedFieldsHtml = `<div class="decoded-fields-container"><div class="decoded-fields-label">Avkodade fält:</div><div class="decoded-fields-pills">${pills.join('')}</div></div>`;
+                }
+            }
+
+            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${satcBadgesHtml}${hfdlBadgesHtml}${acarsBadgesHtml}${universalCoordTag}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
             const badgesHtml = metaBarBadges ? `<div class="msg-badges msg-meta-bar">${metaBarBadges}</div>` : '';
-            const msgCellInner = `<div class="msg-row-layout"><div class="msg-main-content"><div class="msg-text msg-summary">${msgObj.summaryHtml.trim()}</div>${rawBoxHtml}${badgesHtml}</div>${activeMinimapHtml}</div>`;
+            const msgCellInner = `<div class="msg-row-layout"><div class="msg-main-content"><div class="msg-text msg-summary">${msgObj.summaryHtml.trim()}</div>${decodedFieldsHtml}${rawBoxHtml}${badgesHtml}</div>${activeMinimapHtml}</div>`;
 
             tr.innerHTML = `
                 <td class="id-cell">${alarm.id}</td>
