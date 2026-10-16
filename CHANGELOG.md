@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.16.01] - Konfigurerbar IP-adress för Inmarsat STD-C SatDump-mottagare
+
+- **Konfigurerbar Värd / IP-adress ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py), [app.py](file:///d:/antigravity/pager-monitor/app.py), [database.py](file:///d:/antigravity/pager-monitor/database.py), [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+  - Gjort det möjligt för användaren att ange en godtycklig IP-adress eller värdnamn (`satc_host`) i inställningarna istället för hårdkodat `0.0.0.0`.
+  - Stöd för både lokal lyssnare (`0.0.0.0`) och specifik fjärrvärd (t.ex. `192.168.1.xxx` eller `127.0.0.1`).
+  - När en specifik IP anges startas en aktiv TCP-klienttråd med automatisk återanslutning mot fjärrvärden, samtidigt som den lokala UDP- och TCP-lyssnaren hålls aktiv för inkommande dataströmmar.
+  - Lagt till fältet `Värddator / IP-adress` i webbgränssnittet under fliken `Inmarsat STD-C / EGC` med direkt autosparande (`autoSaveSatcSettings`) och dynamisk statusvisning.
+- **Enhetstester och Emojiförbud ([tests/test_satc.py](file:///d:/antigravity/pager-monitor/tests/test_satc.py))**:
+  - Lagt till nytt enhetstest `test_satc_configurable_host_ip` för konfigurerbar `satc_host`.
+  - Utökat testet `test_strict_no_emojis_in_source_code` för att säkerställa 0 otillåtna emojis i alla moduler och HTML-mallar.
+  - Samtliga 137 enhetstester passerar felfritt.
+
 ## [2026.10.15.23] - Inmarsat STD-C / EGC / SafetyNET / SAR Mottagare från SatDump
 
 - **Ny Mottagarmodul ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:

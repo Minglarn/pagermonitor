@@ -118,7 +118,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.15.23"
+APP_VERSION = "2026.10.16.01"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 @app.context_processor
@@ -458,7 +458,7 @@ def handle_settings():
             'tetra_scan_mode', 'tetra_dwell_time', 'tetra_skip_encrypted',
             'vdl2_enabled', 'vdl2_host', 'vdl2_port', 'vdl2_filter_empty', 'vdl2_filter_links',
             'sonde_enabled', 'sonde_udp_port', 'sonde_db_interval',
-            'satc_enabled', 'satc_port', 'satc_only_messages'
+            'satc_enabled', 'satc_host', 'satc_port', 'satc_only_messages'
         ]
         sdr_restart_keys = {
             'frequency', 'gain', 'device_serial', 'multimon_verbosity', 
@@ -469,7 +469,7 @@ def handle_settings():
         }
         vdl2_keys = {'vdl2_enabled', 'vdl2_host', 'vdl2_port', 'vdl2_filter_empty', 'vdl2_filter_links'}
         sonde_keys = {'sonde_enabled', 'sonde_udp_port', 'sonde_db_interval'}
-        satc_keys = {'satc_enabled', 'satc_port', 'satc_only_messages'}
+        satc_keys = {'satc_enabled', 'satc_host', 'satc_port', 'satc_only_messages'}
         sdr_restart_needed = False
         vdl2_restart_needed = False
         sonde_restart_needed = False

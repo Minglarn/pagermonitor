@@ -1,8 +1,8 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.15.23`
-- **Date**: 2026-10-15
+- **CalVer**: `2026.10.16.01`
+- **Date**: 2026-10-16
 - **Language**: English / Swedish
 
 ---
@@ -10,8 +10,10 @@
 ## Overview of Implemented Features
 
 ### 0. Inmarsat STD-C / EGC / SafetyNET / SAR Mottagare (SatDump JSON_OUT)
-- **Arkitektur och Multi-Protokoll Socket ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
-  - Startar både en UDP-lyssnare och en TCP-server på `0.0.0.0:<satc_port>` (standardport `5558`).
+- **Konfigurerbar IP och Multi-Protokoll Socket ([satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py))**:
+  - Tillåter användaren att ange en godtycklig IP-adress eller värdnamn (`satc_host`) i inställningarna istället för att vara begränsad till hårdkodat `0.0.0.0`.
+  - Stöder både lokal bindning (`0.0.0.0`) och specifik fjärrvärd/container (t.ex. `192.168.1.xxx` eller `127.0.0.1`).
+  - Om en specifik IP anges aktiveras en dedikerad TCP-klienttråd med automatisk återanslutning mot SatDump, samtidigt som lokala UDP- och TCP-lyssnare hålls aktiva för inkommande push från containern.
   - Tar emot realtidsströmmar från `docker-satdump` (`inmarsat_std_c`) konfigurerad med `JSON_OUT`.
   - Stöder automatisk filtrering av tomma TDM- och synkpaket via `satc_only_messages=True` för att förhindra spammande av signaleringskanaler.
 - **Svensk Avkodning, Sammanfattning och Geografisk Position**:

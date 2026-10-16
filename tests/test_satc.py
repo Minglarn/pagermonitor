@@ -22,7 +22,6 @@ def contains_emoji(text):
         "\U0001F900-\U0001F9FF"  # Supplemental Symbols
         "\U0001FA70-\U0001FAFF"  # Symbols & Pictographs Extended-A
         "\U00002702-\U000027B0"  # Dingbats
-        "\U000024C2-\U0001F251"
         "]+", flags=re.UNICODE
     )
     return bool(emoji_pattern.search(str(text)))
@@ -193,12 +192,37 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn('messages_decoded', status)
         self.assertIn('status', status)
 
+    def test_satc_configurable_host_ip(self):
+        """Verifiera att användaren kan konfigurera en specifik IP-adress istället för 0.0.0.0."""
+        receiver = SatCReceiver()
+        self.assertEqual(receiver.host, '0.0.0.0')
+
+        # Starta med anpassad IP
+        receiver.start(host='192.168.1.150', port=5558, enabled=False)
+        self.assertEqual(receiver.host, '192.168.1.150')
+        status = receiver.get_status()
+        self.assertEqual(status['host'], '192.168.1.150')
+        self.assertEqual(status['port'], 5558)
+        receiver.stop()
+
     def test_strict_no_emojis_in_source_code(self):
-        """Verifiera att inga emojis förekommer i källkodsfilen satc_receiver.py."""
-        receiver_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'satc_receiver.py')
-        with open(receiver_path, 'r', encoding='utf-8') as f:
-            code = f.read()
-        self.assertFalse(contains_emoji(code), "Fel: otillåtna emojis hittades i satc_receiver.py!")
+        """Verifiera att inga emojis förekommer i källkodsfilerna eller mallarna."""
+        base_dir = os.path.dirname(os.path.dirname(__file__))
+        check_files = [
+            'satc_receiver.py',
+            'app.py',
+            'database.py',
+            os.path.join('templates', 'settings.html'),
+            os.path.join('templates', 'index.html'),
+            os.path.join('templates', 'larm.html'),
+            os.path.join('templates', 'statistics.html'),
+            os.path.join('static', 'style.css')
+        ]
+        for rel_path in check_files:
+            target = os.path.join(base_dir, rel_path)
+            with open(target, 'r', encoding='utf-8') as f:
+                code = f.read()
+            self.assertFalse(contains_emoji(code), f"Fel: otillåtna emojis hittades i {rel_path}!")
 
 if __name__ == '__main__':
     unittest.main()

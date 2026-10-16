@@ -69,6 +69,7 @@ def get_default_settings():
         'sonde_udp_port': '55673',
         'sonde_db_interval': '5',
         'satc_enabled': 'true',
+        'satc_host': '0.0.0.0',
         'satc_port': '5558',
         'satc_only_messages': 'true'
     }

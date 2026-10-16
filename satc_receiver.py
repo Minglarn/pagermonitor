@@ -358,10 +358,12 @@ def parse_satc_frame(payload, only_messages=True):
 
 class SatCReceiver:
     """
-    Lyssnar på både UDP och TCP på satc_port (standard 5558) för
+    Lyssnar på både UDP och TCP på satc_host:satc_port för
     avkodade Inmarsat STD-C / EGC JSON-strömmar från SatDump.
+    Stödjer både inkommande lyssning (server) och utgående anslutning (klient).
     """
     def __init__(self):
+        self.host = '0.0.0.0'
         self.port = 5558
         self.only_messages = True
         self.enabled = True
@@ -369,13 +371,17 @@ class SatCReceiver:
         self.callback = None
 
         self.udp_sock = None
-        self.tcp_sock = None
+        self.tcp_server_sock = None
+        self.tcp_client_sock = None
         self.udp_thread = None
-        self.tcp_thread = None
+        self.tcp_server_thread = None
+        self.tcp_client_thread = None
         self.client_threads = []
 
         self.stats = {
             'status': 'stopped',
+            'host': '0.0.0.0',
+            'port': 5558,
             'packets_received': 0,
             'messages_decoded': 0,
             'last_les': '-',
@@ -389,7 +395,8 @@ class SatCReceiver:
     def set_callback(self, cb):
         self.callback = cb
 
-    def start(self, port=5558, only_messages=True, enabled=True):
+    def start(self, host='0.0.0.0', port=5558, only_messages=True, enabled=True):
+        self.host = str(host).strip() if host else '0.0.0.0'
         self.port = int(port)
         self.only_messages = (str(only_messages).lower() in ('true', '1', 'yes'))
         self.enabled = (str(enabled).lower() in ('true', '1', 'yes'))
@@ -401,6 +408,8 @@ class SatCReceiver:
 
         self.running = True
         self.stats['status'] = 'running'
+        self.stats['host'] = self.host
+        self.stats['port'] = self.port
         self.stats['error_message'] = None
 
         # Starta UDP-lyssnartråd
@@ -408,10 +417,15 @@ class SatCReceiver:
         self.udp_thread.start()
 
         # Starta TCP-servertråd
-        self.tcp_thread = threading.Thread(target=self._tcp_listen_loop, daemon=True, name="SatC-TCP-Receiver")
-        self.tcp_thread.start()
+        self.tcp_server_thread = threading.Thread(target=self._tcp_server_loop, daemon=True, name="SatC-TCP-Server")
+        self.tcp_server_thread.start()
 
-        logger.info(f"[SATC] Inmarsat STD-C mottagare startad på UDP och TCP port {self.port} (only_messages={self.only_messages})")
+        # Om host inte är 0.0.0.0, starta även utgående TCP-klienttråd ifall SatDump agerar server
+        if self.host not in ('0.0.0.0', ''):
+            self.tcp_client_thread = threading.Thread(target=self._tcp_client_loop, daemon=True, name="SatC-TCP-Client")
+            self.tcp_client_thread.start()
+
+        logger.info(f"[SATC] Inmarsat STD-C mottagare startad för {self.host}:{self.port} (only_messages={self.only_messages})")
 
     def stop(self):
         self.running = False
@@ -426,23 +440,32 @@ class SatCReceiver:
             self.udp_sock = None
 
         # Stäng TCP-serversocket
-        if self.tcp_sock:
+        if self.tcp_server_sock:
             try:
-                self.tcp_sock.close()
+                self.tcp_server_sock.close()
             except Exception:
                 pass
-            self.tcp_sock = None
+            self.tcp_server_sock = None
+
+        # Stäng TCP-klientsocket
+        if self.tcp_client_sock:
+            try:
+                self.tcp_client_sock.close()
+            except Exception:
+                pass
+            self.tcp_client_sock = None
 
         logger.info("[SATC] Inmarsat STD-C mottagare stoppad.")
 
-    def restart(self, port=5558, only_messages=True, enabled=True):
+    def restart(self, host='0.0.0.0', port=5558, only_messages=True, enabled=True):
         self.stop()
         time.sleep(0.3)
-        self.start(port=port, only_messages=only_messages, enabled=enabled)
+        self.start(host=host, port=port, only_messages=only_messages, enabled=enabled)
 
     def get_status(self):
         with self.lock:
             s = dict(self.stats)
+            s['host'] = self.host
             s['port'] = self.port
             s['enabled'] = self.enabled
             s['only_messages'] = self.only_messages
@@ -477,23 +500,21 @@ class SatCReceiver:
                 if self.running:
                     logger.debug(f"[SATC] UDP mottagningsfel: {e}")
 
-    def _tcp_listen_loop(self):
+    def _tcp_server_loop(self):
         try:
-            self.tcp_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.tcp_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            self.tcp_sock.bind(('0.0.0.0', self.port))
-            self.tcp_sock.listen(5)
-            self.tcp_sock.settimeout(1.0)
-            logger.info(f"[SATC] TCP-server bunden till 0.0.0.0:{self.port}")
+            self.tcp_server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.tcp_server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            self.tcp_server_sock.bind(('0.0.0.0', self.port))
+            self.tcp_server_sock.listen(5)
+            self.tcp_server_sock.settimeout(1.0)
+            logger.info(f"[SATC] TCP-server lyssnar på 0.0.0.0:{self.port}")
         except Exception as e:
-            logger.error(f"[SATC] Kunde inte binda TCP-socket till port {self.port}: {e}")
-            with self.lock:
-                self.stats['error_message'] = f"TCP bind error: {e}"
+            logger.debug(f"[SATC] Kunde inte starta TCP-server på port {self.port}: {e}")
             return
 
         while self.running:
             try:
-                client_sock, client_addr = self.tcp_sock.accept()
+                client_sock, client_addr = self.tcp_server_sock.accept()
                 logger.info(f"[SATC] Ny TCP-anslutning från {client_addr}")
                 t = threading.Thread(target=self._handle_tcp_client, args=(client_sock, client_addr), daemon=True)
                 t.start()
@@ -501,7 +522,48 @@ class SatCReceiver:
                 continue
             except Exception as e:
                 if self.running:
-                    logger.debug(f"[SATC] TCP accept-fel: {e}")
+                    logger.debug(f"[SATC] TCP server accept-fel: {e}")
+
+    def _tcp_client_loop(self):
+        """
+        När en specifik IP-adress eller värdnamn anges för SatDump, ansluter vi aktivt
+        till dess TCP-server (likt VDL2) och läser strömmande JSON-rader med automatisk återanslutning.
+        """
+        backoff = 2
+        while self.running:
+            try:
+                logger.info(f"[SATC] Försöker ansluta till SatDump TCP-ström på {self.host}:{self.port}...")
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.settimeout(5.0)
+                s.connect((self.host, self.port))
+                s.settimeout(None)
+                self.tcp_client_sock = s
+                backoff = 2
+                logger.info(f"[SATC] Ansluten till SatDump TCP på {self.host}:{self.port}")
+
+                file_obj = s.makefile('r', encoding='utf-8', errors='replace')
+                for line in file_obj:
+                    if not self.running:
+                        break
+                    line_str = line.strip()
+                    if line_str:
+                        self._handle_raw_json(line_str)
+            except Exception as e:
+                if self.running:
+                    logger.debug(f"[SATC] TCP-klientanslutning mot {self.host}:{self.port} avbröts eller misslyckades: {e}. Nytt försök om {backoff}s.")
+            finally:
+                if self.tcp_client_sock:
+                    try:
+                        self.tcp_client_sock.close()
+                    except Exception:
+                        pass
+                    self.tcp_client_sock = None
+
+            for _ in range(backoff):
+                if not self.running:
+                    break
+                time.sleep(1.0)
+            backoff = min(backoff * 2, 30)
 
     def _handle_tcp_client(self, client_sock, client_addr):
         client_sock.settimeout(2.0)
@@ -609,6 +671,7 @@ satc_receiver = SatCReceiver()
 def init_satc(notify_callback=None):
     """Initierar Inmarsat STD-C-mottagaren från databasinställningar."""
     settings = get_settings()
+    host = settings.get('satc_host', '0.0.0.0')
     port = settings.get('satc_port', '5558')
     only_messages = settings.get('satc_only_messages', 'true')
     enabled = settings.get('satc_enabled', 'true')
@@ -616,12 +679,13 @@ def init_satc(notify_callback=None):
     if notify_callback:
         satc_receiver.set_callback(notify_callback)
 
-    satc_receiver.start(port=port, only_messages=only_messages, enabled=enabled)
+    satc_receiver.start(host=host, port=port, only_messages=only_messages, enabled=enabled)
 
 def restart_satc():
     """Startar om Inmarsat STD-C-mottagaren med uppdaterade inställningar."""
     settings = get_settings()
     satc_receiver.restart(
+        host=settings.get('satc_host', '0.0.0.0'),
         port=settings.get('satc_port', '5558'),
         only_messages=settings.get('satc_only_messages', 'true'),
         enabled=settings.get('satc_enabled', 'true')
