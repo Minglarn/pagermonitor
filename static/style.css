@@ -572,7 +572,7 @@ th:last-child {
 }
 
 td {
-    padding: 0.65rem 0.85rem;
+    padding: 0.8rem 0.95rem;
     background: transparent;
     border: none;
     border-bottom: 1px solid var(--panel-border);
@@ -596,8 +596,29 @@ tr:last-child td {
     border-bottom: 1px solid var(--panel-border);
 }
 
-tr:hover td {
-    background: rgba(255, 255, 255, 0.035);
+/* Subtil zebra-randning för enkel radskanning och ökad luftighet */
+tbody tr:nth-child(even):not(.time-divider):not(.alert-row):not(.basestation-row) td {
+    background: rgba(255, 255, 255, 0.016);
+}
+
+tbody tr:nth-child(odd):not(.time-divider):not(.alert-row):not(.basestation-row) td {
+    background: transparent;
+}
+
+tbody tr:hover:not(.time-divider) td {
+    background: rgba(255, 255, 255, 0.045) !important;
+}
+
+[data-theme="light"] tbody tr:nth-child(even):not(.time-divider):not(.alert-row):not(.basestation-row) td {
+    background: rgba(0, 0, 0, 0.022);
+}
+
+[data-theme="light"] tbody tr:nth-child(odd):not(.time-divider):not(.alert-row):not(.basestation-row) td {
+    background: transparent;
+}
+
+[data-theme="light"] tbody tr:hover:not(.time-divider) td {
+    background: rgba(0, 0, 0, 0.04) !important;
 }
 
 /* Time Grouping Dividers */
@@ -1034,6 +1055,182 @@ th:first-child,
     font-weight: 600;
 }
 
+/* Strukturerade Felkort för tekniska larm (FLR / WRN) */
+.technical-fault-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.55rem 0.75rem;
+    margin: 0.35rem 0;
+    border-radius: 6px;
+    background: rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.technical-fault-card.warning-card {
+    border-left: 3px solid #ef4444;
+    background: rgba(239, 68, 68, 0.07);
+}
+
+.technical-fault-card.fault-card {
+    border-left: 3px solid #f59e0b;
+    background: rgba(245, 158, 11, 0.07);
+}
+
+.fault-primary-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+}
+
+.fault-message-headline {
+    font-size: 0.96rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    font-family: var(--msg-font, monospace);
+}
+
+.warning-card .fault-message-headline {
+    color: #f87171;
+}
+
+.fault-card .fault-message-headline {
+    color: #fbbf24;
+}
+
+.fault-secondary-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    padding-top: 0.15rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+.fault-affected-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.fault-affected-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    letter-spacing: 0.03em;
+}
+
+.fault-affected-val {
+    font-weight: 600;
+    color: #cbd5e1;
+    font-family: var(--msg-font, monospace);
+}
+
+/* HFDL Frekvens- & Markstationstoggle */
+.hfdl-toggle-wrapper {
+    margin: 0.35rem 0;
+}
+
+.btn-toggle-hfdl {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.22rem 0.55rem;
+    font-size: 0.74rem;
+    font-weight: 600;
+    background: rgba(99, 102, 241, 0.12);
+    color: #a5b4fc;
+    border: 1px solid rgba(129, 140, 248, 0.3);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    user-select: none;
+}
+
+.btn-toggle-hfdl:hover {
+    background: rgba(99, 102, 241, 0.22);
+    color: #c7d2fe;
+    border-color: rgba(129, 140, 248, 0.55);
+}
+
+.btn-toggle-hfdl.active {
+    background: rgba(99, 102, 241, 0.25);
+    color: #e0e7ff;
+}
+
+.hfdl-details-box {
+    margin-top: 0.4rem;
+    padding: 0.5rem 0.75rem;
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    font-family: var(--msg-font, monospace);
+}
+
+.hfdl-gs-row {
+    padding: 0.15rem 0;
+    color: #cbd5e1;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.hfdl-gs-row:last-child {
+    border-bottom: none;
+}
+
+/* Dämpad Teknisk Telemetrirad (Muted Telemetry Line) */
+.msg-telemetry-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.35rem;
+    font-size: 0.73rem;
+    color: var(--text-secondary);
+    font-family: var(--msg-font, monospace);
+    line-height: 1.35;
+    opacity: 0.85;
+}
+
+.msg-telemetry-line:hover {
+    opacity: 1;
+}
+
+.telemetry-item {
+    display: inline-flex;
+    align-items: center;
+    color: inherit;
+}
+
+.telemetry-sep {
+    color: rgba(255, 255, 255, 0.25);
+    font-size: 0.65rem;
+    user-select: none;
+}
+
+.filterable-telemetry {
+    cursor: pointer;
+    transition: color 0.15s ease;
+}
+
+.filterable-telemetry:hover {
+    color: var(--accent-color, #38bdf8);
+    text-decoration: underline;
+}
+
+/* Viktiga Händelsebrickor (Event Badges) */
+.msg-event-badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin-top: 0.35rem;
+}
+
 .badge.meta.badge-satc-priority.badge-distress {
     background: rgba(239, 68, 68, 0.25);
     color: #f87171;
@@ -1349,6 +1546,71 @@ th:first-child,
     background: #f3e8ff;
     color: #7e22ce;
     border-color: #d8b4fe;
+}
+
+[data-theme="light"] .technical-fault-card {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+[data-theme="light"] .technical-fault-card.warning-card {
+    border-left-color: #dc2626;
+    background: #fef2f2;
+}
+
+[data-theme="light"] .technical-fault-card.fault-card {
+    border-left-color: #d97706;
+    background: #fffbeb;
+}
+
+[data-theme="light"] .warning-card .fault-message-headline {
+    color: #b91c1c;
+}
+
+[data-theme="light"] .fault-card .fault-message-headline {
+    color: #b45309;
+}
+
+[data-theme="light"] .fault-secondary-row {
+    border-top-color: #e2e8f0;
+}
+
+[data-theme="light"] .fault-affected-val {
+    color: #334155;
+}
+
+[data-theme="light"] .btn-toggle-hfdl {
+    background: #e0e7ff;
+    color: #4338ca;
+    border-color: #c7d2fe;
+}
+
+[data-theme="light"] .btn-toggle-hfdl:hover {
+    background: #c7d2fe;
+    color: #3730a3;
+}
+
+[data-theme="light"] .hfdl-details-box {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #334155;
+}
+
+[data-theme="light"] .hfdl-gs-row {
+    color: #334155;
+    border-bottom-color: #f1f5f9;
+}
+
+[data-theme="light"] .msg-telemetry-line {
+    color: #64748b;
+}
+
+[data-theme="light"] .telemetry-sep {
+    color: rgba(0, 0, 0, 0.25);
+}
+
+[data-theme="light"] .filterable-telemetry:hover {
+    color: #0284c7;
 }
 
 [data-theme="light"] .badge.meta.badge-navarea {

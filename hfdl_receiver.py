@@ -360,10 +360,15 @@ def parse_hfdl_frame(payload, only_messages=True):
         body_lines.append(f"[HFDL Frekvens- & Hörbarhetsrapport{lp_desc}] Flight: {flight_disp} | Flygplan: {model_disp}{reg_disp} | Markstation: {gs_disp}")
 
         pos_part = f"Position: {lat:.4f}, {lon:.4f} | " if lat is not None and lon is not None else ""
-        body_lines.append(f"{pos_part}Tid: {time_val} UTC")
+        freq_data = hfnpdu.get("freq_data")
+        summary_gs = ""
+        if isinstance(freq_data, list) and freq_data:
+            heard_cnt = sum(1 for item in freq_data if isinstance(item, dict) and item.get("heard_on_freqs"))
+            summary_gs = f" | Hörda markstationer ({heard_cnt} st)"
+
+        body_lines.append(f"{pos_part}Tid: {time_val} UTC{summary_gs}")
 
         # Lista markstationer ur freq_data
-        freq_data = hfnpdu.get("freq_data")
         if isinstance(freq_data, list) and freq_data:
             for item in freq_data:
                 if not isinstance(item, dict):

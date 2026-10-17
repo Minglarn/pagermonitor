@@ -2506,9 +2506,52 @@
                 }
             }
 
-            // Formatera parsedSummary rad för rad: dela upp på pipe-avdelare (|), framhäv fältetiketter och pilotmeddelanden
-            const lines = parsedSummary.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-            const formattedLines = lines.map(line => {
+            // Separera ut eventuella HFDL-stationslistor (Hörd GS: ... / Lyssnar GS: ...)
+            const allLines = parsedSummary.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+            const mainLines = [];
+            const hfdlStationLines = [];
+
+            for (const line of allLines) {
+                if (/^(?:Hörd GS:|Lyssnar GS:)/i.test(line)) {
+                    hfdlStationLines.push(line);
+                } else {
+                    mainLines.push(line);
+                }
+            }
+
+            let hfdlToggleHtml = '';
+            if (hfdlStationLines.length > 0) {
+                const heardCount = hfdlStationLines.filter(l => /^Hörd GS:/i.test(l)).length;
+                const totalCount = hfdlStationLines.length;
+
+                // Om inte sammanfattningen redan finns på sista raden, lägg till den
+                const hasSummaryAlready = mainLines.some(l => /Hörda markstationer/i.test(l));
+                if (!hasSummaryAlready && mainLines.length > 0) {
+                    mainLines[mainLines.length - 1] += ` | Hörda markstationer (${heardCount} st av ${totalCount})`;
+                }
+
+                const formattedStationLines = hfdlStationLines.map(sl => {
+                    const esc = escapeHtml(sl);
+                    const isHeard = /^Hörd GS:/i.test(sl);
+                    const icon = isHeard ? '<i class="fas fa-check-circle" style="color: #34d399; margin-right: 5px;"></i>' : '<i class="fas fa-headphones" style="color: #94a3b8; margin-right: 5px;"></i>';
+                    return `<div class="hfdl-gs-row">${icon}${esc}</div>`;
+                }).join('');
+
+                hfdlToggleHtml = `
+                    <div class="hfdl-toggle-wrapper">
+                        <button type="button" class="btn-toggle-hfdl" onclick="toggleHfdlDetails(this)" title="Visa eller dölj detaljerade markstationsfrekvenser">
+                            <i class="fas fa-chevron-right toggle-icon"></i>
+                            <span class="toggle-text">Visa markstationsdetaljer / frekvenser (${totalCount} st)</span>
+                        </button>
+                        <div class="hfdl-details-box" style="display: none;">
+                            ${formattedStationLines}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Formatera mainLines rad för rad: dela upp på pipe-avdelare (|), framhäv fältetiketter och pilotmeddelanden
+            const formattedLines = mainLines.map(line => {
                 let cleanLine = line.replace(/[\u{1F4AC}\u{1F4AD}\u{1F5E8}]\s*/gu, '').trim();
                 if (cleanLine.includes('Pilotmeddelande:')) {
                     let lineEscaped = escapeHtml(cleanLine);
@@ -2532,10 +2575,46 @@
 
                 return formattedSegments.join('<span class="msg-sep">|</span>');
             });
-            const summaryHtml = formattedLines.join('<br>');
+            const summaryHtml = formattedLines.join('<br>') + hfdlToggleHtml;
 
             return { summaryHtml, rawText };
         }
+
+        window.toggleHfdlDetails = function(btn) {
+            if (!btn) return;
+            const container = btn.closest('.hfdl-toggle-wrapper');
+            if (!container) return;
+            const box = container.querySelector('.hfdl-details-box');
+            const icon = btn.querySelector('.toggle-icon');
+            const textSpan = btn.querySelector('.toggle-text');
+            if (!box) return;
+
+            const isHidden = (box.style.display === 'none' || getComputedStyle(box).display === 'none');
+            const countMatch = textSpan.innerText.match(/\((\d+\s*st)\)/);
+            const countStr = countMatch ? ` (${countMatch[1]})` : '';
+
+            if (isHidden) {
+                box.style.display = 'block';
+                btn.classList.add('active');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-down');
+                }
+                if (textSpan) {
+                    textSpan.innerText = `Dölj markstationsdetaljer / frekvenser${countStr}`;
+                }
+            } else {
+                box.style.display = 'none';
+                btn.classList.remove('active');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-right');
+                }
+                if (textSpan) {
+                    textSpan.innerText = `Visa markstationsdetaljer / frekvenser${countStr}`;
+                }
+            }
+        };
 
         window.toggleRawData = function(btn) {
             if (!btn) return;
@@ -3077,50 +3156,69 @@
                 activeMinimapHtml = `<div class="msg-minimap-cell"><div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}" data-proto="${escapeHtml(protoName)}"></div></div>`;
             }
 
-            // Avkodade strukturerade payload-fält (FM3, OOOI, WX, WRN, FLR m.fl.)
+            // -------------------------------------------------------------
+            // Visuell Hierarki: 1. Strukturerade Felkort (WRN / FLR) & Decoded Fields
+            // -------------------------------------------------------------
             const decodedFields = alarm.decoded_fields || (alarm.metadata && alarm.metadata.decoded_fields);
             let decodedFieldsHtml = '';
             if (decodedFields && typeof decodedFields === 'object') {
-                let pills = [];
-
                 // 1. Airbus ECAM Cockpit Warning
                 if (decodedFields.is_warning || decodedFields.type_code === 'WRN') {
-                    pills.push(`<span class="badge meta badge-ecam-warning" title="ECAM Cockpit Warning"><i class="fas fa-exclamation-triangle"></i> ECAM Varning</span>`);
-                    if (decodedFields.fault_text) {
-                        pills.push(`<span class="warning-bold-desc"><strong>${escapeHtml(decodedFields.fault_text)}</strong></span>`);
-                    }
+                    const faultHeadline = decodedFields.fault_text || 'ECAM Cockpit Warning';
+                    let secondaryItems = [];
                     if (decodedFields.pnr) {
-                        pills.push(`<span class="badge meta badge-pnr" title="Artikelnummer (Part Number)">PNR: ${escapeHtml(decodedFields.pnr)}</span>`);
+                        secondaryItems.push(`<span class="badge meta badge-pnr" title="Artikelnummer (Part Number)">PNR: ${escapeHtml(decodedFields.pnr)}</span>`);
                     }
                     if (decodedFields.warning_code) {
-                        pills.push(`<span class="badge meta badge-code" title="Varningskod">${escapeHtml(decodedFields.warning_code)}</span>`);
+                        secondaryItems.push(`<span class="badge meta badge-code" title="Varningskod">${escapeHtml(decodedFields.warning_code)}</span>`);
                     }
+                    decodedFieldsHtml = `
+                        <div class="technical-fault-card warning-card">
+                            <div class="fault-primary-row">
+                                <span class="badge meta badge-ecam-warning" title="ECAM Cockpit Warning"><i class="fas fa-exclamation-triangle"></i> ECAM Varning</span>
+                                <span class="fault-message-headline">${escapeHtml(faultHeadline)}</span>
+                            </div>
+                            ${secondaryItems.length > 0 ? `<div class="fault-secondary-row">${secondaryItems.join('')}</div>` : ''}
+                        </div>
+                    `;
                 }
                 // 2. Airbus Maintenance / Fault Report (FLR / REP003)
                 else if (decodedFields.is_fault_report || decodedFields.type_code === 'FLR') {
-                    pills.push(`<span class="badge meta badge-fault-report" title="ARINC 624 Maintenance Report"><i class="fas fa-tools"></i> Teknisk felrapport</span>`);
-                    if (decodedFields.fault_desc) {
-                        pills.push(`<span class="fault-bold-desc"><strong>${escapeHtml(decodedFields.fault_desc)}</strong></span>`);
-                    }
+                    const faultHeadline = decodedFields.fault_desc || 'Teknisk felrapport';
+                    let primaryBadges = [];
                     if (decodedFields.aircraft_type) {
-                        pills.push(`<span class="badge meta badge-aircraft" title="Flygplanstyp"><i class="fas fa-plane"></i> Airbus ${escapeHtml(decodedFields.aircraft_type)}</span>`);
-                    }
-                    if (decodedFields.affected && decodedFields.affected.length > 0) {
-                        const affStr = Array.isArray(decodedFields.affected) ? decodedFields.affected.join(', ') : decodedFields.affected;
-                        pills.push(`<span class="badge meta badge-affected" title="Berörda system / komponenter">Berörda: ${escapeHtml(affStr)}</span>`);
-                    }
-                    if (decodedFields.pnr) {
-                        pills.push(`<span class="badge meta badge-pnr" title="Artikelnummer (Part Number)">PNR: ${escapeHtml(decodedFields.pnr)}</span>`);
+                        primaryBadges.push(`<span class="badge meta badge-aircraft" title="Flygplanstyp"><i class="fas fa-plane"></i> Airbus ${escapeHtml(decodedFields.aircraft_type)}</span>`);
                     }
                     if (decodedFields.origin && decodedFields.destination) {
-                        pills.push(`<span class="badge meta badge-route" title="Rutt"><i class="fas fa-route"></i> ${escapeHtml(decodedFields.origin)} → ${escapeHtml(decodedFields.destination)}</span>`);
+                        primaryBadges.push(`<span class="badge meta badge-route" title="Rutt"><i class="fas fa-route"></i> ${escapeHtml(decodedFields.origin)} → ${escapeHtml(decodedFields.destination)}</span>`);
+                    }
+
+                    let secondaryItems = [];
+                    if (decodedFields.affected && decodedFields.affected.length > 0) {
+                        const affStr = Array.isArray(decodedFields.affected) ? decodedFields.affected.join(', ') : decodedFields.affected;
+                        secondaryItems.push(`<div class="fault-affected-group"><span class="fault-affected-label">Berörda system:</span> <span class="fault-affected-val">${escapeHtml(affStr)}</span></div>`);
+                    }
+                    if (decodedFields.pnr) {
+                        secondaryItems.push(`<span class="badge meta badge-pnr" title="Artikelnummer (Part Number)">PNR: ${escapeHtml(decodedFields.pnr)}</span>`);
                     }
                     if (decodedFields.flight_time_utc) {
-                        pills.push(`<span class="badge meta badge-time" title="Flygtid (UTC)"><i class="far fa-clock"></i> ${escapeHtml(decodedFields.flight_time_utc)} UTC</span>`);
+                        secondaryItems.push(`<span class="badge meta badge-time" title="Flygtid (UTC)"><i class="far fa-clock"></i> ${escapeHtml(decodedFields.flight_time_utc)} UTC</span>`);
                     }
+
+                    decodedFieldsHtml = `
+                        <div class="technical-fault-card fault-card">
+                            <div class="fault-primary-row">
+                                <span class="badge meta badge-fault-report" title="ARINC 624 Maintenance Report"><i class="fas fa-tools"></i> Teknisk felrapport</span>
+                                <span class="fault-message-headline">${escapeHtml(faultHeadline)}</span>
+                                ${primaryBadges.join('')}
+                            </div>
+                            ${secondaryItems.length > 0 ? `<div class="fault-secondary-row">${secondaryItems.join('')}</div>` : ''}
+                        </div>
+                    `;
                 }
                 // 3. Övriga strukturerade rapporter (FM3, OOOI, WX m.fl.)
                 else {
+                    let pills = [];
                     if (decodedFields.report_type) {
                         pills.push(`<span class="badge meta badge-report-type" title="Rapporttyp">${escapeHtml(decodedFields.report_type)}</span>`);
                     }
@@ -3148,16 +3246,105 @@
                     if (decodedFields.extra_data) {
                         pills.push(`<span class="badge meta badge-extra" title="Övrig data">${escapeHtml(decodedFields.extra_data)}</span>`);
                     }
-                }
-
-                if (pills.length > 0) {
-                    decodedFieldsHtml = `<div class="decoded-fields-container"><div class="decoded-fields-label">Avkodade fält:</div><div class="decoded-fields-pills">${pills.join('')}</div></div>`;
+                    if (pills.length > 0) {
+                        decodedFieldsHtml = `<div class="decoded-fields-container"><div class="decoded-fields-label">Avkodade fält:</div><div class="decoded-fields-pills">${pills.join('')}</div></div>`;
+                    }
                 }
             }
 
-            const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${satcBadgesHtml}${hfdlBadgesHtml}${acarsBadgesHtml}${universalCoordTag}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
-            const badgesHtml = metaBarBadges ? `<div class="msg-badges msg-meta-bar">${metaBarBadges}</div>` : '';
-            const msgCellInner = `<div class="msg-row-layout"><div class="msg-main-content"><div class="msg-text msg-summary">${msgObj.summaryHtml.trim()}</div>${decodedFieldsHtml}${rawBoxHtml}${badgesHtml}</div>${activeMinimapHtml}</div>`;
+            // -------------------------------------------------------------
+            // Visuell Hierarki: 2. Viktiga Händelsetaggar (Event Badges)
+            // -------------------------------------------------------------
+            const eventBadges = [];
+            if (alarm.is_duplicate) {
+                eventBadges.push(`<span class="badge warning meta">Duplicate</span>`);
+            }
+            if (alarm.repeat_count && alarm.repeat_count > 1) {
+                eventBadges.push(`<span class="badge repeat-badge meta" title="Repeated ${alarm.repeat_count} times">${alarm.repeat_count}x</span>`);
+            }
+            if (universalCoordTag) {
+                eventBadges.push(universalCoordTag);
+            }
+
+            // SatC Kritiska prioriteter
+            if (satcPriorityVal) {
+                const pUpper = satcPriorityVal.toUpperCase();
+                if (pUpper === 'DISTRESS' || pUpper === 'URGENCY' || pUpper === 'SAFETY') {
+                    const pClass = pUpper === 'DISTRESS' ? 'badge-distress' : (pUpper === 'URGENCY' ? 'badge-urgency' : 'badge-safety');
+                    eventBadges.push(`<span class="badge meta badge-satc-priority ${pClass} filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcPriorityVal)}')" title="Klicka för att söka prioritet: ${escapeHtml(satcPriorityVal)}">Priority: ${escapeHtml(satcPriorityVal)}</span>`);
+                }
+            }
+
+            // ACARS/VDL2 Labels (t.ex. CPDLC, Väder etc.)
+            let labelBadgeText = '';
+            if (labelVal) {
+                labelBadgeText = labelVal;
+                if (labelDescVal) {
+                    let shortDesc = labelDescVal.split('/')[0].trim().replace('-rapport', '').replace('rapport', '').trim();
+                    labelBadgeText = `${labelVal} (${shortDesc})`;
+                }
+                eventBadges.push(`<span class="badge meta badge-label filterable-badge" onclick="filterByLabel('${escapeHtml(labelVal)}')" title="Klicka för att filtrera på ACARS Label: ${escapeHtml(labelVal)}">Label: ${escapeHtml(labelBadgeText)}</span>`);
+            }
+
+            // Redundanskontroll: Visa flyg/reg endast om de INTE redan finns under ALIAS eller ADDR
+            const cleanDisplayUpper = (displayAddress + ' ' + (alarm.alias || '')).toUpperCase();
+            const isRegRedundant = regVal && cleanDisplayUpper.includes(regVal.toUpperCase());
+            const isFlightRedundant = flightVal && cleanDisplayUpper.includes(flightVal.toUpperCase());
+
+            if (flightVal && !isFlightRedundant) {
+                eventBadges.push(`<span class="badge meta badge-flight filterable-badge" onclick="filterByQuickSearch('${escapeHtml(flightVal)}')" title="Klicka för att söka flight: ${escapeHtml(flightVal)}">${escapeHtml(flightVal)}</span>`);
+            }
+            if (regVal && !isRegRedundant) {
+                eventBadges.push(`<span class="badge meta badge-reg filterable-badge" onclick="filterByQuickSearch('${escapeHtml(regVal)}')" title="Klicka för att söka registrering: ${escapeHtml(regVal)}">${escapeHtml(regVal)}</span>`);
+            }
+            if (funcTag) {
+                eventBadges.push(funcTag);
+            }
+            if (rawToggleBadge) {
+                eventBadges.push(rawToggleBadge);
+            }
+
+            const metaBarBadges = eventBadges.join('');
+            const eventBadgesHtml = eventBadges.length > 0 ? `<div class="msg-badges msg-event-badges">${eventBadges.join('')}</div>` : '';
+
+            // -------------------------------------------------------------
+            // Visuell Hierarki: 3. Dämpad Teknisk Telemetrirad (Muted Telemetry Line)
+            // -------------------------------------------------------------
+            const telemetryItems = [];
+            if (alarm.frequency) {
+                telemetryItems.push(`<span class="telemetry-item filterable-telemetry" onclick="filterByFrequency('${escapeHtml(alarm.frequency)}')" title="Klicka för att filtrera på frekvens: ${escapeHtml(alarm.frequency)}">${escapeHtml(alarm.frequency)}</span>`);
+            }
+            if (alarm.snr !== undefined && alarm.snr !== null && alarm.snr !== '') {
+                const snrNum = parseFloat(alarm.snr);
+                const snrStr = !isNaN(snrNum) ? (snrNum > 0 ? `+${snrNum}` : `${snrNum}`) : alarm.snr;
+                telemetryItems.push(`<span class="telemetry-item" title="Signal-brusförhållande">SNR ${escapeHtml(snrStr)} dB</span>`);
+            }
+            if (alarm.bitrate && alarm.bitrate.toUpperCase() !== protoName.toUpperCase()) {
+                telemetryItems.push(`<span class="telemetry-item" title="Överföringsläge / modulering">${escapeHtml(alarm.bitrate)}</span>`);
+            }
+            if (icaoVal) {
+                telemetryItems.push(`<span class="telemetry-item filterable-telemetry" onclick="filterByQuickSearch('${escapeHtml(icaoVal)}')" title="Klicka för att söka ICAO-hex: ${escapeHtml(icaoVal)}">ICAO: ${escapeHtml(icaoVal)}</span>`);
+            }
+            const primaryGs = hfdlGsVal || acarsStationVal || stationVal || satcLesVal;
+            if (primaryGs) {
+                telemetryItems.push(`<span class="telemetry-item filterable-telemetry" onclick="filterByQuickSearch('${escapeHtml(primaryGs)}')" title="Klicka för att söka station: ${escapeHtml(primaryGs)}">GS: ${escapeHtml(primaryGs)}</span>`);
+            }
+            if (satcNavareaVal) {
+                telemetryItems.push(`<span class="telemetry-item filterable-telemetry" onclick="filterByQuickSearch('${escapeHtml(satcNavareaVal)}')" title="Område">${escapeHtml(satcNavareaVal)}</span>`);
+            }
+            if (satcMesVal) {
+                telemetryItems.push(`<span class="telemetry-item" title="Mobile Earth Station">MES: ${escapeHtml(satcMesVal)}</span>`);
+            }
+            if (satcChannelVal) {
+                telemetryItems.push(`<span class="telemetry-item" title="Kanalnummer">Ch: #${escapeHtml(satcChannelVal)}</span>`);
+            }
+            if (hfdlModelVal) {
+                telemetryItems.push(`<span class="telemetry-item" title="Flygplanstyp">${escapeHtml(hfdlModelVal)}</span>`);
+            }
+
+            const telemetryLineHtml = telemetryItems.length > 0 ? `<div class="msg-telemetry-line">${telemetryItems.join('<span class="telemetry-sep">•</span>')}</div>` : '';
+
+            const msgCellInner = `<div class="msg-row-layout"><div class="msg-main-content"><div class="msg-text msg-summary">${msgObj.summaryHtml.trim()}</div>${decodedFieldsHtml}${rawBoxHtml}${eventBadgesHtml}${telemetryLineHtml}</div>${activeMinimapHtml}</div>`;
 
             tr.innerHTML = `
                 <td class="id-cell">${alarm.id}</td>

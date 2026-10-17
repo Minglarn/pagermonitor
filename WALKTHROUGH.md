@@ -1,13 +1,34 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.17.1`
+- **CalVer**: `2026.10.17.2`
 - **Date**: 2026-10-17
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 00000. Förbättrad Layout, Visuell Hierarki och Läsbarhet i Meddelandelistan (v2026.10.17.2)
+- **Bakgrund och Problem**:
+  - Meddelandeflödet upplevdes överlastat och rörigt på grund av långa telemetriblock (särskilt HFDL med omfattande listor över hörda och lyssnade markstationer), för många ramade färgade statusbrickor (badges) per rad och otydlig visuell hierarki.
+- **Implementerade Förbättringar**:
+  1. **Kollapsa Omfattande HFDL-data ([hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+     - Standardvyn för HFDL-meddelanden komprimeras automatiskt till markstation, position, tidsstämpel och sammanfattning (t.ex. `Hörda markstationer (11 st)`).
+     - Den fullständiga listan med hörda och lyssnande markstationer och frekvenser fälls in under en ren toggle-knapp `Visa markstationsdetaljer / frekvenser (N st)`.
+     - Säkerställer full bakåtkompatibilitet mot befintliga backend-tester då fullständiga strängar bevaras i databasen.
+  2. **Sanering av Statusbrickor (Badges) & Tvådelad Visuell Hierarki ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+     - **Viktiga Händelsetaggar (`.msg-event-badges`)**: Behåller distinkta färgade brickor för kritiska händelser såsom tekniska felrapporter, ECAM-varningar, ACARS-labels, SatC-prioriteter (Distress/Urgency/Safety), duplikat och rådata.
+     - **Dämpad Teknisk Telemetri (`.msg-telemetry-line`)**: Frekvens, SNR, protokoll/modulering, ICAO-hexkod och markstation visas som en sammanhållen, dämpad textrad separerad med subtila punkter (`•`) istället för röriga ramade piller.
+     - **Redundanskontroll**: Flygbolagsnamn, flightnummer och registrering döljs automatiskt som brickor om informationen redan framgår i adresskolumnen eller aliasfältet.
+  3. **Visuell Struktur för Tekniska Larm (FLR / WRN) ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+     - Strukturerade felkort (`.technical-fault-card`) för Airbus ECAM-varningar och underhållsrapporter.
+     - Klartextfelet (t.ex. `MMR 1+2 (40RT1+2)` eller `NAV ADS-B RPTG 2 FAULT`) framhävs med primärt typografiskt fokus (`.fault-message-headline`), medan berörda delsystem (`/ID`), artikelnummer (`PNR`) och tidsstämplar ordnas på en ren sekundär rad (`.fault-secondary-row`).
+  4. **Tabellavstånd, Luftighet och Zebra-bakgrund ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+     - Justerat padding i tabellcellerna (`td`) från `0.65rem` till `0.8rem` vertikalt för mer andrum och förbättrad överskådlighet.
+     - Subtil alternerande zebra-bakgrund (`tbody tr:nth-child(even)`) för snabb och vilsam ögonskanning i både mörkt och ljust tema.
+- **Verifiering**:
+  - Samtliga 172 enhetstester i hela testsviten passerar felfritt.
 
 ### 0000. Airbus ARINC 624 Maintenance- och Cockpit Warning-avkodning (v2026.10.17.1)
 - **Bakgrund**:
