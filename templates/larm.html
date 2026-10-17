@@ -1163,6 +1163,50 @@
             const rawToggleBadge = msgObj.rawText ? `<span class="badge badge-raw-toggle" onclick="toggleRawData(this)" title="Visa eller dölj rådata">&lt;/&gt; Rådata</span>` : '';
             const rawBoxHtml = msgObj.rawText ? `<div class="raw-data-box" style="display: none;">${escapeHtml(msgObj.rawText)}</div>` : '';
 
+            // Avkodade strukturerade payload-fält
+            const decodedFields = alarm.decoded_fields || (alarm.metadata && alarm.metadata.decoded_fields);
+            let decodedFieldsHtml = '';
+            if (decodedFields && typeof decodedFields === 'object') {
+                let pills = [];
+                if (decodedFields.is_warning || decodedFields.type_code === 'WRN') {
+                    pills.push(`<span class="badge meta badge-ecam-warning" title="ECAM Cockpit Warning"><i class="fas fa-exclamation-triangle"></i> ECAM Varning</span>`);
+                    if (decodedFields.fault_text) {
+                        pills.push(`<span class="warning-bold-desc"><strong>${escapeHtml(decodedFields.fault_text)}</strong></span>`);
+                    }
+                    if (decodedFields.pnr) {
+                        pills.push(`<span class="badge meta badge-pnr" title="Artikelnummer (Part Number)">PNR: ${escapeHtml(decodedFields.pnr)}</span>`);
+                    }
+                    if (decodedFields.warning_code) {
+                        pills.push(`<span class="badge meta badge-code" title="Varningskod">${escapeHtml(decodedFields.warning_code)}</span>`);
+                    }
+                } else if (decodedFields.is_fault_report || decodedFields.type_code === 'FLR') {
+                    pills.push(`<span class="badge meta badge-fault-report" title="ARINC 624 Maintenance Report"><i class="fas fa-tools"></i> Teknisk felrapport</span>`);
+                    if (decodedFields.fault_desc) {
+                        pills.push(`<span class="fault-bold-desc"><strong>${escapeHtml(decodedFields.fault_desc)}</strong></span>`);
+                    }
+                    if (decodedFields.aircraft_type) {
+                        pills.push(`<span class="badge meta badge-aircraft" title="Flygplanstyp"><i class="fas fa-plane"></i> Airbus ${escapeHtml(decodedFields.aircraft_type)}</span>`);
+                    }
+                    if (decodedFields.affected && decodedFields.affected.length > 0) {
+                        const affStr = Array.isArray(decodedFields.affected) ? decodedFields.affected.join(', ') : decodedFields.affected;
+                        pills.push(`<span class="badge meta badge-affected" title="Berörda system / komponenter">Berörda: ${escapeHtml(affStr)}</span>`);
+                    }
+                    if (decodedFields.pnr) {
+                        pills.push(`<span class="badge meta badge-pnr" title="Artikelnummer (Part Number)">PNR: ${escapeHtml(decodedFields.pnr)}</span>`);
+                    }
+                } else {
+                    if (decodedFields.report_type) {
+                        pills.push(`<span class="badge meta badge-report-type" title="Rapporttyp">${escapeHtml(decodedFields.report_type)}</span>`);
+                    }
+                    if (decodedFields.eta) {
+                        pills.push(`<span class="badge meta badge-eta" title="Beräknad ankomsttid (ETA)"><i class="fas fa-plane-arrival"></i> ETA: ${escapeHtml(decodedFields.eta)}</span>`);
+                    }
+                }
+                if (pills.length > 0) {
+                    decodedFieldsHtml = `<div class="decoded-fields-container"><div class="decoded-fields-label">Avkodade fält:</div><div class="decoded-fields-pills">${pills.join('')}</div></div>`;
+                }
+            }
+
             const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
             const metaBarHtml = metaBarBadges ? `<div class="msg-meta-bar">${metaBarBadges}</div>` : '';
 
@@ -1173,7 +1217,7 @@
                 <td class="addr-cell">
                     <span class="badge" title="${escapeHtml(alarm.address)}" onclick="openAliasModal('${escapeHtml(alarm.address)}')">${escapeHtml(displayAddress)}</span>
                 </td>
-                <td class="msg-cell"><div class="msg-content-wrapper"><div class="msg-text msg-summary">${msgObj.summaryHtml}</div>${rawBoxHtml}${metaBarHtml}</div></td>
+                <td class="msg-cell"><div class="msg-content-wrapper"><div class="msg-text msg-summary">${msgObj.summaryHtml}</div>${decodedFieldsHtml}${rawBoxHtml}${metaBarHtml}</div></td>
 
                 <td class="hit-cell">${hitBadge}</td>
                 <td class="actions-cell">

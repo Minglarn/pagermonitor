@@ -985,6 +985,55 @@ th:first-child,
     border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+.badge.meta.badge-ecam-warning {
+    background: rgba(239, 68, 68, 0.22);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.55);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.warning-bold-desc {
+    font-weight: 700;
+    color: #f87171;
+    font-size: 0.88rem;
+    margin-right: 0.35rem;
+    display: inline-block;
+}
+
+.badge.meta.badge-fault-report {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.5);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.fault-bold-desc {
+    font-weight: 700;
+    color: #fbbf24;
+    font-size: 0.88rem;
+    margin-right: 0.35rem;
+    display: inline-block;
+}
+
+.badge.meta.badge-pnr {
+    background: rgba(14, 165, 233, 0.16);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    font-family: monospace;
+    font-weight: 600;
+}
+
+.badge.meta.badge-affected {
+    background: rgba(168, 85, 247, 0.18);
+    color: #c084fc;
+    border: 1px solid rgba(192, 132, 252, 0.38);
+    font-weight: 600;
+}
+
 .badge.meta.badge-satc-priority.badge-distress {
     background: rgba(239, 68, 68, 0.25);
     color: #f87171;
@@ -1268,6 +1317,38 @@ th:first-child,
     background: #e2e8f0;
     color: #475569;
     border-color: #cbd5e1;
+}
+
+[data-theme="light"] .badge.meta.badge-ecam-warning {
+    background: #fee2e2;
+    color: #b91c1c;
+    border-color: #fca5a5;
+}
+
+[data-theme="light"] .warning-bold-desc {
+    color: #b91c1c;
+}
+
+[data-theme="light"] .badge.meta.badge-fault-report {
+    background: #fef3c7;
+    color: #b45309;
+    border-color: #fcd34d;
+}
+
+[data-theme="light"] .fault-bold-desc {
+    color: #b45309;
+}
+
+[data-theme="light"] .badge.meta.badge-pnr {
+    background: #e0f2fe;
+    color: #0369a1;
+    border-color: #7dd3fc;
+}
+
+[data-theme="light"] .badge.meta.badge-affected {
+    background: #f3e8ff;
+    color: #7e22ce;
+    border-color: #d8b4fe;
 }
 
 [data-theme="light"] .badge.meta.badge-navarea {

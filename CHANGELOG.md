@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.17.1] - Airbus ARINC 624 Maintenance- och Cockpit Warning-avkodning (Label H1)
+
+- **Airbus Cockpit Warning (WRN) ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Fullt stöd för Airbus ECAM Cockpit Warning över Label H1 (t.ex. `WRN/PNRC12860AA07/WN26101704400034000006NAV ADS-B RPTG 2 FAULT`).
+  - Extraherar artikelnummer/Part Number (`PNR`), varningskod (`WN...`) och klartextbeskrivning (`fault_text`, t.ex. `NAV ADS-B RPTG 2 FAULT`).
+  - Sätter allvarlighetsgrad/tagg till `warning` och genererar sammanfattning `ECAM Varning: NAV ADS-B RPTG 2 FAULT`.
+- **Airbus Maintenance / Fault Report (FLR / REP003) ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Fullt stöd för ARINC 624 tekniska underhållsrapporter över Label H1 (t.ex. `A320,.../REP003,.../FLR/PNRC12860AA07/FR26101704390034363106MMR 1+2 (40RT1+2)/.../IDATC 1,ATC 2`).
+  - Avkodar flygplanstyp (`A320`/`A330`/`A350`), rapporttyp (`REP003`), registrering, rutt (`ESSA` -> `LSZH`) och flygtid i UTC.
+  - Extraherar felande komponent (`MMR 1+2 (40RT1+2)`), Part Number (`PNR`) och berörda system under `/ID` (t.ex. `ATC 1 (1SH1)`, `ATC 2`).
+  - Robust textnormalisering som sömlöst hanterar radbrytningar och mellanslag mitt i felbeskrivningar och komponentlistor.
+- **Frontend-presentation ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - **ECAM Varning**: Röd/bärnstensfärgad (amber) badge `.badge-ecam-warning` med fetstilsfelbeskrivning `.warning-bold-desc`, PNR-badge och varningskod.
+  - **Teknisk felrapport**: Badge `.badge-fault-report`, fetstilsbeskrivning `.fault-bold-desc`, samt strukturerade piller för flygplanstyp, berörda system, PNR, rutt och flygtid.
+  - Fullt stöd i både mörkt och ljust tema.
+- **Enhetstester ([tests/test_acars.py](file:///d:/antigravity/pager-monitor/tests/test_acars.py))**:
+  - Nya enhetstester för Cockpit Warning, tekniska felrapporter och flerradiga ARINC 624-rapporter med 100% testtäckning.
+
 ## [2026.10.16.21] - Prestandaoptimering av Larmflödet (Alarms)
 
 - **SQL LIKE Pre-filtrering i C-kärnan ([database.py](file:///d:/antigravity/pager-monitor/database.py))**:

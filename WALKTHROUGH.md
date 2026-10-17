@@ -1,13 +1,36 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.16.21`
-- **Date**: 2026-10-16
+- **CalVer**: `2026.10.17.1`
+- **Date**: 2026-10-17
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 0000. Airbus ARINC 624 Maintenance- och Cockpit Warning-avkodning (v2026.10.17.1)
+- **Bakgrund**:
+  - Flygplan (särskilt Airbus A320, A330 och A350) sänder systemtelemetri, underhållsrapporter och felkoder via ACARS/VDL2 Label H1. Tidigare visades dessa ofta som otydliga datapaket (`[FMS/Systemtelemetri] Kodat datapaket`) eller avkodades bara delvis.
+- **Implementerade Komponenter och Arkitektur ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - **ECAM Cockpit Warning (`WRN/`)**:
+    - Identifierar och avkodar varningar i förarkabin (t.ex. `WRN/PNRC12860AA07/WN26101704400034000006NAV ADS-B RPTG 2 FAULT`).
+    - Extraherar Part Number (`PNR: C12860AA07`), varningskod (`WN26101704400034000006`) och klartextbeskrivning (`NAV ADS-B RPTG 2 FAULT`).
+    - Skapar larmöversikt `ECAM Varning: NAV ADS-B RPTG 2 FAULT` och flaggar `is_warning: True`, `severity: 'warning'`.
+  - **ARINC 624 Maintenance Report (`FLR / REP003`)**:
+    - Extraherar flygplanstyp (`A320`), rapporttyp (`REP003`), registrering (`HB-JDF`), rutt (`ESSA` -> `LSZH`) och flygtid i UTC (`04:32:55`).
+    - Extraherar felande komponent (`MMR 1+2 (40RT1+2)`), Part Number (`PNR`) och berörda system från `/ID` (t.ex. `ATC 1 (1SH1)`, `ATC 2`).
+    - Hanterar radbrytningar och formateringsbrus mitt i meddelanden via robust textnormalisering.
+    - Integrerat i parser-reglerna (`rule_airbus_ecam_warning`, `rule_airbus_fault_report`) prioriterade före generiska telemetrifallbacks.
+- **Frontend-presentation ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - **ECAM Varning**: Röd/bärnstensfärgad badge `ECAM Varning` med fetstilsfelbeskrivning och strukturerade badges för artikelnummer (`PNR`) och varningskod.
+  - **Teknisk felrapport**: Badge `Teknisk felrapport`, fetstilsfelbeskrivning, flygplansbricka, berörda system, och ruttinformation.
+  - Skräddarsydd styling i både mörkt och ljust tema med hög kontrast och läsbarhet utan emojis.
+- **Enhetstester ([tests/test_acars.py](file:///d:/antigravity/pager-monitor/tests/test_acars.py))**:
+  - Testfall `test_parse_airbus_ecam_warning`: verifierar extraktion av `PNR`, `warning_code`, `fault_text` och human-readable formatering.
+  - Testfall `test_parse_airbus_fault_report`: verifierar extraktion av `A320`, `REP003`, rutt, `MMR 1+2 (40RT1+2)` och berörda system.
+  - Testfall `test_parse_airbus_fault_report_multiline`: verifierar robusthet vid radbrytningar mitt i data.
+  - Alla 135 enhetstester och 24 pytest-tester passerar med 100% framgång.
 
 ### 000. Prestandaoptimering av Larmflödet (v2026.10.16.21)
 - **Bakgrund och Problem**:

@@ -137,5 +137,67 @@ class TestAcarsPayloadAndReceiver(unittest.TestCase):
         self.assertEqual(test_msg['bitrate'], 'VHF-ACARS')
         self.assertIn('SAS', test_msg.get('airline', ''))
 
+    def test_parse_airbus_ecam_warning(self):
+        raw = "WRN/PNRC12860AA07/WN26101704400034000006NAV ADS-B RPTG 2 FAULT"
+        meta = {}
+        fields = parse_acars_payload(raw, label="H1", metadata=meta)
+        self.assertIsNotNone(fields)
+        self.assertTrue(fields.get('is_warning'))
+        self.assertEqual(fields.get('pnr'), 'C12860AA07')
+        self.assertEqual(fields.get('warning_code'), 'WN26101704400034000006')
+        self.assertEqual(fields.get('fault_text'), 'NAV ADS-B RPTG 2 FAULT')
+        self.assertEqual(fields.get('summary'), 'ECAM Varning: NAV ADS-B RPTG 2 FAULT')
+
+        # Kontrollera human formatted version
+        formatted = parse_human_acars(raw, label="H1", metadata=meta)
+        self.assertIn('ECAM Cockpit Warning', formatted)
+        self.assertIn('NAV ADS-B RPTG 2 FAULT', formatted)
+        self.assertIn('C12860AA07', formatted)
+        self.assertIn('decoded_fields', meta)
+        self.assertEqual(meta['decoded_fields'].get('fault_text'), 'NAV ADS-B RPTG 2 FAULT')
+
+    def test_parse_airbus_fault_report(self):
+        raw = "A320,029566,1,1,TB000000/REP003,64,01,1/CCHB-JDF,OCT17,043255,ESSA,LSZH,0001/C0SW060053740013/C151,55704,4000,48,0110,0,0110,48,X/CEN040,25705,314,760,6693,335,W22074/C21020420-2-121/C35003956/C45321231-23/FLR/PNRC12860AA07/FR26101704390034363106MMR 1+2 (40RT1+2)/     ATC 1 (1SH1)/IDATC 1,ATC 2"
+        meta = {}
+        fields = parse_acars_payload(raw, label="H1", metadata=meta)
+        self.assertIsNotNone(fields)
+        self.assertTrue(fields.get('is_fault_report'))
+        self.assertEqual(fields.get('aircraft_type'), 'A320')
+        self.assertEqual(fields.get('report_code'), 'REP003')
+        self.assertEqual(fields.get('origin'), 'ESSA')
+        self.assertEqual(fields.get('destination'), 'LSZH')
+        self.assertEqual(fields.get('flight_time_utc'), '04:32:55')
+        self.assertEqual(fields.get('pnr'), 'C12860AA07')
+        self.assertEqual(fields.get('fault_desc'), 'MMR 1+2 (40RT1+2)')
+        self.assertIn('ATC 1 (1SH1)', fields.get('affected', []))
+        self.assertIn('ATC 2', fields.get('affected', []))
+
+        # Kontrollera human formatted version
+        formatted = parse_human_acars(raw, label="H1", metadata=meta)
+        self.assertIn('Teknisk Felrapport (REP003)', formatted)
+        self.assertIn('MMR 1+2 (40RT1+2)', formatted)
+        self.assertIn('Airbus A320', formatted)
+        self.assertIn('decoded_fields', meta)
+        self.assertEqual(meta.get('dst_airport'), 'LSZH')
+        self.assertEqual(meta.get('src_airport'), 'ESSA')
+
+    def test_parse_airbus_fault_report_multiline(self):
+        raw_multiline = (
+            "A320,029566,1,1,TB000000/REP003,64,01,1/CCHB-JDF,OCT17,043255,ESSA,LSZH,0001/\n"
+            "C0SW060053740013/C151,55704,4000,48,0110,0,0110,48,X/CEN040,25705,314,760,6693,335,W22074/\n"
+            "C21020420-2-121/C35003956/C45321231-23/FLR/PNRC12860AA07/FR26101704390034363106MMR 1+2 (40RT1+2)/\n"
+            "     ATC 1 (1SH1)/\n"
+            "IDATC 1,\n"
+            "ATC 2"
+        )
+        meta = {}
+        fields = parse_acars_payload(raw_multiline, label="H1", metadata=meta)
+        self.assertIsNotNone(fields)
+        self.assertTrue(fields.get('is_fault_report'))
+        self.assertEqual(fields.get('pnr'), 'C12860AA07')
+        self.assertEqual(fields.get('fault_desc'), 'MMR 1+2 (40RT1+2)')
+        self.assertIn('ATC 1 (1SH1)', fields.get('affected', []))
+        self.assertIn('ATC 2', fields.get('affected', []))
+
 if __name__ == '__main__':
     unittest.main()

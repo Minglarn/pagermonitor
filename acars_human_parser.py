@@ -702,135 +702,306 @@ def parse_acars_payload(text: str, label: str = None, metadata: dict = None) -> 
     # 2. OOOI-rapporter (OUT, OFF, ON, IN):
     # Exempel: "OUT/ESSA/1234", "OFF ESSA 1245", "ON/EKCH/1330", "IN EKCH 1338", "OUT /ESSA 1015 /FOB 14500"
     # -------------------------------------------------------------------------
-    elif True:
+    elif (
+        (re.search(r'(?:^|[\r\n/])\s*(OUT|OFF|ON|IN)(?:[\s/]+([A-Z]{3,4}))?(?:[\s/]+(\d{2}:?\d{2}(?::?\d{2})?))?', stripped, re.IGNORECASE))
+        and (lbl in ('80', '81', '82', '83', 'Q1', 'Q2', '15', '16', '_D') or re.match(r'^(OUT|OFF|ON|IN)\b', stripped, re.IGNORECASE) or '/OUT' in stripped or '/OFF' in stripped or '/ON' in stripped or '/IN' in stripped)
+    ):
         m_oooi = re.search(
             r'(?:^|[\r\n/])\s*(OUT|OFF|ON|IN)(?:[\s/]+([A-Z]{3,4}))?(?:[\s/]+(\d{2}:?\d{2}(?::?\d{2})?))?',
             stripped,
             re.IGNORECASE
         )
-        if m_oooi and (lbl in ('80', '81', '82', '83', 'Q1', 'Q2', '15', '16', '_D') or re.match(r'^(OUT|OFF|ON|IN)\b', stripped, re.IGNORECASE) or '/OUT' in stripped or '/OFF' in stripped or '/ON' in stripped or '/IN' in stripped):
-            event = m_oooi.group(1).upper()
-            ap = m_oooi.group(2)
-            ap_code = ap.upper() if ap and len(ap) in (3, 4) and ap.isalpha() else None
-            if not ap_code:
-                for w in re.findall(r'\b([A-Z]{4})\b', stripped):
-                    if is_valid_icao_code(w):
-                        ap_code = w
-                        break
-            tm_raw = m_oooi.group(3)
-            tm_formatted = None
-            if tm_raw:
-                digits = re.sub(r'\D', '', tm_raw)
-                if len(digits) == 4:
-                    tm_formatted = f"{digits[:2]}:{digits[2:4]}:00"
-                elif len(digits) >= 6:
-                    tm_formatted = f"{digits[:2]}:{digits[2:4]}:{digits[4:6]}"
-                else:
-                    tm_formatted = tm_raw
+        event = m_oooi.group(1).upper()
+        ap = m_oooi.group(2)
+        ap_code = ap.upper() if ap and len(ap) in (3, 4) and ap.isalpha() else None
+        if not ap_code:
+            for w in re.findall(r'\b([A-Z]{4})\b', stripped):
+                if is_valid_icao_code(w):
+                    ap_code = w
+                    break
+        tm_raw = m_oooi.group(3)
+        tm_formatted = None
+        if tm_raw:
+            digits = re.sub(r'\D', '', tm_raw)
+            if len(digits) == 4:
+                tm_formatted = f"{digits[:2]}:{digits[2:4]}:00"
+            elif len(digits) >= 6:
+                tm_formatted = f"{digits[:2]}:{digits[2:4]}:{digits[4:6]}"
+            else:
+                tm_formatted = tm_raw
 
-            desc_map = {
-                'OUT': 'Pushback från gate (OUT)',
-                'OFF': 'Startat från bana (OFF)',
-                'ON': 'Landat på bana (ON)',
-                'IN': 'Parkerat vid gate (IN)'
-            }
-            event_desc = desc_map.get(event, event)
+        desc_map = {
+            'OUT': 'Pushback från gate (OUT)',
+            'OFF': 'Startat från bana (OFF)',
+            'ON': 'Landat på bana (ON)',
+            'IN': 'Parkerat vid gate (IN)'
+        }
+        event_desc = desc_map.get(event, event)
 
-            # Extrahera FOB om det finns
-            fob_str = None
-            fob_val_raw = None
-            m_fob = re.search(r'(?:/FOB\s*|\bFOB\s*[:=]?\s*)(\d{3,5})\b', stripped)
-            if m_fob:
-                fob_val_raw = m_fob.group(1)
-                val = int(fob_val_raw)
-                fob_kg = val * 100 if len(fob_val_raw) == 3 else (val * 10 if len(fob_val_raw) == 4 else val)
-                fob_str = f"{fob_kg:,} kg".replace(',', ' ')
+        # Extrahera FOB om det finns
+        fob_str = None
+        fob_val_raw = None
+        m_fob = re.search(r'(?:/FOB\s*|\bFOB\s*[:=]?\s*)(\d{3,5})\b', stripped)
+        if m_fob:
+            fob_val_raw = m_fob.group(1)
+            val = int(fob_val_raw)
+            fob_kg = val * 100 if len(fob_val_raw) == 3 else (val * 10 if len(fob_val_raw) == 4 else val)
+            fob_str = f"{fob_kg:,} kg".replace(',', ' ')
 
-            fields = {
-                "Typ": f"OOOI ({event})",
-                "Händelse": event_desc
-            }
-            if ap_code:
-                fields["Flygplats"] = format_airport(ap_code)
-            if tm_formatted:
-                fields["Tid (UTC)"] = tm_formatted
-            if fob_str:
-                fields["Bränsle (FOB)"] = fob_str
+        fields = {
+            "Typ": f"OOOI ({event})",
+            "Händelse": event_desc
+        }
+        if ap_code:
+            fields["Flygplats"] = format_airport(ap_code)
+        if tm_formatted:
+            fields["Tid (UTC)"] = tm_formatted
+        if fob_str:
+            fields["Bränsle (FOB)"] = fob_str
 
-            result = {
-                'report_type': f"OOOI ({event})",
-                'type_code': event,
-                'oooi_event': event,
-                'oooi_desc': event_desc,
-                'airport': ap_code,
-                'msg_time_utc': tm_formatted,
-                'time_utc': tm_formatted,
-                'fob': fob_str,
-                'fuel_on_board': fob_val_raw or fob_str,
-                'fields': fields
-            }
+        result = {
+            'report_type': f"OOOI ({event})",
+            'type_code': event,
+            'oooi_event': event,
+            'oooi_desc': event_desc,
+            'airport': ap_code,
+            'msg_time_utc': tm_formatted,
+            'time_utc': tm_formatted,
+            'fob': fob_str,
+            'fuel_on_board': fob_val_raw or fob_str,
+            'fields': fields
+        }
 
-        # -------------------------------------------------------------------------
-        # 3. Väder (WX / WXRQ / METAR / TAF / ATIS):
-        # Exempel: "/ARN.TI2/026ESSA0700A", "METAR ESSA 161950Z ...", "WXRQ ESSA EKCH"
-        # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # 3. Väder (WX / WXRQ / METAR / TAF / ATIS):
+    # Exempel: "/ARN.TI2/026ESSA0700A", "METAR ESSA 161950Z ...", "WXRQ ESSA EKCH"
+    # -------------------------------------------------------------------------
+    elif (
+        re.search(r'/([A-Z]{4})\.TI2/(?:\d{1,4}\1)?([AD])?', stripped, re.IGNORECASE)
+        or lbl in ('5U', '57', 'WX', '30', '5D', 'B9', 'A9')
+        or 'METAR' in stripped.upper()
+        or 'ATIS' in stripped.upper()
+        or 'TAF' in stripped.upper()
+        or 'WXRQ' in stripped.upper()
+    ):
+        m_atis = re.search(r'/([A-Z]{4})\.TI2/(?:\d{1,4}\1)?([AD])?', stripped, re.IGNORECASE)
+        found_airports = []
+        atis_icao = None
+        atis_type = None
+
+        if m_atis:
+            atis_icao = m_atis.group(1).upper()
+            found_airports.append(atis_icao)
+            atis_type = m_atis.group(2).upper() if m_atis.group(2) else ""
+
+        # Hitta övriga ICAO-koder
+        for m in re.finditer(r'\b([A-Z]{4})\b', stripped):
+            c = m.group(1).upper()
+            if is_valid_icao_code(c) and c not in found_airports:
+                found_airports.append(c)
+
+        is_metar = bool(re.search(r'\bMETAR\b', stripped, re.IGNORECASE))
+        is_taf = bool(re.search(r'\bTAF\b', stripped, re.IGNORECASE))
+        is_atis = bool(atis_icao or lbl in ('5D', 'B9', 'A9') or '.TI2' in stripped or re.search(r'\bATIS\b', stripped, re.IGNORECASE))
+
+        if is_metar:
+            rep_type = "Väderrapport (METAR)"
+            w_type = "METAR"
+        elif is_taf:
+            rep_type = "Flygplatsprognos (TAF)"
+            w_type = "TAF"
+        elif is_atis:
+            rep_type = "Flygplatsväder (ATIS)"
+            w_type = "ATIS"
+        elif 'WXRQ' in stripped or 'WX REQ' in stripped:
+            rep_type = "Väderbegäran (WXRQ)"
+            w_type = "WXRQ"
         else:
-            m_atis = re.search(r'/([A-Z]{4})\.TI2/(?:\d{1,4}\1)?([AD])?', stripped, re.IGNORECASE)
-            if m_atis or lbl in ('5U', '57', 'WX', '30', '5D', 'B9', 'A9') or 'METAR' in stripped.upper() or 'ATIS' in stripped.upper() or 'TAF' in stripped.upper():
-                found_airports = []
-                atis_icao = None
-                atis_type = None
+            rep_type = "Väderdata"
+            w_type = "WX"
 
-                if m_atis:
-                    atis_icao = m_atis.group(1).upper()
-                    found_airports.append(atis_icao)
-                    atis_type = m_atis.group(2).upper() if m_atis.group(2) else ""
+        fields = {
+            "Typ": rep_type
+        }
+        if found_airports:
+            fields["Flygplatser"] = ", ".join([format_airport(a) for a in found_airports])
+        if atis_type:
+            fields["ATIS-typ"] = "Arrival (Landning)" if atis_type == 'A' else ("Departure (Start)" if atis_type == 'D' else atis_type)
 
-                # Hitta övriga ICAO-koder
-                for m in re.finditer(r'\b([A-Z]{4})\b', stripped):
-                    c = m.group(1).upper()
-                    if is_valid_icao_code(c) and c not in found_airports:
-                        found_airports.append(c)
+        primary_ap = found_airports[0] if found_airports else None
+        result = {
+            'report_type': rep_type,
+            'type_code': 'WX',
+            'airport': primary_ap,
+            'wx_airport': primary_ap,
+            'airports': found_airports,
+            'weather_type': w_type,
+            'wx_type': w_type,
+            'fields': fields
+        }
 
-                is_metar = bool(re.search(r'\bMETAR\b', stripped, re.IGNORECASE))
-                is_taf = bool(re.search(r'\bTAF\b', stripped, re.IGNORECASE))
-                is_atis = bool(atis_icao or lbl in ('5D', 'B9', 'A9') or '.TI2' in stripped or re.search(r'\bATIS\b', stripped, re.IGNORECASE))
+    # -------------------------------------------------------------------------
+    # 4. Airbus Cockpit Warning (WRN / Label H1):
+    # Exempel: "WRN/PNRC12860AA07/WN26101704400034000006NAV ADS-B RPTG 2 FAULT"
+    # -------------------------------------------------------------------------
+    elif 'WRN/' in stripped or stripped.startswith('WRN') or '/WRN/' in stripped:
+        pnr = None
+        m_pnr = re.search(r'(?:/PNR|\bPNR)\s*([A-Z0-9]+)', stripped)
+        if m_pnr:
+            pnr = m_pnr.group(1).strip()
 
-                if is_metar:
-                    rep_type = "Väderrapport (METAR)"
-                    w_type = "METAR"
-                elif is_taf:
-                    rep_type = "Flygplatsprognos (TAF)"
-                    w_type = "TAF"
-                elif is_atis:
-                    rep_type = "Flygplatsväder (ATIS)"
-                    w_type = "ATIS"
-                elif 'WXRQ' in stripped or 'WX REQ' in stripped:
-                    rep_type = "Väderbegäran (WXRQ)"
-                    w_type = "WXRQ"
-                else:
-                    rep_type = "Väderdata"
-                    w_type = "WX"
+        wn_code = None
+        fault_text = None
+        m_wn = re.search(r'(?:/WN|\bWN)\s*([0-9]{10,25})\s*(.*?)(?:/|$)', stripped)
+        if m_wn:
+            wn_code = f"WN{m_wn.group(1).strip()}"
+            fault_text = m_wn.group(2).strip()
+        else:
+            m_wn_alt = re.search(r'(?:/WN|\bWN)\s*([A-Z0-9]{10,30})(.*?)(?:/|$)', stripped)
+            if m_wn_alt:
+                wn_code = f"WN{m_wn_alt.group(1).strip()}" if not m_wn_alt.group(1).startswith('WN') else m_wn_alt.group(1).strip()
+                fault_text = m_wn_alt.group(2).strip()
 
-                fields = {
-                    "Typ": rep_type
-                }
-                if found_airports:
-                    fields["Flygplatser"] = ", ".join([format_airport(a) for a in found_airports])
-                if atis_type:
-                    fields["ATIS-typ"] = "Arrival (Landning)" if atis_type == 'A' else ("Departure (Start)" if atis_type == 'D' else atis_type)
+        if not fault_text:
+            parts = [p.strip() for p in stripped.split('/') if p.strip()]
+            for p in parts:
+                if not p.startswith('WRN') and not p.startswith('PNR') and not p.startswith('WN'):
+                    fault_text = p
+                    break
 
-                primary_ap = found_airports[0] if found_airports else None
-                result = {
-                    'report_type': rep_type,
-                    'type_code': 'WX',
-                    'airport': primary_ap,
-                    'wx_airport': primary_ap,
-                    'airports': found_airports,
-                    'weather_type': w_type,
-                    'wx_type': w_type,
-                    'fields': fields
-                }
+        if not fault_text:
+            fault_text = "ECAM Varning"
+
+        fields = {
+            "Typ": "ECAM Cockpit Warning",
+            "Varning": fault_text
+        }
+        if pnr:
+            fields["Artikelnummer (PNR)"] = pnr
+        if wn_code:
+            fields["Varningskod"] = wn_code
+
+        result = {
+            'report_type': 'ECAM Cockpit Warning',
+            'type_code': 'WRN',
+            'is_warning': True,
+            'severity': 'warning',
+            'pnr': pnr,
+            'warning_code': wn_code,
+            'fault_text': fault_text,
+            'warning_text': fault_text,
+            'summary': f"ECAM Varning: {fault_text}",
+            'fields': fields
+        }
+
+    # -------------------------------------------------------------------------
+    # 5. Airbus Maintenance / Fault Report (FLR / REP003 / ARINC 624 / Label H1):
+    # Exempel: "A320,029566,1,1,TB000000/REP003,64,01,1/CCHB-JDF,OCT17,043255,ESSA,LSZH,0001/.../FLR/PNRC12860AA07/FR26101704390034363106MMR 1+2 (40RT1+2)/     ATC 1 (1SH1)/IDATC 1,ATC 2"
+    # -------------------------------------------------------------------------
+    elif '/FLR/' in stripped or 'FLR/' in stripped or (re.search(r'\bREP[0-9]{3}\b', stripped) and re.search(r'/FR[0-9]{10,25}', stripped)):
+        normalized = re.sub(r'[\r\n]+', '', stripped)
+
+        # 1. Flygplanstyp
+        ac_type = None
+        m_ac = re.search(r'^(A[0-9]{3})\b', normalized)
+        if m_ac:
+            ac_type = m_ac.group(1)
+
+        # 2. Rapporttyp
+        rep_type = None
+        m_rep = re.search(r'/REP([0-9]{3})\b', normalized)
+        if m_rep:
+            rep_type = f"REP{m_rep.group(1)}"
+
+        # 3. Registrering
+        reg = None
+        m_reg = re.search(r'/CC([A-Z0-9-]+),', normalized)
+        if m_reg:
+            reg = m_reg.group(1).strip()
+
+        # 4. Rutt och flygtid
+        origin = None
+        destination = None
+        flight_time = None
+        m_route = re.search(r',(\d{6}),([A-Z]{4}),([A-Z]{4})\b', normalized)
+        if m_route:
+            t_raw = m_route.group(1)
+            flight_time = f"{t_raw[:2]}:{t_raw[2:4]}:{t_raw[4:6]}"
+            origin = m_route.group(2)
+            destination = m_route.group(3)
+
+        # 5. PNR (Part Number)
+        pnr = None
+        m_pnr = re.search(r'/PNR\s*([A-Z0-9]+)/', normalized)
+        if m_pnr:
+            pnr = m_pnr.group(1).strip()
+
+        # 6. Felkod och felbeskrivning
+        fr_code = None
+        fault_desc = None
+        affected = []
+
+        m_fr = re.search(r'/FR([0-9]{10,25})(.*?)(?:/(?:ID|\s*[A-Z0-9\s]+(?:\(|$)|$))', normalized)
+        if m_fr:
+            fr_code = f"FR{m_fr.group(1).strip()}"
+            fault_desc = m_fr.group(2).strip()
+
+        flr_body_match = re.search(r'/FR[0-9]{10,25}(.*?)(?:/ID|$)', normalized)
+        if flr_body_match:
+            flr_body = flr_body_match.group(1)
+            chunks = [c.strip() for c in flr_body.split('/') if c.strip()]
+            if chunks:
+                if not fault_desc:
+                    fault_desc = chunks[0]
+                for c in chunks[1:]:
+                    if c not in affected:
+                        affected.append(c)
+
+        m_id = re.search(r'/ID([A-Z0-9\s,/-]+?)(?:/|$)', normalized)
+        if m_id:
+            id_text = m_id.group(1).strip()
+            for item in id_text.split(','):
+                it = item.strip()
+                if it and not any(it in a for a in affected):
+                    affected.append(it)
+
+        rep_label = f"Teknisk felrapport ({rep_type or 'FLR'})"
+        fields = {
+            "Typ": rep_label
+        }
+        if fault_desc:
+            fields["Feldetalj"] = fault_desc
+        if affected:
+            fields["Berörda system"] = ", ".join(affected)
+        if pnr:
+            fields["Artikelnummer (PNR)"] = pnr
+        if ac_type:
+            fields["Flygplan"] = f"Airbus {ac_type}"
+        if origin and destination:
+            fields["Rutt"] = f"{format_airport(origin)} → {format_airport(destination)}"
+        if flight_time:
+            fields["Tid (UTC)"] = flight_time
+
+        result = {
+            'report_type': rep_label,
+            'type_code': 'FLR',
+            'is_fault_report': True,
+            'severity': 'fault',
+            'aircraft_type': ac_type,
+            'report_code': rep_type,
+            'reg': reg,
+            'origin': origin,
+            'destination': destination,
+            'route': f"{origin} -> {destination}" if (origin and destination) else None,
+            'flight_time_utc': flight_time,
+            'pnr': pnr,
+            'fr_code': fr_code,
+            'fault_desc': fault_desc,
+            'fault_text': fault_desc,
+            'affected': affected,
+            'affected_systems': ", ".join(affected) if affected else None,
+            'fields': fields
+        }
 
     if result and isinstance(metadata, dict):
         metadata['decoded_fields'] = result
@@ -841,6 +1012,12 @@ def parse_acars_payload(text: str, label: str = None, metadata: dict = None) -> 
             metadata['alt_ft'] = result['altitude_ft']
         if result.get('eta'):
             metadata['eta'] = result['eta']
+        if result.get('destination') and not metadata.get('dst_airport'):
+            metadata['dst_airport'] = result['destination']
+        if result.get('origin') and not metadata.get('src_airport'):
+            metadata['src_airport'] = result['origin']
+        if result.get('reg') and not metadata.get('reg'):
+            metadata['reg'] = result['reg']
 
     return result
 
@@ -885,6 +1062,77 @@ def rule_fm_flight_report(text: str, label: str = None, metadata: dict = None) -
 
     summary = "   ".join(parts)
     return f"{parsed['report_type']}   {summary}\nRådata: {text.strip()}"
+
+
+def rule_airbus_ecam_warning(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    Airbus ECAM Cockpit Warning (WRN / Label H1).
+    Exempel: WRN/PNRC12860AA07/WN26101704400034000006NAV ADS-B RPTG 2 FAULT
+    """
+    parsed = parse_acars_payload(text, label=label, metadata=metadata)
+    if not parsed or not parsed.get('is_warning'):
+        return None
+
+    fault_text = parsed.get('fault_text') or "Varning i förarkabin"
+    pnr = parsed.get('pnr')
+    wn = parsed.get('warning_code')
+
+    parts = [f"ECAM Varning: {fault_text}"]
+    details = []
+    if pnr:
+        details.append(f"PNR: {pnr}")
+    if wn:
+        details.append(f"Varningskod: {wn}")
+
+    if details:
+        parts.append(f"({' | '.join(details)})")
+
+    summary = " ".join(parts)
+    return f"[ECAM Cockpit Warning] {summary}\nRådata: {text.strip()}"
+
+
+def rule_airbus_fault_report(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    Airbus Maintenance / Fault Report (FLR / REP003 / ARINC 624 / Label H1).
+    Exempel: A320,029566,1,1,TB000000/REP003,64,01,1/CCHB-JDF,OCT17,043255,ESSA,LSZH,0001/.../FLR/PNRC12860AA07/FR26101704390034363106MMR 1+2 (40RT1+2)/     ATC 1 (1SH1)/IDATC 1,ATC 2
+    """
+    parsed = parse_acars_payload(text, label=label, metadata=metadata)
+    if not parsed or not parsed.get('is_fault_report'):
+        return None
+
+    rep_type = parsed.get('report_code') or 'FLR'
+    ac_type = parsed.get('aircraft_type')
+    fault_desc = parsed.get('fault_desc') or "Underhållsrapport"
+    pnr = parsed.get('pnr')
+    affected = parsed.get('affected') or []
+    origin = parsed.get('origin')
+    destination = parsed.get('destination')
+    flight_time = parsed.get('flight_time_utc')
+
+    header_parts = []
+    if ac_type:
+        header_parts.append(f"Flygplan: Airbus {ac_type}")
+    if origin and destination:
+        header_parts.append(f"Rutt: {format_airport(origin)} → {format_airport(destination)}")
+    if flight_time:
+        header_parts.append(f"Tid: {flight_time} UTC")
+
+    details = []
+    details.append(f"Feldetalj: {fault_desc}")
+    if affected:
+        details.append(f"Berörda system: {', '.join(affected)}")
+    if pnr:
+        details.append(f"PNR: {pnr}")
+
+    summary_items = []
+    if header_parts:
+        summary_items.append(" | ".join(header_parts))
+    if details:
+        summary_items.append(" | ".join(details))
+
+    summary = "\n".join(summary_items)
+    return f"[Teknisk Felrapport ({rep_type})] {summary}\nRådata: {text.strip()}"
+
 
 
 def rule_libacars_structured(text: str, label: str = None, metadata: dict = None) -> str:
@@ -2497,6 +2745,8 @@ def rule_h1_h2_df_fallback(text: str, label: str = None, metadata: dict = None) 
 PARSER_RULES = [
     rule_libacars_structured,
     rule_fm_flight_report,
+    rule_airbus_ecam_warning,
+    rule_airbus_fault_report,
     rule_miam_airbus_telemetry,
     rule_label_sa_media_advisory,
     rule_label_b6_cpdlc,

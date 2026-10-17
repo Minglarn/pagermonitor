@@ -3077,37 +3077,77 @@
                 activeMinimapHtml = `<div class="msg-minimap-cell"><div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}" data-proto="${escapeHtml(protoName)}"></div></div>`;
             }
 
-            // Avkodade strukturerade payload-fält (FM3, OOOI, WX m.fl.)
+            // Avkodade strukturerade payload-fält (FM3, OOOI, WX, WRN, FLR m.fl.)
             const decodedFields = alarm.decoded_fields || (alarm.metadata && alarm.metadata.decoded_fields);
             let decodedFieldsHtml = '';
             if (decodedFields && typeof decodedFields === 'object') {
                 let pills = [];
-                if (decodedFields.report_type) {
-                    pills.push(`<span class="badge meta badge-report-type" title="Rapporttyp">${escapeHtml(decodedFields.report_type)}</span>`);
+
+                // 1. Airbus ECAM Cockpit Warning
+                if (decodedFields.is_warning || decodedFields.type_code === 'WRN') {
+                    pills.push(`<span class="badge meta badge-ecam-warning" title="ECAM Cockpit Warning"><i class="fas fa-exclamation-triangle"></i> ECAM Varning</span>`);
+                    if (decodedFields.fault_text) {
+                        pills.push(`<span class="warning-bold-desc"><strong>${escapeHtml(decodedFields.fault_text)}</strong></span>`);
+                    }
+                    if (decodedFields.pnr) {
+                        pills.push(`<span class="badge meta badge-pnr" title="Artikelnummer (Part Number)">PNR: ${escapeHtml(decodedFields.pnr)}</span>`);
+                    }
+                    if (decodedFields.warning_code) {
+                        pills.push(`<span class="badge meta badge-code" title="Varningskod">${escapeHtml(decodedFields.warning_code)}</span>`);
+                    }
                 }
-                if (decodedFields.msg_time_utc) {
-                    pills.push(`<span class="badge meta badge-time" title="Meddelandetid (UTC)"><i class="far fa-clock"></i> ${escapeHtml(decodedFields.msg_time_utc)} UTC</span>`);
+                // 2. Airbus Maintenance / Fault Report (FLR / REP003)
+                else if (decodedFields.is_fault_report || decodedFields.type_code === 'FLR') {
+                    pills.push(`<span class="badge meta badge-fault-report" title="ARINC 624 Maintenance Report"><i class="fas fa-tools"></i> Teknisk felrapport</span>`);
+                    if (decodedFields.fault_desc) {
+                        pills.push(`<span class="fault-bold-desc"><strong>${escapeHtml(decodedFields.fault_desc)}</strong></span>`);
+                    }
+                    if (decodedFields.aircraft_type) {
+                        pills.push(`<span class="badge meta badge-aircraft" title="Flygplanstyp"><i class="fas fa-plane"></i> Airbus ${escapeHtml(decodedFields.aircraft_type)}</span>`);
+                    }
+                    if (decodedFields.affected && decodedFields.affected.length > 0) {
+                        const affStr = Array.isArray(decodedFields.affected) ? decodedFields.affected.join(', ') : decodedFields.affected;
+                        pills.push(`<span class="badge meta badge-affected" title="Berörda system / komponenter">Berörda: ${escapeHtml(affStr)}</span>`);
+                    }
+                    if (decodedFields.pnr) {
+                        pills.push(`<span class="badge meta badge-pnr" title="Artikelnummer (Part Number)">PNR: ${escapeHtml(decodedFields.pnr)}</span>`);
+                    }
+                    if (decodedFields.origin && decodedFields.destination) {
+                        pills.push(`<span class="badge meta badge-route" title="Rutt"><i class="fas fa-route"></i> ${escapeHtml(decodedFields.origin)} → ${escapeHtml(decodedFields.destination)}</span>`);
+                    }
+                    if (decodedFields.flight_time_utc) {
+                        pills.push(`<span class="badge meta badge-time" title="Flygtid (UTC)"><i class="far fa-clock"></i> ${escapeHtml(decodedFields.flight_time_utc)} UTC</span>`);
+                    }
                 }
-                if (decodedFields.eta) {
-                    pills.push(`<span class="badge meta badge-eta" title="Beräknad ankomsttid (ETA)"><i class="fas fa-plane-arrival"></i> ETA: ${escapeHtml(decodedFields.eta)}</span>`);
-                }
-                if (decodedFields.altitude_str) {
-                    pills.push(`<span class="badge meta badge-alt" title="Höjd (Altitude)"><i class="fas fa-arrows-alt-v"></i> Höjd: ${escapeHtml(decodedFields.altitude_str)}</span>`);
-                }
-                if (decodedFields.pos_str) {
-                    pills.push(`<span class="badge meta badge-coord" title="Position">${escapeHtml(decodedFields.pos_str)}</span>`);
-                }
-                if (decodedFields.oooi_desc) {
-                    pills.push(`<span class="badge meta badge-oooi" title="OOOI-händelse">${escapeHtml(decodedFields.oooi_desc)}</span>`);
-                }
-                if (decodedFields.airport) {
-                    pills.push(`<span class="badge meta badge-station filterable-badge" onclick="filterByQuickSearch('${escapeHtml(decodedFields.airport)}')" title="Klicka för att filtrera på flygplats: ${escapeHtml(decodedFields.airport)}">Flygplats: ${escapeHtml(decodedFields.airport)}</span>`);
-                }
-                if (decodedFields.fob) {
-                    pills.push(`<span class="badge meta badge-fob" title="Bränsle ombord (FOB)"><i class="fas fa-gas-pump"></i> FOB: ${escapeHtml(decodedFields.fob)}</span>`);
-                }
-                if (decodedFields.extra_data) {
-                    pills.push(`<span class="badge meta badge-extra" title="Övrig data">${escapeHtml(decodedFields.extra_data)}</span>`);
+                // 3. Övriga strukturerade rapporter (FM3, OOOI, WX m.fl.)
+                else {
+                    if (decodedFields.report_type) {
+                        pills.push(`<span class="badge meta badge-report-type" title="Rapporttyp">${escapeHtml(decodedFields.report_type)}</span>`);
+                    }
+                    if (decodedFields.msg_time_utc) {
+                        pills.push(`<span class="badge meta badge-time" title="Meddelandetid (UTC)"><i class="far fa-clock"></i> ${escapeHtml(decodedFields.msg_time_utc)} UTC</span>`);
+                    }
+                    if (decodedFields.eta) {
+                        pills.push(`<span class="badge meta badge-eta" title="Beräknad ankomsttid (ETA)"><i class="fas fa-plane-arrival"></i> ETA: ${escapeHtml(decodedFields.eta)}</span>`);
+                    }
+                    if (decodedFields.altitude_str) {
+                        pills.push(`<span class="badge meta badge-alt" title="Höjd (Altitude)"><i class="fas fa-arrows-alt-v"></i> Höjd: ${escapeHtml(decodedFields.altitude_str)}</span>`);
+                    }
+                    if (decodedFields.pos_str) {
+                        pills.push(`<span class="badge meta badge-coord" title="Position">${escapeHtml(decodedFields.pos_str)}</span>`);
+                    }
+                    if (decodedFields.oooi_desc) {
+                        pills.push(`<span class="badge meta badge-oooi" title="OOOI-händelse">${escapeHtml(decodedFields.oooi_desc)}</span>`);
+                    }
+                    if (decodedFields.airport) {
+                        pills.push(`<span class="badge meta badge-station filterable-badge" onclick="filterByQuickSearch('${escapeHtml(decodedFields.airport)}')" title="Klicka för att filtrera på flygplats: ${escapeHtml(decodedFields.airport)}">Flygplats: ${escapeHtml(decodedFields.airport)}</span>`);
+                    }
+                    if (decodedFields.fob) {
+                        pills.push(`<span class="badge meta badge-fob" title="Bränsle ombord (FOB)"><i class="fas fa-gas-pump"></i> FOB: ${escapeHtml(decodedFields.fob)}</span>`);
+                    }
+                    if (decodedFields.extra_data) {
+                        pills.push(`<span class="badge meta badge-extra" title="Övrig data">${escapeHtml(decodedFields.extra_data)}</span>`);
+                    }
                 }
 
                 if (pills.length > 0) {

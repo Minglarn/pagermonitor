@@ -1,6 +1,6 @@
 # PagerMonitor
 
-[![Version](https://img.shields.io/badge/version-2026.10.16.21-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-2026.10.17.1-blue.svg)](CHANGELOG.md)
 [![GitHub last commit](https://img.shields.io/github/last-commit/Minglarn/pagermonitor)](https://github.com/Minglarn/pagermonitor/commits/main)
 [![GitHub issues](https://img.shields.io/github/issues/Minglarn/pagermonitor)](https://github.com/Minglarn/pagermonitor/issues)
 [![GitHub stars](https://img.shields.io/github/stars/Minglarn/pagermonitor?style=social)](https://github.com/Minglarn/pagermonitor/stargazers)
@@ -18,6 +18,9 @@ PagerMonitor ar en komplett, containeriserad Software Defined Radio (SDR) overva
 
 ### 1. VHF ACARS & Payload Sub-parsing (VHF Flygkommunikation)
 * **acarsdec / acars_router Integration**: Tar emot och avkodar radseparerad JSON via TCP-klient (standard port `15550`, konfigurerbart via miljövariabler eller inställningar).
+* **Airbus ARINC 624 Telemetri & Cockpit Warning (Label H1)**:
+  * **ECAM Cockpit Warning (`WRN`)**: Identifierar cockpitvarningar, artikelnummer (`PNR`), varningskoder och klartextfel med bärnstens-/röd badge och fetstilsbeskrivning i gränssnittet.
+  * **Maintenance & Fault Report (`FLR / REP003`)**: Avkodar ARINC 624-felrapporter med flygplanstyp, rapporttyp, rutt, felande komponenter och berörda delsystem (`/ID`).
 * **Payload Sub-parsing**: Automatisk detaljavkodning av strukturerade meddelandenyttolaster:
   * **FM-rapporter (FM1, FM2, FM3)**: Avkodar tidsstämplar (UTC), beräknad ankomsttid (ETA), koordinater (lat/lon) och höjd (ft).
   * **OOOI-rapporter**: Identifierar flygfashändelser (OUT, OFF, ON, IN), flygplatser och bränslemängd (FOB).

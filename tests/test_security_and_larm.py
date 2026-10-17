@@ -104,13 +104,14 @@ def test_rules_page_and_sidebar_calver(client):
 
 def test_get_all_messages_no_limit(client):
     """Testa att /api/messages utan limit-parameter returnerar alla meddelanden utan 200-gräns."""
+    initial_count = len(client.get('/api/messages').get_json())
     for i in range(250):
         database.save_message("1000000", f"Test message #{i}")
 
     res = client.get('/api/messages')
     assert res.status_code == 200
     data = res.get_json()
-    assert len(data) == 250
+    assert len(data) == initial_count + 250
 
 def test_garbage_filter_allows_short_alphanumeric_codes():
     """Testa att korta nätverkskoder som AB, CD, OK inte kastas av skräpfiltret."""
