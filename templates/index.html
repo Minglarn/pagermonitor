@@ -598,117 +598,79 @@
             padding-right: 1rem !important;
         }
 
-        /* Specific column sizing */
-        table.dataTable.dashboard-dt th.col-id,
-        table.dataTable.dashboard-dt td.id-cell {
-            width: 55px !important;
-            min-width: 50px !important;
-            max-width: 65px !important;
-            white-space: nowrap !important;
-            text-align: center !important;
-            padding: 6px 8px !important;
-            vertical-align: middle !important;
-        }
-
-        table.dataTable.dashboard-dt th.col-time,
+        /* 6 Fasta Kolumner (Wireshark / C2 Industriell Layout) */
+        table.dataTable.dashboard-dt th.col-ts,
+        table.dataTable.dashboard-dt td.col-ts,
         table.dataTable.dashboard-dt td.ts-cell {
-            width: 110px !important;
-            min-width: 105px !important;
-            max-width: 120px !important;
-            white-space: nowrap !important;
-            padding: 6px 8px !important;
-            vertical-align: middle !important;
+            width: 92px !important;
+            min-width: 92px !important;
+            max-width: 92px !important;
+            padding: 8px 6px !important;
+            vertical-align: top !important;
         }
 
-        table.dataTable.dashboard-dt th.col-meta,
-        table.dataTable.dashboard-dt td.meta-cell {
-            width: 105px !important;
-            min-width: 95px !important;
-            max-width: 120px !important;
-            white-space: nowrap !important;
-            padding: 6px 8px !important;
-            vertical-align: middle !important;
+        table.dataTable.dashboard-dt th.col-proto,
+        table.dataTable.dashboard-dt td.col-proto,
+        table.dataTable.dashboard-dt td.proto-cell {
+            width: 72px !important;
+            min-width: 72px !important;
+            max-width: 72px !important;
+            text-align: center !important;
+            padding: 8px 4px !important;
+            vertical-align: top !important;
         }
 
-        table.dataTable.dashboard-dt td.meta-cell .meta-wrapper {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: flex-start !important;
-            width: 100% !important;
-            max-width: 100% !important;
+        table.dataTable.dashboard-dt th.col-rf,
+        table.dataTable.dashboard-dt td.col-rf,
+        table.dataTable.dashboard-dt td.rf-cell {
+            width: 125px !important;
+            min-width: 125px !important;
+            max-width: 125px !important;
+            padding: 8px 8px !important;
+            vertical-align: top !important;
+            line-height: 1.25 !important;
         }
 
-        table.dataTable.dashboard-dt td.meta-cell .badge {
-            margin: 0 !important;
-            white-space: nowrap !important;
-            display: inline-block !important;
-            max-width: 100% !important;
-            box-sizing: border-box !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
+        table.dataTable.dashboard-dt th.col-source,
+        table.dataTable.dashboard-dt td.col-source,
+        table.dataTable.dashboard-dt td.source-cell {
+            width: 135px !important;
+            min-width: 135px !important;
+            max-width: 135px !important;
+            padding: 8px 8px !important;
+            vertical-align: top !important;
+            line-height: 1.25 !important;
         }
 
-        /* CapCode (Alias) column */
-        table.dataTable.dashboard-dt th.col-addr,
-        table.dataTable.dashboard-dt td.addr-cell {
-            width: 150px !important;
-            min-width: 140px !important;
-            max-width: 180px !important;
-            white-space: normal !important;
-            line-height: 1.35 !important;
-            padding: 6px 8px !important;
-            vertical-align: middle !important;
-        }
-
-        table.dataTable.dashboard-dt td.addr-cell .badge {
-            white-space: normal !important;
-            word-break: normal !important;
+        table.dataTable.dashboard-dt th.col-msg,
+        table.dataTable.dashboard-dt td.col-msg,
+        table.dataTable.dashboard-dt td.msg-cell,
+        table.dataTable.dashboard-dt td.message-cell {
+            width: auto !important;
+            padding: 8px 10px !important;
+            vertical-align: top !important;
             overflow-wrap: break-word !important;
-            line-height: 1.35 !important;
-            display: inline-block !important;
-            text-align: left !important;
-            max-width: 100% !important;
+            word-break: break-word !important;
         }
 
-        table.dataTable.dashboard-dt th.col-actions {
+        table.dataTable.dashboard-dt th.col-act,
+        table.dataTable.dashboard-dt th.col-actions,
+        table.dataTable.dashboard-dt td.col-act,
+        table.dataTable.dashboard-dt td.actions-cell {
             width: 38px !important;
             min-width: 38px !important;
-            max-width: 42px !important;
-            white-space: nowrap !important;
+            max-width: 38px !important;
             text-align: center !important;
-            padding: 0.65rem 0.2rem !important;
-            background-image: none !important;
-            cursor: default !important;
+            padding: 6px 2px !important;
+            vertical-align: top !important;
         }
 
+        table.dataTable.dashboard-dt th.col-act::before,
+        table.dataTable.dashboard-dt th.col-act::after,
         table.dataTable.dashboard-dt th.col-actions::before,
         table.dataTable.dashboard-dt th.col-actions::after {
             display: none !important;
             content: "" !important;
-        }
-
-        table.dataTable.dashboard-dt td.actions-cell {
-            width: 38px !important;
-            min-width: 38px !important;
-            max-width: 42px !important;
-            white-space: nowrap !important;
-            text-align: center !important;
-            padding: 4px 2px !important;
-        }
-
-        table.dataTable.dashboard-dt th.col-msg {
-            width: auto !important;
-        }
-
-        table.dataTable.dashboard-dt td.msg-cell,
-        table.dataTable.dashboard-dt td.message-cell {
-            width: auto !important;
-            white-space: normal !important;
-            word-break: break-word !important;
-            overflow-wrap: anywhere !important;
-            padding: 0 !important;
-            vertical-align: top !important;
-            height: 1px !important; /* Krävs på <td> för att barn med height: 100% ska fylla hela radhöjden */
         }
 
         .msg-row-layout {
@@ -1206,12 +1168,12 @@
                     <table id="alarmsTable" class="dataTable dashboard-dt">
                         <thead>
                             <tr>
-                                <th class="col-id">#</th>
-                                <th class="col-time">Timestamp</th>
-                                <th class="col-meta">Protocol</th>
-                                <th class="col-addr">CapCode (Alias)</th>
-                                <th class="col-msg">Message</th>
-                                <th class="col-actions" data-orderable="false" title="Actions" aria-label="Actions"><i class="fas fa-ellipsis-v"></i></th>
+                                <th class="col-ts">TID / #</th>
+                                <th class="col-proto">PROTOKOLL</th>
+                                <th class="col-rf">RF / KANAL</th>
+                                <th class="col-source">ENHET / ALIAS</th>
+                                <th class="col-msg">MEDDELANDE / TELEMETRI</th>
+                                <th class="col-act" data-orderable="false" title="Val" aria-label="Val"><i class="fas fa-ellipsis-v"></i></th>
                             </tr>
                         </thead>
                         <tbody id="alarmsBody">
@@ -2663,6 +2625,7 @@
 
         function createAlarmRowNode(alarm) {
             const tr = document.createElement('tr');
+            tr.className = 'log-row';
             tr.setAttribute('data-id', alarm.id);
             tr.setAttribute('data-frequency', alarm.frequency || '');
             tr.setAttribute('data-protocol', alarm.protocol || '');
@@ -2675,13 +2638,13 @@
             const isSystem = alarm.address === 'SYSTEM' || alarm.frequency === 'RESTART' || alarm.is_system;
 
             const dateObj = new Date(alarm.timestamp);
-            const dateStr = dateObj.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
-            const timeStr = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            let formattedTime = `${dateStr}<br>${timeStr}`;
+            const dateStr = dateObj.toLocaleDateString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            const timeStr = dateObj.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            let lastSeenHtml = '';
             if (alarm.last_timestamp && alarm.repeat_count > 1) {
                 const lastDate = new Date(alarm.last_timestamp);
-                const lastTimeStr = lastDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                formattedTime += `<div class="last-seen-time">(Last: ${lastTimeStr})</div>`;
+                const lastTimeStr = lastDate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                lastSeenHtml = `<div class="last-seen-time">(Senast: ${lastTimeStr})</div>`;
             }
 
             if (isSystem) {
@@ -2692,20 +2655,43 @@
                 tr.setAttribute('data-address', alarm.address || 'SYSTEM');
                 tr.setAttribute('data-alias', displayInstance);
                 tr.innerHTML = `
-                    <td class="id-cell"><span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; font-weight: 700;">SYS</span></td>
-                    <td class="ts-cell" data-order="${alarm.timestamp}">${formattedTime}</td>
-                    <td class="meta-cell"><span class="badge filterable-badge" onclick="filterByFrequency('RESTART')" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.4); font-weight: 700;">RESTART</span></td>
-                    <td class="addr-cell">
-                        <span class="badge filterable-badge" onclick="filterByCapcode('${escapeHtml(displayInstance)}', '${escapeHtml(alarm.address || 'SYSTEM')}')" style="background: rgba(56, 189, 248, 0.15); color: var(--accent); font-weight: 600;">${displayInstance}</span>
+                    <td class="col-ts ts-cell" data-order="${alarm.timestamp}">
+                        <div class="ts-time">${timeStr}</div>
+                        <div class="ts-date">${dateStr}</div>
+                        <div class="ts-id">#${alarm.id}</div>
                     </td>
-                    <td class="msg-cell" style="color: #fcd34d; font-family: var(--msg-font, 'JetBrains Mono', monospace);"><i class="fas fa-sync-alt" style="margin-right: 6px; color: #f59e0b;"></i>${alarm.message}</td>
-                    <td class="actions-cell">
+                    <td class="col-proto proto-cell">
+                        <span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3);">SYS</span>
+                    </td>
+                    <td class="col-rf rf-cell">
+                        <div class="rf-freq" style="color: #f59e0b;">RESTART</div>
+                        <div class="rf-mod">SYSTEM</div>
+                    </td>
+                    <td class="col-source source-cell">
+                        <div class="src-name">${escapeHtml(displayInstance)}</div>
+                        <div class="src-sub" style="color: #94a3b8;">${escapeHtml(alarm.address || 'SYSTEM')}</div>
+                    </td>
+                    <td class="col-msg msg-cell message-cell">
+                        <div class="msg-layout">
+                            <div class="msg-main">
+                                <div class="msg-top">
+                                    <span class="msg-title" style="color: #f59e0b;">SYSTEMHÄNDELSE</span>
+                                </div>
+                                <div class="data-flex">
+                                    <div class="kv-box full-text" style="color: #fcd34d;">
+                                        <i class="fas fa-sync-alt" style="margin-right: 6px; color: #f59e0b;"></i>${escapeHtml(alarm.message)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="col-act actions-cell">
                         <div class="actions-wrapper">
-                            <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">
+                            <button class="copy-btn" onclick="copyMessageText(this)" title="Kopiera meddelande">
                                 <i class="fas fa-copy"></i>
                             </button>
                             <div class="btn-divider"></div>
-                            <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete system entry">
+                            <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Ta bort systemhändelse">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </div>
@@ -2722,7 +2708,8 @@
             );
 
             const displayAddress = alarm.alias ? alarm.alias : alarm.address;
-            // Bestäm protokoll och märke
+
+            // Bestäm protokoll och klass
             let protoName = '';
             let protoClass = '';
             const rawProto = (alarm.protocol || '').toString().trim().toUpperCase();
@@ -2760,66 +2747,47 @@
                 protoClass = 'proto-pocsag';
             } else if (rawProto && rawProto !== 'UNKNOWN') {
                 protoName = rawProto;
-                protoClass = 'proto-generic';
+                protoClass = `proto-${rawProto.toLowerCase()}`;
             } else {
                 protoName = 'POCSAG';
                 protoClass = 'proto-pocsag';
             }
-            const protoTag = `<span class="badge meta badge-proto ${protoClass} filterable-badge" onclick="filterByProtocol('${protoName}')" title="Klicka för att filtrera på ${protoName}">${protoName}</span>`;
 
+            tr.classList.add(protoClass);
+
+            // Formaterad bitrate / modulation
             let formattedBitrate = '';
             if (alarm.bitrate) {
                 let bStr = String(alarm.bitrate).trim();
                 if (bStr && bStr !== 'WATCHDOG') {
-                    if (bStr.toUpperCase().startsWith('TETRA-')) {
-                        formattedBitrate = bStr.substring(6);
-                    } else if (bStr.toUpperCase() === 'TETRA') {
-                        formattedBitrate = '';
-                    } else if (bStr.toUpperCase() === 'RDS-TMC') {
-                        formattedBitrate = 'TMC';
-                    } else if (bStr.toUpperCase() === 'RDS') {
-                        formattedBitrate = '';
-                    } else if (bStr.toUpperCase().startsWith('VDL2-')) {
-                        formattedBitrate = bStr.substring(5);
-                    } else if (bStr.toUpperCase() === 'VDL2') {
-                        formattedBitrate = '';
-                    } else if (bStr.toUpperCase() === 'VHF-ACARS' || bStr.toUpperCase() === 'ACARS') {
-                        formattedBitrate = 'VHF';
-                    } else if (bStr.toUpperCase().startsWith('SONDE-')) {
-                        formattedBitrate = bStr.substring(6);
-                    } else if (bStr.toUpperCase() === 'SONDE') {
-                        formattedBitrate = '';
-                    } else if (bStr.toUpperCase().startsWith('HFDL-')) {
-                        formattedBitrate = bStr.substring(5);
-                    } else if (bStr.toUpperCase() === 'HFDL') {
-                        formattedBitrate = '';
-                    } else if (bStr.toUpperCase().startsWith('SATC-')) {
-                        formattedBitrate = bStr.substring(5);
-                    } else if (bStr.toUpperCase() === 'SATC') {
-                        formattedBitrate = '';
-                    } else if (/^POCSAG\s*\d+$/i.test(bStr)) {
-                        formattedBitrate = bStr.replace(/^POCSAG\s*/i, '') + 'bps';
-                    } else if (/^\d+$/.test(bStr)) {
-                        formattedBitrate = bStr + 'bps';
-                    } else if (!bStr.toLowerCase().endsWith('bps') && !bStr.includes('-')) {
-                        formattedBitrate = bStr + 'bps';
-                    } else {
-                        formattedBitrate = bStr;
-                    }
+                    if (bStr.toUpperCase().startsWith('TETRA-')) formattedBitrate = bStr.substring(6);
+                    else if (bStr.toUpperCase() === 'TETRA') formattedBitrate = '';
+                    else if (bStr.toUpperCase() === 'RDS-TMC') formattedBitrate = 'TMC';
+                    else if (bStr.toUpperCase() === 'RDS') formattedBitrate = '';
+                    else if (bStr.toUpperCase().startsWith('VDL2-')) formattedBitrate = bStr.substring(5);
+                    else if (bStr.toUpperCase() === 'VDL2') formattedBitrate = '';
+                    else if (bStr.toUpperCase() === 'VHF-ACARS' || bStr.toUpperCase() === 'ACARS') formattedBitrate = 'VHF';
+                    else if (bStr.toUpperCase().startsWith('SONDE-')) formattedBitrate = bStr.substring(6);
+                    else if (bStr.toUpperCase() === 'SONDE') formattedBitrate = '';
+                    else if (bStr.toUpperCase().startsWith('HFDL-')) formattedBitrate = bStr.substring(5);
+                    else if (bStr.toUpperCase() === 'HFDL') formattedBitrate = '';
+                    else if (bStr.toUpperCase().startsWith('SATC-')) formattedBitrate = bStr.substring(5);
+                    else if (bStr.toUpperCase() === 'SATC') formattedBitrate = '';
+                    else if (/^POCSAG\s*\d+$/i.test(bStr)) formattedBitrate = bStr.replace(/^POCSAG\s*/i, '') + 'bps';
+                    else if (/^\d+$/.test(bStr)) formattedBitrate = bStr + 'bps';
+                    else if (!bStr.toLowerCase().endsWith('bps') && !bStr.includes('-')) formattedBitrate = bStr + 'bps';
+                    else formattedBitrate = bStr;
                 } else if (bStr === 'WATCHDOG') {
                     formattedBitrate = 'WATCHDOG';
                 }
             }
-            const bitrateTag = formattedBitrate ? `<span class="badge meta">${formattedBitrate}</span>` : '';
 
             // Rensa och bearbeta meddelandetext och extrahera SNR
             let cleanMsg = alarm.message || '';
             let snrVal = alarm.snr || '';
             if (!snrVal && cleanMsg) {
                 const snrMatch = cleanMsg.match(/\bSNR:\s*([+-]?[0-9]+(?:\.[0-9]+)?\s*dB)\b/i);
-                if (snrMatch) {
-                    snrVal = snrMatch[1];
-                }
+                if (snrMatch) snrVal = snrMatch[1];
             }
             if (cleanMsg) {
                 cleanMsg = cleanMsg.replace(/\s*\|\s*SNR:\s*[+-]?[0-9]+(?:\.[0-9]+)?\s*dB/gi, '')
@@ -2827,19 +2795,7 @@
                                    .trim();
             }
 
-            let snrText = '';
-            if (snrVal) {
-                let s = String(snrVal).trim();
-                if (!s.toUpperCase().startsWith('SNR:')) {
-                    snrText = `SNR: ${s}`;
-                } else {
-                    snrText = s;
-                }
-            }
-            const snrTag = snrText ? `<span class="badge meta badge-snr" title="Signal/brusförhållande">${escapeHtml(snrText)}</span>` : '';
-
-            // VDL2 Metadata Badges (Krav 1: Badge-raden längst ner)
-            let vdl2BadgesHtml = '';
+            // Metadata-fält för flyg / satellit
             let cleanAirportCode = '';
             let regVal = alarm.reg || '';
             let flightVal = alarm.flight || '';
@@ -2849,97 +2805,70 @@
             let labelVal = alarm.label || '';
             let labelDescVal = alarm.label_desc || '';
 
-            const isVdl2 = protoName === 'VDL2';
-            if (isVdl2) {
-                // Fallback-extrahering ur alarm.address (t.ex. "D84378 (SE-RTA) [4ACA81]")
-                if (!flightVal && alarm.address) {
+            // Fallback-extrahering ur alarm.address
+            if (alarm.address) {
+                if (!flightVal) {
                     const mFl = alarm.address.match(/^([A-Z0-9]{2,8})\b/i);
-                    if (mFl && mFl[1] !== 'VDL2') flightVal = mFl[1].toUpperCase();
+                    if (mFl && !['VDL2','HFDL','ACARS','SATC','SONDE','TETRA','GS'].includes(mFl[1].toUpperCase())) {
+                        flightVal = mFl[1].toUpperCase();
+                    }
                 }
-                if (!regVal && alarm.address) {
+                if (!regVal) {
                     const mReg = alarm.address.match(/\(([A-Z0-9.-]+)\)/i);
                     if (mReg) regVal = mReg[1].replace(/^\.+/, '').toUpperCase();
                 }
-                if (!icaoVal && alarm.address) {
+                if (!icaoVal) {
                     const mIcao = alarm.address.match(/\[([0-9A-Fa-f]{6})\]/);
                     if (mIcao) icaoVal = mIcao[1].toUpperCase();
                 }
-
-                // Fallback-extrahering ur äldre sparad meddelandetext med [Reg: ... | Flight: ...]
-                if (cleanMsg) {
-                    if (cleanMsg.includes('Reg:') || cleanMsg.includes('Flight:') || cleanMsg.includes('ICAO:')) {
-                        const rM = cleanMsg.match(/\bReg:\s*([A-Z0-9.-]+)/i);
-                        if (rM && !regVal) regVal = rM[1].replace(/^\.+/, '').toUpperCase();
-
-                        const fM = cleanMsg.match(/\bFlight:\s*([A-Z0-9]+)/i);
-                        if (fM && !flightVal) flightVal = fM[1].toUpperCase();
-
-                        const iM = cleanMsg.match(/\bICAO:\s*([0-9A-Fa-f]{6})/i);
-                        if (iM && !icaoVal) icaoVal = iM[1].toUpperCase();
-
-                        const sM = cleanMsg.match(/\bTo:\s*([^|\]\n]+)/i);
-                        if (sM && !stationVal) stationVal = sM[1].trim();
-
-                        const stM = cleanMsg.match(/\b(?:On Ground|Status):\s*(Yes|No|Airborne|On Ground)/i);
-                        if (stM && !statusVal) {
-                            const rawSt = stM[1].toLowerCase();
-                            statusVal = (rawSt === 'yes' || rawSt === 'on ground') ? 'On Ground' : 'Airborne';
-                        }
-
-                        cleanMsg = cleanMsg.replace(/^\[?Reg:[^\]\n]*\]?\r?\n?/i, '')
-                                           .replace(/^Flight:[^\n]*\r?\n?/i, '')
-                                           .trim();
-                    }
-
-                    // Extrahera och rensa inledande Label-prefix (t.ex. [H1: FMS / Färddator-rapport] eller [83])
-                    const lblPrefixMatch = cleanMsg.match(/^\[([A-Z0-9_]{1,4})(?::\s*([^\]]+))?\]\s*/i);
-                    if (lblPrefixMatch) {
-                        if (!labelVal) labelVal = lblPrefixMatch[1].toUpperCase();
-                        if (!labelDescVal && lblPrefixMatch[2]) labelDescVal = lblPrefixMatch[2].trim();
-                    }
-
-                    if (!stationVal) {
-                        const routeMatch = cleanMsg.match(/(?:Rutt|Route):\s*[A-Z]{4}[^→\n]*→\s*([A-Z]{4})/i);
-                        if (routeMatch) stationVal = routeMatch[1].toUpperCase();
-                    }
-                }
-
-                if (stationVal) {
-                    const icaoM = stationVal.match(/\b([A-Z]{4})\b/);
-                    if (icaoM) cleanAirportCode = icaoM[1].toUpperCase();
-                }
-
-                // Bygg badges med Click-to-Filter
-                const regTag = regVal ? `<span class="badge meta badge-reg filterable-badge" onclick="filterByQuickSearch('${escapeHtml(regVal)}')" title="Klicka för att söka registrering: ${escapeHtml(regVal)}">${escapeHtml(regVal)}</span>` : '';
-                const flightTag = flightVal ? `<span class="badge meta badge-flight filterable-badge" onclick="filterByQuickSearch('${escapeHtml(flightVal)}')" title="Klicka för att söka flight: ${escapeHtml(flightVal)}">${escapeHtml(flightVal)}</span>` : '';
-                const icaoTag = icaoVal ? `<span class="badge meta badge-icao filterable-badge" onclick="filterByQuickSearch('${escapeHtml(icaoVal)}')" title="Klicka för att söka ICAO: ${escapeHtml(icaoVal)}">ICAO: ${escapeHtml(icaoVal)}</span>` : '';
-                const stationTag = stationVal ? `<span class="badge meta badge-station filterable-badge" onclick="filterByAirport('${escapeHtml(cleanAirportCode || stationVal)}')" title="Klicka för att filtrera på flygplats: ${escapeHtml(stationVal)}">To: ${escapeHtml(stationVal)}</span>` : '';
-                const statusTag = statusVal ? `<span class="badge meta badge-status ${statusVal === 'Airborne' ? 'badge-airborne' : 'badge-ground'}" title="Flygstatus">${escapeHtml(statusVal)}</span>` : '';
-
-                let labelBadgeText = '';
-                if (labelVal) {
-                    labelBadgeText = labelVal;
-                    if (labelDescVal) {
-                        let shortDesc = labelDescVal.split('/')[0].trim().replace('-rapport', '').replace('rapport', '').trim();
-                        labelBadgeText = `${labelVal} (${shortDesc})`;
-                    }
-                }
-                const labelTag = labelBadgeText ? `<span class="badge meta badge-label filterable-badge" onclick="filterByLabel('${escapeHtml(labelVal)}')" title="Klicka för att filtrera på ACARS Label: ${escapeHtml(labelVal)}">Label: ${escapeHtml(labelBadgeText)}</span>` : '';
-
-                vdl2BadgesHtml = `${regTag}${flightTag}${icaoTag}${stationTag}${statusTag}${labelTag}`;
             }
 
-            // SATC Metadata Badges (Inmarsat STD-C / EGC / SafetyNET)
-            let satcBadgesHtml = '';
-            const isSatc = protoName === 'SATC';
+            // Fallback-extrahering ur metadata
+            if (alarm.metadata && typeof alarm.metadata === 'object') {
+                if (!flightVal && alarm.metadata.flight) flightVal = String(alarm.metadata.flight).trim().toUpperCase();
+                if (!regVal && (alarm.metadata.reg || alarm.metadata.tail)) regVal = String(alarm.metadata.reg || alarm.metadata.tail).trim().replace(/^\.+/, '').toUpperCase();
+                if (!icaoVal && alarm.metadata.icao) icaoVal = String(alarm.metadata.icao).trim().toUpperCase();
+                if (!stationVal && (alarm.metadata.station || alarm.metadata.station_id)) stationVal = String(alarm.metadata.station || alarm.metadata.station_id).trim();
+                if (!labelVal && alarm.metadata.label) labelVal = String(alarm.metadata.label).trim().toUpperCase();
+                if (!labelDescVal && alarm.metadata.label_desc) labelDescVal = String(alarm.metadata.label_desc).trim();
+            }
+
+            // Fallback-extrahering ur äldre sparad text
+            if (cleanMsg) {
+                if (cleanMsg.includes('Reg:') || cleanMsg.includes('Flight:') || cleanMsg.includes('ICAO:')) {
+                    const rM = cleanMsg.match(/\bReg:\s*([A-Z0-9.-]+)/i);
+                    if (rM && !regVal) regVal = rM[1].replace(/^\.+/, '').toUpperCase();
+                    const fM = cleanMsg.match(/\bFlight:\s*([A-Z0-9]+)/i);
+                    if (fM && !flightVal) flightVal = fM[1].toUpperCase();
+                    const iM = cleanMsg.match(/\bICAO:\s*([0-9A-Fa-f]{6})/i);
+                    if (iM && !icaoVal) icaoVal = iM[1].toUpperCase();
+                    const sM = cleanMsg.match(/\bTo:\s*([^|\]\n]+)/i);
+                    if (sM && !stationVal) stationVal = sM[1].trim();
+
+                    cleanMsg = cleanMsg.replace(/^\[?Reg:[^\]\n]*\]?\r?\n?/i, '')
+                                       .replace(/^Flight:[^\n]*\r?\n?/i, '')
+                                       .trim();
+                }
+                const lblPrefixMatch = cleanMsg.match(/^\[([A-Z0-9_]{1,4})(?::\s*([^\]]+))?\]\s*/i);
+                if (lblPrefixMatch) {
+                    if (!labelVal) labelVal = lblPrefixMatch[1].toUpperCase();
+                    if (!labelDescVal && lblPrefixMatch[2]) labelDescVal = lblPrefixMatch[2].trim();
+                }
+            }
+
+            if (stationVal) {
+                const icaoM = stationVal.match(/\b([A-Z]{4})\b/);
+                if (icaoM) cleanAirportCode = icaoM[1].toUpperCase();
+            }
+
+            // SAT-C specifika fält
             let satcPriorityVal = alarm.satc_priority || alarm.priority || '';
             let satcNavareaVal = alarm.navarea || alarm.area || '';
             let satcLesVal = alarm.les_name || alarm.les || '';
-            let satcServiceVal = alarm.satc_service || alarm.service_name || '';
             let satcMesVal = alarm.mes_id || (alarm.metadata && alarm.metadata.mes_id) || '';
             let satcChannelVal = alarm.logical_channel_number || (alarm.metadata && alarm.metadata.logical_channel_number) || '';
 
-            if (isSatc) {
+            if (protoName === 'SATC') {
                 if (!satcPriorityVal && cleanMsg) {
                     const pM = cleanMsg.match(/\bPrioritet:\s*([A-Za-z]+)/i) || cleanMsg.match(/\bPriority:\s*([A-Za-z]+)/i);
                     if (pM) satcPriorityVal = pM[1];
@@ -2951,70 +2880,16 @@
                 if (!satcLesVal && alarm.address && alarm.address.startsWith('LES:')) {
                     satcLesVal = alarm.address.substring(4).trim();
                 }
-                if (!satcMesVal && cleanMsg) {
-                    const mM = cleanMsg.match(/\bMES(?:\s*ID)?:\s*([0-9A-Za-z]+)/i);
-                    if (mM) satcMesVal = mM[1].trim();
-                }
                 if (!satcMesVal && alarm.address && alarm.address.startsWith('MES:')) {
                     satcMesVal = alarm.address.substring(4).trim();
                 }
-                if (!satcChannelVal && cleanMsg) {
-                    const cM = cleanMsg.match(/\b(?:Kanal|Ch):\s*#?([0-9]+)/i);
-                    if (cM) satcChannelVal = cM[1].trim();
-                }
-
-                let priorityTag = '';
-                if (satcPriorityVal) {
-                    const pUpper = satcPriorityVal.toUpperCase();
-                    let pClass = 'badge-routine';
-                    if (pUpper === 'DISTRESS') {
-                        pClass = 'badge-distress';
-                    } else if (pUpper === 'URGENCY') {
-                        pClass = 'badge-urgency';
-                    } else if (pUpper === 'SAFETY') {
-                        pClass = 'badge-safety';
-                    }
-                    priorityTag = `<span class="badge meta badge-satc-priority ${pClass} filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcPriorityVal)}')" title="Klicka för att söka prioritet: ${escapeHtml(satcPriorityVal)}">Priority: ${escapeHtml(satcPriorityVal)}</span>`;
-                }
-
-                const mesTag = satcMesVal ? `<span class="badge meta badge-mes filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcMesVal)}')" title="Klicka för att filtrera på terminal: ${escapeHtml(satcMesVal)}">MES: ${escapeHtml(satcMesVal)}</span>` : '';
-                const chTag = satcChannelVal ? `<span class="badge meta badge-ch filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcChannelVal)}')" title="Klicka för att filtrera på kanal: ${escapeHtml(satcChannelVal)}">Ch: #${escapeHtml(satcChannelVal)}</span>` : '';
-                const navareaTag = satcNavareaVal ? `<span class="badge meta badge-navarea filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcNavareaVal)}')" title="Klicka för att söka område: ${escapeHtml(satcNavareaVal)}">${escapeHtml(satcNavareaVal)}</span>` : '';
-                const lesTag = satcLesVal ? `<span class="badge meta badge-les filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcLesVal)}')" title="Klicka för att söka jordstation: ${escapeHtml(satcLesVal)}">LES: ${escapeHtml(satcLesVal)}</span>` : '';
-                const serviceTag = satcServiceVal ? `<span class="badge meta badge-service filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcServiceVal)}')" title="Klicka för att filtrera: ${escapeHtml(satcServiceVal)}">${escapeHtml(satcServiceVal)}</span>` : '';
-
-                satcBadgesHtml = `${priorityTag}${mesTag}${chTag}${navareaTag}${lesTag}${serviceTag}`;
             }
 
-            // HFDL Metadata Badges (High Frequency Data Link / dumphfdl)
-            let hfdlBadgesHtml = '';
-            const isHfdl = protoName === 'HFDL';
+            // HFDL specifika fält
             let hfdlGsVal = alarm.gs_name || (alarm.metadata && alarm.metadata.gs_name) || '';
             let hfdlTypeVal = alarm.hfdl_type || (alarm.metadata && alarm.metadata.hfdl_type) || '';
             let hfdlModelVal = alarm.ac_model || (alarm.metadata && (alarm.metadata.ac_model || alarm.metadata.typecode)) || '';
-
-            if (isHfdl) {
-                if (!flightVal && alarm.flight) flightVal = alarm.flight;
-                if (!flightVal && alarm.metadata && alarm.metadata.flight) flightVal = alarm.metadata.flight;
-                if (!flightVal && alarm.address) {
-                    const mFl = alarm.address.match(/^([A-Z0-9]{2,8})\b/i);
-                    if (mFl && mFl[1] !== 'HFDL' && mFl[1] !== 'GS') flightVal = mFl[1].toUpperCase();
-                }
-
-                if (!regVal && alarm.reg) regVal = String(alarm.reg).replace(/^\.+/, '');
-                if (!regVal && alarm.metadata && alarm.metadata.reg) regVal = String(alarm.metadata.reg).replace(/^\.+/, '');
-                if (!regVal && alarm.address) {
-                    const mReg = alarm.address.match(/\(([A-Z0-9.-]+)\)/i);
-                    if (mReg) regVal = mReg[1].replace(/^\.+/, '').toUpperCase();
-                }
-
-                if (!icaoVal && alarm.icao) icaoVal = alarm.icao;
-                if (!icaoVal && alarm.metadata && alarm.metadata.icao) icaoVal = alarm.metadata.icao;
-                if (!icaoVal && alarm.address) {
-                    const mIcao = alarm.address.match(/\[([0-9A-Fa-f]{6})\]/);
-                    if (mIcao) icaoVal = mIcao[1].toUpperCase();
-                }
-
+            if (protoName === 'HFDL') {
                 if (!hfdlGsVal && cleanMsg) {
                     const mGs = cleanMsg.match(/\bMarkstation:\s*([^|\]\n]+)/i);
                     if (mGs) hfdlGsVal = mGs[1].trim();
@@ -3022,88 +2897,16 @@
                 if (!hfdlGsVal && alarm.address && alarm.address.startsWith('GS:')) {
                     hfdlGsVal = alarm.address.substring(3).trim();
                 }
-
                 if (!hfdlModelVal && cleanMsg) {
                     const mM = cleanMsg.match(/\bFlygplan:\s*([^(|\n]+)/i);
                     if (mM) hfdlModelVal = mM[1].trim();
                 }
-
-                // ACARS på HFDL
-                if (!labelVal && alarm.label) labelVal = alarm.label;
-                if (!labelVal && alarm.metadata && alarm.metadata.label) labelVal = alarm.metadata.label;
-                if (!labelVal && cleanMsg) {
-                    const lblMatch = cleanMsg.match(/\[HFDL ACARS \/\s*Label:\s*([A-Z0-9_]{1,4})/i) || cleanMsg.match(/\bLabel:\s*([A-Z0-9_]{1,4})/i);
-                    if (lblMatch) labelVal = lblMatch[1].toUpperCase();
-                }
-                if (!labelDescVal && alarm.label_desc) labelDescVal = alarm.label_desc;
-                if (!labelDescVal && alarm.metadata && alarm.metadata.label_desc) labelDescVal = alarm.metadata.label_desc;
-
-                const regTag = regVal ? `<span class="badge meta badge-reg filterable-badge" onclick="filterByQuickSearch('${escapeHtml(regVal)}')" title="Klicka för att söka registrering: ${escapeHtml(regVal)}">${escapeHtml(regVal)}</span>` : '';
-                const flightTag = flightVal ? `<span class="badge meta badge-flight filterable-badge" onclick="filterByQuickSearch('${escapeHtml(flightVal)}')" title="Klicka för att söka flight: ${escapeHtml(flightVal)}">${escapeHtml(flightVal)}</span>` : '';
-                const icaoTag = icaoVal ? `<span class="badge meta badge-icao filterable-badge" onclick="filterByQuickSearch('${escapeHtml(icaoVal)}')" title="Klicka för att söka ICAO: ${escapeHtml(icaoVal)}">ICAO: ${escapeHtml(icaoVal)}</span>` : '';
-                const modelTag = hfdlModelVal ? `<span class="badge meta badge-ac-model filterable-badge" onclick="filterByQuickSearch('${escapeHtml(hfdlModelVal)}')" title="Flygplansmodell: ${escapeHtml(hfdlModelVal)}">${escapeHtml(hfdlModelVal)}</span>` : '';
-                const gsTag = hfdlGsVal ? `<span class="badge meta badge-gs filterable-badge" onclick="filterByQuickSearch('${escapeHtml(hfdlGsVal)}')" title="Klicka för att filtrera på markstation: ${escapeHtml(hfdlGsVal)}">GS: ${escapeHtml(hfdlGsVal)}</span>` : '';
-
-                let hfdlTypeTag = '';
-                if (labelVal) {
-                    let labelBadgeText = labelVal;
-                    if (labelDescVal) {
-                        let shortDesc = labelDescVal.split('/')[0].trim().replace('-rapport', '').replace('rapport', '').trim();
-                        labelBadgeText = `${labelVal} (${shortDesc})`;
-                    }
-                    hfdlTypeTag = `<span class="badge meta badge-label filterable-badge" onclick="filterByLabel('${escapeHtml(labelVal)}')" title="Klicka för att filtrera på ACARS Label: ${escapeHtml(labelVal)}">Label: ${escapeHtml(labelBadgeText)}</span>`;
-                } else if (hfdlTypeVal) {
-                    hfdlTypeTag = `<span class="badge meta badge-hfdl-type filterable-badge" onclick="filterByQuickSearch('${escapeHtml(hfdlTypeVal)}')" title="HFDL Pakettyp: ${escapeHtml(hfdlTypeVal)}">${escapeHtml(hfdlTypeVal)}</span>`;
-                }
-
-                hfdlBadgesHtml = `${regTag}${flightTag}${icaoTag}${modelTag}${gsTag}${hfdlTypeTag}`;
             }
 
-            // VHF ACARS Metadata Badges
-            let acarsBadgesHtml = '';
-            const isAcars = protoName === 'ACARS';
+            // ACARS markstation
             let acarsStationVal = alarm.station || alarm.station_id || (alarm.metadata && (alarm.metadata.station || alarm.metadata.station_id)) || '';
-            let acarsMsgNoVal = alarm.msgno || (alarm.metadata && alarm.metadata.msgno) || '';
 
-            if (isAcars) {
-                if (!flightVal && alarm.flight) flightVal = alarm.flight;
-                if (!flightVal && alarm.metadata && alarm.metadata.flight) flightVal = alarm.metadata.flight;
-                if (!flightVal && alarm.address) {
-                    const mFl = alarm.address.match(/^([A-Z0-9]{2,8})\b/i);
-                    if (mFl && mFl[1] !== 'ACARS' && mFl[1] !== 'GS') flightVal = mFl[1].toUpperCase();
-                }
-
-                if (!regVal && (alarm.reg || alarm.tail)) regVal = String(alarm.reg || alarm.tail).replace(/^\.+/, '');
-                if (!regVal && alarm.metadata && (alarm.metadata.reg || alarm.metadata.tail)) regVal = String(alarm.metadata.reg || alarm.metadata.tail).replace(/^\.+/, '');
-                if (!regVal && alarm.address) {
-                    const mReg = alarm.address.match(/\(([A-Z0-9.-]+)\)/i);
-                    if (mReg) regVal = mReg[1].replace(/^\.+/, '').toUpperCase();
-                }
-
-                if (!labelVal && alarm.label) labelVal = alarm.label;
-                if (!labelVal && alarm.metadata && alarm.metadata.label) labelVal = alarm.metadata.label;
-                if (!labelDescVal && alarm.label_desc) labelDescVal = alarm.label_desc;
-                if (!labelDescVal && alarm.metadata && alarm.metadata.label_desc) labelDescVal = alarm.metadata.label_desc;
-
-                const regTag = regVal ? `<span class="badge meta badge-reg filterable-badge" onclick="filterByQuickSearch('${escapeHtml(regVal)}')" title="Klicka för att söka registrering: ${escapeHtml(regVal)}">${escapeHtml(regVal)}</span>` : '';
-                const flightTag = flightVal ? `<span class="badge meta badge-flight filterable-badge" onclick="filterByQuickSearch('${escapeHtml(flightVal)}')" title="Klicka för att söka flight: ${escapeHtml(flightVal)}">${escapeHtml(flightVal)}</span>` : '';
-                const stTag = acarsStationVal ? `<span class="badge meta badge-station filterable-badge" onclick="filterByQuickSearch('${escapeHtml(acarsStationVal)}')" title="Klicka för att söka markstation: ${escapeHtml(acarsStationVal)}">GS: ${escapeHtml(acarsStationVal)}</span>` : '';
-                const msgNoTag = acarsMsgNoVal ? `<span class="badge meta" title="ACARS Meddelandenummer">#${escapeHtml(acarsMsgNoVal)}</span>` : '';
-
-                let labelTag = '';
-                if (labelVal) {
-                    let labelBadgeText = labelVal;
-                    if (labelDescVal) {
-                        let shortDesc = labelDescVal.split('/')[0].trim().replace('-rapport', '').replace('rapport', '').trim();
-                        labelBadgeText = `${labelVal} (${shortDesc})`;
-                    }
-                    labelTag = `<span class="badge meta badge-label filterable-badge" onclick="filterByLabel('${escapeHtml(labelVal)}')" title="Klicka för att filtrera på ACARS Label: ${escapeHtml(labelVal)}">Label: ${escapeHtml(labelBadgeText)}</span>`;
-                }
-
-                acarsBadgesHtml = `${regTag}${flightTag}${labelTag}${stTag}${msgNoTag}`;
-            }
-
-            // Sätt filterattribut på raden
+            // Sätt alla data-attribut för DataTables & filter
             tr.setAttribute('data-proto-name', protoName);
             tr.setAttribute('data-frequency', alarm.frequency || '');
             tr.setAttribute('data-label', labelVal || '');
@@ -3115,265 +2918,387 @@
             tr.setAttribute('data-reg', regVal || '');
             tr.setAttribute('data-flight', flightVal || '');
             tr.setAttribute('data-icao', icaoVal || '');
-            tr.setAttribute('data-gs', hfdlGsVal || '');
+            tr.setAttribute('data-gs', hfdlGsVal || acarsStationVal || stationVal || '');
             tr.setAttribute('data-priority', satcPriorityVal || '');
             tr.setAttribute('data-navarea', satcNavareaVal || '');
             tr.setAttribute('data-les', satcLesVal || '');
             tr.setAttribute('data-mes', satcMesVal || '');
             tr.setAttribute('data-channel', satcChannelVal || '');
 
-            // Ordbevakning - endast aktiva larmord i brödtexten får färga raden
+            // Larmordskontroll
+            let hasAlert = false;
+            let matchedWord = alarm.alert_word || '';
             if (isBasestation) {
                 tr.classList.add('basestation-row');
             } else {
                 const alertSearchText = getAlertSearchableText(cleanMsg);
-                const hasAlert = alertWords.some(aw => aw.is_active && checkAlertWordMatch(aw.word, alertSearchText));
-                if (hasAlert) {
-                    tr.classList.add('alert-row', 'alert-pulse-bg');
+                const matchedAw = alertWords.find(aw => aw.is_active && checkAlertWordMatch(aw.word, alertSearchText));
+                if (matchedAw) {
+                    hasAlert = true;
+                    matchedWord = matchedAw.word;
+                    tr.classList.add('row-alert', 'alert-row');
+                } else if (alarm.is_alert) {
+                    hasAlert = true;
+                    tr.classList.add('row-alert', 'alert-row');
                 }
             }
 
-            // Dölj Alpha/Num för VDL2, SATC, HFDL och ACARS
-            const funcLabel = (!isVdl2 && !isSatc && !isHfdl && !isAcars && alarm.function !== undefined) ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
-            const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
-            const freqTag = alarm.frequency ? `<span class="badge meta badge-freq filterable-badge" onclick="filterByFrequency('${escapeHtml(alarm.frequency)}')" title="Klicka för att filtrera på frekvens: ${escapeHtml(alarm.frequency)}">${escapeHtml(alarm.frequency)}</span>` : '';
-            const duplicateTag = alarm.is_duplicate ? `<span class="badge warning meta">Duplicate</span>` : '';
-            const repeatTag = (alarm.repeat_count && alarm.repeat_count > 1) ? `<span class="badge repeat-badge meta" title="Repeated ${alarm.repeat_count} times">${alarm.repeat_count}x</span>` : '';
-
-            const msgObj = formatMessage(cleanMsg);
-            const rawToggleBadge = msgObj.rawText ? `<span class="badge badge-raw-toggle" onclick="toggleRawData(this)" title="Visa eller dölj rådata">&lt;/&gt; Rådata</span>` : '';
-            const rawBoxHtml = msgObj.rawText ? `<div class="raw-data-box" style="display: none;">${escapeHtml(msgObj.rawText)}</div>` : '';
-
-            // Universell positionsdetektering och Leaflet-minikarta för ALLA protokoll
+            // Universell position & minikarta
             const universalCoords = extractUniversalCoordinates(cleanMsg, alarm);
-            let universalCoordTag = '';
-            let activeMinimapHtml = '';
 
+            // Decoded fields (Airbus WRN / FLR / FM / OOOI)
+            const decodedFields = alarm.decoded_fields || (alarm.metadata && alarm.metadata.decoded_fields);
+
+            // -------------------------------------------------------------
+            // KOLUMN 1: TID / # (width: 92px)
+            // -------------------------------------------------------------
+            const tdTsHtml = `
+                <td class="col-ts ts-cell" data-order="${alarm.timestamp}">
+                    <div class="ts-time">${timeStr}</div>
+                    <div class="ts-date">${dateStr}</div>
+                    <div class="ts-id">#${alarm.id}</div>
+                    ${lastSeenHtml}
+                </td>
+            `;
+
+            // -------------------------------------------------------------
+            // KOLUMN 2: PROTOKOLL (width: 72px)
+            // -------------------------------------------------------------
+            const badgeClass = `badge-${protoName.toLowerCase()}`;
+            const tdProtoHtml = `
+                <td class="col-proto proto-cell">
+                    <span class="badge ${badgeClass} filterable-badge" onclick="filterByProtocol('${protoName}')" title="Klicka för att filtrera på ${protoName}">${protoName}</span>
+                </td>
+            `;
+
+            // -------------------------------------------------------------
+            // KOLUMN 3: RF / KANAL (width: 125px)
+            // -------------------------------------------------------------
+            let rfFreqHtml = '';
+            if (alarm.frequency) {
+                rfFreqHtml = `<div class="rf-freq filterable-badge" onclick="filterByFrequency('${escapeHtml(alarm.frequency)}')" title="Filtrera frekvens">${escapeHtml(alarm.frequency)}</div>`;
+            } else {
+                rfFreqHtml = `<div class="rf-freq" style="color: #64748b;">-</div>`;
+            }
+
+            let rfSnrHtml = '';
+            if (snrVal) {
+                const snrNum = parseFloat(snrVal);
+                const snrIsGood = !isNaN(snrNum) ? (snrNum >= 10) : true;
+                const snrColorClass = snrIsGood ? 'rf-snr-good' : 'rf-snr-low';
+                const snrDisplay = !isNaN(snrNum) ? `SNR ${snrNum > 0 ? '+' : ''}${snrNum.toFixed(1)} dB` : escapeHtml(snrVal);
+                rfSnrHtml = `<div class="rf-snr ${snrColorClass}">${snrDisplay}</div>`;
+            }
+
+            let rfModHtml = '';
+            let modText = formattedBitrate || (alarm.bitrate ? String(alarm.bitrate) : '');
+            if (!modText || modText.toUpperCase() === protoName.toUpperCase()) {
+                modText = protoName;
+            }
+            rfModHtml = `<div class="rf-mod">${escapeHtml(modText)}</div>`;
+
+            let rfGsHtml = '';
+            const primaryGs = hfdlGsVal || acarsStationVal || stationVal || satcLesVal || (satcNavareaVal ? `Area: ${satcNavareaVal}` : '') || '';
+            if (primaryGs) {
+                let cleanGsDisplay = primaryGs;
+                if (!cleanGsDisplay.startsWith('GS:') && !cleanGsDisplay.startsWith('LES:') && !cleanGsDisplay.startsWith('Area:') && !cleanGsDisplay.startsWith('Ch:')) {
+                    cleanGsDisplay = `GS: ${cleanGsDisplay}`;
+                }
+                rfGsHtml = `<div class="rf-gs filterable-badge" onclick="filterByQuickSearch('${escapeHtml(primaryGs.replace(/^(?:GS|LES|Area|Ch):\s*/i, ''))}')" title="Sök station">${escapeHtml(cleanGsDisplay)}</div>`;
+            }
+
+            const tdRfHtml = `
+                <td class="col-rf rf-cell">
+                    ${rfFreqHtml}
+                    ${rfSnrHtml}
+                    ${rfModHtml}
+                    ${rfGsHtml}
+                </td>
+            `;
+
+            // -------------------------------------------------------------
+            // KOLUMN 4: ENHET / ALIAS (width: 135px)
+            // -------------------------------------------------------------
+            const nameToDisplay = alarm.alias ? alarm.alias : (displayAddress || alarm.address || '-');
+            const editBtnHtml = `<button type="button" class="alias-edit-icon-btn" onclick="openAliasModal('${escapeHtml(alarm.address)}')" title="Redigera alias för ${escapeHtml(alarm.address)}"><i class="fas fa-pen"></i></button>`;
+
+            let subFlightReg = '';
+            if (flightVal && regVal) {
+                subFlightReg = `${escapeHtml(flightVal)} · ${escapeHtml(regVal)}`;
+            } else if (flightVal) {
+                subFlightReg = `${escapeHtml(flightVal)}`;
+            } else if (regVal) {
+                subFlightReg = `${escapeHtml(regVal)}`;
+            }
+
+            let srcSubHtml = subFlightReg ? `<div class="src-sub filterable-badge" onclick="filterByQuickSearch('${escapeHtml(flightVal || regVal)}')" title="Sök ${escapeHtml(subFlightReg)}">${subFlightReg}</div>` : '';
+            let srcIcaoHtml = icaoVal ? `<div class="src-icao filterable-badge" onclick="filterByQuickSearch('${escapeHtml(icaoVal)}')" title="Sök ICAO: ${escapeHtml(icaoVal)}">ICAO: ${escapeHtml(icaoVal)}</div>` : '';
+
+            let acftType = alarm.aircraft_type || (decodedFields && decodedFields.aircraft_type) || (alarm.metadata && (alarm.metadata.aircraft_type || alarm.metadata.model || alarm.metadata.ac_model)) || hfdlModelVal || '';
+            if (acftType && !acftType.toLowerCase().startsWith('airbus') && !acftType.toLowerCase().startsWith('boeing') && decodedFields && decodedFields.is_fault_report) {
+                acftType = `Airbus ${acftType}`;
+            }
+            let srcAcftHtml = acftType ? `<div class="src-acft" title="Flygplanstyp">${escapeHtml(acftType)}</div>` : '';
+
+            if (protoName === 'POCSAG' && alarm.alias && alarm.address) {
+                srcSubHtml = `<div class="src-sub" style="color: #64748b; font-weight: normal;">Capcode: ${escapeHtml(alarm.address)}</div>`;
+            } else if (protoName === 'SONDE' && alarm.address) {
+                srcSubHtml = `<div class="src-sub" style="color: #10b981;">Sond: ${escapeHtml(alarm.address)}</div>`;
+            }
+
+            const tdSourceHtml = `
+                <td class="col-source source-cell">
+                    <div class="src-header">
+                        <span class="src-name filterable-badge" onclick="filterByCapcode('${escapeHtml(displayAddress)}', '${escapeHtml(alarm.address)}')" title="Klicka för att filtrera">${escapeHtml(nameToDisplay)}</span>
+                        ${editBtnHtml}
+                    </div>
+                    ${srcSubHtml}
+                    ${srcIcaoHtml}
+                    ${srcAcftHtml}
+                </td>
+            `;
+
+            // -------------------------------------------------------------
+            // KOLUMN 5: MEDDELANDE / TELEMETRI (Flex Layout Zon A + Zon B)
+            // -------------------------------------------------------------
+            let text = decodeMimeWordsInText(String(cleanMsg || ''))
+                .replace(/<CR><LF>/gi, '\n')
+                .replace(/[\u{1F4AC}\u{1F4AD}\u{1F5E8}]\s*/gu, '');
+            let bodyText = text;
+            let rawText = '';
+            const matchIndex = text.search(/(?:\r?\n| \| )Rådata:/i);
+            if (matchIndex !== -1) {
+                bodyText = text.substring(0, matchIndex).trim();
+                rawText = text.substring(matchIndex).replace(/^(?:\r?\n| \| )?Rådata:\s*/i, '').trim();
+            } else {
+                const fallbackIdx = text.search(/\bRådata:/i);
+                if (fallbackIdx !== -1) {
+                    bodyText = text.substring(0, fallbackIdx).trim();
+                    rawText = text.substring(fallbackIdx).replace(/^Rådata:\s*/i, '').trim();
+                }
+            }
+
+            // HFDL-stationslistor avskiljs till expanderbar box
+            const allMsgLines = bodyText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+            const nonHfdlLines = [];
+            const hfdlStationLines = [];
+            for (const line of allMsgLines) {
+                if (/^(?:Hörd GS:|Lyssnar GS:)/i.test(line)) {
+                    hfdlStationLines.push(line);
+                } else {
+                    nonHfdlLines.push(line);
+                }
+            }
+            bodyText = nonHfdlLines.join('\n');
+
+            let hfdlActionBtn = '';
+            let hfdlDetailsBox = '';
+            if (hfdlStationLines.length > 0) {
+                const totalStations = hfdlStationLines.length;
+                hfdlActionBtn = `<button type="button" class="btn-tech" onclick="toggleHfdlDetails(this)" title="Visa eller dölj detaljerade markstationsfrekvenser">Markstationsdetaljer (${totalStations} st)</button>`;
+                const formattedStationLines = hfdlStationLines.map(sl => {
+                    const esc = escapeHtml(sl);
+                    const isHeard = /^Hörd GS:/i.test(sl);
+                    const icon = isHeard ? '<i class="fas fa-check-circle" style="color: #10b981; margin-right: 5px;"></i>' : '<i class="fas fa-headphones" style="color: #64748b; margin-right: 5px;"></i>';
+                    return `<div class="hfdl-gs-row">${icon}${esc}</div>`;
+                }).join('');
+                hfdlDetailsBox = `
+                    <div class="hfdl-toggle-wrapper" style="width: 100%; margin-top: 4px;">
+                        <div class="hfdl-details-box" style="display: none; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 3px; padding: 6px 10px; font-family: Consolas, monospace; font-size: 10px;">
+                            ${formattedStationLines}
+                        </div>
+                    </div>
+                `;
+            }
+
+            let rawActionBtn = '';
+            let rawBoxHtml = '';
+            if (rawText) {
+                rawActionBtn = `<button type="button" class="btn-tech btn-raw" onclick="toggleRawData(this)" title="Visa eller dölj rådata">&lt;/&gt; Rådata</button>`;
+                rawBoxHtml = `<div class="raw-data-box" style="display: none;">${escapeHtml(rawText)}</div>`;
+            }
+
+            // Rubrikextraktion
+            let extractedTitle = '';
+            const titlePrefixMatch = bodyText.match(/^\[([^\]\n]+)\]\s*/);
+            if (titlePrefixMatch) {
+                extractedTitle = titlePrefixMatch[1].toUpperCase().replace(/[\u{1F4AC}\u{1F4AD}\u{1F5E8}]/gu, '').trim();
+                bodyText = bodyText.substring(titlePrefixMatch[0].length).trim();
+            } else {
+                if (protoName === 'POCSAG') extractedTitle = 'POCSAG MEDDELANDE';
+                else if (protoName === 'HFDL') extractedTitle = 'HFDL DATALÄNK';
+                else if (protoName === 'VDL2') extractedTitle = 'VDL2 FLYGMEDDELANDE';
+                else if (protoName === 'ACARS') extractedTitle = 'VHF ACARS MEDDELANDE';
+                else if (protoName === 'SATC') extractedTitle = 'INMARSAT STD-C';
+                else if (protoName === 'SONDE') extractedTitle = 'RADIOSOND TELEMETRI';
+                else if (protoName === 'TETRA') extractedTitle = 'TETRA MEDDELANDE';
+                else extractedTitle = `${protoName} MEDDELANDE`;
+            }
+
+            // Taggar i Zon A
+            let tagsList = [];
+            if (labelVal) {
+                let shortLabel = labelDescVal ? labelDescVal.split('/')[0].trim().replace('-rapport','').replace('rapport','').trim() : '';
+                tagsList.push(`<span class="msg-label filterable-badge" onclick="filterByLabel('${escapeHtml(labelVal)}')" title="ACARS Label: ${escapeHtml(labelVal)}">Label: ${escapeHtml(labelVal)}${shortLabel ? ' (' + escapeHtml(shortLabel) + ')' : ''}</span>`);
+            }
+
+            // Zon B Key-Value Parsning
+            let emptyKeys = [];
+            let kvItems = [];
+
+            if (protoName === 'POCSAG') {
+                const pLines = bodyText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+                for (const line of pLines) {
+                    const colonIdx = line.indexOf(':');
+                    if (colonIdx !== -1) {
+                        const k = line.substring(0, colonIdx).trim();
+                        const v = line.substring(colonIdx + 1).trim();
+                        if (!v) {
+                            emptyKeys.push(`${k} :`);
+                        } else {
+                            if (/^(?:Ä\s*Id|Ärende\s*nr|Ärende\s*id)$/i.test(k)) {
+                                tagsList.push(`<span class="msg-label pocsag-id">${escapeHtml(k)} : ${escapeHtml(v)}</span>`);
+                            } else if (v.length >= 60) {
+                                kvItems.push({ key: k.toUpperCase(), val: v, fullText: true, wide: false });
+                            } else {
+                                kvItems.push({ key: k.toUpperCase(), val: v, fullText: false, wide: false });
+                            }
+                        }
+                    } else {
+                        if (pLines.length === 1 && line.length <= 15) {
+                            kvItems.push({ key: 'PAYLOAD', val: line, fullText: false, wide: false });
+                        } else {
+                            kvItems.push({ key: '', val: line, fullText: true, wide: false });
+                        }
+                    }
+                }
+            } else if (decodedFields && typeof decodedFields === 'object' && (decodedFields.is_warning || decodedFields.type_code === 'WRN')) {
+                extractedTitle = 'ECAM COCKPIT VARNING';
+                kvItems.push({ key: 'VARNING', val: decodedFields.fault_text || 'ECAM Warning', fullText: false, wide: true });
+                if (decodedFields.pnr) kvItems.push({ key: 'PNR', val: decodedFields.pnr, fullText: false, wide: false });
+                if (decodedFields.warning_code) kvItems.push({ key: 'VARNINGSKOD', val: decodedFields.warning_code, fullText: false, wide: false });
+            } else if (decodedFields && typeof decodedFields === 'object' && (decodedFields.is_fault_report || decodedFields.type_code === 'FLR')) {
+                extractedTitle = 'ARINC 624 UNDERHÅLLSRAPPORT';
+                kvItems.push({ key: 'FELKOMPONENT', val: decodedFields.fault_desc || 'Teknisk felrapport', fullText: false, wide: true });
+                if (decodedFields.aircraft_type) kvItems.push({ key: 'FLYGPLAN', val: 'Airbus ' + decodedFields.aircraft_type, fullText: false, wide: false });
+                if (decodedFields.origin && decodedFields.destination) kvItems.push({ key: 'RUTT', val: `${decodedFields.origin} → ${decodedFields.destination}`, fullText: false, wide: false });
+                if (decodedFields.affected) kvItems.push({ key: 'BERÖRDA SYSTEM', val: Array.isArray(decodedFields.affected) ? decodedFields.affected.join(', ') : decodedFields.affected, fullText: false, wide: true });
+                if (decodedFields.pnr) kvItems.push({ key: 'PNR', val: decodedFields.pnr, fullText: false, wide: false });
+                if (decodedFields.flight_time_utc) kvItems.push({ key: 'FLYG TID', val: `${decodedFields.flight_time_utc} UTC`, fullText: false, wide: false });
+            } else {
+                const sLines = bodyText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+                for (const line of sLines) {
+                    if (line.includes('Pilotmeddelande:')) {
+                        const pMsg = line.replace(/^.*?Pilotmeddelande:\s*/i, '');
+                        kvItems.push({ key: 'PILOTMEDDELANDE', val: pMsg, fullText: true, wide: false });
+                        continue;
+                    }
+                    const segments = line.split(/\s*\|\s*/);
+                    for (const seg of segments) {
+                        const s = seg.trim();
+                        if (!s) continue;
+                        const cM = s.match(/^([A-Za-zåäöÅÄÖ0-9_\s/()\-]+?):\s*(.+)$/);
+                        if (cM) {
+                            const k = cM[1].trim();
+                            const v = cM[2].trim();
+                            const isWide = /Paketstatistik|Hörda markstationer|Tillgängliga|Rutt|Route|Berörda/i.test(k);
+                            const isFull = v.length >= 80;
+                            kvItems.push({ key: k.toUpperCase(), val: v, fullText: isFull, wide: isWide });
+                        } else {
+                            kvItems.push({ key: '', val: s, fullText: true, wide: false });
+                        }
+                    }
+                }
+            }
+
+            // Trigger & duplikat i Zon A
+            if (satcPriorityVal && ['DISTRESS', 'URGENCY', 'SAFETY'].includes(satcPriorityVal.toUpperCase())) {
+                tagsList.push(`<span class="msg-label alert-tag">PRIO: ${escapeHtml(satcPriorityVal.toUpperCase())}</span>`);
+            }
+            if (hasAlert && matchedWord) {
+                tagsList.push(`<span class="msg-label alert-tag">TRIGGER: ${escapeHtml(matchedWord.toUpperCase())}</span>`);
+            }
+            if (alarm.is_duplicate) {
+                tagsList.push(`<span class="msg-label" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border-color: rgba(245, 158, 11, 0.4);">DUPLICATE</span>`);
+            }
+            if (alarm.repeat_count && alarm.repeat_count > 1) {
+                tagsList.push(`<span class="msg-label" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">${alarm.repeat_count}x</span>`);
+            }
+
+            // Rendera kvItems
+            const kvBoxesHtml = kvItems.map(item => {
+                const kEsc = item.key ? escapeHtml(item.key) : '';
+                const vEsc = highlightMessage(escapeHtml(item.val));
+                if (item.fullText) {
+                    return `<div class="kv-box full-text">${kEsc ? `<span class="data-k">${kEsc}</span>` : ''}<div class="data-v">${vEsc}</div></div>`;
+                } else if (item.wide) {
+                    return `<div class="kv-box wide"><span class="data-k">${kEsc}</span><span class="data-v">${vEsc}</span></div>`;
+                } else {
+                    return `<div class="kv-box"><span class="data-k">${kEsc}</span><span class="data-v">${vEsc}</span></div>`;
+                }
+            }).join('');
+
+            let emptyKeysHtml = '';
+            if (emptyKeys.length > 0) {
+                emptyKeysHtml = `<div class="empty-keys">Tomma nycklar i sändning: ${emptyKeys.map(k => `<span>${escapeHtml(k)}</span>`).join('')}</div>`;
+            }
+
+            // Minikarta
+            let activeMinimapHtml = '';
             if (universalCoords) {
                 const latNum = universalCoords.lat;
                 const lonNum = universalCoords.lon;
-                universalCoordTag = `<span class="badge meta badge-coord filterable-badge" onclick="zoomMinimap('${alarm.id}', ${latNum}, ${lonNum}, event)" title="Geografisk position: klicka för att visa i stor karta">Pos: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}</span>`;
-                activeMinimapHtml = `<div class="msg-minimap-cell"><div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}" data-proto="${escapeHtml(protoName)}"></div></div>`;
+                activeMinimapHtml = `<div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}" data-proto="${escapeHtml(protoName)}" onclick="zoomMinimap('${alarm.id}', ${latNum}, ${lonNum}, event)" title="Geografisk position: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)} - Klicka för stor karta"></div>`;
             }
 
-            // -------------------------------------------------------------
-            // Visuell Hierarki: 1. Strukturerade Felkort (WRN / FLR) & Decoded Fields
-            // -------------------------------------------------------------
-            const decodedFields = alarm.decoded_fields || (alarm.metadata && alarm.metadata.decoded_fields);
-            let decodedFieldsHtml = '';
-            if (decodedFields && typeof decodedFields === 'object') {
-                // 1. Airbus ECAM Cockpit Warning
-                if (decodedFields.is_warning || decodedFields.type_code === 'WRN') {
-                    const faultHeadline = decodedFields.fault_text || 'ECAM Cockpit Warning';
-                    let secondaryItems = [];
-                    if (decodedFields.pnr) {
-                        secondaryItems.push(`<span class="badge meta badge-pnr" title="Artikelnummer (Part Number)">PNR: ${escapeHtml(decodedFields.pnr)}</span>`);
-                    }
-                    if (decodedFields.warning_code) {
-                        secondaryItems.push(`<span class="badge meta badge-code" title="Varningskod">${escapeHtml(decodedFields.warning_code)}</span>`);
-                    }
-                    decodedFieldsHtml = `
-                        <div class="technical-fault-card warning-card">
-                            <div class="fault-primary-row">
-                                <span class="badge meta badge-ecam-warning" title="ECAM Cockpit Warning"><i class="fas fa-exclamation-triangle"></i> ECAM Varning</span>
-                                <span class="fault-message-headline">${escapeHtml(faultHeadline)}</span>
+            const tdMsgHtml = `
+                <td class="col-msg msg-cell message-cell">
+                    <div class="msg-layout">
+                        <div class="msg-main">
+                            <div class="msg-top">
+                                <div class="msg-title-group">
+                                    <span class="msg-title">${escapeHtml(extractedTitle)}</span>
+                                    ${tagsList.join('')}
+                                </div>
+                                <div class="msg-actions">
+                                    ${hfdlActionBtn}
+                                    ${rawActionBtn}
+                                </div>
                             </div>
-                            ${secondaryItems.length > 0 ? `<div class="fault-secondary-row">${secondaryItems.join('')}</div>` : ''}
-                        </div>
-                    `;
-                }
-                // 2. Airbus Maintenance / Fault Report (FLR / REP003)
-                else if (decodedFields.is_fault_report || decodedFields.type_code === 'FLR') {
-                    const faultHeadline = decodedFields.fault_desc || 'Teknisk felrapport';
-                    let primaryBadges = [];
-                    if (decodedFields.aircraft_type) {
-                        primaryBadges.push(`<span class="badge meta badge-aircraft" title="Flygplanstyp"><i class="fas fa-plane"></i> Airbus ${escapeHtml(decodedFields.aircraft_type)}</span>`);
-                    }
-                    if (decodedFields.origin && decodedFields.destination) {
-                        primaryBadges.push(`<span class="badge meta badge-route" title="Rutt"><i class="fas fa-route"></i> ${escapeHtml(decodedFields.origin)} → ${escapeHtml(decodedFields.destination)}</span>`);
-                    }
-
-                    let secondaryItems = [];
-                    if (decodedFields.affected && decodedFields.affected.length > 0) {
-                        const affStr = Array.isArray(decodedFields.affected) ? decodedFields.affected.join(', ') : decodedFields.affected;
-                        secondaryItems.push(`<div class="fault-affected-group"><span class="fault-affected-label">Berörda system:</span> <span class="fault-affected-val">${escapeHtml(affStr)}</span></div>`);
-                    }
-                    if (decodedFields.pnr) {
-                        secondaryItems.push(`<span class="badge meta badge-pnr" title="Artikelnummer (Part Number)">PNR: ${escapeHtml(decodedFields.pnr)}</span>`);
-                    }
-                    if (decodedFields.flight_time_utc) {
-                        secondaryItems.push(`<span class="badge meta badge-time" title="Flygtid (UTC)"><i class="far fa-clock"></i> ${escapeHtml(decodedFields.flight_time_utc)} UTC</span>`);
-                    }
-
-                    decodedFieldsHtml = `
-                        <div class="technical-fault-card fault-card">
-                            <div class="fault-primary-row">
-                                <span class="badge meta badge-fault-report" title="ARINC 624 Maintenance Report"><i class="fas fa-tools"></i> Teknisk felrapport</span>
-                                <span class="fault-message-headline">${escapeHtml(faultHeadline)}</span>
-                                ${primaryBadges.join('')}
+                            <div class="data-flex">
+                                ${kvBoxesHtml}
                             </div>
-                            ${secondaryItems.length > 0 ? `<div class="fault-secondary-row">${secondaryItems.join('')}</div>` : ''}
+                            ${emptyKeysHtml}
+                            ${hfdlDetailsBox}
+                            ${rawBoxHtml}
                         </div>
-                    `;
-                }
-                // 3. Övriga strukturerade rapporter (FM3, OOOI, WX m.fl.)
-                else {
-                    let pills = [];
-                    if (decodedFields.report_type) {
-                        pills.push(`<span class="badge meta badge-report-type" title="Rapporttyp">${escapeHtml(decodedFields.report_type)}</span>`);
-                    }
-                    if (decodedFields.msg_time_utc) {
-                        pills.push(`<span class="badge meta badge-time" title="Meddelandetid (UTC)"><i class="far fa-clock"></i> ${escapeHtml(decodedFields.msg_time_utc)} UTC</span>`);
-                    }
-                    if (decodedFields.eta) {
-                        pills.push(`<span class="badge meta badge-eta" title="Beräknad ankomsttid (ETA)"><i class="fas fa-plane-arrival"></i> ETA: ${escapeHtml(decodedFields.eta)}</span>`);
-                    }
-                    if (decodedFields.altitude_str) {
-                        pills.push(`<span class="badge meta badge-alt" title="Höjd (Altitude)"><i class="fas fa-arrows-alt-v"></i> Höjd: ${escapeHtml(decodedFields.altitude_str)}</span>`);
-                    }
-                    if (decodedFields.pos_str) {
-                        pills.push(`<span class="badge meta badge-coord" title="Position">${escapeHtml(decodedFields.pos_str)}</span>`);
-                    }
-                    if (decodedFields.oooi_desc) {
-                        pills.push(`<span class="badge meta badge-oooi" title="OOOI-händelse">${escapeHtml(decodedFields.oooi_desc)}</span>`);
-                    }
-                    if (decodedFields.airport) {
-                        pills.push(`<span class="badge meta badge-station filterable-badge" onclick="filterByQuickSearch('${escapeHtml(decodedFields.airport)}')" title="Klicka för att filtrera på flygplats: ${escapeHtml(decodedFields.airport)}">Flygplats: ${escapeHtml(decodedFields.airport)}</span>`);
-                    }
-                    if (decodedFields.fob) {
-                        pills.push(`<span class="badge meta badge-fob" title="Bränsle ombord (FOB)"><i class="fas fa-gas-pump"></i> FOB: ${escapeHtml(decodedFields.fob)}</span>`);
-                    }
-                    if (decodedFields.extra_data) {
-                        pills.push(`<span class="badge meta badge-extra" title="Övrig data">${escapeHtml(decodedFields.extra_data)}</span>`);
-                    }
-                    if (pills.length > 0) {
-                        decodedFieldsHtml = `<div class="decoded-fields-container"><div class="decoded-fields-label">Avkodade fält:</div><div class="decoded-fields-pills">${pills.join('')}</div></div>`;
-                    }
-                }
-            }
-
-            // -------------------------------------------------------------
-            // Visuell Hierarki: 2. Viktiga Händelsetaggar (Event Badges)
-            // -------------------------------------------------------------
-            const eventBadges = [];
-            if (alarm.is_duplicate) {
-                eventBadges.push(`<span class="badge warning meta">Duplicate</span>`);
-            }
-            if (alarm.repeat_count && alarm.repeat_count > 1) {
-                eventBadges.push(`<span class="badge repeat-badge meta" title="Repeated ${alarm.repeat_count} times">${alarm.repeat_count}x</span>`);
-            }
-            if (universalCoordTag) {
-                eventBadges.push(universalCoordTag);
-            }
-
-            // SatC Kritiska prioriteter
-            if (satcPriorityVal) {
-                const pUpper = satcPriorityVal.toUpperCase();
-                if (pUpper === 'DISTRESS' || pUpper === 'URGENCY' || pUpper === 'SAFETY') {
-                    const pClass = pUpper === 'DISTRESS' ? 'badge-distress' : (pUpper === 'URGENCY' ? 'badge-urgency' : 'badge-safety');
-                    eventBadges.push(`<span class="badge meta badge-satc-priority ${pClass} filterable-badge" onclick="filterByQuickSearch('${escapeHtml(satcPriorityVal)}')" title="Klicka för att söka prioritet: ${escapeHtml(satcPriorityVal)}">Priority: ${escapeHtml(satcPriorityVal)}</span>`);
-                }
-            }
-
-            // ACARS/VDL2 Labels (t.ex. CPDLC, Väder etc.)
-            let labelBadgeText = '';
-            if (labelVal) {
-                labelBadgeText = labelVal;
-                if (labelDescVal) {
-                    let shortDesc = labelDescVal.split('/')[0].trim().replace('-rapport', '').replace('rapport', '').trim();
-                    labelBadgeText = `${labelVal} (${shortDesc})`;
-                }
-                eventBadges.push(`<span class="badge meta badge-label filterable-badge" onclick="filterByLabel('${escapeHtml(labelVal)}')" title="Klicka för att filtrera på ACARS Label: ${escapeHtml(labelVal)}">Label: ${escapeHtml(labelBadgeText)}</span>`);
-            }
-
-            // Redundanskontroll: Visa flyg/reg endast om de INTE redan finns under ALIAS eller ADDR
-            const cleanDisplayUpper = (displayAddress + ' ' + (alarm.alias || '')).toUpperCase();
-            const isRegRedundant = regVal && cleanDisplayUpper.includes(regVal.toUpperCase());
-            const isFlightRedundant = flightVal && cleanDisplayUpper.includes(flightVal.toUpperCase());
-
-            if (flightVal && !isFlightRedundant) {
-                eventBadges.push(`<span class="badge meta badge-flight filterable-badge" onclick="filterByQuickSearch('${escapeHtml(flightVal)}')" title="Klicka för att söka flight: ${escapeHtml(flightVal)}">${escapeHtml(flightVal)}</span>`);
-            }
-            if (regVal && !isRegRedundant) {
-                eventBadges.push(`<span class="badge meta badge-reg filterable-badge" onclick="filterByQuickSearch('${escapeHtml(regVal)}')" title="Klicka för att söka registrering: ${escapeHtml(regVal)}">${escapeHtml(regVal)}</span>`);
-            }
-            if (funcTag) {
-                eventBadges.push(funcTag);
-            }
-            if (rawToggleBadge) {
-                eventBadges.push(rawToggleBadge);
-            }
-
-            const metaBarBadges = eventBadges.join('');
-            const eventBadgesHtml = eventBadges.length > 0 ? `<div class="msg-badges msg-event-badges">${eventBadges.join('')}</div>` : '';
-
-            // -------------------------------------------------------------
-            // Visuell Hierarki: 3. Dämpad Teknisk Telemetrirad (Muted Telemetry Line)
-            // -------------------------------------------------------------
-            const telemetryItems = [];
-            if (alarm.frequency) {
-                telemetryItems.push(`<span class="telemetry-item filterable-telemetry" onclick="filterByFrequency('${escapeHtml(alarm.frequency)}')" title="Klicka för att filtrera på frekvens: ${escapeHtml(alarm.frequency)}">${escapeHtml(alarm.frequency)}</span>`);
-            }
-            if (alarm.snr !== undefined && alarm.snr !== null && alarm.snr !== '') {
-                const snrNum = parseFloat(alarm.snr);
-                const snrStr = !isNaN(snrNum) ? (snrNum > 0 ? `+${snrNum}` : `${snrNum}`) : alarm.snr;
-                telemetryItems.push(`<span class="telemetry-item" title="Signal-brusförhållande">SNR ${escapeHtml(snrStr)} dB</span>`);
-            }
-            if (alarm.bitrate && alarm.bitrate.toUpperCase() !== protoName.toUpperCase()) {
-                telemetryItems.push(`<span class="telemetry-item" title="Överföringsläge / modulering">${escapeHtml(alarm.bitrate)}</span>`);
-            }
-            if (icaoVal) {
-                telemetryItems.push(`<span class="telemetry-item filterable-telemetry" onclick="filterByQuickSearch('${escapeHtml(icaoVal)}')" title="Klicka för att söka ICAO-hex: ${escapeHtml(icaoVal)}">ICAO: ${escapeHtml(icaoVal)}</span>`);
-            }
-            const primaryGs = hfdlGsVal || acarsStationVal || stationVal || satcLesVal;
-            if (primaryGs) {
-                telemetryItems.push(`<span class="telemetry-item filterable-telemetry" onclick="filterByQuickSearch('${escapeHtml(primaryGs)}')" title="Klicka för att söka station: ${escapeHtml(primaryGs)}">GS: ${escapeHtml(primaryGs)}</span>`);
-            }
-            if (satcNavareaVal) {
-                telemetryItems.push(`<span class="telemetry-item filterable-telemetry" onclick="filterByQuickSearch('${escapeHtml(satcNavareaVal)}')" title="Område">${escapeHtml(satcNavareaVal)}</span>`);
-            }
-            if (satcMesVal) {
-                telemetryItems.push(`<span class="telemetry-item" title="Mobile Earth Station">MES: ${escapeHtml(satcMesVal)}</span>`);
-            }
-            if (satcChannelVal) {
-                telemetryItems.push(`<span class="telemetry-item" title="Kanalnummer">Ch: #${escapeHtml(satcChannelVal)}</span>`);
-            }
-            if (hfdlModelVal) {
-                telemetryItems.push(`<span class="telemetry-item" title="Flygplanstyp">${escapeHtml(hfdlModelVal)}</span>`);
-            }
-
-            const telemetryLineHtml = telemetryItems.length > 0 ? `<div class="msg-telemetry-line">${telemetryItems.join('<span class="telemetry-sep">•</span>')}</div>` : '';
-
-            const msgCellInner = `<div class="msg-row-layout"><div class="msg-main-content"><div class="msg-text msg-summary">${msgObj.summaryHtml.trim()}</div>${decodedFieldsHtml}${rawBoxHtml}${eventBadgesHtml}${telemetryLineHtml}</div>${activeMinimapHtml}</div>`;
-
-            tr.innerHTML = `
-                <td class="id-cell">${alarm.id}</td>
-                <td class="ts-cell" data-order="${alarm.timestamp}">${formattedTime}</td>
-                <td class="meta-cell"><div class="meta-wrapper">${protoTag}</div></td>
-                <td class="addr-cell">
-                    <div style="display: inline-flex; align-items: center; max-width: 100%;">
-                        <span class="badge filterable-badge" title="Klicka för att filtrera på ${escapeHtml(displayAddress)}" onclick="filterByCapcode('${escapeHtml(displayAddress)}', '${escapeHtml(alarm.address)}')">${escapeHtml(displayAddress)}</span>
-                        <button type="button" class="alias-edit-icon-btn" onclick="openAliasModal('${escapeHtml(alarm.address)}')" title="Redigera alias för ${escapeHtml(alarm.address)}"><i class="fas fa-pen"></i></button>
+                        ${activeMinimapHtml}
                     </div>
                 </td>
-                <td class="msg-cell message-cell">${msgCellInner}</td>
+            `;
 
-                <td class="actions-cell">
+            // -------------------------------------------------------------
+            // KOLUMN 6: VAL / ÅTGÄRDER (width: 38px)
+            // -------------------------------------------------------------
+            const tdActHtml = `
+                <td class="col-act actions-cell">
                     <div class="actions-wrapper">
-                        <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">
+                        <button class="copy-btn" onclick="copyMessageText(this)" title="Kopiera meddelande">
                             <i class="fas fa-copy"></i>
                         </button>
                         <div class="btn-divider"></div>
-                        <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
+                        <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Lås upp (tillåt rensning)' : 'Lås (skydda mot rensning)'}">
                             <i class="fas ${alarm.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
                         </button>
                         <div class="btn-divider"></div>
-                        <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete message">
+                        <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Ta bort meddelande">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>
                 </td>
             `;
+
+            tr.innerHTML = `${tdTsHtml}${tdProtoHtml}${tdRfHtml}${tdSourceHtml}${tdMsgHtml}${tdActHtml}`;
 
             if (activeMinimapHtml) {
                 const mapEl = tr.querySelector('.msg-minimap-container');
@@ -3642,32 +3567,32 @@
             dataTable = $('#alarmsTable').DataTable({
                 stateSave: true,
                 stateDuration: 60 * 60 * 24 * 365, // Persist table settings (page length, sort order, search) for 1 year
-                order: [[1, 'desc']], // Default: timestamp descending
+                order: [[0, 'desc']], // Default: TID / # (Timestamp) descending
                 pageLength: 50,
                 lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
                 autoWidth: false,
                 language: {
                     search: "",
-                    searchPlaceholder: "Quick filter...",
-                    lengthMenu: "Show _MENU_ messages",
-                    info: "Showing _START_ to _END_ of _TOTAL_ messages",
-                    infoEmpty: "No messages found",
-                    infoFiltered: "(filtered from _MAX_ total)",
-                    zeroRecords: "No matching messages found",
+                    searchPlaceholder: "Snabbfilter...",
+                    lengthMenu: "Visa _MENU_ rader",
+                    info: "Visar _START_ till _END_ av _TOTAL_ händelser",
+                    infoEmpty: "Inga händelser hittades",
+                    infoFiltered: "(filtrerat från totalt _MAX_)",
+                    zeroRecords: "Inga matchande händelser",
                     paginate: {
-                        first: "First",
-                        last: "Last",
-                        next: "Next",
-                        previous: "Prev"
+                        first: "Första",
+                        last: "Sista",
+                        next: "Nästa",
+                        previous: "Föregående"
                     }
                 },
                 columnDefs: [
-                    { targets: 0, className: 'col-id id-cell' },
-                    { targets: 1, className: 'col-time ts-cell' },
-                    { targets: 2, className: 'col-meta meta-cell' },
-                    { targets: 3, className: 'col-addr addr-cell' },
+                    { targets: 0, className: 'col-ts ts-cell' },
+                    { targets: 1, className: 'col-proto proto-cell' },
+                    { targets: 2, className: 'col-rf rf-cell' },
+                    { targets: 3, className: 'col-source source-cell' },
                     { targets: 4, className: 'col-msg msg-cell' },
-                    { targets: 5, className: 'col-actions actions-cell', orderable: false, searchable: false }
+                    { targets: 5, className: 'col-act actions-cell', orderable: false, searchable: false }
                 ]
             });
 

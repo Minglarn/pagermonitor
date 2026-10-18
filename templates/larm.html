@@ -16,6 +16,10 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.datatables.net/2.1.8/js/dataTables.min.js"></script>
 
+    <!-- Leaflet Map CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
         /* Custom OLED / Glassmorphism styling for DataTables */
         .dt-container {
@@ -261,109 +265,60 @@
             padding-right: 1rem !important;
         }
 
-        /* Individual column sizing */
-        table.dataTable.larm-dt th.col-id,
-        table.dataTable.larm-dt td.id-cell {
-            width: 55px !important;
-            min-width: 50px !important;
-            max-width: 65px !important;
-            white-space: nowrap !important;
+        /* 6 Fasta kolumner med table-layout: fixed */
+        table.dataTable.larm-dt th.col-ts,
+        table.dataTable.larm-dt td.col-ts {
+            width: 92px !important;
+            min-width: 92px !important;
+            max-width: 92px !important;
+            padding: 8px 10px !important;
+            vertical-align: top !important;
+        }
+
+        table.dataTable.larm-dt th.col-proto,
+        table.dataTable.larm-dt td.col-proto {
+            width: 72px !important;
+            min-width: 72px !important;
+            max-width: 72px !important;
+            padding: 8px 6px !important;
+            vertical-align: top !important;
             text-align: center !important;
-            padding: 0.6rem 0.4rem !important;
         }
 
-        table.dataTable.larm-dt th.col-time,
-        table.dataTable.larm-dt td.ts-cell {
-            width: 110px !important;
-            min-width: 105px !important;
-            max-width: 120px !important;
-            white-space: nowrap !important;
-            padding: 0.6rem 0.5rem !important;
+        table.dataTable.larm-dt th.col-rf,
+        table.dataTable.larm-dt td.col-rf {
+            width: 125px !important;
+            min-width: 125px !important;
+            max-width: 125px !important;
+            padding: 8px 8px !important;
+            vertical-align: top !important;
         }
 
-        table.dataTable.larm-dt th.col-meta,
-        table.dataTable.larm-dt td.meta-cell {
-            width: 105px !important;
-            min-width: 95px !important;
-            max-width: 120px !important;
-            white-space: nowrap !important;
-            padding: 0.5rem 0.55rem !important;
-            vertical-align: middle !important;
+        table.dataTable.larm-dt th.col-source,
+        table.dataTable.larm-dt td.col-source {
+            width: 135px !important;
+            min-width: 135px !important;
+            max-width: 135px !important;
+            padding: 8px 8px !important;
+            vertical-align: top !important;
         }
 
-        table.dataTable.larm-dt td.meta-cell .meta-wrapper {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: flex-start !important;
-            width: 100% !important;
-            max-width: 100% !important;
+        table.dataTable.larm-dt th.col-msg,
+        table.dataTable.larm-dt td.col-msg {
+            width: auto !important;
+            padding: 8px 10px !important;
+            vertical-align: top !important;
         }
 
-        table.dataTable.larm-dt td.meta-cell .badge {
-            margin: 0 !important;
-            white-space: nowrap !important;
-            display: inline-block !important;
-            max-width: 100% !important;
-            box-sizing: border-box !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-        }
-
-        /* CapCode (Alias) column */
-        table.dataTable.larm-dt th.col-addr,
-        table.dataTable.larm-dt td.addr-cell {
-            width: 150px !important;
-            min-width: 140px !important;
-            max-width: 180px !important;
-            white-space: normal !important;
-            line-height: 1.35 !important;
-            padding: 0.6rem 0.6rem !important;
-        }
-
-        table.dataTable.larm-dt td.addr-cell .badge {
-            white-space: normal !important;
-            word-break: normal !important;
-            overflow-wrap: break-word !important;
-            line-height: 1.35 !important;
-            display: inline-block !important;
-            text-align: left !important;
-            max-width: 100% !important;
-        }
-
-        table.dataTable.larm-dt th.col-hit,
-        table.dataTable.larm-dt td.hit-cell {
-            width: 105px !important;
-            min-width: 95px !important;
-            max-width: 120px !important;
-            white-space: nowrap !important;
-            text-align: center !important;
-            padding: 0.6rem 0.5rem !important;
-        }
-
-        table.dataTable.larm-dt th.col-actions {
-            width: 38px !important;
-            min-width: 38px !important;
-            max-width: 42px !important;
-            white-space: nowrap !important;
-            text-align: center !important;
-            padding: 0.65rem 0.2rem !important;
-            background-image: none !important;
-            cursor: default !important;
-        }
-
-        table.dataTable.larm-dt th.col-actions::before,
-        table.dataTable.larm-dt th.col-actions::after {
-            display: none !important;
-            content: "" !important;
-        }
-
+        table.dataTable.larm-dt th.col-act,
+        table.dataTable.larm-dt td.col-act,
         table.dataTable.larm-dt td.actions-cell {
             width: 38px !important;
             min-width: 38px !important;
-            max-width: 42px !important;
-            white-space: nowrap !important;
+            max-width: 38px !important;
+            padding: 8px 4px !important;
+            vertical-align: top !important;
             text-align: center !important;
-            padding: 4px 2px !important;
         }
 
         table.dataTable.larm-dt th.col-msg,
@@ -618,13 +573,12 @@
                     <table id="alarmsTable" class="dataTable larm-dt">
                         <thead>
                             <tr>
-                                <th class="col-id">#</th>
-                                <th class="col-time">Timestamp</th>
-                                <th class="col-meta">Protocol</th>
-                                <th class="col-addr">CapCode (Alias)</th>
-                                <th class="col-msg">Message</th>
-                                <th class="col-hit">Hit</th>
-                                <th class="col-actions" data-orderable="false" title="Actions" aria-label="Actions"><i class="fas fa-ellipsis-v"></i></th>
+                                <th class="col-ts">TID / #</th>
+                                <th class="col-proto">PROTOKOLL</th>
+                                <th class="col-rf">RF / KANAL</th>
+                                <th class="col-source">ENHET / ALIAS</th>
+                                <th class="col-msg">MEDDELANDE / TELEMETRI</th>
+                                <th class="col-act" data-orderable="false" title="Actions" aria-label="Actions"><i class="fas fa-ellipsis-v"></i></th>
                             </tr>
                         </thead>
                         <tbody id="alarmsBody">
@@ -643,6 +597,38 @@
             <path d="M18 15l-6-6-6 6" />
         </svg>
     </button>
+
+    <!-- Stor Interaktiv Kart-Modal -->
+    <div id="mapModal" class="modal-overlay" onclick="handleMapModalOverlayClick(event)">
+        <div class="modal-content map-modal-content" onclick="event.stopPropagation()">
+            <button class="close-btn" onclick="closeMapModal()" title="Stäng kartvy">&times;</button>
+            <div class="modal-header map-modal-header">
+                <div class="map-modal-title-row">
+                    <span id="mapModalProtoBadge" class="badge meta badge-proto"></span>
+                    <h2 id="mapModalTitle">Geografisk Position</h2>
+                </div>
+                <div class="map-modal-meta-row">
+                    <span id="mapModalDetails" class="map-modal-details"></span>
+                    <span id="mapModalTime" class="map-modal-time"></span>
+                    <span id="mapModalCoords" class="badge meta badge-coord"></span>
+                </div>
+            </div>
+            <div class="map-modal-body">
+                <div id="largeModalMap" class="large-modal-map"></div>
+            </div>
+            <div class="map-modal-footer">
+                <div class="map-modal-links">
+                    <a id="mapModalOsmLink" href="#" target="_blank" rel="noopener noreferrer" class="map-external-link">
+                        <i class="fas fa-external-link-alt"></i> Öppna i OpenStreetMap
+                    </a>
+                    <a id="mapModalGmapsLink" href="#" target="_blank" rel="noopener noreferrer" class="map-external-link">
+                        <i class="fas fa-map-marker-alt"></i> Öppna i Google Maps
+                    </a>
+                </div>
+                <button type="button" class="primary-btn" onclick="closeMapModal()">Stäng</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Quick Alias Modal -->
     <div id="aliasModal" class="modal-overlay">
@@ -1007,10 +993,383 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
-        // Helper to construct a table row element
+        // Leaflet Minikart-instanser och IntersectionObserver för lazy-init
+        const minimapInstances = new Map();
+        let minimapObserver = null;
+
+        function extractUniversalCoordinates(text, alarm) {
+            if (alarm) {
+                if (alarm.lat !== undefined && alarm.lon !== undefined && alarm.lat !== null && alarm.lon !== null) {
+                    const pLat = Number(alarm.lat);
+                    const pLon = Number(alarm.lon);
+                    if (!isNaN(pLat) && !isNaN(pLon) && pLat >= -90 && pLat <= 90 && pLon >= -180 && pLon <= 180 && !(pLat === 0 && pLon === 0)) {
+                        return { lat: pLat, lon: pLon };
+                    }
+                }
+            }
+            if (!text || typeof text !== 'string') return null;
+
+            const mPos = text.match(/(?:Pos(?:ition)?\s*:?\s*)(-?\d{1,2}\.\d{2,6})\s*,\s*(-?\d{1,3}\.\d{2,6})/i);
+            if (mPos) {
+                const lat = parseFloat(mPos[1]);
+                const lon = parseFloat(mPos[2]);
+                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && !(lat === 0 && lon === 0)) {
+                    return { lat, lon };
+                }
+            }
+
+            const mNSEW = text.match(/([NS])\s*(\d{1,2}\.\d{2,6})\s*,\s*([EW])\s*(\d{1,3}\.\d{2,6})/i);
+            if (mNSEW) {
+                let lat = parseFloat(mNSEW[2]);
+                if (mNSEW[1].toUpperCase() === 'S') lat = -lat;
+                let lon = parseFloat(mNSEW[4]);
+                if (mNSEW[3].toUpperCase() === 'W') lon = -lon;
+                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && !(lat === 0 && lon === 0)) {
+                    return { lat, lon };
+                }
+            }
+
+            const mDegMin = text.match(/(\d{1,2})[-°\s]+(\d{1,2}(?:\.\d+)?)[′'\s]*([NS])[\s,;/and]*(\d{1,3})[-°\s]+(\d{1,2}(?:\.\d+)?)[′'\s]*([EW])/i);
+            if (mDegMin) {
+                let lat = parseInt(mDegMin[1], 10) + (parseFloat(mDegMin[2]) / 60.0);
+                if (mDegMin[3].toUpperCase() === 'S') lat = -lat;
+                let lon = parseInt(mDegMin[4], 10) + (parseFloat(mDegMin[5]) / 60.0);
+                if (mDegMin[6].toUpperCase() === 'W') lon = -lon;
+                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && !(lat === 0 && lon === 0)) {
+                    return { lat, lon };
+                }
+            }
+
+            const mDec = text.match(/(\d{1,2}\.\d{2,6})\s*([NS])[\s,;/and]*(\d{1,3}\.\d{2,6})\s*([EW])/i);
+            if (mDec) {
+                let lat = parseFloat(mDec[1]);
+                if (mDec[2].toUpperCase() === 'S') lat = -lat;
+                let lon = parseFloat(mDec[3]);
+                if (mDec[4].toUpperCase() === 'W') lon = -lon;
+                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && !(lat === 0 && lon === 0)) {
+                    return { lat, lon };
+                }
+            }
+
+            return null;
+        }
+
+        function getMinimapObserver() {
+            if (!minimapObserver && 'IntersectionObserver' in window) {
+                minimapObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            initMinimap(entry.target);
+                            minimapObserver.unobserve(entry.target);
+                        }
+                    });
+                }, { rootMargin: '200px 0px' });
+            }
+            return minimapObserver;
+        }
+
+        function registerMinimap(containerEl) {
+            if (!containerEl || containerEl._leaflet_map || minimapInstances.has(containerEl.id)) return;
+            const observer = getMinimapObserver();
+            if (observer) {
+                observer.observe(containerEl);
+            } else {
+                initMinimap(containerEl);
+            }
+        }
+
+        function initMinimap(containerEl) {
+            if (!containerEl || containerEl._leaflet_map || minimapInstances.has(containerEl.id)) return;
+            if (typeof L === 'undefined') return;
+
+            const lat = parseFloat(containerEl.dataset.lat);
+            const lon = parseFloat(containerEl.dataset.lon);
+            if (isNaN(lat) || isNaN(lon)) return;
+
+            const proto = (containerEl.dataset.proto || '').toUpperCase();
+            const initialZoom = 6;
+
+            try {
+                const map = L.map(containerEl, {
+                    center: [lat, lon],
+                    zoom: initialZoom,
+                    zoomControl: false,
+                    attributionControl: false,
+                    scrollWheelZoom: false,
+                    dragging: false,
+                    doubleClickZoom: false,
+                    touchZoom: false
+                });
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 18
+                }).addTo(map);
+
+                if (proto === 'SATC') {
+                    L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+                        maxZoom: 18
+                    }).addTo(map);
+                }
+
+                const marker = L.circleMarker([lat, lon], {
+                    radius: 5,
+                    color: '#ef4444',
+                    fillColor: '#ef4444',
+                    fillOpacity: 0.85,
+                    weight: 2
+                }).addTo(map);
+
+                marker.bindTooltip(`Pos: ${lat.toFixed(4)}, ${lon.toFixed(4)}`, { direction: 'top' });
+
+                containerEl._leaflet_map = map;
+                minimapInstances.set(containerEl.id, map);
+
+                containerEl.style.cursor = 'pointer';
+                containerEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    openMapModal(containerEl.dataset.msgId, lat, lon);
+                });
+
+                setTimeout(() => {
+                    map.invalidateSize();
+                }, 150);
+            } catch (e) {
+                console.error('Fel vid initiering av Leaflet-minikarta:', e);
+            }
+        }
+
+        let largeModalMapInstance = null;
+        let largeModalMarker = null;
+
+        window.openMapModal = function(msgId, lat, lon, event) {
+            if (event) {
+                event.stopPropagation();
+                event.preventDefault();
+            }
+
+            const latNum = parseFloat(lat);
+            const lonNum = parseFloat(lon);
+            if (isNaN(latNum) || isNaN(lonNum)) return;
+
+            const modal = document.getElementById('mapModal');
+            if (!modal) return;
+
+            const alarm = (allAlarms || []).find(a => String(a.id) === String(msgId)) || {};
+            const protoName = (alarm.protocol || '').toUpperCase() || 'POS';
+
+            const protoBadge = document.getElementById('mapModalProtoBadge');
+            if (protoBadge) {
+                protoBadge.textContent = protoName;
+                protoBadge.className = `badge meta badge-proto proto-${protoName.toLowerCase()}`;
+            }
+
+            const titleEl = document.getElementById('mapModalTitle');
+            const displayAddr = alarm.alias || alarm.address || 'Geografisk Position';
+            if (titleEl) {
+                titleEl.textContent = displayAddr;
+            }
+
+            const detailsEl = document.getElementById('mapModalDetails');
+            if (detailsEl) {
+                const details = [];
+                if (alarm.flight) details.push(`Flight: ${alarm.flight}`);
+                if (alarm.reg) details.push(`Reg: ${alarm.reg}`);
+                if (alarm.frequency) details.push(`Freq: ${alarm.frequency}`);
+                if (alarm.bitrate) details.push(alarm.bitrate);
+                detailsEl.textContent = details.length > 0 ? details.join(' | ') : `Meddelande #${alarm.id || msgId}`;
+            }
+
+            const timeEl = document.getElementById('mapModalTime');
+            if (timeEl) {
+                timeEl.textContent = alarm.timestamp ? new Date(alarm.timestamp).toLocaleString('sv-SE') : '';
+            }
+
+            const coordsEl = document.getElementById('mapModalCoords');
+            if (coordsEl) {
+                coordsEl.textContent = `Pos: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}`;
+            }
+
+            const osmLink = document.getElementById('mapModalOsmLink');
+            if (osmLink) {
+                osmLink.href = `https://www.openstreetmap.org/?mlat=${latNum}&mlon=${lonNum}#map=12/${latNum}/${lonNum}`;
+            }
+            const gmapsLink = document.getElementById('mapModalGmapsLink');
+            if (gmapsLink) {
+                gmapsLink.href = `https://www.google.com/maps?q=${latNum},${lonNum}`;
+            }
+
+            modal.classList.add('show');
+
+            const mapContainer = document.getElementById('largeModalMap');
+            if (mapContainer && typeof L !== 'undefined') {
+                if (!largeModalMapInstance) {
+                    largeModalMapInstance = L.map(mapContainer, {
+                        center: [latNum, lonNum],
+                        zoom: 10,
+                        scrollWheelZoom: true,
+                        dragging: true,
+                        zoomControl: true
+                    });
+
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 18,
+                        attribution: '&copy; OpenStreetMap'
+                    }).addTo(largeModalMapInstance);
+
+                    L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+                        maxZoom: 18
+                    }).addTo(largeModalMapInstance);
+                } else {
+                    largeModalMapInstance.setView([latNum, lonNum], 10);
+                }
+
+                if (largeModalMarker) {
+                    largeModalMarker.remove();
+                }
+
+                largeModalMarker = L.marker([latNum, lonNum]).addTo(largeModalMapInstance);
+
+                const summaryText = alarm.message ? escapeHtml(alarm.message).substring(0, 160) : `Position: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}`;
+                largeModalMarker.bindPopup(`
+                    <div style="font-size: 0.85rem; line-height: 1.4;">
+                        <strong style="color: #0284c7;">${escapeHtml(displayAddr)}</strong> (${escapeHtml(protoName)})<br>
+                        <strong>Pos:</strong> ${latNum.toFixed(4)}, ${lonNum.toFixed(4)}<br>
+                        <div style="margin-top: 4px; color: #475569; font-size: 0.8rem;">${summaryText}</div>
+                    </div>
+                `).openPopup();
+
+                setTimeout(() => {
+                    if (largeModalMapInstance) {
+                        largeModalMapInstance.invalidateSize();
+                        largeModalMapInstance.panTo([latNum, lonNum]);
+                    }
+                }, 200);
+            }
+        };
+
+        window.closeMapModal = function() {
+            const modal = document.getElementById('mapModal');
+            if (modal) modal.classList.remove('show');
+        };
+
+        window.handleMapModalOverlayClick = function(event) {
+            if (event.target === document.getElementById('mapModal')) {
+                closeMapModal();
+            }
+        };
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeMapModal();
+            }
+        });
+
+        function zoomMinimap(msgId, lat, lon, event) {
+            openMapModal(msgId, lat, lon, event);
+        }
+
+        window.filterByProtocol = function(proto) {
+            const searchInput = document.getElementById('searchInput');
+            if (dataTable && searchInput) {
+                searchInput.value = proto;
+                dataTable.search(proto).draw();
+            }
+        };
+
+        window.filterByFrequency = function(freq) {
+            const searchInput = document.getElementById('searchInput');
+            if (dataTable && searchInput) {
+                searchInput.value = freq;
+                dataTable.search(freq).draw();
+            }
+        };
+
+        window.filterByQuickSearch = function(txt) {
+            const searchInput = document.getElementById('searchInput');
+            if (dataTable && searchInput) {
+                searchInput.value = txt;
+                dataTable.search(txt).draw();
+            }
+        };
+
+        // Helper to construct a table row element (6 kolumner: TID/#, PROTOKOLL, RF/KANAL, ENHET/ALIAS, MEDDELANDE/TELEMETRI, VAL/ÅTGÄRDER)
         function createAlarmRowNode(alarm) {
             const tr = document.createElement('tr');
+            tr.className = 'log-row';
             tr.setAttribute('data-id', alarm.id);
+            tr.setAttribute('data-frequency', alarm.frequency || '');
+            tr.setAttribute('data-protocol', alarm.protocol || '');
+            tr.setAttribute('data-bitrate', alarm.bitrate || '');
+            if (window.WaterfallManager && window.WaterfallManager.getChannelKeyForMessage) {
+                const k = window.WaterfallManager.getChannelKeyForMessage(alarm);
+                if (k) tr.setAttribute('data-channel-key', k);
+            }
+
+            const isSystem = alarm.address === 'SYSTEM' || alarm.frequency === 'RESTART' || alarm.is_system;
+
+            const dateObj = new Date(alarm.timestamp);
+            const dateStr = dateObj.toLocaleDateString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit' });
+            const timeStr = dateObj.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            let lastSeenHtml = '';
+            if (alarm.last_timestamp && alarm.repeat_count > 1) {
+                const lastDate = new Date(alarm.last_timestamp);
+                const lastTimeStr = lastDate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                lastSeenHtml = `<div class="last-seen-time">(Senast: ${lastTimeStr})</div>`;
+            }
+
+            if (isSystem) {
+                tr.classList.add('system-event-row');
+                const displayInstance = alarm.alias ? alarm.alias : 'System';
+                tr.setAttribute('data-proto-name', 'SYSTEM');
+                tr.setAttribute('data-frequency', 'RESTART');
+                tr.setAttribute('data-address', alarm.address || 'SYSTEM');
+                tr.setAttribute('data-alias', displayInstance);
+                tr.innerHTML = `
+                    <td class="col-ts ts-cell" data-order="${alarm.timestamp}">
+                        <div class="ts-time">${timeStr}</div>
+                        <div class="ts-date">${dateStr}</div>
+                        <div class="ts-id">#${alarm.id}</div>
+                    </td>
+                    <td class="col-proto proto-cell">
+                        <span class="badge" style="background: rgba(148, 163, 184, 0.15); color: #94a3b8; border: 1px solid rgba(148, 163, 184, 0.3);">SYS</span>
+                    </td>
+                    <td class="col-rf rf-cell">
+                        <div class="rf-freq" style="color: #f59e0b;">RESTART</div>
+                        <div class="rf-mod">SYSTEM</div>
+                    </td>
+                    <td class="col-source source-cell">
+                        <div class="src-name">${escapeHtml(displayInstance)}</div>
+                        <div class="src-sub" style="color: #94a3b8;">${escapeHtml(alarm.address || 'SYSTEM')}</div>
+                    </td>
+                    <td class="col-msg msg-cell message-cell">
+                        <div class="msg-layout">
+                            <div class="msg-main">
+                                <div class="msg-top">
+                                    <span class="msg-title" style="color: #f59e0b;">SYSTEMHÄNDELSE</span>
+                                </div>
+                                <div class="data-flex">
+                                    <div class="kv-box full-text" style="color: #fcd34d;">
+                                        <i class="fas fa-sync-alt" style="margin-right: 6px; color: #f59e0b;"></i>${escapeHtml(alarm.message)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="col-act actions-cell">
+                        <div class="actions-wrapper">
+                            <button class="copy-btn" onclick="copyMessageText(this)" title="Kopiera meddelande">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <div class="btn-divider"></div>
+                            <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Ta bort systemhändelse">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                return tr;
+            }
 
             const isBasestation = (
                 (alarm.bitrate && String(alarm.bitrate).includes('TETRA-NET')) ||
@@ -1019,24 +1378,9 @@
                 (alarm.message && (String(alarm.message).includes('Aktiv TETRA Basstation') || String(alarm.message).includes('Aktiv Basstation på') || String(alarm.message).includes('Aktiv Basstation')))
             );
 
-            if (isBasestation) {
-                tr.className = 'basestation-row';
-            } else {
-                tr.className = 'alert-row';
-            }
-
-            const dateObj = new Date(alarm.timestamp);
-            const dateStr = dateObj.toLocaleDateString(undefined, { year: 'numeric', month: '2-digit', day: '2-digit' });
-            const timeStr = dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-            let formattedTime = `${dateStr}<br>${timeStr}`;
-            if (alarm.last_timestamp && alarm.repeat_count > 1) {
-                const lastDate = new Date(alarm.last_timestamp);
-                const lastTimeStr = lastDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                formattedTime += `<div class="last-seen-time">(Last: ${lastTimeStr})</div>`;
-            }
-
             const displayAddress = alarm.alias ? alarm.alias : alarm.address;
-            // Bestäm protokoll och märke
+
+            // Bestäm protokoll och klass
             let protoName = '';
             let protoClass = '';
             const rawProto = (alarm.protocol || '').toString().trim().toUpperCase();
@@ -1074,56 +1418,47 @@
                 protoClass = 'proto-pocsag';
             } else if (rawProto && rawProto !== 'UNKNOWN') {
                 protoName = rawProto;
-                protoClass = 'proto-generic';
+                protoClass = `proto-${rawProto.toLowerCase()}`;
             } else {
                 protoName = 'POCSAG';
                 protoClass = 'proto-pocsag';
             }
-            const protoTag = `<span class="badge meta badge-proto ${protoClass}">${protoName}</span>`;
 
+            tr.classList.add(protoClass);
+
+            // Formaterad bitrate / modulation
             let formattedBitrate = '';
             if (alarm.bitrate) {
                 let bStr = String(alarm.bitrate).trim();
                 if (bStr && bStr !== 'WATCHDOG') {
-                    if (bStr.toUpperCase().startsWith('TETRA-')) {
-                        formattedBitrate = bStr.substring(6);
-                    } else if (bStr.toUpperCase() === 'TETRA') {
-                        formattedBitrate = '';
-                    } else if (bStr.toUpperCase() === 'RDS-TMC') {
-                        formattedBitrate = 'TMC';
-                    } else if (bStr.toUpperCase() === 'RDS') {
-                        formattedBitrate = '';
-                    } else if (bStr.toUpperCase().startsWith('VDL2-')) {
-                        formattedBitrate = bStr.substring(5);
-                    } else if (bStr.toUpperCase() === 'VDL2') {
-                        formattedBitrate = '';
-                    } else if (bStr.toUpperCase().startsWith('SONDE-')) {
-                        formattedBitrate = bStr.substring(6);
-                    } else if (bStr.toUpperCase() === 'SONDE') {
-                        formattedBitrate = '';
-                    } else if (/^POCSAG\s*\d+$/i.test(bStr)) {
-                        formattedBitrate = bStr.replace(/^POCSAG\s*/i, '') + 'bps';
-                    } else if (/^\d+$/.test(bStr)) {
-                        formattedBitrate = bStr + 'bps';
-                    } else if (!bStr.toLowerCase().endsWith('bps') && !bStr.includes('-')) {
-                        formattedBitrate = bStr + 'bps';
-                    } else {
-                        formattedBitrate = bStr;
-                    }
+                    if (bStr.toUpperCase().startsWith('TETRA-')) formattedBitrate = bStr.substring(6);
+                    else if (bStr.toUpperCase() === 'TETRA') formattedBitrate = '';
+                    else if (bStr.toUpperCase() === 'RDS-TMC') formattedBitrate = 'TMC';
+                    else if (bStr.toUpperCase() === 'RDS') formattedBitrate = '';
+                    else if (bStr.toUpperCase().startsWith('VDL2-')) formattedBitrate = bStr.substring(5);
+                    else if (bStr.toUpperCase() === 'VDL2') formattedBitrate = '';
+                    else if (bStr.toUpperCase() === 'VHF-ACARS' || bStr.toUpperCase() === 'ACARS') formattedBitrate = 'VHF';
+                    else if (bStr.toUpperCase().startsWith('SONDE-')) formattedBitrate = bStr.substring(6);
+                    else if (bStr.toUpperCase() === 'SONDE') formattedBitrate = '';
+                    else if (bStr.toUpperCase().startsWith('HFDL-')) formattedBitrate = bStr.substring(5);
+                    else if (bStr.toUpperCase() === 'HFDL') formattedBitrate = '';
+                    else if (bStr.toUpperCase().startsWith('SATC-')) formattedBitrate = bStr.substring(5);
+                    else if (bStr.toUpperCase() === 'SATC') formattedBitrate = '';
+                    else if (/^POCSAG\s*\d+$/i.test(bStr)) formattedBitrate = bStr.replace(/^POCSAG\s*/i, '') + 'bps';
+                    else if (/^\d+$/.test(bStr)) formattedBitrate = bStr + 'bps';
+                    else if (!bStr.toLowerCase().endsWith('bps') && !bStr.includes('-')) formattedBitrate = bStr + 'bps';
+                    else formattedBitrate = bStr;
                 } else if (bStr === 'WATCHDOG') {
                     formattedBitrate = 'WATCHDOG';
                 }
             }
-            const bitrateTag = formattedBitrate ? `<span class="badge meta">${formattedBitrate}</span>` : '';
 
             // Rensa och bearbeta meddelandetext och extrahera SNR
             let cleanMsg = alarm.message || '';
             let snrVal = alarm.snr || '';
             if (!snrVal && cleanMsg) {
                 const snrMatch = cleanMsg.match(/\bSNR:\s*([+-]?[0-9]+(?:\.[0-9]+)?\s*dB)\b/i);
-                if (snrMatch) {
-                    snrVal = snrMatch[1];
-                }
+                if (snrMatch) snrVal = snrMatch[1];
             }
             if (cleanMsg) {
                 cleanMsg = cleanMsg.replace(/\s*\|\s*SNR:\s*[+-]?[0-9]+(?:\.[0-9]+)?\s*dB/gi, '')
@@ -1131,18 +1466,8 @@
                                    .trim();
             }
 
-            let snrText = '';
-            if (snrVal) {
-                let s = String(snrVal).trim();
-                if (!s.toUpperCase().startsWith('SNR:')) {
-                    snrText = `SNR: ${s}`;
-                } else {
-                    snrText = s;
-                }
-            }
-            const snrTag = snrText ? `<span class="badge meta badge-snr" title="Signal/brusförhållande">${escapeHtml(snrText)}</span>` : '';
-
-            // Extrahera ACARS / VDL2 / Flygdata
+            // Metadata-fält för flyg / satellit
+            let cleanAirportCode = '';
             let regVal = alarm.reg || '';
             let flightVal = alarm.flight || '';
             let icaoVal = alarm.icao || '';
@@ -1151,47 +1476,50 @@
             let labelVal = alarm.label || '';
             let labelDescVal = alarm.label_desc || '';
 
-            // Fallback-extrahering ur alarm.address (t.ex. "D84378 (SE-RTA) [4ACA81]")
-            if (!flightVal && alarm.address) {
-                const mFl = alarm.address.match(/^([A-Z0-9]{2,8})\b/i);
-                if (mFl && mFl[1] !== 'VDL2' && mFl[1] !== 'ACARS' && mFl[1] !== 'HFDL') flightVal = mFl[1].toUpperCase();
-            }
-            if (!regVal && alarm.address) {
-                const mReg = alarm.address.match(/\(([A-Z0-9.-]+)\)/i);
-                if (mReg) regVal = mReg[1].replace(/^\.+/, '').toUpperCase();
-            }
-            if (!icaoVal && alarm.address) {
-                const mIcao = alarm.address.match(/\[([0-9A-Fa-f]{6})\]/);
-                if (mIcao) icaoVal = mIcao[1].toUpperCase();
+            // Fallback-extrahering ur alarm.address
+            if (alarm.address) {
+                if (!flightVal) {
+                    const mFl = alarm.address.match(/^([A-Z0-9]{2,8})\b/i);
+                    if (mFl && !['VDL2','HFDL','ACARS','SATC','SONDE','TETRA','GS'].includes(mFl[1].toUpperCase())) {
+                        flightVal = mFl[1].toUpperCase();
+                    }
+                }
+                if (!regVal) {
+                    const mReg = alarm.address.match(/\(([A-Z0-9.-]+)\)/i);
+                    if (mReg) regVal = mReg[1].replace(/^\.+/, '').toUpperCase();
+                }
+                if (!icaoVal) {
+                    const mIcao = alarm.address.match(/\[([0-9A-Fa-f]{6})\]/);
+                    if (mIcao) icaoVal = mIcao[1].toUpperCase();
+                }
             }
 
-            // Fallback-extrahering ur äldre sparad meddelandetext med [Reg: ... | Flight: ...]
+            // Fallback-extrahering ur metadata
+            if (alarm.metadata && typeof alarm.metadata === 'object') {
+                if (!flightVal && alarm.metadata.flight) flightVal = String(alarm.metadata.flight).trim().toUpperCase();
+                if (!regVal && (alarm.metadata.reg || alarm.metadata.tail)) regVal = String(alarm.metadata.reg || alarm.metadata.tail).trim().replace(/^\.+/, '').toUpperCase();
+                if (!icaoVal && alarm.metadata.icao) icaoVal = String(alarm.metadata.icao).trim().toUpperCase();
+                if (!stationVal && (alarm.metadata.station || alarm.metadata.station_id)) stationVal = String(alarm.metadata.station || alarm.metadata.station_id).trim();
+                if (!labelVal && alarm.metadata.label) labelVal = String(alarm.metadata.label).trim().toUpperCase();
+                if (!labelDescVal && alarm.metadata.label_desc) labelDescVal = String(alarm.metadata.label_desc).trim();
+            }
+
+            // Fallback-extrahering ur äldre sparad text
             if (cleanMsg) {
                 if (cleanMsg.includes('Reg:') || cleanMsg.includes('Flight:') || cleanMsg.includes('ICAO:')) {
                     const rM = cleanMsg.match(/\bReg:\s*([A-Z0-9.-]+)/i);
                     if (rM && !regVal) regVal = rM[1].replace(/^\.+/, '').toUpperCase();
-
                     const fM = cleanMsg.match(/\bFlight:\s*([A-Z0-9]+)/i);
                     if (fM && !flightVal) flightVal = fM[1].toUpperCase();
-
                     const iM = cleanMsg.match(/\bICAO:\s*([0-9A-Fa-f]{6})/i);
                     if (iM && !icaoVal) icaoVal = iM[1].toUpperCase();
-
                     const sM = cleanMsg.match(/\bTo:\s*([^|\]\n]+)/i);
                     if (sM && !stationVal) stationVal = sM[1].trim();
-
-                    const stM = cleanMsg.match(/\b(?:On Ground|Status):\s*(Yes|No|Airborne|On Ground)/i);
-                    if (stM && !statusVal) {
-                        const rawSt = stM[1].toLowerCase();
-                        statusVal = (rawSt === 'yes' || rawSt === 'on ground') ? 'On Ground' : 'Airborne';
-                    }
 
                     cleanMsg = cleanMsg.replace(/^\[?Reg:[^\]\n]*\]?\r?\n?/i, '')
                                        .replace(/^Flight:[^\n]*\r?\n?/i, '')
                                        .trim();
                 }
-
-                // Extrahera och rensa inledande Label-prefix (t.ex. [H1: FMS / Färddator-rapport] eller [83])
                 const lblPrefixMatch = cleanMsg.match(/^\[([A-Z0-9_]{1,4})(?::\s*([^\]]+))?\]\s*/i);
                 if (lblPrefixMatch) {
                     if (!labelVal) labelVal = lblPrefixMatch[1].toUpperCase();
@@ -1199,197 +1527,457 @@
                 }
             }
 
-            // Ordbevaknings-matchning (Körs på cleanMsg, endast hela ord)
-            const match = findMatchingAlert(cleanMsg);
-            const hitWord = alarm.alert_word || (match ? match.word : 'ALARM');
-            const hitColor = alarm.alert_color || (match ? match.color : '#ef4444');
+            if (stationVal) {
+                const icaoM = stationVal.match(/\b([A-Z]{4})\b/);
+                if (icaoM) cleanAirportCode = icaoM[1].toUpperCase();
+            }
 
-            // Dölj Alpha/Num för VDL2, SATC, HFDL, ACARS
-            const funcLabel = (protoName !== 'VDL2' && protoName !== 'SATC' && protoName !== 'HFDL' && protoName !== 'ACARS' && alarm.function !== undefined) ? (alarm.function === 0 || alarm.function === 3 ? "Alpha" : "Num") : "";
-            const funcTag = funcLabel ? `<span class="badge meta">${funcLabel}</span>` : '';
+            // SAT-C specifika fält
+            let satcPriorityVal = alarm.satc_priority || alarm.priority || '';
+            let satcNavareaVal = alarm.navarea || alarm.area || '';
+            let satcLesVal = alarm.les_name || alarm.les || '';
+            let satcMesVal = alarm.mes_id || (alarm.metadata && alarm.metadata.mes_id) || '';
+            let satcChannelVal = alarm.logical_channel_number || (alarm.metadata && alarm.metadata.logical_channel_number) || '';
 
-            const hitBadge = isBasestation ?
-                `<span class="badge" style="background: rgba(6, 182, 212, 0.15); color: #0284c7; border: 1px solid rgba(6, 182, 212, 0.4); font-weight: 700; text-transform: uppercase;"><i class="fas fa-broadcast-tower" style="margin-right: 4px; font-size: 0.75rem;"></i>BASE</span>` :
-                `<span class="badge" style="background: ${hitColor}22; color: ${hitColor}; border: 1px solid ${hitColor}66; font-weight: 700; text-transform: uppercase;"><i class="fas fa-tag" style="margin-right: 4px; font-size: 0.75rem;"></i>${hitWord}</span>`;
+            if (protoName === 'SATC') {
+                if (!satcPriorityVal && cleanMsg) {
+                    const pM = cleanMsg.match(/\bPrioritet:\s*([A-Za-z]+)/i) || cleanMsg.match(/\bPriority:\s*([A-Za-z]+)/i);
+                    if (pM) satcPriorityVal = pM[1];
+                }
+                if (!satcNavareaVal && cleanMsg) {
+                    const aM = cleanMsg.match(/\b(NAVAREA\s+[A-Z0-9]+|METAREA\s+[A-Z0-9]+)\b/i) || cleanMsg.match(/\bOmråde:\s*([^|\]\n]+)/i);
+                    if (aM) satcNavareaVal = aM[1].trim();
+                }
+                if (!satcLesVal && alarm.address && alarm.address.startsWith('LES:')) {
+                    satcLesVal = alarm.address.substring(4).trim();
+                }
+                if (!satcMesVal && alarm.address && alarm.address.startsWith('MES:')) {
+                    satcMesVal = alarm.address.substring(4).trim();
+                }
+            }
 
-            const msgObj = formatMessage(cleanMsg);
-            const rawToggleBadge = msgObj.rawText ? `<span class="badge badge-raw-toggle" onclick="toggleRawData(this)" title="Visa eller dölj rådata">&lt;/&gt; Rådata</span>` : '';
-            const rawBoxHtml = msgObj.rawText ? `<div class="raw-data-box" style="display: none;">${escapeHtml(msgObj.rawText)}</div>` : '';
+            // HFDL specifika fält
+            let hfdlGsVal = alarm.gs_name || (alarm.metadata && alarm.metadata.gs_name) || '';
+            let hfdlTypeVal = alarm.hfdl_type || (alarm.metadata && alarm.metadata.hfdl_type) || '';
+            let hfdlModelVal = alarm.ac_model || (alarm.metadata && (alarm.metadata.ac_model || alarm.metadata.typecode)) || '';
+            if (protoName === 'HFDL') {
+                if (!hfdlGsVal && cleanMsg) {
+                    const mGs = cleanMsg.match(/\bMarkstation:\s*([^|\]\n]+)/i);
+                    if (mGs) hfdlGsVal = mGs[1].trim();
+                }
+                if (!hfdlGsVal && alarm.address && alarm.address.startsWith('GS:')) {
+                    hfdlGsVal = alarm.address.substring(3).trim();
+                }
+                if (!hfdlModelVal && cleanMsg) {
+                    const mM = cleanMsg.match(/\bFlygplan:\s*([^(|\n]+)/i);
+                    if (mM) hfdlModelVal = mM[1].trim();
+                }
+            }
 
-            // -------------------------------------------------------------
-            // Visuell Hierarki: 1. Strukturerade Felkort (WRN / FLR) & Decoded Fields
-            // -------------------------------------------------------------
+            // ACARS markstation
+            let acarsStationVal = alarm.station || alarm.station_id || (alarm.metadata && (alarm.metadata.station || alarm.metadata.station_id)) || '';
+
+            // Sätt alla data-attribut för DataTables & filter
+            tr.setAttribute('data-proto-name', protoName);
+            tr.setAttribute('data-frequency', alarm.frequency || '');
+            tr.setAttribute('data-label', labelVal || '');
+            tr.setAttribute('data-airport', stationVal || alarm.dst_airport || '');
+            tr.setAttribute('data-airport-code', cleanAirportCode);
+            tr.setAttribute('data-has-pilot', (cleanMsg.includes('Pilotmeddelande') || (alarm.message && alarm.message.includes('Pilotmeddelande'))) ? '1' : '0');
+            tr.setAttribute('data-address', alarm.address || '');
+            tr.setAttribute('data-alias', alarm.alias || '');
+            tr.setAttribute('data-reg', regVal || '');
+            tr.setAttribute('data-flight', flightVal || '');
+            tr.setAttribute('data-icao', icaoVal || '');
+            tr.setAttribute('data-gs', hfdlGsVal || acarsStationVal || stationVal || '');
+            tr.setAttribute('data-priority', satcPriorityVal || '');
+            tr.setAttribute('data-navarea', satcNavareaVal || '');
+            tr.setAttribute('data-les', satcLesVal || '');
+            tr.setAttribute('data-mes', satcMesVal || '');
+            tr.setAttribute('data-channel', satcChannelVal || '');
+
+            // Larmordskontroll
+            let hasAlert = false;
+            let matchedWord = alarm.alert_word || '';
+            if (isBasestation) {
+                tr.classList.add('basestation-row');
+            } else {
+                const alertSearchText = getAlertSearchableText(cleanMsg);
+                const matchedAw = alertWords.find(aw => aw.is_active && checkAlertWordMatch(aw.word, alertSearchText));
+                if (matchedAw) {
+                    hasAlert = true;
+                    matchedWord = matchedAw.word;
+                    tr.classList.add('row-alert', 'alert-row');
+                } else if (alarm.is_alert) {
+                    hasAlert = true;
+                    tr.classList.add('row-alert', 'alert-row');
+                }
+            }
+
+            // Universell position & minikarta
+            const universalCoords = extractUniversalCoordinates(cleanMsg, alarm);
+
+            // Decoded fields (Airbus WRN / FLR / FM / OOOI)
             const decodedFields = alarm.decoded_fields || (alarm.metadata && alarm.metadata.decoded_fields);
-            let decodedFieldsHtml = '';
-            if (decodedFields && typeof decodedFields === 'object') {
-                if (decodedFields.is_warning || decodedFields.type_code === 'WRN') {
-                    const faultHeadline = decodedFields.fault_text || 'ECAM Cockpit Warning';
-                    let secondaryItems = [];
-                    if (decodedFields.pnr) {
-                        secondaryItems.push(`<span class="badge meta badge-pnr" title="Artikelnummer (Part Number)">PNR: ${escapeHtml(decodedFields.pnr)}</span>`);
-                    }
-                    if (decodedFields.warning_code) {
-                        secondaryItems.push(`<span class="badge meta badge-code" title="Varningskod">${escapeHtml(decodedFields.warning_code)}</span>`);
-                    }
-                    decodedFieldsHtml = `
-                        <div class="technical-fault-card warning-card">
-                            <div class="fault-primary-row">
-                                <span class="badge meta badge-ecam-warning" title="ECAM Cockpit Warning"><i class="fas fa-exclamation-triangle"></i> ECAM Varning</span>
-                                <span class="fault-message-headline">${escapeHtml(faultHeadline)}</span>
-                            </div>
-                            ${secondaryItems.length > 0 ? `<div class="fault-secondary-row">${secondaryItems.join('')}</div>` : ''}
-                        </div>
-                    `;
-                } else if (decodedFields.is_fault_report || decodedFields.type_code === 'FLR') {
-                    const faultHeadline = decodedFields.fault_desc || 'Teknisk felrapport';
-                    let primaryBadges = [];
-                    if (decodedFields.aircraft_type) {
-                        primaryBadges.push(`<span class="badge meta badge-aircraft" title="Flygplanstyp"><i class="fas fa-plane"></i> Airbus ${escapeHtml(decodedFields.aircraft_type)}</span>`);
-                    }
-                    if (decodedFields.origin && decodedFields.destination) {
-                        primaryBadges.push(`<span class="badge meta badge-route" title="Rutt"><i class="fas fa-route"></i> ${escapeHtml(decodedFields.origin)} → ${escapeHtml(decodedFields.destination)}</span>`);
-                    }
 
-                    let secondaryItems = [];
-                    if (decodedFields.affected && decodedFields.affected.length > 0) {
-                        const affStr = Array.isArray(decodedFields.affected) ? decodedFields.affected.join(', ') : decodedFields.affected;
-                        secondaryItems.push(`<div class="fault-affected-group"><span class="fault-affected-label">Berörda system:</span> <span class="fault-affected-val">${escapeHtml(affStr)}</span></div>`);
-                    }
-                    if (decodedFields.pnr) {
-                        secondaryItems.push(`<span class="badge meta badge-pnr" title="Artikelnummer (Part Number)">PNR: ${escapeHtml(decodedFields.pnr)}</span>`);
-                    }
-                    if (decodedFields.flight_time_utc) {
-                        secondaryItems.push(`<span class="badge meta badge-time" title="Flygtid (UTC)"><i class="far fa-clock"></i> ${escapeHtml(decodedFields.flight_time_utc)} UTC</span>`);
-                    }
+            // -------------------------------------------------------------
+            // KOLUMN 1: TID / # (width: 92px)
+            // -------------------------------------------------------------
+            const tdTsHtml = `
+                <td class="col-ts ts-cell" data-order="${alarm.timestamp}">
+                    <div class="ts-time">${timeStr}</div>
+                    <div class="ts-date">${dateStr}</div>
+                    <div class="ts-id">#${alarm.id}</div>
+                    ${lastSeenHtml}
+                </td>
+            `;
 
-                    decodedFieldsHtml = `
-                        <div class="technical-fault-card fault-card">
-                            <div class="fault-primary-row">
-                                <span class="badge meta badge-fault-report" title="ARINC 624 Maintenance Report"><i class="fas fa-tools"></i> Teknisk felrapport</span>
-                                <span class="fault-message-headline">${escapeHtml(faultHeadline)}</span>
-                                ${primaryBadges.join('')}
-                            </div>
-                            ${secondaryItems.length > 0 ? `<div class="fault-secondary-row">${secondaryItems.join('')}</div>` : ''}
-                        </div>
-                    `;
+            // -------------------------------------------------------------
+            // KOLUMN 2: PROTOKOLL (width: 72px)
+            // -------------------------------------------------------------
+            const badgeClass = `badge-${protoName.toLowerCase()}`;
+            const tdProtoHtml = `
+                <td class="col-proto proto-cell">
+                    <span class="badge ${badgeClass} filterable-badge" onclick="filterByProtocol('${protoName}')" title="Klicka för att filtrera på ${protoName}">${protoName}</span>
+                </td>
+            `;
+
+            // -------------------------------------------------------------
+            // KOLUMN 3: RF / KANAL (width: 125px)
+            // -------------------------------------------------------------
+            let rfFreqHtml = '';
+            if (alarm.frequency) {
+                rfFreqHtml = `<div class="rf-freq filterable-badge" onclick="filterByFrequency('${escapeHtml(alarm.frequency)}')" title="Filtrera frekvens">${escapeHtml(alarm.frequency)}</div>`;
+            } else {
+                rfFreqHtml = `<div class="rf-freq" style="color: #64748b;">-</div>`;
+            }
+
+            let rfSnrHtml = '';
+            if (snrVal) {
+                const snrNum = parseFloat(snrVal);
+                const snrIsGood = !isNaN(snrNum) ? (snrNum >= 10) : true;
+                const snrColorClass = snrIsGood ? 'rf-snr-good' : 'rf-snr-low';
+                const snrDisplay = !isNaN(snrNum) ? `SNR ${snrNum > 0 ? '+' : ''}${snrNum.toFixed(1)} dB` : escapeHtml(snrVal);
+                rfSnrHtml = `<div class="rf-snr ${snrColorClass}">${snrDisplay}</div>`;
+            }
+
+            let rfModHtml = '';
+            let modText = formattedBitrate || (alarm.bitrate ? String(alarm.bitrate) : '');
+            if (!modText || modText.toUpperCase() === protoName.toUpperCase()) {
+                modText = protoName;
+            }
+            rfModHtml = `<div class="rf-mod">${escapeHtml(modText)}</div>`;
+
+            let rfGsHtml = '';
+            const primaryGs = hfdlGsVal || acarsStationVal || stationVal || satcLesVal || (satcNavareaVal ? `Area: ${satcNavareaVal}` : '') || '';
+            if (primaryGs) {
+                let cleanGsDisplay = primaryGs;
+                if (!cleanGsDisplay.startsWith('GS:') && !cleanGsDisplay.startsWith('LES:') && !cleanGsDisplay.startsWith('Area:') && !cleanGsDisplay.startsWith('Ch:')) {
+                    cleanGsDisplay = `GS: ${cleanGsDisplay}`;
+                }
+                rfGsHtml = `<div class="rf-gs filterable-badge" onclick="filterByQuickSearch('${escapeHtml(primaryGs.replace(/^(?:GS|LES|Area|Ch):\s*/i, ''))}')" title="Sök station">${escapeHtml(cleanGsDisplay)}</div>`;
+            }
+
+            const tdRfHtml = `
+                <td class="col-rf rf-cell">
+                    ${rfFreqHtml}
+                    ${rfSnrHtml}
+                    ${rfModHtml}
+                    ${rfGsHtml}
+                </td>
+            `;
+
+            // -------------------------------------------------------------
+            // KOLUMN 4: ENHET / ALIAS (width: 135px)
+            // -------------------------------------------------------------
+            const nameToDisplay = alarm.alias ? alarm.alias : (displayAddress || alarm.address || '-');
+            const editBtnHtml = `<button type="button" class="alias-edit-icon-btn" onclick="openAliasModal('${escapeHtml(alarm.address)}')" title="Redigera alias för ${escapeHtml(alarm.address)}"><i class="fas fa-pen"></i></button>`;
+
+            let subFlightReg = '';
+            if (flightVal && regVal) {
+                subFlightReg = `${escapeHtml(flightVal)} · ${escapeHtml(regVal)}`;
+            } else if (flightVal) {
+                subFlightReg = `${escapeHtml(flightVal)}`;
+            } else if (regVal) {
+                subFlightReg = `${escapeHtml(regVal)}`;
+            }
+
+            let srcSubHtml = subFlightReg ? `<div class="src-sub filterable-badge" onclick="filterByQuickSearch('${escapeHtml(flightVal || regVal)}')" title="Sök ${escapeHtml(subFlightReg)}">${subFlightReg}</div>` : '';
+            let srcIcaoHtml = icaoVal ? `<div class="src-icao filterable-badge" onclick="filterByQuickSearch('${escapeHtml(icaoVal)}')" title="Sök ICAO: ${escapeHtml(icaoVal)}">ICAO: ${escapeHtml(icaoVal)}</div>` : '';
+
+            let acftType = alarm.aircraft_type || (decodedFields && decodedFields.aircraft_type) || (alarm.metadata && (alarm.metadata.aircraft_type || alarm.metadata.model || alarm.metadata.ac_model)) || hfdlModelVal || '';
+            if (acftType && !acftType.toLowerCase().startsWith('airbus') && !acftType.toLowerCase().startsWith('boeing') && decodedFields && decodedFields.is_fault_report) {
+                acftType = `Airbus ${acftType}`;
+            }
+            let srcAcftHtml = acftType ? `<div class="src-acft" title="Flygplanstyp">${escapeHtml(acftType)}</div>` : '';
+
+            if (protoName === 'POCSAG' && alarm.alias && alarm.address) {
+                srcSubHtml = `<div class="src-sub" style="color: #64748b; font-weight: normal;">Capcode: ${escapeHtml(alarm.address)}</div>`;
+            } else if (protoName === 'SONDE' && alarm.address) {
+                srcSubHtml = `<div class="src-sub" style="color: #10b981;">Sond: ${escapeHtml(alarm.address)}</div>`;
+            }
+
+            const tdSourceHtml = `
+                <td class="col-source source-cell">
+                    <div class="src-header">
+                        <span class="src-name filterable-badge" onclick="filterByCapcode('${escapeHtml(displayAddress)}', '${escapeHtml(alarm.address)}')" title="Klicka för att filtrera">${escapeHtml(nameToDisplay)}</span>
+                        ${editBtnHtml}
+                    </div>
+                    ${srcSubHtml}
+                    ${srcIcaoHtml}
+                    ${srcAcftHtml}
+                </td>
+            `;
+
+            // -------------------------------------------------------------
+            // KOLUMN 5: MEDDELANDE / TELEMETRI (Flex Layout Zon A + Zon B)
+            // -------------------------------------------------------------
+            let text = decodeMimeWordsInText(String(cleanMsg || ''))
+                .replace(/<CR><LF>/gi, '\n')
+                .replace(/[\u{1F4AC}\u{1F4AD}\u{1F5E8}]\s*/gu, '');
+            let bodyText = text;
+            let rawText = '';
+            const matchIndex = text.search(/(?:\r?\n| \| )Rådata:/i);
+            if (matchIndex !== -1) {
+                bodyText = text.substring(0, matchIndex).trim();
+                rawText = text.substring(matchIndex).replace(/^(?:\r?\n| \| )?Rådata:\s*/i, '').trim();
+            } else {
+                const fallbackIdx = text.search(/\bRådata:/i);
+                if (fallbackIdx !== -1) {
+                    bodyText = text.substring(0, fallbackIdx).trim();
+                    rawText = text.substring(fallbackIdx).replace(/^Rådata:\s*/i, '').trim();
+                }
+            }
+
+            // HFDL-stationslistor avskiljs till expanderbar box
+            const allMsgLines = bodyText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+            const nonHfdlLines = [];
+            const hfdlStationLines = [];
+            for (const line of allMsgLines) {
+                if (/^(?:Hörd GS:|Lyssnar GS:)/i.test(line)) {
+                    hfdlStationLines.push(line);
                 } else {
-                    let pills = [];
-                    if (decodedFields.report_type) {
-                        pills.push(`<span class="badge meta badge-report-type" title="Rapporttyp">${escapeHtml(decodedFields.report_type)}</span>`);
+                    nonHfdlLines.push(line);
+                }
+            }
+            bodyText = nonHfdlLines.join('\n');
+
+            let hfdlActionBtn = '';
+            let hfdlDetailsBox = '';
+            if (hfdlStationLines.length > 0) {
+                const totalStations = hfdlStationLines.length;
+                hfdlActionBtn = `<button type="button" class="btn-tech" onclick="toggleHfdlDetails(this)" title="Visa eller dölj detaljerade markstationsfrekvenser">Markstationsdetaljer (${totalStations} st)</button>`;
+                const formattedStationLines = hfdlStationLines.map(sl => {
+                    const esc = escapeHtml(sl);
+                    const isHeard = /^Hörd GS:/i.test(sl);
+                    const icon = isHeard ? '<i class="fas fa-check-circle" style="color: #10b981; margin-right: 5px;"></i>' : '<i class="fas fa-headphones" style="color: #64748b; margin-right: 5px;"></i>';
+                    return `<div class="hfdl-gs-row">${icon}${esc}</div>`;
+                }).join('');
+                hfdlDetailsBox = `
+                    <div class="hfdl-toggle-wrapper" style="width: 100%; margin-top: 4px;">
+                        <div class="hfdl-details-box" style="display: none; background: rgba(15, 23, 42, 0.4); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 3px; padding: 6px 10px; font-family: Consolas, monospace; font-size: 10px;">
+                            ${formattedStationLines}
+                        </div>
+                    </div>
+                `;
+            }
+
+            let rawActionBtn = '';
+            let rawBoxHtml = '';
+            if (rawText) {
+                rawActionBtn = `<button type="button" class="btn-tech btn-raw" onclick="toggleRawData(this)" title="Visa eller dölj rådata">&lt;/&gt; Rådata</button>`;
+                rawBoxHtml = `<div class="raw-data-box" style="display: none;">${escapeHtml(rawText)}</div>`;
+            }
+
+            // Rubrikextraktion
+            let extractedTitle = '';
+            const titlePrefixMatch = bodyText.match(/^\[([^\]\n]+)\]\s*/);
+            if (titlePrefixMatch) {
+                extractedTitle = titlePrefixMatch[1].toUpperCase().replace(/[\u{1F4AC}\u{1F4AD}\u{1F5E8}]/gu, '').trim();
+                bodyText = bodyText.substring(titlePrefixMatch[0].length).trim();
+            } else {
+                if (protoName === 'POCSAG') extractedTitle = 'POCSAG MEDDELANDE';
+                else if (protoName === 'HFDL') extractedTitle = 'HFDL DATALÄNK';
+                else if (protoName === 'VDL2') extractedTitle = 'VDL2 FLYGMEDDELANDE';
+                else if (protoName === 'ACARS') extractedTitle = 'VHF ACARS MEDDELANDE';
+                else if (protoName === 'SATC') extractedTitle = 'INMARSAT STD-C';
+                else if (protoName === 'SONDE') extractedTitle = 'RADIOSOND TELEMETRI';
+                else if (protoName === 'TETRA') extractedTitle = 'TETRA MEDDELANDE';
+                else extractedTitle = `${protoName} MEDDELANDE`;
+            }
+
+            // Taggar i Zon A
+            let tagsList = [];
+            if (labelVal) {
+                let shortLabel = labelDescVal ? labelDescVal.split('/')[0].trim().replace('-rapport','').replace('rapport','').trim() : '';
+                tagsList.push(`<span class="msg-label filterable-badge" onclick="filterByLabel('${escapeHtml(labelVal)}')" title="ACARS Label: ${escapeHtml(labelVal)}">Label: ${escapeHtml(labelVal)}${shortLabel ? ' (' + escapeHtml(shortLabel) + ')' : ''}</span>`);
+            }
+
+            // Zon B Key-Value Parsning
+            let emptyKeys = [];
+            let kvItems = [];
+
+            if (protoName === 'POCSAG') {
+                const pLines = bodyText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+                for (const line of pLines) {
+                    const colonIdx = line.indexOf(':');
+                    if (colonIdx !== -1) {
+                        const k = line.substring(0, colonIdx).trim();
+                        const v = line.substring(colonIdx + 1).trim();
+                        if (!v) {
+                            emptyKeys.push(`${k} :`);
+                        } else {
+                            if (/^(?:Ä\s*Id|Ärende\s*nr|Ärende\s*id)$/i.test(k)) {
+                                tagsList.push(`<span class="msg-label pocsag-id">${escapeHtml(k)} : ${escapeHtml(v)}</span>`);
+                            } else if (v.length >= 60) {
+                                kvItems.push({ key: k.toUpperCase(), val: v, fullText: true, wide: false });
+                            } else {
+                                kvItems.push({ key: k.toUpperCase(), val: v, fullText: false, wide: false });
+                            }
+                        }
+                    } else {
+                        if (pLines.length === 1 && line.length <= 15) {
+                            kvItems.push({ key: 'PAYLOAD', val: line, fullText: false, wide: false });
+                        } else {
+                            kvItems.push({ key: '', val: line, fullText: true, wide: false });
+                        }
                     }
-                    if (decodedFields.eta) {
-                        pills.push(`<span class="badge meta badge-eta" title="Beräknad ankomsttid (ETA)"><i class="fas fa-plane-arrival"></i> ETA: ${escapeHtml(decodedFields.eta)}</span>`);
+                }
+            } else if (decodedFields && typeof decodedFields === 'object' && (decodedFields.is_warning || decodedFields.type_code === 'WRN')) {
+                extractedTitle = 'ECAM COCKPIT VARNING';
+                kvItems.push({ key: 'VARNING', val: decodedFields.fault_text || 'ECAM Warning', fullText: false, wide: true });
+                if (decodedFields.pnr) kvItems.push({ key: 'PNR', val: decodedFields.pnr, fullText: false, wide: false });
+                if (decodedFields.warning_code) kvItems.push({ key: 'VARNINGSKOD', val: decodedFields.warning_code, fullText: false, wide: false });
+            } else if (decodedFields && typeof decodedFields === 'object' && (decodedFields.is_fault_report || decodedFields.type_code === 'FLR')) {
+                extractedTitle = 'ARINC 624 UNDERHÅLLSRAPPORT';
+                kvItems.push({ key: 'FELKOMPONENT', val: decodedFields.fault_desc || 'Teknisk felrapport', fullText: false, wide: true });
+                if (decodedFields.aircraft_type) kvItems.push({ key: 'FLYGPLAN', val: 'Airbus ' + decodedFields.aircraft_type, fullText: false, wide: false });
+                if (decodedFields.origin && decodedFields.destination) kvItems.push({ key: 'RUTT', val: `${decodedFields.origin} → ${decodedFields.destination}`, fullText: false, wide: false });
+                if (decodedFields.affected) kvItems.push({ key: 'BERÖRDA SYSTEM', val: Array.isArray(decodedFields.affected) ? decodedFields.affected.join(', ') : decodedFields.affected, fullText: false, wide: true });
+                if (decodedFields.pnr) kvItems.push({ key: 'PNR', val: decodedFields.pnr, fullText: false, wide: false });
+                if (decodedFields.flight_time_utc) kvItems.push({ key: 'FLYG TID', val: `${decodedFields.flight_time_utc} UTC`, fullText: false, wide: false });
+            } else {
+                const sLines = bodyText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+                for (const line of sLines) {
+                    if (line.includes('Pilotmeddelande:')) {
+                        const pMsg = line.replace(/^.*?Pilotmeddelande:\s*/i, '');
+                        kvItems.push({ key: 'PILOTMEDDELANDE', val: pMsg, fullText: true, wide: false });
+                        continue;
                     }
-                    if (decodedFields.altitude_str) {
-                        pills.push(`<span class="badge meta badge-alt" title="Höjd (Altitude)"><i class="fas fa-arrows-alt-v"></i> Höjd: ${escapeHtml(decodedFields.altitude_str)}</span>`);
-                    }
-                    if (decodedFields.pos_str) {
-                        pills.push(`<span class="badge meta badge-coord" title="Position">${escapeHtml(decodedFields.pos_str)}</span>`);
-                    }
-                    if (decodedFields.oooi_desc) {
-                        pills.push(`<span class="badge meta badge-oooi" title="OOOI-händelse">${escapeHtml(decodedFields.oooi_desc)}</span>`);
-                    }
-                    if (decodedFields.airport) {
-                        pills.push(`<span class="badge meta badge-station" title="Flygplats">${escapeHtml(decodedFields.airport)}</span>`);
-                    }
-                    if (pills.length > 0) {
-                        decodedFieldsHtml = `<div class="decoded-fields-container"><div class="decoded-fields-label">Avkodade fält:</div><div class="decoded-fields-pills">${pills.join('')}</div></div>`;
+                    const segments = line.split(/\s*\|\s*/);
+                    for (const seg of segments) {
+                        const s = seg.trim();
+                        if (!s) continue;
+                        const cM = s.match(/^([A-Za-zåäöÅÄÖ0-9_\s/()\-]+?):\s*(.+)$/);
+                        if (cM) {
+                            const k = cM[1].trim();
+                            const v = cM[2].trim();
+                            const isWide = /Paketstatistik|Hörda markstationer|Tillgängliga|Rutt|Route|Berörda/i.test(k);
+                            const isFull = v.length >= 80;
+                            kvItems.push({ key: k.toUpperCase(), val: v, fullText: isFull, wide: isWide });
+                        } else {
+                            kvItems.push({ key: '', val: s, fullText: true, wide: false });
+                        }
                     }
                 }
             }
 
-            // -------------------------------------------------------------
-            // Visuell Hierarki: 2. Viktiga Händelsetaggar (Event Badges)
-            // -------------------------------------------------------------
-            const eventBadges = [];
+            // Trigger & duplikat i Zon A
+            if (satcPriorityVal && ['DISTRESS', 'URGENCY', 'SAFETY'].includes(satcPriorityVal.toUpperCase())) {
+                tagsList.push(`<span class="msg-label alert-tag">PRIO: ${escapeHtml(satcPriorityVal.toUpperCase())}</span>`);
+            }
+            if (hasAlert && matchedWord) {
+                tagsList.push(`<span class="msg-label alert-tag">TRIGGER: ${escapeHtml(matchedWord.toUpperCase())}</span>`);
+            }
             if (alarm.is_duplicate) {
-                eventBadges.push(`<span class="badge warning meta">Duplicate</span>`);
+                tagsList.push(`<span class="msg-label" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border-color: rgba(245, 158, 11, 0.4);">DUPLICATE</span>`);
             }
             if (alarm.repeat_count && alarm.repeat_count > 1) {
-                eventBadges.push(`<span class="badge repeat-badge meta" title="Repeated ${alarm.repeat_count} times">${alarm.repeat_count}x</span>`);
+                tagsList.push(`<span class="msg-label" style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border-color: rgba(56, 189, 248, 0.4);">${alarm.repeat_count}x</span>`);
             }
 
-            let labelBadgeText = '';
-            if (labelVal) {
-                labelBadgeText = labelVal;
-                if (labelDescVal) {
-                    let shortDesc = labelDescVal.split('/')[0].trim().replace('-rapport', '').replace('rapport', '').trim();
-                    labelBadgeText = `${labelVal} (${shortDesc})`;
+            // Rendera kvItems
+            const kvBoxesHtml = kvItems.map(item => {
+                const kEsc = item.key ? escapeHtml(item.key) : '';
+                const vEsc = highlightMessage(escapeHtml(item.val));
+                if (item.fullText) {
+                    return `<div class="kv-box full-text">${kEsc ? `<span class="data-k">${kEsc}</span>` : ''}<div class="data-v">${vEsc}</div></div>`;
+                } else if (item.wide) {
+                    return `<div class="kv-box wide"><span class="data-k">${kEsc}</span><span class="data-v">${vEsc}</span></div>`;
+                } else {
+                    return `<div class="kv-box"><span class="data-k">${kEsc}</span><span class="data-v">${vEsc}</span></div>`;
                 }
-                eventBadges.push(`<span class="badge meta badge-label" title="ACARS Label">Label: ${escapeHtml(labelBadgeText)}</span>`);
+            }).join('');
+
+            let emptyKeysHtml = '';
+            if (emptyKeys.length > 0) {
+                emptyKeysHtml = `<div class="empty-keys">Tomma nycklar i sändning: ${emptyKeys.map(k => `<span>${escapeHtml(k)}</span>`).join('')}</div>`;
             }
 
-            // Redundanskontroll: Visa flyg/reg endast om de INTE redan finns under ALIAS eller ADDR
-            const cleanDisplayUpper = (displayAddress + ' ' + (alarm.alias || '')).toUpperCase();
-            const isRegRedundant = regVal && cleanDisplayUpper.includes(regVal.toUpperCase());
-            const isFlightRedundant = flightVal && cleanDisplayUpper.includes(flightVal.toUpperCase());
-
-            if (flightVal && !isFlightRedundant) {
-                eventBadges.push(`<span class="badge meta badge-flight" title="Flight / Callsign">${escapeHtml(flightVal)}</span>`);
-            }
-            if (regVal && !isRegRedundant) {
-                eventBadges.push(`<span class="badge meta badge-reg" title="Registrering">${escapeHtml(regVal)}</span>`);
-            }
-            if (funcTag) {
-                eventBadges.push(funcTag);
-            }
-            if (rawToggleBadge) {
-                eventBadges.push(rawToggleBadge);
+            // Minikarta
+            let activeMinimapHtml = '';
+            if (universalCoords) {
+                const latNum = universalCoords.lat;
+                const lonNum = universalCoords.lon;
+                activeMinimapHtml = `<div class="msg-minimap-container" id="minimap-${alarm.id}" data-lat="${latNum}" data-lon="${lonNum}" data-msg-id="${alarm.id}" data-proto="${escapeHtml(protoName)}" onclick="zoomMinimap('${alarm.id}', ${latNum}, ${lonNum}, event)" title="Geografisk position: ${latNum.toFixed(4)}, ${lonNum.toFixed(4)} - Klicka för stor karta"></div>`;
             }
 
-            const metaBarBadges = eventBadges.join('');
-            const eventBadgesHtml = eventBadges.length > 0 ? `<div class="msg-badges msg-event-badges">${eventBadges.join('')}</div>` : '';
-
-            // -------------------------------------------------------------
-            // Visuell Hierarki: 3. Dämpad Teknisk Telemetrirad (Muted Telemetry Line)
-            // -------------------------------------------------------------
-            const telemetryItems = [];
-            if (alarm.frequency) {
-                telemetryItems.push(`<span class="telemetry-item" title="Frekvens">${escapeHtml(alarm.frequency)}</span>`);
-            }
-            if (snrVal) {
-                const snrClean = String(snrVal).replace(/^SNR:\s*/i, '').trim();
-                telemetryItems.push(`<span class="telemetry-item" title="Signal-brusförhållande">SNR ${escapeHtml(snrClean)}</span>`);
-            }
-            if (alarm.bitrate && alarm.bitrate.toUpperCase() !== protoName.toUpperCase()) {
-                telemetryItems.push(`<span class="telemetry-item" title="Överföringsläge / modulering">${escapeHtml(alarm.bitrate)}</span>`);
-            }
-            if (icaoVal) {
-                telemetryItems.push(`<span class="telemetry-item" title="ICAO-adress">ICAO: ${escapeHtml(icaoVal)}</span>`);
-            }
-            const primaryStation = stationVal || alarm.station || alarm.dst_airport;
-            if (primaryStation) {
-                telemetryItems.push(`<span class="telemetry-item" title="Markstation / Destination">To: ${escapeHtml(primaryStation)}</span>`);
-            }
-
-            const telemetryLineHtml = telemetryItems.length > 0 ? `<div class="msg-telemetry-line">${telemetryItems.join('<span class="telemetry-sep">•</span>')}</div>` : '';
-
-            tr.innerHTML = `
-                <td class="id-cell">${alarm.id}</td>
-                <td class="ts-cell" data-order="${alarm.timestamp}">${formattedTime}</td>
-                <td class="meta-cell"><div class="meta-wrapper">${protoTag}</div></td>
-                <td class="addr-cell">
-                    <span class="badge" title="${escapeHtml(alarm.address)}" onclick="openAliasModal('${escapeHtml(alarm.address)}')">${escapeHtml(displayAddress)}</span>
+            const tdMsgHtml = `
+                <td class="col-msg msg-cell message-cell">
+                    <div class="msg-layout">
+                        <div class="msg-main">
+                            <div class="msg-top">
+                                <div class="msg-title-group">
+                                    <span class="msg-title">${escapeHtml(extractedTitle)}</span>
+                                    ${tagsList.join('')}
+                                </div>
+                                <div class="msg-actions">
+                                    ${hfdlActionBtn}
+                                    ${rawActionBtn}
+                                </div>
+                            </div>
+                            <div class="data-flex">
+                                ${kvBoxesHtml}
+                            </div>
+                            ${emptyKeysHtml}
+                            ${hfdlDetailsBox}
+                            ${rawBoxHtml}
+                        </div>
+                        ${activeMinimapHtml}
+                    </div>
                 </td>
-                <td class="msg-cell"><div class="msg-content-wrapper"><div class="msg-text msg-summary">${msgObj.summaryHtml}</div>${decodedFieldsHtml}${rawBoxHtml}${eventBadgesHtml}${telemetryLineHtml}</div></td>
+            `;
 
-                <td class="hit-cell">${hitBadge}</td>
-                <td class="actions-cell">
+            // -------------------------------------------------------------
+            // KOLUMN 6: VAL / ÅTGÄRDER (width: 38px)
+            // -------------------------------------------------------------
+            const tdActHtml = `
+                <td class="col-act actions-cell">
                     <div class="actions-wrapper">
-                        <button class="copy-btn" onclick="copyMessageText(this)" title="Copy message">
+                        <button class="copy-btn" onclick="copyMessageText(this)" title="Kopiera meddelande">
                             <i class="fas fa-copy"></i>
                         </button>
                         <div class="btn-divider"></div>
-                        <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Unlock (Allow pruning)' : 'Lock (Protect from pruning)'}">
+                        <button class="lock-btn ${alarm.is_protected ? 'locked' : ''}" onclick="toggleLock(${alarm.id}, this)" title="${alarm.is_protected ? 'Lås upp (tillåt rensning)' : 'Lås (skydda mot rensning)'}">
                             <i class="fas ${alarm.is_protected ? 'fa-lock' : 'fa-lock-open'}"></i>
                         </button>
                         <div class="btn-divider"></div>
-                        <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Delete message">
+                        <button class="delete-btn" onclick="deleteMessage(${alarm.id}, this)" title="Ta bort meddelande">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </div>
                 </td>
             `;
+
+            tr.innerHTML = `${tdTsHtml}${tdProtoHtml}${tdRfHtml}${tdSourceHtml}${tdMsgHtml}${tdActHtml}`;
+
+            if (activeMinimapHtml) {
+                const mapEl = tr.querySelector('.msg-minimap-container');
+                if (mapEl) {
+                    registerMinimap(mapEl);
+                }
+            }
+
             return tr;
         }
 
@@ -1545,7 +2133,7 @@
             dataTable = $('#alarmsTable').DataTable({
                 stateSave: true,
                 stateDuration: 60 * 60 * 24 * 365, // Persist table settings (page length, sort order, search) for 1 year
-                order: [[1, 'desc']], // Sort by timestamp descending
+                order: [[0, 'desc']], // Sort by timestamp descending
                 pageLength: 50,
                 lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
                 autoWidth: false,
@@ -1565,13 +2153,12 @@
                     }
                 },
                 columnDefs: [
-                    { targets: 0, className: 'col-id id-cell' },
-                    { targets: 1, className: 'col-time ts-cell' },
-                    { targets: 2, className: 'col-meta meta-cell' },
-                    { targets: 3, className: 'col-addr addr-cell' },
-                    { targets: 4, className: 'col-msg msg-cell' },
-                    { targets: 5, className: 'col-hit hit-cell' },
-                    { targets: 6, className: 'col-actions actions-cell', orderable: false, searchable: false }
+                    { targets: 0, className: 'col-ts ts-cell' },
+                    { targets: 1, className: 'col-proto proto-cell' },
+                    { targets: 2, className: 'col-rf rf-cell' },
+                    { targets: 3, className: 'col-source source-cell' },
+                    { targets: 4, className: 'col-msg msg-cell message-cell' },
+                    { targets: 5, className: 'col-act actions-cell', orderable: false, searchable: false }
                 ]
             });
 

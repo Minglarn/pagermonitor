@@ -505,10 +505,11 @@
             border-color: var(--accent);
             box-shadow: 0 0 10px var(--accent-glow);
         }
-        .preset-btn {
+        .preset-btn,
+        .btn-preset {
             background: rgba(255, 255, 255, 0.05);
-            color: var(--text-secondary);
-            border: 1px solid var(--panel-border);
+            color: var(--text-secondary, #94a3b8);
+            border: 1px solid var(--panel-border, #1f2937);
             border-radius: 8px;
             padding: 0.45rem 0.85rem;
             font-size: 0.8rem;
@@ -516,16 +517,62 @@
             cursor: pointer;
             transition: all 0.2s ease;
             user-select: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
         }
-        .preset-btn:hover {
+        .preset-btn:hover,
+        .btn-preset:hover {
             background: rgba(56, 189, 248, 0.15);
-            color: var(--accent);
-            border-color: var(--accent);
+            color: var(--accent, #38bdf8);
+            border-color: var(--accent, #38bdf8);
         }
-        .preset-btn.active {
-            background: var(--accent);
-            color: #ffffff;
-            border-color: var(--accent);
+        .preset-btn.active,
+        .btn-preset.active {
+            background: var(--accent, #0ea5e9) !important;
+            color: #ffffff !important;
+            border-color: var(--accent, #0ea5e9) !important;
+            box-shadow: 0 0 10px var(--accent-glow, rgba(14, 165, 233, 0.3));
+        }
+
+        [data-theme="light"] .preset-btn,
+        [data-theme="light"] .btn-preset {
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+        }
+        [data-theme="light"] .preset-btn:hover,
+        [data-theme="light"] .btn-preset:hover {
+            background: #e2e8f0;
+            color: var(--accent-vibrant, #0284c7);
+            border-color: var(--accent-vibrant, #0284c7);
+        }
+        [data-theme="light"] .preset-btn.active,
+        [data-theme="light"] .btn-preset.active {
+            background: var(--accent-vibrant, #0284c7) !important;
+            color: #ffffff !important;
+            border-color: var(--accent-vibrant, #0284c7) !important;
+            box-shadow: 0 2px 8px rgba(2, 132, 199, 0.25);
+        }
+
+        .chart-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            min-height: 250px;
+            color: var(--text-secondary, #64748b);
+            font-size: 0.85rem;
+            font-weight: 500;
+            text-align: center;
+            padding: 1.5rem;
+        }
+        .chart-empty-state i {
+            font-size: 2rem;
+            margin-bottom: 0.65rem;
+            opacity: 0.45;
         }
     </style>
 </head>
@@ -629,14 +676,14 @@
 
                     <section class="glass-panel">
                         <h2 id="alertHitsTitle">Alert Word Hits</h2>
-                        <div style="height: 300px;">
+                        <div id="alertHitsContainer" style="height: 300px; position: relative;">
                             <canvas id="alertHitsChart"></canvas>
                         </div>
                     </section>
 
                     <section class="glass-panel">
                         <h2 id="freqHitsTitle">Activity per Frequency</h2>
-                        <div style="height: 300px;">
+                        <div id="freqHitsContainer" style="height: 300px; position: relative;">
                             <canvas id="freqHitsChart"></canvas>
                         </div>
                     </section>
@@ -645,10 +692,10 @@
                 <section class="glass-panel" style="margin-top: 1.5rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
                         <h2 id="activityChartTitle" style="margin: 0;">Activity Distribution</h2>
-                        <div class="preset-buttons" style="margin: 0;">
-                            <button type="button" class="btn btn-preset active" id="btnViewTotal" onclick="setActivityView('total')">Total</button>
-                            <button type="button" class="btn btn-preset" id="btnViewProtocol" onclick="setActivityView('protocol')">Per Protocol</button>
-                            <button type="button" class="btn btn-preset" id="btnViewFrequency" onclick="setActivityView('frequency')">Per Frequency</button>
+                        <div class="preset-buttons" style="margin: 0; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                            <button type="button" class="preset-btn active" id="btnViewTotal" onclick="setActivityView('total')">Total</button>
+                            <button type="button" class="preset-btn" id="btnViewProtocol" onclick="setActivityView('protocol')">Per Protocol</button>
+                            <button type="button" class="preset-btn" id="btnViewFrequency" onclick="setActivityView('frequency')">Per Frequency</button>
                         </div>
                     </div>
                     <div style="height: 340px;">
@@ -718,44 +765,84 @@
             satIcon.classList.add('extreme-pulse');
         };
 
+        // Theme helper for charts
+        function getChartThemeColors() {
+            const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+            return {
+                isLight,
+                textColor: isLight ? '#1e293b' : '#e2e8f0',
+                textSecondary: isLight ? '#475569' : '#94a3b8',
+                gridColor: isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)',
+                barPrimaryBg: isLight ? 'rgba(2, 132, 199, 0.75)' : 'rgba(56, 189, 248, 0.6)',
+                barPrimaryBorder: isLight ? '#0284c7' : '#38bdf8',
+                barPurpleBg: isLight ? 'rgba(147, 51, 234, 0.75)' : 'rgba(168, 85, 247, 0.6)',
+                barPurpleBorder: isLight ? '#7e22ce' : '#a855f7'
+            };
+        }
+
+        let countPerDayChartInstance = null;
+        let alertHitsChartInstance = null;
+        let freqHitsChartInstance = null;
+        let activityChart = null;
+        let currentActivityData = null;
+        let currentActivityView = 'total';
+
         // Render global charts
-        async function renderGlobalCharts() {
+        async function renderGlobalCharts(startParam, endParam) {
             try {
-                // Count per day
+                const theme = getChartThemeColors();
+                const startVal = (typeof startParam === 'string' && startParam) ? startParam : (document.getElementById('startDate')?.value || '');
+                const endVal = (typeof endParam === 'string' && endParam) ? endParam : (document.getElementById('endDate')?.value || startVal);
+
+                // 1. Messages per Day (30d)
                 const perDay = await fetchJSON('/api/stats/count-per-day');
-                if (perDay.length > 0) {
+                if (perDay && perDay.length > 0) {
                     const dayLabels = perDay.map(d => d.day);
                     const dayCounts = perDay.map(d => d.count);
-                    new Chart(document.getElementById('countPerDayChart'), {
-                        type: 'bar',
-                        data: {
-                            labels: dayLabels,
-                            datasets: [{
-                                label: 'Messages count',
-                                data: dayCounts,
-                                backgroundColor: 'rgba(56, 189, 248, 0.6)',
-                                borderColor: 'rgba(56, 189, 248, 1)',
-                                borderWidth: 1,
-                                borderRadius: 4
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { display: false }
+                    if (countPerDayChartInstance) {
+                        countPerDayChartInstance.destroy();
+                        countPerDayChartInstance = null;
+                    }
+                    const countCanvas = document.getElementById('countPerDayChart');
+                    if (countCanvas) {
+                        countPerDayChartInstance = new Chart(countCanvas, {
+                            type: 'bar',
+                            data: {
+                                labels: dayLabels,
+                                datasets: [{
+                                    label: 'Messages count',
+                                    data: dayCounts,
+                                    backgroundColor: theme.barPrimaryBg,
+                                    borderColor: theme.barPrimaryBorder,
+                                    borderWidth: 1,
+                                    borderRadius: 4
+                                }]
                             },
-                            scales: {
-                                y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
-                                x: { grid: { display: false } }
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        grid: { color: theme.gridColor },
+                                        ticks: { color: theme.textSecondary }
+                                    },
+                                    x: {
+                                        grid: { display: false },
+                                        ticks: { color: theme.textSecondary }
+                                    }
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
 
-                // Alert hits
-                const dateQuery = (startDate && endDate) ? `?start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}` : '';
-                const periodLabel = (startDate && endDate) ? (startDate === endDate ? ` (${startDate})` : ` (${startDate} - ${endDate})`) : '';
+                // 2. Alert hits
+                const dateQuery = (startVal && endVal) ? `?start=${encodeURIComponent(startVal)}&end=${encodeURIComponent(endVal)}` : '';
+                const periodLabel = (startVal && endVal) ? (startVal === endVal ? ` (${startVal})` : ` (${startVal} - ${endVal})`) : '';
 
                 const alertTitleElem = document.getElementById('alertHitsTitle');
                 if (alertTitleElem) alertTitleElem.innerText = `Alert Word Hits${periodLabel}`;
@@ -763,77 +850,154 @@
                 const freqTitleElem = document.getElementById('freqHitsTitle');
                 if (freqTitleElem) freqTitleElem.innerText = `Activity per Frequency${periodLabel}`;
 
+                const alertContainer = document.getElementById('alertHitsContainer');
                 const alertHits = await fetchJSON(`/api/stats/alert-hits${dateQuery}`);
                 if (alertHitsChartInstance) {
                     alertHitsChartInstance.destroy();
                     alertHitsChartInstance = null;
                 }
-                if (alertHits.length > 0) {
-                    const alertLabels = alertHits.map(a => a.word);
-                    const alertCounts = alertHits.map(a => a.hits);
-                    alertHitsChartInstance = new Chart(document.getElementById('alertHitsChart'), {
-                        type: 'doughnut',
-                        data: {
-                            labels: alertLabels,
-                            datasets: [{
-                                data: alertCounts,
-                                backgroundColor: alertLabels.map((_, i) => `hsl(${i * 60}, 70%, 60%)`),
-                                borderWidth: 0
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: { position: 'right', labels: { color: '#e2e8f0' } }
-                            }
+
+                // Filtrera bort larmord med 0 träffar
+                const activeAlerts = (alertHits || []).filter(a => a.hits > 0);
+
+                if (activeAlerts.length === 0) {
+                    if (alertContainer) {
+                        alertContainer.innerHTML = `
+                            <div class="chart-empty-state">
+                                <i class="fas fa-bell-slash"></i>
+                                <div>Inga larmordsträffar för vald period</div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    if (alertContainer) {
+                        alertContainer.innerHTML = '<canvas id="alertHitsChart"></canvas>';
+                    }
+                    let finalAlerts = [];
+                    if (activeAlerts.length > 8) {
+                        finalAlerts = activeAlerts.slice(0, 7);
+                        const otherSum = activeAlerts.slice(7).reduce((acc, curr) => acc + curr.hits, 0);
+                        if (otherSum > 0) {
+                            finalAlerts.push({ word: 'Övriga', hits: otherSum });
                         }
-                    });
+                    } else {
+                        finalAlerts = activeAlerts;
+                    }
+
+                    const alertLabels = finalAlerts.map(a => a.word);
+                    const alertCounts = finalAlerts.map(a => a.hits);
+                    const alertColors = [
+                        '#ef4444', '#f97316', '#f59e0b', '#10b981', '#06b6d4',
+                        '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#6366f1'
+                    ];
+
+                    const alertCanvas = document.getElementById('alertHitsChart');
+                    if (alertCanvas) {
+                        alertHitsChartInstance = new Chart(alertCanvas, {
+                            type: 'doughnut',
+                            data: {
+                                labels: alertLabels,
+                                datasets: [{
+                                    data: alertCounts,
+                                    backgroundColor: alertLabels.map((_, i) => alertColors[i % alertColors.length]),
+                                    borderColor: theme.isLight ? '#ffffff' : '#0f172a',
+                                    borderWidth: 2
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'right',
+                                        labels: {
+                                            color: theme.textColor,
+                                            font: { size: 12, family: 'Inter, sans-serif' },
+                                            boxWidth: 12,
+                                            padding: 10
+                                        }
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            label: function(context) {
+                                                const val = context.parsed || 0;
+                                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                                const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                                                return ` ${context.label}: ${val} (${pct}%)`;
+                                            }
+                                        }
+                                    }
+                                },
+                                cutout: '60%'
+                            }
+                        });
+                    }
                 }
 
-                // Frequency hits
+                // 3. Frequency hits
+                const freqContainer = document.getElementById('freqHitsContainer');
                 const freqHits = await fetchJSON(`/api/stats/freq-hits${dateQuery}`);
                 if (freqHitsChartInstance) {
                     freqHitsChartInstance.destroy();
                     freqHitsChartInstance = null;
                 }
-                if (freqHits.length > 0) {
-                    const freqLabels = freqHits.map(f => f.frequency);
-                    const freqCounts = freqHits.map(f => f.hits);
-                    freqHitsChartInstance = new Chart(document.getElementById('freqHitsChart'), {
-                        type: 'bar',
-                        data: {
-                            labels: freqLabels,
-                            datasets: [{
-                                label: 'Messages',
-                                data: freqCounts,
-                                backgroundColor: 'rgba(168, 85, 247, 0.6)',
-                                borderColor: 'rgba(168, 85, 247, 1)',
-                                borderWidth: 1
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            indexAxis: 'y',
-                            plugins: { legend: { display: false } },
-                            scales: {
-                                x: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
-                                y: { grid: { display: false } }
+
+                const activeFreqs = (freqHits || []).filter(f => f.hits > 0).slice(0, 10);
+
+                if (activeFreqs.length === 0) {
+                    if (freqContainer) {
+                        freqContainer.innerHTML = `
+                            <div class="chart-empty-state">
+                                <i class="fas fa-broadcast-tower"></i>
+                                <div>Ingen frekvensaktivitet för vald period</div>
+                            </div>
+                        `;
+                    }
+                } else {
+                    if (freqContainer) {
+                        freqContainer.innerHTML = '<canvas id="freqHitsChart"></canvas>';
+                    }
+                    const freqLabels = activeFreqs.map(f => f.frequency);
+                    const freqCounts = activeFreqs.map(f => f.hits);
+                    const freqCanvas = document.getElementById('freqHitsChart');
+                    if (freqCanvas) {
+                        freqHitsChartInstance = new Chart(freqCanvas, {
+                            type: 'bar',
+                            data: {
+                                labels: freqLabels,
+                                datasets: [{
+                                    label: 'Messages',
+                                    data: freqCounts,
+                                    backgroundColor: theme.barPurpleBg,
+                                    borderColor: theme.barPurpleBorder,
+                                    borderWidth: 1,
+                                    borderRadius: 4
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                indexAxis: 'y',
+                                plugins: { legend: { display: false } },
+                                scales: {
+                                    x: {
+                                        beginAtZero: true,
+                                        grid: { color: theme.gridColor },
+                                        ticks: { color: theme.textSecondary }
+                                    },
+                                    y: {
+                                        grid: { display: false },
+                                        ticks: { color: theme.textColor, font: { weight: 500 } }
+                                    }
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
                 }
             } catch (err) {
                 console.error('Error rendering global charts:', err);
             }
         }
-
-        let alertHitsChartInstance = null;
-        let freqHitsChartInstance = null;
-        let activityChart = null;
-        let currentActivityData = null;
-        let currentActivityView = 'total';
 
         const PROTO_COLORS = {
             'POCSAG': { border: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)' },
@@ -869,6 +1033,7 @@
 
         function renderActivityChart() {
             if (!currentActivityData) return;
+            const theme = getChartThemeColors();
             const mode = currentActivityData.mode;
             let chartLabels = [];
             let datasets = [];
@@ -889,16 +1054,21 @@
                 } else {
                     chartCounts = (currentActivityData.data || []).map(d => d.count);
                 }
+                const lineColor = theme.isLight ? '#0284c7' : '#38bdf8';
+                const fillColor = mode === 'hours'
+                    ? (theme.isLight ? 'rgba(2, 132, 199, 0.15)' : 'rgba(56, 189, 248, 0.15)')
+                    : (theme.isLight ? 'rgba(2, 132, 199, 0.75)' : 'rgba(56, 189, 248, 0.6)');
+
                 datasets.push({
                     label: 'Alla meddelanden',
                     data: chartCounts,
-                    borderColor: '#38bdf8',
-                    backgroundColor: mode === 'hours' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.6)',
+                    borderColor: lineColor,
+                    backgroundColor: fillColor,
                     fill: true,
                     tension: 0.35,
                     borderRadius: mode === 'hours' ? 0 : 4,
                     pointRadius: mode === 'hours' ? 4 : 0,
-                    pointBackgroundColor: '#38bdf8'
+                    pointBackgroundColor: lineColor
                 });
             } else if (currentActivityView === 'protocol') {
                 const byProto = currentActivityData.by_protocol || {};
@@ -907,7 +1077,10 @@
                     return Array.isArray(arr) && arr.some(v => v > 0);
                 });
                 protoNames.forEach(proto => {
-                    const cInfo = PROTO_COLORS[proto] || { border: '#e2e8f0', bg: 'rgba(226, 232, 240, 0.15)' };
+                    const cInfo = PROTO_COLORS[proto] || {
+                        border: theme.textColor,
+                        bg: theme.isLight ? 'rgba(0, 0, 0, 0.08)' : 'rgba(226, 232, 240, 0.15)'
+                    };
                     datasets.push({
                         label: proto,
                         data: byProto[proto],
@@ -967,7 +1140,7 @@
                             display: showLegend,
                             position: 'top',
                             labels: {
-                                color: '#e2e8f0',
+                                color: theme.textColor,
                                 usePointStyle: true,
                                 boxWidth: 8,
                                 font: { size: 12, family: 'Inter, sans-serif' }
@@ -975,11 +1148,35 @@
                         }
                     },
                     scales: {
-                        y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.08)' } },
-                        x: { grid: { display: false } }
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: theme.gridColor },
+                            ticks: { color: theme.textSecondary }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: theme.textSecondary }
+                        }
                     }
                 }
             });
+        }
+
+        // Observer for live theme changes
+        if (typeof MutationObserver !== 'undefined') {
+            const themeObserver = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'data-theme') {
+                        const sVal = document.getElementById('startDate')?.value;
+                        const eVal = document.getElementById('endDate')?.value;
+                        renderGlobalCharts(sVal, eVal);
+                        if (currentActivityData) {
+                            renderActivityChart();
+                        }
+                    }
+                });
+            });
+            themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
         }
 
         function formatDateISO(dateObj) {

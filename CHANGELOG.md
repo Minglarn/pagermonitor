@@ -5,6 +5,45 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.18.3] - UI-fix för Statistik: Temafärger, Diagramrendering och Knappdesign
+
+- **Fix för Ljust/Mörkt Tema i Diagram ([templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Dynamiska temafärger via `getChartThemeColors()` som anpassar textfärg (`#1e293b` i ljust läge / `#e2e8f0` i mörkt läge), stödlinjer (`rgba(0, 0, 0, 0.08)` / `rgba(255, 255, 255, 0.08)`) och staplar/linjer.
+  - Åtgärdat oläslig ljusgrå/vit text mot vit bakgrund i ljust läge.
+  - Lagt till `MutationObserver` på `document.documentElement` (`data-theme`) så alla diagram automatiskt uppdateras vid temaväxling i realtid.
+- **Fix för Munkdiagram & Datumfiltrering ([templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Åtgärdat bugg där `[object HTMLInputElement]` visades i rubriker och skickades till API:et i stället för faktiska datumsträngar.
+  - Filtrerat bort inaktiva larmord (`hits === 0`) så att munkdiagrammet ritas tydligt och inte kvävs av en överfull legend i 300px-behållaren.
+  - Lagt till elegant tomt tillstånd (`chart-empty-state`) när inga larmordsträffar eller frekvenser hittas för vald period.
+  - Grupperat larmord till topp 7 + "Övriga" vid fler än 8 träffar för ren layout.
+- **Tematillhörighet för Vyknappar ([templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Uppdaterat knapparna för `Total`, `Per Protocol` och `Per Frequency` till klassen `.preset-btn` med fullt stöd för mörkt och ljust läge så att de matchar datumväljarens knappar.
+
+## [2026.10.18.2] - Industriell UI/UX-omstrukturering av Händelsetabellen (Wireshark/C2-stil)
+
+- **Ny Strikt 6-kolumners Tabellstruktur (`table-layout: fixed`) ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - **1. TID / # (`width: 92px`)**:
+    - Rad 1: Tid (`HH:MM:SS`) i fet monospace (`12px`).
+    - Rad 2: Datum (`YYYY-MM-DD`) i grå monospace (`10px`).
+    - Rad 3: Meddelande-ID (`#XXXXXX`) i dämpad monospace (`10px`).
+  - **2. PROTOKOLL (`width: 72px`)**:
+    - Skarp `4px solid` vänsterkant (`border-left`) på varje rad färgkodad per protokoll: VDL2/ACARS (`#0284c7`), HFDL (`#d97706`), SAT-C (`#4f46e5`), POCSAG (`#16a34a`), SONDE (`#10b981`), TETRA (`#06b6d4`), RDS (`#d97706`).
+    - Rektangulär badge (`54px`, `border-radius: 2px`, centrerad monospace `10px`, bold).
+  - **3. RF / KANAL (`width: 125px`)**:
+    - Utbruten radiometadata: Frekvens (fet monospace), SNR (grön/orange monospace beroende på signalstyrka), Modulation/hastighet, och Markstation/GS.
+  - **4. ENHET / ALIAS (`width: 135px`)**:
+    - Alias / Flygbolagsnamn i fetstil med redigera-knapp `[penna]` synlig vid rad-hover.
+    - Flight och registrering (`Flight · Reg`), ICAO-adress och fullständig flygplanstyp.
+  - **5. MEDDELANDE / TELEMETRI (`width: auto`)**:
+    - Flex-layout (`.msg-layout`) med `.msg-main` och 88x62px interaktiv minikarta till höger vid position.
+    - **Zon A (Header Bar `.msg-top`)**: Meddelandetyp/rubrik i versaler + Label/Ä Id-brickor + `TRIGGER: [ORD]` vid larmordsträff + tekniska knappar (`.btn-tech`) för Markstationer och Rådata.
+    - **Zon B (Telemetri & Data `.data-flex`)**: Flex-grid med `.kv-box` (versal etikett `.data-k` och fet mono `.data-v`), breda fält (`.kv-box.wide`) och fulltextrutor (`.kv-box.full-text`).
+    - **POCSAG Smart Key-Value**: Fält med värden extraheras till `.kv-box`, tomma nycklar bevaras och samlas i `.empty-keys` ("Tomma nycklar i sändning: Ort :, Best : ...").
+  - **6. VAL / ÅTGÄRDER (`width: 38px`)**:
+    - Kompakt vertikal uppställning av åtgärdsknappar: Kopiera, Lås och Radera.
+- **Noll Dataförlust & Totalförbud mot Emojis**:
+  - Samtliga befintliga funktioner (filtrering, snabbsök, interaktiva modaler, markstationsdetaljer, Leaflet-kartor och aliasredigering) fungerar fullt ut utan informationsbortfall.
+
 ## [2026.10.18.1] - Statistik per Protokoll & Frekvens, Avdelare & Telemetriläsbarhet, samt MQTT-larmparitet
 
 - **Statistikdiagram per Protokoll & Frekvens ([templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:

@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.18.1`
+- **CalVer**: `2026.10.18.3`
 - **Date**: 2026-10-18
 - **Language**: English / Swedish
 
@@ -9,7 +9,57 @@
 
 ## Overview of Implemented Features
 
-### 000000. Statistik per Protokoll & Frekvens, Avdelare & Telemetriläsbarhet, samt MQTT-larmparitet (v2026.10.18.1)
+### 000000. UI-fix för Statistik: Temafärger, Diagramrendering och Knappdesign (v2026.10.18.3)
+- **Bakgrund och Problem**:
+  - I ljust tema (`data-theme="light"`) var diagramtexter, skalor och legender nästan osynliga (mycket ljusgrå/vit text `#e2e8f0` mot vit bakgrund).
+  - Titlarna för "Alert Word Hits" och "Activity per Frequency" visade `([object HTMLInputElement] - [object HTMLInputElement])` på grund av felaktigt refererade globala element istället för datumsträngar.
+  - Munkdiagrammet (doughnut chart) för larmord syntes inte: dels på grund av ogiltig datumquery i anropet, dels för att backend returnerade alla larmord (även de med 0 hits), vilket fick legend-listan att tränga ut munkdiagrammet helt i den 300px höga behållaren.
+  - Knapparna för `Total`, `Per Protocol` och `Per Frequency` saknade temastyling och visades som omoddade råa webbläsarknappar.
+- **Implementerade Förbättringar**:
+  1. **Dynamiska Temafärger i Chart.js ([templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+     - Lagt till hjälpfunktionen `getChartThemeColors()` som automatiskt läser av `data-theme` och returnerar anpassade färgprofiler:
+       - Ljust tema: Mörk text (`#1e293b`), dämpade ticks (`#475569`), subtila rutnätslinjer (`rgba(0, 0, 0, 0.08)`) samt distinkta kontrastfärger på staplar och linjer (`#0284c7`).
+       - Mörkt tema: Ljusa texter (`#e2e8f0` / `#94a3b8`) och mörka rutnätslinjer (`rgba(255, 255, 255, 0.08)`).
+     - Applicerat färgprofilerna på samtliga diagram: `countPerDayChart`, `alertHitsChart`, `freqHitsChart` och `countPerHourChart`.
+     - Lagt till `MutationObserver` som detekterar temaändringar i realtid och omedelbart renderar om alla diagram med korrekt färgpalett utan att kräva sidomladdning.
+  2. **Korrigerad Datumhantering & Munkdiagramrendering ([templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+     - Säkrat `renderGlobalCharts(startParam, endParam)` så att den tar emot rena datumsträngar och inte faller tillbaka på DOM-inputelement.
+     - Filtrerat bort alla larmord med 0 träffar (`hits === 0`) innan diagrammet ritas.
+     - Grupperat larmord till de 7 mest aktiva + "Övriga" om fler än 8 ord har träffar, vilket garanterar att munkdiagrammet alltid har gott om utrymme i behållaren.
+     - Lagt till ett snyggt tomt läge (`.chart-empty-state`) med ikon och meddelande om inga träffar finns för vald period.
+     - Samma tomma läge och filtrering implementerat för frekvensaktivitetsdiagrammet.
+  3. **Temastyling för Aktivitetsknappar ([templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+     - Uppdaterat knapparna för `Total`, `Per Protocol` och `Per Frequency` till klassen `.preset-btn` och lagt till fullständig styling i både mörkt och ljust läge så att de matchar datumfiltrets knappar.
+- **Verifiering**:
+  - Samtliga 135 enhetstester passerar med grönt utfall (`Ran 135 tests in 3.095s, OK`).
+  - Totalförbud mot emojis har upprätthållits.
+
+### 000001. Industriell UI/UX-omstrukturering av Händelsetabellen (Wireshark/C2-stil) (v2026.10.18.2)
+- **Bakgrund och Mål**:
+  - Skapa ett strikt, industriellt och operativt gränssnitt inspirerat av Wireshark och militära/taktiska ledningscentraler (C2-logg) med maximal läsbarhet, hög densitet och noll visuell röra.
+  - Totalförbud mot emojis över hela applikationen och i alla etiketter.
+  - Noll dataförlust: Alla befintliga funktioner, minikartor, modaler, markstationsdetaljer och telemetrivärden ska bevaras och fungera.
+- **Implementerade Förbättringar**:
+  1. **6 Fasta Kolumner (`table-layout: fixed`) ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+     - **Kolumn 1: TID / # (`width: 92px`)**: Rad 1: Tid (`HH:MM:SS`, fet mono 12px), Rad 2: Datum (`YYYY-MM-DD`, grå mono 10px), Rad 3: Meddelande-ID (`#XXXXXX`, dämpad mono 10px). Sorteringsordning fallande via `data-order`.
+     - **Kolumn 2: PROTOKOLL (`width: 72px`)**: Rektangulär badge (`54px`, `border-radius: 2px`, mono 10px bold). Skarp `4px solid border-left` färgkodad per protokoll (VDL2/ACARS `#0284c7`, HFDL `#d97706`, SAT-C `#4f46e5`, POCSAG `#16a34a`, SONDE `#10b981`, TETRA `#06b6d4`, RDS `#d97706`).
+     - **Kolumn 3: RF / KANAL (`width: 125px`)**: Radioteknisk metadata utbruten från meddelanderutan: Frekvens (fet mono), SNR (färgkodad mono), Modulation/hastighet och Markstation/GS.
+     - **Kolumn 4: ENHET / ALIAS (`width: 135px`)**: Fetstilt alias/flygbolagsnamn med `[penna]` redigeringsknapp synlig vid row-hover, `Flight · Reg` i blå mono, ICAO-kod samt flygplanstyp.
+     - **Kolumn 5: MEDDELANDE / TELEMETRI (`width: auto`)**:
+       - Flex-layout (`.msg-layout`) med `.msg-main` till vänster och interaktiv minikarta (88x62px) till höger vid position.
+       - **Zon A (Header Bar `.msg-top`)**: Meddelanderubrik i versaler + Label/Ä Id-brickor + `TRIGGER: [ORD]` vid larmordsträff + tekniska knappar för Markstationer och Rådata.
+       - **Zon B (Innehåll / Telemetri `.data-flex`)**: Flex-grid med `.kv-box` (versal etikett `.data-k` och fet mono `.data-v`), breda statistikblock (`.kv-box.wide`) och fulltextrutor (`.kv-box.full-text`).
+       - **POCSAG Smart Key-Value**: Värden extraheras till `.kv-box`, tomma nycklar bevaras och visas kompakt i `.empty-keys` ("Tomma nycklar i sändning: Ort :, Best : ...").
+     - **Kolumn 6: VAL / ÅTGÄRDER (`width: 38px`)**: Kompakta vertikala knappar för Kopiera, Lås och Radera.
+  2. **Interaktivitet & Paritet i Hela Gränssnittet**:
+     - Både huvudsidan ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html)) och larmsidan ([templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html)) delar nu samma 6-kolumnsstruktur.
+     - Snabbsök och filtrering fungerar genom klick på protokoll, frekvens, anrop eller markstation.
+     - Klick på minikartor öppnar den fullstora interaktiva kartmodalen med OpenStreetMap och OpenSeaMap.
+- **Verifiering**:
+  - Samtliga 135 enhetstester passerar med 100% grönt utfall.
+  - Verifierat att 0 emojis förekommer i HTML, CSS eller JavaScript.
+
+### 000001. Statistik per Protokoll & Frekvens, Avdelare & Telemetriläsbarhet, samt MQTT-larmparitet (v2026.10.18.1)
 - **Bakgrund och Problem**:
   - Statistikdiagrammet för aktivitetsfördelning ("Activity Distribution" / "Hourly Distribution") visade enbart en sammanlagd linje och saknade möjlighet att bryta ner trafiken per radioprotokoll eller per frekvens.
   - Diagrammen "Activity per Frequency" och "Alert Word Hits" i statistikvyn respekterade inte det valda datumintervallet (de visade statisk global data).

@@ -584,36 +584,24 @@ class TestSatCReceiver(unittest.TestCase):
         self.assertIn('leaflet.js', index_html)
 
         # 2. Minikarta markup och CSS
-        self.assertIn('msg-minimap-cell', index_html)
         self.assertIn('msg-minimap-container', index_html)
-        self.assertIn('msg-row-layout', index_html)
-        self.assertIn('msg-main-content', index_html)
-        self.assertIn('msg-badges', index_html)
-        self.assertIn('metaBarBadges', index_html)
-        self.assertIn('.msg-minimap-cell', style_css)
+        self.assertIn('msg-layout', index_html)
+        self.assertIn('msg-main', index_html)
         self.assertIn('.msg-minimap-container', style_css)
-        self.assertIn('.msg-row-layout', style_css)
-        self.assertIn('.msg-main-content', style_css)
+        self.assertIn('.msg-layout', style_css)
+        self.assertIn('.msg-main', style_css)
 
-        # 2b. Låsning av pillren längst ner (margin-top: auto) och vertikal flex-kolumn
-        self.assertIn('flex-direction: column', style_css)
-        self.assertIn('margin-top: auto', style_css)
+        # 2b. Zon A och Zon B
+        self.assertIn('msg-top', index_html)
+        self.assertIn('data-flex', index_html)
+        self.assertIn('.msg-top', style_css)
+        self.assertIn('.data-flex', style_css)
 
-        # 2c. Avdelad minikarta med vertikal linje och kvadratisk ruta med marginaler
-        self.assertIn('white-space: normal !important;', index_html)
-        self.assertIn('padding: 0 !important;', index_html)
-        self.assertIn('height: 1px !important;', index_html)
-        self.assertIn('align-self: stretch !important;', style_css.split('.msg-minimap-cell {')[1])
-        self.assertIn('border-left', style_css.split('.msg-minimap-cell {')[1])
-        self.assertIn('border-radius: 6px !important;', index_html)
-        self.assertIn('border-radius: 6px !important;', style_css)
-        self.assertIn('width: 130px !important;', style_css.split('.msg-minimap-container {')[1])
-        self.assertIn('height: 115px !important;', style_css.split('.msg-minimap-container {')[1])
+        # 2c. Minikarta kompakt 88x62px och border-radius
+        self.assertIn('width: 88px', style_css)
+        self.assertIn('height: 62px', style_css)
         self.assertIn('style.css?v={{ app_version }}', index_html)
-        self.assertRegex(index_html, r'const msgCellInner = `<div class="msg-row-layout">')
-        self.assertNotIn('const msgCellInner = `\n', index_html)
-        self.assertNotIn('white-space: pre-wrap;', style_css.split('.msg-cell {')[2])
-        self.assertIn('white-space: normal;', style_css.split('.msg-cell {')[2])
+        self.assertIn('white-space: normal;', style_css.split('.msg-cell {')[1])
 
         # 3. Flödespaus
         self.assertIn('hoverPausePill', index_html)
