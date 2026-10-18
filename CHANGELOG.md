@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.18.9] - Remake av RF Activity Panel till Telemetri-instrument
+
+- **Avskalad och Ren Instrument Header ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/waterfall.css](file:///d:/antigravity/pager-monitor/static/waterfall.css))**:
+  - Hela headern är klickbar (`cursor: pointer;`, `onclick="toggleActivityRibbon()"`) för att öppna och stänga panelen.
+  - Sorteringsknappar och filterrensning i `.inst-controls` isolerade med `event.stopPropagation()`.
+  - Tre rena KPI-boxar: `TOTALT: X msgs`, `TAKT: X.X msg/min` (60 min rullande takt) samt `AKTIVA KANALER: X / Y`.
+  - Kollapsindikator med `[^ DÖLJ]` och `[v VISA]`.
+  - Kollapsat tillstånd döljer `.inst-body` och `.inst-controls` medan headern förblir fullt synlig.
+- **Fast Tabellhuvud och Scrollbar Kanallista (8 kolumner) ([static/waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js), [static/waterfall.css](file:///d:/antigravity/pager-monitor/static/waterfall.css))**:
+  - Exakt 10 frekvensrader synliga i viewporten (`height: 360px; max-height: 360px; overflow-y: scroll;` och `36px` rader).
+  - 8 standardiserade kolumner: `VAL`, `PROTO`, `FREKVENS`, `MOTTAGARE / KANAL`, `TIDSLINJE`, `SENAST`, `MSG/MIN`, `VOLYM (1H)`.
+  - Rektangulära protokollbadges och matchande 4px vänsterkant på raden för systemets protokoll (`HFDL`, `VDL2`, `SAT-C`, `POCSAG`, `SONDE`, `ACARS`, `TETRA`, `RDS`, `AFSK`).
+  - Intensitetsfärgade staplar: `.heat-low` (1-2 msg/min, blå), `.heat-med` (3-5 msg/min, amber), `.heat-burst` (>= 6 msg/min, röd spik).
+  - Tysta kanaler (0 msgs på 60 min): `.is-silent` med röd kant, dämpad röd bakgrund, badge `TYST 1H` och spårtext `INGA MEDDELANDEN MOTTAGNA SENASTE 60 MIN`.
+  - Mottagningstakt i `Consolas` (`X.X msg/m`) och horisontell 4px volymindikator.
+- **Sortering och Filterhantering ([static/waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js))**:
+  - Stöd för `HÖGST -> 0 MSGS`, `TYSTA (0) FÖRST` samt `FREKVENS`.
+  - Sorteringsval persisteras i `localStorage`.
+  - Full bakåtkompatibilitet med dashboardens flerval och tabellfiltrering.
+
 ## [2026.10.18.8] - Avkodning av Airbus CFDIU/CMS Tekniska Fel- och Varningsrapporter (Label H1)
 
 - **Uppdaterad ECAM Cockpit Warning-parser (`WRN/PN`) ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:

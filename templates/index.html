@@ -1257,41 +1257,52 @@
 
             <!-- Activity Ribbon / Radio Waterfall (Collapsed by default, saved in localStorage) -->
             <div class="activity-ribbon-panel collapsed" id="activityRibbonPanel">
-                <div class="ribbon-header">
-                    <div class="ribbon-title-group">
-                        <i class="fas fa-wave-square ribbon-icon"></i>
-                        <span class="ribbon-title">RF Activity</span>
-                        <span class="ribbon-subtitle">Last 60 minutes</span>
-                        <span class="ribbon-live-pill"><span class="ribbon-pulse-dot"></span>Live</span>
+                <div class="inst-header" onclick="toggleActivityRibbon()">
+                    <div class="inst-left">
+                        <span class="inst-live-pill"><span class="inst-pulse-dot"></span>LIVE</span>
+                        <span class="inst-title">RF ACTIVITY MONITOR</span>
+                        <span class="inst-subtitle">60 MIN</span>
+                        <div class="kpi-group">
+                            <span class="kpi-box">TOTALT: <strong id="wfKpiTotal">0 msgs</strong></span>
+                            <span class="kpi-box">TAKT: <strong id="wfKpiRate">0.0 msg/min</strong></span>
+                            <span class="kpi-box">AKTIVA KANALER: <strong id="wfKpiActive">0 / 0</strong></span>
+                        </div>
                     </div>
-                    <div class="ribbon-channel-summary" id="ribbonChannelSummary">
-                        <!-- Dynamic channel summary pills -->
-                    </div>
-                    <div class="ribbon-actions">
-                        <button class="ribbon-clear-btn" id="ribbonClearFilterBtn" onclick="window.WaterfallManager && window.WaterfallManager.clearAllFilters()" title="Rensa alla valda kanalfilter" style="display: none;">
-                            <i class="fas fa-times-circle"></i>
-                            <span id="ribbonClearFilterText">Rensa filter</span>
-                        </button>
-                        <button class="ribbon-toggle-btn" id="ribbonToggleBtn" onclick="toggleActivityRibbon()" title="Toggle RF Activity Ribbon">
-                            <i class="fas fa-chevron-down" id="ribbonToggleIcon"></i>
-                            <span class="ribbon-toggle-label">Show</span>
-                        </button>
+                    <div class="inst-right">
+                        <div class="inst-controls" onclick="event.stopPropagation()">
+                            <div class="inst-sort-group">
+                                <button type="button" class="inst-btn sort-btn active" id="wfSortCount" data-sort="count" onclick="window.WaterfallManager && window.WaterfallManager.setSort('count')">HÖGST -&gt; 0 MSGS</button>
+                                <button type="button" class="inst-btn sort-btn" id="wfSortSilent" data-sort="silent" onclick="window.WaterfallManager && window.WaterfallManager.setSort('silent')">TYSTA (0) FÖRST</button>
+                                <button type="button" class="inst-btn sort-btn" id="wfSortFreq" data-sort="freq" onclick="window.WaterfallManager && window.WaterfallManager.setSort('freq')">FREKVENS</button>
+                            </div>
+                            <button type="button" class="inst-btn filter-btn" id="ribbonClearFilterBtn" onclick="window.WaterfallManager && window.WaterfallManager.clearAllFilters()" style="display: none;">
+                                [Rensa filter]
+                            </button>
+                        </div>
+                        <span class="collapse-indicator" id="wfCollapseIndicator">[v VISA]</span>
                     </div>
                 </div>
-                <div class="ribbon-body" id="ribbonBody">
-                    <div class="waterfall-channels" id="waterfallChannels">
-                        <!-- Dynamic channel waterfall rows -->
-                    </div>
-                    <div class="waterfall-timeline-scale">
-                        <div class="timeline-label-col"></div>
-                        <div class="timeline-scale-ticks">
-                            <span>-60 min</span>
-                            <span>-45 min</span>
-                            <span>-30 min</span>
-                            <span>-15 min</span>
-                            <span class="scale-now">Now</span>
+                <div class="inst-body" id="ribbonBody">
+                    <div class="wf-head">
+                        <div class="wf-th wf-th-val">VAL</div>
+                        <div class="wf-th wf-th-proto">PROTO</div>
+                        <div class="wf-th wf-th-freq">FREKVENS</div>
+                        <div class="wf-th wf-th-rx">MOTTAGARE / KANAL</div>
+                        <div class="wf-th wf-th-time">
+                            <div class="time-ticks">
+                                <span>-60 min</span>
+                                <span>-45 min</span>
+                                <span>-30 min</span>
+                                <span>-15 min</span>
+                                <span class="time-now">NU (0m)</span>
+                            </div>
                         </div>
-                        <div class="timeline-count-col"></div>
+                        <div class="wf-th wf-th-last">SENAST</div>
+                        <div class="wf-th wf-th-rate">MSG/MIN</div>
+                        <div class="wf-th wf-th-vol">VOLYM (1H)</div>
+                    </div>
+                    <div class="wf-scroll-viewport" id="waterfallChannels">
+                        <!-- Dynamic channel rows (.ch-row) -->
                     </div>
                 </div>
             </div>

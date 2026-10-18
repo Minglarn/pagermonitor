@@ -1,28 +1,21 @@
 /**
- * Waterfall & Activity Ribbon Manager (PagerMonitor v2.0)
+ * Waterfall & Activity Ribbon Manager (PagerMonitor)
  * Strictly NO emojis.
- * Visualizes live 60-minute RF channel activity across SDR receivers with high-FPS canvas.
+ * RF Activity Monitor: 60-minute rolling telemetry instrument with sorting, 
+ * intensity heatbars, rate counters and collapsible header.
  */
 
 window.WaterfallManager = (function () {
-    let channels = {}; // Key: channelKey -> { id, name, frequency, bins: [60], lastMinuteIndex, lastSeen }
+    let channels = {}; // Key: channelKey -> { id, name, frequency, protocol, bins: [60], total60m: 0, lastSeen: null }
     let sdrInstances = [];
     let isCollapsed = false;
     let onFilterCallback = null;
     let activeFilterChannels = new Set();
     let rollTimer = null;
-    let tooltipEl = null;
+    let renderDebounceTimer = null;
+    let currentSort = localStorage.getItem('pagermonitor-wf-sort') || 'count';
 
     const BIN_COUNT = 60; // 60 minutes rolling history
-
-    function initTooltip() {
-        if (!tooltipEl) {
-            tooltipEl = document.createElement('div');
-            tooltipEl.className = 'waterfall-tooltip';
-            tooltipEl.id = 'waterfallTooltip';
-            document.body.appendChild(tooltipEl);
-        }
-    }
 
     function getMinuteBinIndex(timestampDate, now) {
         const diffMs = now.getTime() - timestampDate.getTime();
@@ -31,15 +24,16 @@ window.WaterfallManager = (function () {
         return (BIN_COUNT - 1) - diffMinutes; // 59 is current minute, 0 is 59 mins ago
     }
 
-    function createChannelObj(id, name, frequency) {
+    function createChannelObj(id, name, frequency, protocol) {
         const bins = [];
         for (let i = 0; i < BIN_COUNT; i++) {
-            bins.push({ total: 0, alerts: 0, duplicates: 0, pulse: 0 });
+            bins.push({ total: 0, alerts: 0, duplicates: 0 });
         }
         return {
             id: id,
             name: name || frequency || 'Receiver',
             frequency: frequency || 'Unknown',
+            protocol: protocol || null,
             bins: bins,
             total60m: 0,
             lastSeen: null
@@ -62,16 +56,50 @@ window.WaterfallManager = (function () {
         return `freq_${normFreq.replace(/[^a-z0-9]/g, '_')}`;
     }
 
-    function registerChannel(sdrName, frequency) {
+    function detectChannelProtocol(ch) {
+        if (ch && ch.protocol) {
+            const p = String(ch.protocol).toUpperCase();
+            if (p.includes('HFDL')) return { name: 'HFDL', cls: 'proto-hfdl', borderCls: 'border-hfdl' };
+            if (p.includes('VDL')) return { name: 'VDL2', cls: 'proto-vdl2', borderCls: 'border-vdl2' };
+            if (p.includes('SATC') || p.includes('INMARSAT') || p.includes('SAT-C')) return { name: 'SAT-C', cls: 'proto-satc', borderCls: 'border-satc' };
+            if (p.includes('SONDE') || p.includes('RS41') || p.includes('DFM')) return { name: 'SONDE', cls: 'proto-sonde', borderCls: 'border-sonde' };
+            if (p.includes('ACARS')) return { name: 'ACARS', cls: 'proto-acars', borderCls: 'border-acars' };
+            if (p.includes('TETRA')) return { name: 'TETRA', cls: 'proto-tetra', borderCls: 'border-tetra' };
+            if (p.includes('RDS') || p.includes('TMC')) return { name: 'RDS', cls: 'proto-rds', borderCls: 'border-rds' };
+            if (p.includes('AFSK')) return { name: 'AFSK', cls: 'proto-afsk', borderCls: 'border-afsk' };
+            if (p.includes('POCSAG')) return { name: 'POCSAG', cls: 'proto-pocsag', borderCls: 'border-pocsag' };
+        }
+
+        const nameUpper = (ch && ch.name ? ch.name : '').toUpperCase();
+        const freqStr = String(ch && ch.frequency ? ch.frequency : '').trim();
+        const freqNum = parseFloat(freqStr.replace(/[^0-9.]/g, '')) || 0;
+
+        if (nameUpper.includes('HFDL')) return { name: 'HFDL', cls: 'proto-hfdl', borderCls: 'border-hfdl' };
+        if (nameUpper.includes('VDL') || (freqNum >= 136.5 && freqNum <= 137.0)) return { name: 'VDL2', cls: 'proto-vdl2', borderCls: 'border-vdl2' };
+        if (nameUpper.includes('SATC') || nameUpper.includes('INMARSAT') || (freqNum >= 1530 && freqNum <= 1560)) return { name: 'SAT-C', cls: 'proto-satc', borderCls: 'border-satc' };
+        if (nameUpper.includes('SONDE') || nameUpper.includes('BALLONG') || nameUpper.includes('RS41') || (freqNum >= 400 && freqNum <= 406)) return { name: 'SONDE', cls: 'proto-sonde', borderCls: 'border-sonde' };
+        if (nameUpper.includes('ACARS') || (freqNum >= 131.0 && freqNum <= 132.0)) return { name: 'ACARS', cls: 'proto-acars', borderCls: 'border-acars' };
+        if (nameUpper.includes('TETRA') || nameUpper.includes('RAKEL') || (freqNum >= 380 && freqNum <= 395)) return { name: 'TETRA', cls: 'proto-tetra', borderCls: 'border-tetra' };
+        if (nameUpper.includes('RDS') || nameUpper.includes('TMC') || freqStr.toLowerCase() === 'auto' || (freqNum >= 87.5 && freqNum <= 108.0)) return { name: 'RDS', cls: 'proto-rds', borderCls: 'border-rds' };
+        if (nameUpper.includes('AFSK') || (freqNum >= 144 && freqNum <= 146)) return { name: 'AFSK', cls: 'proto-afsk', borderCls: 'border-afsk' };
+        if (nameUpper.includes('POCSAG') || (freqNum >= 169 && freqNum <= 174)) return { name: 'POCSAG', cls: 'proto-pocsag', borderCls: 'border-pocsag' };
+
+        return { name: 'POCSAG', cls: 'proto-pocsag', borderCls: 'border-pocsag' };
+    }
+
+    function registerChannel(sdrName, frequency, protocol = null) {
         if (!frequency || frequency === 'Unknown' || frequency === 'RESTART') return null;
         const key = getChannelKey(frequency);
         const normFreq = normalizeFrequency(frequency);
 
         let matchedName = sdrName;
+        let matchedProto = protocol;
         const matchInst = sdrInstances.find(i => normalizeFrequency(i.frequency) === normFreq);
-        if (matchInst && matchInst.name) {
-            matchedName = matchInst.name;
+        if (matchInst) {
+            if (matchInst.name) matchedName = matchInst.name;
+            if (matchInst.protocol) matchedProto = matchInst.protocol;
         }
+
         if (!matchedName || matchedName === 'Unknown' || matchedName.startsWith('Freq ')) {
             if (matchInst && matchInst.name) {
                 matchedName = matchInst.name;
@@ -85,109 +113,238 @@ window.WaterfallManager = (function () {
         }
 
         if (!channels[key]) {
-            channels[key] = createChannelObj(key, matchedName, frequency);
-            renderChannelRows();
+            channels[key] = createChannelObj(key, matchedName, frequency, matchedProto);
+            scheduleRender();
         } else {
-            // Update to configured SDR name if previously generic
+            let changed = false;
             if (matchedName && !matchedName.startsWith('Freq ') && channels[key].name !== matchedName) {
                 channels[key].name = matchedName;
-                if (frequency && frequency !== 'Unknown') channels[key].frequency = frequency;
-                renderChannelRows();
+                changed = true;
             }
+            if (frequency && frequency !== 'Unknown' && channels[key].frequency !== frequency) {
+                channels[key].frequency = frequency;
+                changed = true;
+            }
+            if (matchedProto && !channels[key].protocol) {
+                channels[key].protocol = matchedProto;
+                changed = true;
+            }
+            if (changed) scheduleRender();
         }
         return channels[key];
     }
 
-    function renderChannelRows() {
-        const container = document.getElementById('waterfallChannels');
-        const summaryContainer = document.getElementById('ribbonChannelSummary');
-        if (!container) return;
-
-        container.innerHTML = '';
-        if (summaryContainer) summaryContainer.innerHTML = '';
-
-        Object.values(channels).forEach(ch => {
-            const isSelected = activeFilterChannels.has(ch.id);
-
-            // Render row in waterfall
-            const row = document.createElement('div');
-            row.className = 'channel-waterfall-row' + (isSelected ? ' active-filter' : '');
-            row.id = `waterfall-row-${ch.id}`;
-
-            row.innerHTML = `
-                <div class="channel-info-cell">
-                    <span class="channel-check-box" id="check-${ch.id}" title="${isSelected ? 'Avmarkera filter' : 'Filtrera på denna kanal'}"><i class="fas fa-check"></i></span>
-                    <div class="channel-indicator-dot" id="dot-${ch.id}"></div>
-                    <div class="channel-text">
-                        <span class="channel-name" title="${ch.name}">${ch.name}</span>
-                        <span class="channel-freq" id="freq-${ch.id}">${ch.frequency}</span>
-                    </div>
-                </div>
-                <div class="channel-canvas-cell">
-                    <canvas class="waterfall-canvas" id="canvas-${ch.id}" height="24"></canvas>
-                </div>
-                <div class="channel-stats-cell">
-                    <span id="count-${ch.id}"><strong>${ch.total60m}</strong> msgs</span>
-                </div>
-            `;
-
-            // Click row to toggle filter
-            row.addEventListener('click', (e) => {
-                toggleChannelFilter(ch);
-            });
-
-            container.appendChild(row);
-
-            // Setup canvas interactions & resizing
-            const canvas = row.querySelector('.waterfall-canvas');
-            setupCanvasInteraction(canvas, ch);
-
-            // Render summary pill in ribbon header
-            if (summaryContainer) {
-                const pill = document.createElement('div');
-                pill.className = 'ribbon-summary-pill' + (isSelected ? ' active-filter' : '');
-                pill.id = `summary-pill-${ch.id}`;
-                pill.innerHTML = `
-                    <span class="ribbon-summary-dot" id="summary-dot-${ch.id}"></span>
-                    <span>${ch.name}: <strong><span id="summary-count-${ch.id}">${ch.total60m}</span></strong></span>
-                `;
-                pill.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    toggleChannelFilter(ch);
-                });
-                summaryContainer.appendChild(pill);
+    function formatLastSeen(ch) {
+        if (!ch.total60m || ch.total60m === 0) {
+            return '<span class="badge-silent">TYST 1H</span>';
+        }
+        let lastActiveBinIdx = -1;
+        for (let i = BIN_COUNT - 1; i >= 0; i--) {
+            if (ch.bins[i].total > 0) {
+                lastActiveBinIdx = i;
+                break;
             }
+        }
+        if (lastActiveBinIdx === -1) {
+            return '<span class="badge-silent">TYST 1H</span>';
+        }
+        const minsAgo = (BIN_COUNT - 1) - lastActiveBinIdx;
+        if (minsAgo === 0) {
+            return '<span class="last-now">NU</span>';
+        }
+        return `${minsAgo}m sen`;
+    }
+
+    function renderTimeTrack(ch) {
+        if (!ch.total60m || ch.total60m === 0) {
+            return '<div class="time-track-empty">INGA MEDDELANDEN MOTTAGNA SENASTE 60 MIN</div>';
+        }
+
+        let peakInMin = 1;
+        for (let i = 0; i < BIN_COUNT; i++) {
+            if (ch.bins[i].total > peakInMin) peakInMin = ch.bins[i].total;
+        }
+        const maxScale = Math.max(6, peakInMin);
+
+        const now = new Date();
+        let barsHtml = '';
+        for (let i = 0; i < BIN_COUNT; i++) {
+            const bin = ch.bins[i];
+            const minutesAgo = (BIN_COUNT - 1) - i;
+            const binTime = new Date(now.getTime() - minutesAgo * 60000);
+            const timeStr = binTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            if (bin.total === 0) {
+                barsHtml += `<div class="wf-bar heat-empty" title="0 msgs (${timeStr})"></div>`;
+            } else {
+                const h = Math.max(4, Math.min(22, Math.round((bin.total / maxScale) * 22)));
+                let heatClass = 'heat-low';
+                if (bin.total >= 6) {
+                    heatClass = 'heat-burst';
+                } else if (bin.total >= 3) {
+                    heatClass = 'heat-med';
+                }
+                barsHtml += `<div class="wf-bar ${heatClass}" style="height: ${h}px;" title="${bin.total} msg${bin.total === 1 ? '' : 's'} (${timeStr})"></div>`;
+            }
+        }
+
+        return `<div class="time-track">${barsHtml}</div>`;
+    }
+
+    function getSortedChannels() {
+        const list = Object.values(channels);
+        if (currentSort === 'silent') {
+            // TYSTA (0) FÖRST
+            list.sort((a, b) => {
+                const aSilent = (a.total60m === 0) ? 0 : 1;
+                const bSilent = (b.total60m === 0) ? 0 : 1;
+                if (aSilent !== bSilent) return aSilent - bSilent;
+                if (a.total60m !== b.total60m) return a.total60m - b.total60m;
+                return a.name.localeCompare(b.name);
+            });
+        } else if (currentSort === 'freq') {
+            // FREKVENS (numerisk sortering)
+            list.sort((a, b) => {
+                const fa = parseFloat(String(a.frequency).replace(/[^0-9.]/g, '')) || 0;
+                const fb = parseFloat(String(b.frequency).replace(/[^0-9.]/g, '')) || 0;
+                if (fa !== fb) return fa - fb;
+                return a.name.localeCompare(b.name);
+            });
+        } else {
+            // Standard: HÖGST -> 0 MSGS
+            list.sort((a, b) => {
+                if (b.total60m !== a.total60m) return b.total60m - a.total60m;
+                return a.name.localeCompare(b.name);
+            });
+        }
+        return list;
+    }
+
+    function updateSortButtonsUI() {
+        const btnCount = document.getElementById('wfSortCount');
+        const btnSilent = document.getElementById('wfSortSilent');
+        const btnFreq = document.getElementById('wfSortFreq');
+
+        if (btnCount) btnCount.classList.toggle('active', currentSort === 'count');
+        if (btnSilent) btnSilent.classList.toggle('active', currentSort === 'silent');
+        if (btnFreq) btnFreq.classList.toggle('active', currentSort === 'freq');
+    }
+
+    function setSort(mode) {
+        if (!['count', 'silent', 'freq'].includes(mode)) return;
+        currentSort = mode;
+        localStorage.setItem('pagermonitor-wf-sort', mode);
+        updateSortButtonsUI();
+        renderChannelRows();
+    }
+
+    function updateHeaderKPIs() {
+        const chList = Object.values(channels);
+        let totalMsgs = 0;
+        let activeCount = 0;
+        const totalChannels = chList.length;
+
+        chList.forEach(ch => {
+            totalMsgs += (ch.total60m || 0);
+            if (ch.total60m > 0) activeCount++;
         });
 
-        updateFilterUI();
-        drawAllCanvases();
+        const rate = (totalMsgs / 60).toFixed(1);
+
+        const totalEl = document.getElementById('wfKpiTotal');
+        const rateEl = document.getElementById('wfKpiRate');
+        const activeEl = document.getElementById('wfKpiActive');
+
+        if (totalEl) totalEl.textContent = `${totalMsgs} msgs`;
+        if (rateEl) rateEl.textContent = `${rate} msg/min`;
+        if (activeEl) activeEl.textContent = `${activeCount} / ${totalChannels}`;
     }
 
     function updateFilterUI() {
         Object.values(channels).forEach(ch => {
-            const row = document.getElementById(`waterfall-row-${ch.id}`);
-            const pill = document.getElementById(`summary-pill-${ch.id}`);
+            const row = document.getElementById(`wf-row-${ch.id}`);
             const chk = document.getElementById(`check-${ch.id}`);
             const isSelected = activeFilterChannels.has(ch.id);
 
             if (row) row.classList.toggle('active-filter', isSelected);
-            if (pill) pill.classList.toggle('active-filter', isSelected);
-            if (chk) chk.title = isSelected ? 'Avmarkera filter' : 'Filtrera på denna kanal';
+            if (chk) chk.checked = isSelected;
         });
 
-        // Uppdatera rensaknappen i ribbongruppens åtgärdsfält
         const clearBtn = document.getElementById('ribbonClearFilterBtn');
-        const clearText = document.getElementById('ribbonClearFilterText');
         if (clearBtn) {
             if (activeFilterChannels.size > 0) {
                 clearBtn.style.display = 'inline-flex';
-                if (clearText) {
-                    clearText.textContent = `Rensa filter (${activeFilterChannels.size})`;
-                }
+                clearBtn.textContent = `[Rensa filter (${activeFilterChannels.size})]`;
             } else {
                 clearBtn.style.display = 'none';
             }
         }
+    }
+
+    function renderChannelRows() {
+        const container = document.getElementById('waterfallChannels');
+        if (!container) return;
+
+        updateHeaderKPIs();
+        updateSortButtonsUI();
+
+        const sortedList = getSortedChannels();
+        let maxTotal = 1;
+        sortedList.forEach(ch => {
+            if (ch.total60m > maxTotal) maxTotal = ch.total60m;
+        });
+
+        container.innerHTML = '';
+
+        sortedList.forEach(ch => {
+            const isSelected = activeFilterChannels.has(ch.id);
+            const protoInfo = detectChannelProtocol(ch);
+            const isSilent = (ch.total60m === 0);
+            const rateStr = (ch.total60m / 60).toFixed(1) + ' msg/m';
+            const volPercent = Math.min(100, Math.round((ch.total60m / maxTotal) * 100));
+            const lastSeenHtml = formatLastSeen(ch);
+            const timeTrackHtml = renderTimeTrack(ch);
+
+            const row = document.createElement('div');
+            row.className = `ch-row ${protoInfo.borderCls} ${isSilent ? 'is-silent' : ''} ${isSelected ? 'active-filter' : ''}`;
+            row.id = `wf-row-${ch.id}`;
+
+            row.innerHTML = `
+                <div class="col-val" onclick="event.stopPropagation()">
+                    <input type="checkbox" class="ch-checkbox" id="check-${ch.id}" ${isSelected ? 'checked' : ''} onchange="window.WaterfallManager.toggleChannelFilterById('${ch.id}')" title="${isSelected ? 'Avmarkera filter' : 'Filtrera på denna kanal'}">
+                </div>
+                <div class="col-proto">
+                    <span class="wf-proto-badge ${protoInfo.cls}">${protoInfo.name}</span>
+                </div>
+                <div class="col-freq" title="${ch.frequency}">${ch.frequency}</div>
+                <div class="col-rx" title="${ch.name}">${ch.name}</div>
+                <div class="col-time">${timeTrackHtml}</div>
+                <div class="col-last">${lastSeenHtml}</div>
+                <div class="col-rate">${rateStr}</div>
+                <div class="col-vol">
+                    <span class="vol-num">${ch.total60m} msgs</span>
+                    <div class="vol-meter">
+                        <div class="vol-meter-fill" style="width: ${volPercent}%;"></div>
+                    </div>
+                </div>
+            `;
+
+            row.addEventListener('click', () => {
+                toggleChannelFilter(ch);
+            });
+
+            container.appendChild(row);
+        });
+
+        updateFilterUI();
+    }
+
+    function scheduleRender() {
+        if (renderDebounceTimer) return;
+        renderDebounceTimer = setTimeout(() => {
+            renderDebounceTimer = null;
+            renderChannelRows();
+        }, 80);
     }
 
     function toggleChannelFilter(ch) {
@@ -202,6 +359,13 @@ window.WaterfallManager = (function () {
 
         if (onFilterCallback) {
             onFilterCallback(activeFilterChannels);
+        }
+    }
+
+    function toggleChannelFilterById(channelId) {
+        const ch = channels[channelId];
+        if (ch) {
+            toggleChannelFilter(ch);
         }
     }
 
@@ -236,11 +400,11 @@ window.WaterfallManager = (function () {
         let rawBitrate = tr.getAttribute('data-bitrate') || (tr.dataset ? tr.dataset.bitrate : '');
 
         if (!rawFreq) {
-            const freqBadge = tr.querySelector('.badge-freq');
+            const freqBadge = tr.querySelector('.badge-freq, .rf-freq');
             if (freqBadge) rawFreq = freqBadge.textContent || '';
         }
         if (!rawProto) {
-            const protoBadge = tr.querySelector('.badge-proto');
+            const protoBadge = tr.querySelector('.badge-proto, .badge');
             if (protoBadge) rawProto = protoBadge.textContent || '';
         }
 
@@ -297,128 +461,6 @@ window.WaterfallManager = (function () {
         return getChannelKey(freq);
     }
 
-    function setupCanvasInteraction(canvas, channel) {
-        if (!canvas) return;
-
-        canvas.addEventListener('mousemove', (e) => {
-            const rect = canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const colWidth = rect.width / BIN_COUNT;
-            const binIdx = Math.min(BIN_COUNT - 1, Math.max(0, Math.floor(x / colWidth)));
-            const bin = channel.bins[binIdx];
-
-            // Calculate timestamp for bin
-            const now = new Date();
-            const minutesAgo = (BIN_COUNT - 1) - binIdx;
-            const binTime = new Date(now.getTime() - minutesAgo * 60000);
-            const timeStr = binTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
-            if (tooltipEl) {
-                let alertHtml = '';
-                if (bin.alerts > 0) {
-                    alertHtml = `<div class="tooltip-alert">${bin.alerts} alert match${bin.alerts > 1 ? 'es' : ''}</div>`;
-                }
-                let dupHtml = bin.duplicates > 0 ? ` (${bin.duplicates} duplicate${bin.duplicates > 1 ? 's' : ''})` : '';
-
-                tooltipEl.innerHTML = `
-                    <div class="tooltip-header">${channel.name} (${channel.frequency}) &bull; ${timeStr}</div>
-                    <div class="tooltip-body">${bin.total} message${bin.total === 1 ? '' : 's'}${dupHtml}</div>
-                    ${alertHtml}
-                `;
-                tooltipEl.style.left = `${e.clientX}px`;
-                tooltipEl.style.top = `${rect.top - 8}px`;
-                tooltipEl.classList.add('show');
-            }
-        });
-
-        canvas.addEventListener('mouseleave', () => {
-            if (tooltipEl) tooltipEl.classList.remove('show');
-        });
-    }
-
-    function drawCanvas(canvas, channel) {
-        if (!canvas) return;
-        const rect = canvas.getBoundingClientRect();
-        if (rect.width === 0) return;
-
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = rect.width * dpr;
-        canvas.height = 24 * dpr;
-
-        const ctx = canvas.getContext('2d');
-        ctx.scale(dpr, dpr);
-
-        const width = rect.width;
-        const height = 24;
-
-        ctx.clearRect(0, 0, width, height);
-
-        const colWidth = width / BIN_COUNT;
-        const gap = 1.5;
-        const barWidth = Math.max(1, colWidth - gap);
-
-        // Find max in this channel for proportional height
-        let maxVal = 1;
-        for (let i = 0; i < BIN_COUNT; i++) {
-            if (channel.bins[i].total > maxVal) maxVal = channel.bins[i].total;
-        }
-
-        for (let i = 0; i < BIN_COUNT; i++) {
-            const bin = channel.bins[i];
-            const x = i * colWidth;
-
-            // Background slot (empty bar)
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
-            ctx.fillRect(x, 2, barWidth, height - 4);
-
-            if (bin.total > 0) {
-                // Height calculation: at least 4px, up to height - 4
-                const ratio = Math.min(1, bin.total / Math.max(3, maxVal));
-                const barHeight = Math.max(4, ratio * (height - 6));
-                const y = height - 2 - barHeight;
-
-                if (bin.alerts > 0) {
-                    // Alert neon red/coral
-                    ctx.fillStyle = '#ef4444';
-                    ctx.fillRect(x, y, barWidth, barHeight);
-
-                    // Glowing top cap
-                    ctx.fillStyle = '#fca5a5';
-                    ctx.fillRect(x, y, barWidth, 2);
-                } else if (bin.duplicates > 0 && bin.duplicates === bin.total) {
-                    // Amber for duplicates
-                    ctx.fillStyle = '#f59e0b';
-                    ctx.fillRect(x, y, barWidth, barHeight);
-                } else {
-                    // Normal cyan/blue gradient
-                    const grad = ctx.createLinearGradient(0, y, 0, y + barHeight);
-                    grad.addColorStop(0, '#38bdf8');
-                    grad.addColorStop(1, '#0284c7');
-                    ctx.fillStyle = grad;
-                    ctx.fillRect(x, y, barWidth, barHeight);
-
-                    // Subtle top highlight
-                    ctx.fillStyle = '#e0f2fe';
-                    ctx.fillRect(x, y, barWidth, 1.5);
-                }
-            }
-
-            // Pulse on the current minute (bin 59) if recent activity
-            if (i === BIN_COUNT - 1 && bin.pulse > 0) {
-                ctx.strokeStyle = '#10b981';
-                ctx.lineWidth = 1.5;
-                ctx.strokeRect(x - 1, 1, barWidth + 2, height - 2);
-            }
-        }
-    }
-
-    function drawAllCanvases() {
-        Object.values(channels).forEach(ch => {
-            const canvas = document.getElementById(`canvas-${ch.id}`);
-            if (canvas) drawCanvas(canvas, ch);
-        });
-    }
-
     function recordMessage(msg, isRealtime = false) {
         if (!msg || !msg.timestamp) return;
 
@@ -447,35 +489,42 @@ window.WaterfallManager = (function () {
                           (msg.bitrate && (msg.bitrate.toUpperCase().includes('SATC') || msg.bitrate.toUpperCase().includes('INMARSAT'))) ||
                           (msg.sdr_name && (msg.sdr_name.toUpperCase().includes('SATC') || msg.sdr_name.toUpperCase().includes('INMARSAT')));
 
+        const isHfdlMsg = (msg.protocol && msg.protocol.toUpperCase().includes('HFDL')) ||
+                          (msg.bitrate && msg.bitrate.toUpperCase().includes('HFDL')) ||
+                          (msg.sdr_name && msg.sdr_name.toUpperCase().includes('HFDL'));
+
         let ch = null;
         if (isRdsMsg) {
-            // Leta efter befintlig RDS-kanal (t.ex. 'RDS' med frekvens 'auto')
             const rdsKey = Object.keys(channels).find(k => channels[k].name && (channels[k].name.toUpperCase() === 'RDS' || channels[k].name.toUpperCase().includes('RDS')));
             if (rdsKey) {
                 ch = channels[rdsKey];
-                // Uppdatera visningsfrekvens till den aktiva låsta frekvensen om den tidigare var 'auto'
                 if (freq && freq !== 'Unknown' && ch.frequency.toLowerCase() === 'auto') {
                     ch.frequency = freq;
-                    const freqEl = document.getElementById(`freq-${ch.id}`);
-                    if (freqEl) freqEl.textContent = freq;
                 }
             }
         }
 
         if (!ch) {
             let sdrName = msg.sdr_name;
+            let proto = msg.protocol;
             if (!sdrName) {
                 if (isSondeMsg) {
                     sdrName = `Radiosond ${freq}`;
+                    proto = 'SONDE';
                 } else if (isVdl2Msg) {
                     sdrName = `VDL2 ${freq}`;
+                    proto = 'VDL2';
                 } else if (isSatcMsg) {
                     sdrName = `Inmarsat ${freq}`;
+                    proto = 'SAT-C';
+                } else if (isHfdlMsg) {
+                    sdrName = `HFDL ${freq}`;
+                    proto = 'HFDL';
                 } else {
                     sdrName = msg.frequency ? `Freq ${msg.frequency}` : 'Receiver';
                 }
             }
-            ch = registerChannel(sdrName, freq);
+            ch = registerChannel(sdrName, freq, proto);
         }
         if (!ch) return;
 
@@ -488,80 +537,42 @@ window.WaterfallManager = (function () {
             if (msg.alert_word || msg.is_alert) ch.bins[binIdx].alerts += 1;
             if (msg.is_duplicate) ch.bins[binIdx].duplicates += 1;
             ch.total60m += 1;
+            ch.lastSeen = now;
 
-            if (isRealtime) {
-                ch.bins[binIdx].pulse = 1;
-                setTimeout(() => {
-                    ch.bins[binIdx].pulse = 0;
-                    const canvas = document.getElementById(`canvas-${ch.id}`);
-                    if (canvas) drawCanvas(canvas, ch);
-                }, 2500);
-
-                // Flash live indicators
-                const dot = document.getElementById(`dot-${ch.id}`);
-                const sumDot = document.getElementById(`summary-dot-${ch.id}`);
-                if (dot) {
-                    dot.classList.add('rx-active');
-                    setTimeout(() => dot.classList.remove('rx-active'), 1200);
-                }
-                if (sumDot) {
-                    sumDot.classList.add('rx-flash');
-                    setTimeout(() => sumDot.classList.remove('rx-flash'), 1200);
-                }
-            }
-
-            // Update count badges
-            const countEl = document.getElementById(`count-${ch.id}`);
-            if (countEl) countEl.innerHTML = `<strong>${ch.total60m}</strong> msgs`;
-            const sumCountEl = document.getElementById(`summary-count-${ch.id}`);
-            if (sumCountEl) sumCountEl.textContent = ch.total60m;
-
-            const canvas = document.getElementById(`canvas-${ch.id}`);
-            if (canvas) drawCanvas(canvas, ch);
+            scheduleRender();
         }
     }
 
     function rollTimeline() {
-        // Shift bins left by 1 minute
         Object.values(channels).forEach(ch => {
             ch.bins.shift();
-            ch.bins.push({ total: 0, alerts: 0, duplicates: 0, pulse: 0 });
-
-            // Recalculate 60m total
+            ch.bins.push({ total: 0, alerts: 0, duplicates: 0 });
             ch.total60m = ch.bins.reduce((sum, b) => sum + b.total, 0);
-
-            const countEl = document.getElementById(`count-${ch.id}`);
-            if (countEl) countEl.innerHTML = `<strong>${ch.total60m}</strong> msgs`;
-            const sumCountEl = document.getElementById(`summary-count-${ch.id}`);
-            if (sumCountEl) sumCountEl.textContent = ch.total60m;
         });
 
-        drawAllCanvases();
+        renderChannelRows();
     }
 
     function toggleCollapse() {
         const panel = document.getElementById('activityRibbonPanel');
-        const icon = document.getElementById('ribbonToggleIcon');
-        const label = document.querySelector('.ribbon-toggle-label');
+        const indicator = document.getElementById('wfCollapseIndicator');
         if (!panel) return;
 
         isCollapsed = !isCollapsed;
         panel.classList.toggle('collapsed', isCollapsed);
 
-        if (isCollapsed) {
-            if (icon) { icon.classList.remove('fa-chevron-up'); icon.classList.add('fa-chevron-down'); }
-            if (label) label.textContent = 'Show';
-        } else {
-            if (icon) { icon.classList.remove('fa-chevron-down'); icon.classList.add('fa-chevron-up'); }
-            if (label) label.textContent = 'Hide';
-            setTimeout(() => drawAllCanvases(), 50);
+        if (indicator) {
+            indicator.textContent = isCollapsed ? '[v VISA]' : '[^ DÖLJ]';
         }
 
         localStorage.setItem('pagermonitor-ribbon-collapsed', isCollapsed ? 'true' : 'false');
+
+        if (!isCollapsed) {
+            renderChannelRows();
+        }
     }
 
     async function init(initialMessages = [], filterCallback = null) {
-        initTooltip();
         onFilterCallback = filterCallback;
 
         // Default to COLLAPSED (true) unless user explicitly saved 'false'
@@ -570,14 +581,10 @@ window.WaterfallManager = (function () {
         
         isCollapsed = shouldCollapse;
         const panel = document.getElementById('activityRibbonPanel');
-        const icon = document.getElementById('ribbonToggleIcon');
-        const label = document.querySelector('.ribbon-toggle-label');
+        const indicator = document.getElementById('wfCollapseIndicator');
         if (panel) panel.classList.toggle('collapsed', isCollapsed);
-        if (icon) {
-            icon.className = isCollapsed ? 'fas fa-chevron-down' : 'fas fa-chevron-up';
-        }
-        if (label) {
-            label.textContent = isCollapsed ? 'Show' : 'Hide';
+        if (indicator) {
+            indicator.textContent = isCollapsed ? '[v VISA]' : '[^ DÖLJ]';
         }
 
         // Fetch configured SDR instances
@@ -587,7 +594,7 @@ window.WaterfallManager = (function () {
                 sdrInstances = await res.json();
                 sdrInstances.forEach(inst => {
                     if (inst.enabled) {
-                        registerChannel(inst.name, inst.frequency);
+                        registerChannel(inst.name, inst.frequency, inst.protocol);
                     }
                 });
             }
@@ -604,12 +611,7 @@ window.WaterfallManager = (function () {
 
         renderChannelRows();
 
-        // Window resize handler
-        window.addEventListener('resize', () => {
-            drawAllCanvases();
-        });
-
-        // Set up roll timer every 30 seconds
+        // Roll timer: check every 15s if minute changed
         if (rollTimer) clearInterval(rollTimer);
         let lastMinute = new Date().getMinutes();
         rollTimer = setInterval(() => {
@@ -625,12 +627,15 @@ window.WaterfallManager = (function () {
         init: init,
         recordMessage: recordMessage,
         toggleCollapse: toggleCollapse,
-        drawAllCanvases: drawAllCanvases,
+        setSort: setSort,
         toggleChannelFilter: toggleChannelFilter,
+        toggleChannelFilterById: toggleChannelFilterById,
         clearAllFilters: clearAllFilters,
         hasActiveFilter: hasActiveFilter,
         getActiveFilters: getActiveFilters,
         isRowMatchingFilter: isRowMatchingFilter,
-        getChannelKeyForMessage: getChannelKeyForMessage
+        getChannelKeyForMessage: getChannelKeyForMessage,
+        renderChannelRows: renderChannelRows,
+        drawAllCanvases: function () {}
     };
 })();

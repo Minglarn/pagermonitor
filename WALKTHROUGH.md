@@ -2788,3 +2788,38 @@
   - Skapat och uppdaterat tester för `WRN/PN` med och utan HFDL-prefix, `REP003` med `/FLR/PN` och `/CEN`, fristående `FLR/PN` samt flerradiga meddelanden med radbrytningar mitt i ID-fält.
   - Samtliga 137 enhetstester i hela projektet passerar utan anmärkning (100% OK).
   - Versionsbump till CalVer `2026.10.18.8` i `app.py`, `CHANGELOG.md` och `WALKTHROUGH.md`.
+
+### 85. Remake av RF Activity Panel till Telemetri-instrument (v2026.10.18.9)
+- **Avskalad och Ren Instrument Header (.inst-header)**:
+  - Mörk OLED-bakgrund `#0f172a` (hover `#172136`), text `#f8fafc` och `cursor: pointer`.
+  - Hela headern expanderar och kollapsar panelen via `onclick="toggleActivityRibbon()"`.
+  - Vänster: Grön live-indikator (`LIVE`), titel `RF ACTIVITY MONITOR`, undertitel `60 MIN` samt tre rena KPI-boxar:
+    1. `TOTALT: <strong id="wfKpiTotal">X msgs</strong>`
+    2. `TAKT: <strong id="wfKpiRate">X.X msg/min</strong>` (beräknat på 60 min)
+    3. `AKTIVA KANALER: <strong id="wfKpiActive">X / Y</strong>`
+  - Höger: Kontrollbehållare (`.inst-controls`) med `onclick="event.stopPropagation()"` för sorteringsknappar och `[Rensa filter]`, samt indikator `[^ DÖLJ]` / `[v VISA]`.
+  - Kollapsat tillstånd döljer `.inst-body` och `.inst-controls` med `display: none !important;` medan headern alltid förblir synlig och klickbar. Tillståndet sparas i `localStorage`.
+- **Fast Tabellhuvud och Scrollbar Kanallista (8 kolumner)**:
+  - Grid med `grid-template-columns: 30px 60px 96px 130px 1fr 72px 86px 95px;` för både tabellhuvudet (`.wf-head`) och kanalraderna (`.ch-row`).
+  - Varje rad har fast höjd på `36px` (`height: 36px; box-sizing: border-box;`).
+  - Viewporten (`.wf-scroll-viewport`) har `height: 360px; max-height: 360px; overflow-y: scroll;` så att exakt 10 frekvensrader syns samtidigt.
+  - De 8 kolumnerna:
+    1. `VAL`: Checkbox för kanalfilter.
+    2. `PROTO`: Rektangulär badge med systemets unika protokollfärger (`HFDL`, `VDL2`, `SAT-C`, `POCSAG`, `SONDE`, `ACARS`, `TETRA`, `RDS`, `AFSK`) samt matchande 4px vänsterkant på raden.
+    3. `FREKVENS`: Fet `Consolas` (`12px`).
+    4. `MOTTAGARE / KANAL`: Kanalens namn/label.
+    5. `TIDSLINJE`: 60 tidsfack med intensitetsfärgade staplar baserat på kanalens peak (`Math.max(6, peakInMin)`):
+       - `1–2 msg/min`: `.heat-low` (blå gradient `#38bdf8` -> `#0284c7`)
+       - `3–5 msg/min`: `.heat-med` (amber gradient `#fbbf24` -> `#d97706`)
+       - `>= 6 msg/min`: `.heat-burst` (röd gradient `#ff4d4d` -> `#dc2626` -> `#991b1b`)
+       - Tysta kanaler (0 msgs på 60 min): klass `.is-silent` med röd kant, dämpad röd bakgrund och texten `INGA MEDDELANDEN MOTTAGNA SENASTE 60 MIN`.
+    6. `SENAST`: Minuter sedan senaste meddelande (`NU`, `Xm sen` eller röd badge `TYST 1H`).
+    7. `MSG/MIN`: Formaterad som `X.X msg/m` i `Consolas` (`11px`, `#0369a1`).
+    8. `VOLYM (1H)`: `X msgs` samt 4px horisontell volymindikator (`.vol-meter-fill`).
+- **Sortering och Filterfunktionalitet**:
+  - Tre sorteringslägen: `HÖGST -> 0 MSGS`, `TYSTA (0) FÖRST`, `FREKVENS`.
+  - Vald sortering sparas i `localStorage` (`pagermonitor-wf-sort`).
+  - Full filterkompatibilitet med dashboard-tabellen via `WaterfallManager`.
+- **Verifiering & Enhetstester ([tests/test_waterfall_telemetry.py](file:///d:/antigravity/pager-monitor/tests/test_waterfall_telemetry.py))**:
+  - Samtliga 142 enhetstester i hela projektet passerar utan anmärkning (100% OK).
+  - Verifierat i webbläsare med skärmdumpar av både kollapsat och expanderat läge samt dynamisk sortering.
