@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.18.6] - Kritisk Buggfix, CSS-injektion & Layoutkorrigering i Real-time Monitor
+
+- **CSS-injektion i `<style>`-blocket ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Lagt till saknade CSS-regler för de nya klasserna direkt i `<style>`-blocket i `index.html` för att förhindra att gamla regler i `/static/style.css` (bland annat oönskat `--msg-size`-arv och `.badge`) skriver över tabellens operativa design.
+  - Strikt protokoll-vänsterkant (`border-left: 4px solid ... !important`) på `td:first-child` för samtliga protokoll (VDL2, ACARS, HFDL, SAT-C, POCSAG, TETRA, SONDE, RDS, AFSK samt larmade rader).
+  - Unika färger, ramar och 56px-bredd för varje protokoll-badge i Kolumn 2.
+  - Skarp, enhetlig typografi (11px/12px) i alla sex kolumner med isolering från globala skalningar.
+  - Inramad ruta för meddelandetext och fritext (`.kv-box.full-text` och `.kv-box.wide`) med 100% bredd, ram, `border-left: 3px solid #64748b` och fullt stöd för ljust, mörkt och larmat läge.
+- **Rensning av Dubblettfält & Dubbel Label i `createAlarmRowNode()` ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Tvättat bort `/ LABEL: ...` ur `extractedTitle` när `labelVal` redan finns, vilket eliminerar upprepad Label-visning bredvid varandra i Zon A.
+  - Filtrerat bort `Flight`, `Reg`, `Flygplan` och `ICAO` från `kvItems` för icke-POCSAG om värdet redan visas i Kolumn 4 (`ENHET / ALIAS`).
+- **Förbättrad Samlingslogik för `.kv-box.full-text` ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - **POCSAG**: Nycklar som `Ärendebeskrivning`, `Händelsebeskrivning`, `H.beskr`, `Meddelande`, `Text` eller värden med `length >= 45`, samt samtliga fria rader utan kolon samlas nu ihop till en gemensam inramad `.kv-box.full-text` med `key: 'MEDDELANDETEXT'`.
+  - **SAT-C & övriga**: Korta tekniska header-nycklar (`SHORT_HEADER_KEYS`) hålls som korta kv-boxar medan all övrig brödtext (`SUBJECT`, `FROM`, `TO`, etc.) och fritextrader samlas ihop till en sammanhängande `.kv-box.full-text` längst ner i `.data-flex` utan uppstyckning i nakna kolumner.
+- **Fix för `window.toggleHfdlDetails` ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Uppdaterat DOM-sökningen till att använda `.closest('.msg-cell') || .closest('.hfdl-toggle-wrapper')` så att knappen i `.msg-actions` hittar `.hfdl-details-box` i `.msg-main`.
+- **Fix för `copyMessageText`, `repeat_update` och TETRA-filter ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - `window.copyMessageText`: Hämtar text från `.data-flex` eller `.msg-main` med exkludering av tekniska knappar i `.msg-actions`.
+  - `repeat_update`: Placerar `.repeat-badge` direkt i `.msg-title-group` i stället för att generera en separat `.msg-meta-bar`.
+  - DataTables basstationsfilter: Kontrollerar `rowNode.classList.contains('basestation-row')` via `settings.aoData[dataIndex]?.nTr` för exakt och feltolerant filtrering.
+
 ## [2026.10.18.5] - Kritisk Fix: Millisekund-kronologisk Tidssortering (Unix Epoch)
 
 - **Kritisk Fix: Kronologisk Tidsordning ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:

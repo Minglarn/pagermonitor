@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.18.5`
+- **CalVer**: `2026.10.18.6`
 - **Date**: 2026-10-18
 - **Language**: English / Swedish
 
@@ -9,7 +9,40 @@
 
 ## Overview of Implemented Features
 
-### 000000. Kritisk Fix: Millisekund-kronologisk Tidssortering (Unix Epoch) (v2026.10.18.5)
+### 000000. Kritisk Buggfix, CSS-injektion & Layoutkorrigering i Real-time Monitor (v2026.10.18.6)
+- **Bakgrund och Problem**:
+  - CSS-regler för de nya tabellklasserna saknades i `<style>`-blocket i `index.html`. Detta orsakade att regler från `/static/style.css` (såsom `--msg-size` och generella `.badge`-definitioner) skrev över designen.
+  - Vänsterkanten på tabellens första cell syntes inte på grund av övergripande `td:first-child { border-left: none !important; }`.
+  - Dubbletter visades för Flight, Reg, Flygplan och ICAO i meddelandecellen trots att dessa redan fanns tydligt i Kolumn 4 (`ENHET / ALIAS`).
+  - Rubriken visade `LABEL: ...` två gånger bredvid varandra i Zon A (t.ex. både i `extractedTitle` och i den lila badge-etiketten).
+  - Meddelanderutan `.kv-box.full-text` saknade korrekt samlingslogik: POCSAG-larm med fria rader och långa texter styckades upp felaktigt, och SAT-C (Inmarsat)-meddelanden splittrades upp i lösa nakna kolumner istället för att samlas i en enhetlig inramad box.
+  - `window.toggleHfdlDetails` kunde inte hitta `.hfdl-details-box` eftersom knappen låg i `.msg-actions` och boxen i `.msg-main`.
+  - `window.copyMessageText` kopierade felaktigt knapptexter ("Markstationsdetaljer", "Rådata") då `.msg-text` saknades och `msgCell.innerText` användes.
+  - `repeat_update` skapade en onödig `.msg-meta-bar` längst ner istället för att placera repetitionstaggen i `.msg-title-group`.
+  - `hideBasestations`-filtret använde hårdkodade kolumnindex istället för att kontrollera klassen `basestation-row`.
+- **Implementerade Förbättringar**:
+  1. **CSS-injektion i `<style>`-blocket ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+     - Tillagt 4px solid färgkodad vänsterkantsindikator för varje protokoll och larmrad på `td:first-child`.
+     - Definierat 56px breda protokoll-badges med unika bakgrunds- och ramfärger per protokoll.
+     - Låst typografin till 11px/12px i alla kolumner mot oönskad `--msg-size`-skalning.
+     - Infört layoutregler för Zon A och Zon B med inramad ruta för meddelandetext (`.kv-box.full-text` och `.kv-box.wide`).
+  2. **Rensning av Dubbletter & Dubbel Label i `createAlarmRowNode()` ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+     - Tvättat bort `/ LABEL: ...` ur `extractedTitle` när `labelVal` redan finns.
+     - Filtrerat bort `Flight`, `Reg`, `Flygplan` och `ICAO` från `kvItems` för icke-POCSAG om värdet redan visas i Kolumn 4.
+  3. **Förbättrad Samlingslogik för `.kv-box.full-text` ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+     - POCSAG: Nycklar som `Ärendebeskrivning`, `Händelsebeskrivning`, `H.beskr`, `Meddelande`, `Text` eller `v.length >= 45`, samt alla fria rader utan kolon samlas i en gemensam `.kv-box.full-text` med `key: 'MEDDELANDETEXT'`.
+     - SAT-C & övriga: Korta tekniska header-nycklar läggs i korta kv-boxar, medan all övrig brödtext (`SUBJECT`, `FROM`, `TO`, etc.) och fritextrader samlas ihop till en sammanhängande `.kv-box.full-text` längst ner i `.data-flex`.
+  4. **Fix för `window.toggleHfdlDetails` ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+     - Uppdaterat DOM-sökningen till `.closest('.msg-cell') || .closest('.hfdl-toggle-wrapper')`.
+  5. **Fix för `copyMessageText`, `repeat_update` och TETRA-filter ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+     - `copyMessageText`: Hämtar meddelandetext ur `.data-flex` eller `.msg-main` med exkludering av tekniska knappar.
+     - `repeat_update`: Lägger/uppdaterar `.repeat-badge` direkt i `.msg-title-group`.
+     - `hideBasestations`: Kontrollerar `rowNode.classList.contains('basestation-row')`.
+- **Verifiering**:
+  - Samtliga 135 enhetstester passerar grönt.
+  - Strikt förbud mot emojis efterlevt på hela webbplatsen.
+
+### 000001. Kritisk Fix: Millisekund-kronologisk Tidssortering (Unix Epoch) (v2026.10.18.5)
 - **Bakgrund och Problem**:
   - Användaren upptäckte att inkommande meddelanden låg "huller om buller" tidsmässigt: gamla meddelanden från kvällstid (t.ex. 22:34 från 16 okt och 22:00 från 14 okt) låg ovanför dagens meddelanden (19:10 från 18 okt).
   - Rotorsak: DataTables tolkade kolumn 0 som en ren textsträng. Eftersom cellen inleddes med klockslaget (`<div class="ts-time">${timeStr}</div>`) sorterades strängen alfabetiskt på klockslaget (`"22:34:34..."` > `"22:00:51..."` > `"19:10:34..."`). Därmed hamnade alla meddelanden från sena kvällar från tidigare dagar felaktigt överst. Dessutom låste webbläsarens sparade `stateSave` fast feltillstånd.

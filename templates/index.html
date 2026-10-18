@@ -965,10 +965,141 @@
             color: #f1f5f9;
         }
 
-        @keyframes toastSlideIn {
-            from { opacity: 0; transform: translateY(-15px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+        /* --- STRIKT OPERATIV DESIGN OVERRIDES --- */
+
+        /* 1. Färgad protokoll-indikator på första cellen i varje rad */
+        table.dataTable.dashboard-dt tbody tr.proto-vdl2 > td:first-child,
+        table.dataTable.dashboard-dt tbody tr.proto-acars > td:first-child  { border-left: 4px solid #0284c7 !important; }
+        table.dataTable.dashboard-dt tbody tr.proto-hfdl > td:first-child   { border-left: 4px solid #d97706 !important; }
+        table.dataTable.dashboard-dt tbody tr.proto-satc > td:first-child   { border-left: 4px solid #4f46e5 !important; }
+        table.dataTable.dashboard-dt tbody tr.proto-pocsag > td:first-child { border-left: 4px solid #16a34a !important; }
+        table.dataTable.dashboard-dt tbody tr.proto-tetra > td:first-child  { border-left: 4px solid #06b6d4 !important; }
+        table.dataTable.dashboard-dt tbody tr.proto-sonde > td:first-child  { border-left: 4px solid #10b981 !important; }
+        table.dataTable.dashboard-dt tbody tr.proto-rds > td:first-child    { border-left: 4px solid #8b5cf6 !important; }
+        table.dataTable.dashboard-dt tbody tr.proto-afsk > td:first-child   { border-left: 4px solid #ec4899 !important; }
+        table.dataTable.dashboard-dt tbody tr.row-alert > td:first-child    { border-left: 4px solid #dc2626 !important; }
+
+        /* 2. Unika färger för varje protokoll-badge i Kolumn 2 */
+        table.dataTable.dashboard-dt .badge {
+          display: inline-block !important;
+          width: 56px !important;
+          text-align: center !important;
+          font-family: Consolas, 'JetBrains Mono', monospace !important;
+          font-size: 10px !important;
+          font-weight: 700 !important;
+          padding: 2px 0 !important;
+          border-radius: 2px !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.4px !important;
         }
+        .badge.badge-vdl2, .badge.badge-acars { background: #e0f2fe !important; color: #0369a1 !important; border: 1px solid #7dd3fc !important; }
+        .badge.badge-hfdl   { background: #fef3c7 !important; color: #b45309 !important; border: 1px solid #fcd34d !important; }
+        .badge.badge-satc   { background: #e0e7ff !important; color: #4338ca !important; border: 1px solid #a5b4fc !important; }
+        .badge.badge-pocsag { background: #dcfce7 !important; color: #15803d !important; border: 1px solid #86efac !important; }
+        .badge.badge-tetra  { background: #cffafe !important; color: #0e7490 !important; border: 1px solid #67e8f9 !important; }
+        .badge.badge-sonde  { background: #d1fae5 !important; color: #047857 !important; border: 1px solid #6ee7b7 !important; }
+        .badge.badge-rds    { background: #ede9fe !important; color: #6d28d9 !important; border: 1px solid #c4b5fd !important; }
+        .badge.badge-afsk   { background: #fce7f3 !important; color: #be185d !important; border: 1px solid #f9a8d4 !important; }
+
+        /* 3. Enhetlig, skarp typografi (11px/12px) i ALLA kolumner - blockera --msg-size arv! */
+        .ts-time { font-family: Consolas, monospace !important; font-weight: 700 !important; font-size: 12px !important; color: var(--text-primary) !important; }
+        .ts-date { font-family: Consolas, monospace !important; font-size: 10px !important; color: #64748b !important; margin-top: 1px !important; }
+        .ts-id   { font-family: Consolas, monospace !important; font-size: 10px !important; color: #94a3b8 !important; margin-top: 2px !important; }
+
+        .rf-freq { font-family: Consolas, monospace !important; font-weight: 700 !important; font-size: 11px !important; color: var(--text-primary) !important; display: inline-block; }
+        .rf-snr  { font-family: Consolas, monospace !important; font-size: 10px !important; font-weight: 700 !important; margin-top: 2px !important; }
+        .rf-snr-good { color: #16a34a !important; }
+        .rf-snr-low  { color: #d97706 !important; }
+        .rf-mod  { font-family: Consolas, monospace !important; font-size: 10px !important; color: #64748b !important; margin-top: 1px !important; }
+        .rf-gs   { font-size: 10px !important; color: #64748b !important; margin-top: 2px !important; line-height: 1.2 !important; }
+
+        .src-header { display: flex !important; justify-content: space-between !important; align-items: flex-start !important; gap: 4px !important; }
+        .src-name   { font-weight: 700 !important; font-size: 12px !important; color: var(--text-primary) !important; line-height: 1.15 !important; }
+        .src-sub    { font-family: Consolas, monospace !important; font-size: 11px !important; color: #0284c7 !important; margin-top: 3px !important; font-weight: 700 !important; }
+        .src-icao   { font-family: Consolas, monospace !important; font-size: 10px !important; color: #64748b !important; margin-top: 1px !important; }
+        .src-acft   { font-size: 10px !important; color: #64748b !important; margin-top: 2px !important; line-height: 1.15 !important; }
+
+        /* 4. Meddelandecell: Zon A (Header) + Zon B (Key-Value Grid & Full-text Box) */
+        .msg-layout { display: flex !important; gap: 12px !important; align-items: flex-start !important; width: 100% !important; }
+        .msg-main   { flex: 1 1 auto !important; min-width: 0 !important; font-size: 11px !important; }
+        .msg-top {
+          display: flex !important;
+          justify-content: space-between !important;
+          align-items: center !important;
+          flex-wrap: wrap !important;
+          gap: 6px !important;
+          border-bottom: 1px solid rgba(148, 163, 184, 0.25) !important;
+          padding-bottom: 4px !important;
+          margin-bottom: 6px !important;
+        }
+        .msg-title-group { display: flex !important; align-items: center !important; flex-wrap: wrap !important; gap: 6px !important; }
+        .msg-title { font-family: 'Inter', sans-serif !important; font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase !important; color: var(--text-primary) !important; letter-spacing: 0.3px !important; }
+
+        .msg-label {
+          font-family: Consolas, monospace !important;
+          font-size: 10px !important;
+          font-weight: 600 !important;
+          color: #6d28d9 !important;
+          background: #f3e8ff !important;
+          padding: 1px 6px !important;
+          border: 1px solid #d8b4fe !important;
+          border-radius: 2px !important;
+        }
+        .msg-label.pocsag-id { color: #065f46 !important; background: #d1fae5 !important; border-color: #6ee7b7 !important; }
+        .msg-label.alert-tag { color: #991b1b !important; background: #fee2e2 !important; border-color: #fca5a5 !important; }
+
+        .msg-actions { display: flex !important; gap: 6px !important; flex-shrink: 0 !important; }
+        .btn-tech {
+          font-family: Consolas, monospace !important;
+          font-size: 10px !important;
+          color: #0284c7 !important;
+          background: #f0f9ff !important;
+          border: 1px solid #bae6fd !important;
+          padding: 1px 6px !important;
+          border-radius: 2px !important;
+          cursor: pointer !important;
+          font-weight: 600 !important;
+        }
+        .btn-tech.btn-raw { color: #475569 !important; background: #f8fafc !important; border-color: #cbd5e1 !important; }
+
+        .data-flex { display: flex !important; flex-wrap: wrap !important; gap: 6px 18px !important; align-items: flex-start !important; }
+        .kv-box { display: flex !important; flex-direction: column !important; min-width: 95px !important; }
+        .data-k { font-family: 'Inter', sans-serif !important; font-size: 9px !important; font-weight: 700 !important; color: #64748b !important; text-transform: uppercase !important; letter-spacing: 0.3px !important; line-height: 1.2 !important; }
+        .data-v { font-family: Consolas, monospace !important; font-size: 11px !important; color: var(--text-primary) !important; font-weight: 600 !important; margin-top: 1px !important; line-height: 1.35 !important; white-space: pre-wrap !important; }
+
+        /* 5. INRAMAD RUTA FÖR MEDDELANDETEXT / FRITEXT (.kv-box.full-text) */
+        .kv-box.full-text,
+        .kv-box.wide {
+          flex-basis: 100% !important;
+          width: 100% !important;
+          background: rgba(148, 163, 184, 0.08) !important;
+          border: 1px solid rgba(148, 163, 184, 0.25) !important;
+          border-left: 3px solid #64748b !important;
+          padding: 6px 10px !important;
+          margin-top: 3px !important;
+          border-radius: 2px !important;
+        }
+        [data-theme="light"] .kv-box.full-text,
+        [data-theme="light"] .kv-box.wide {
+          background: #f8fafc !important;
+          border: 1px solid #e2e8f0 !important;
+          border-left: 3px solid #64748b !important;
+        }
+        [data-theme="light"] tr.row-alert .kv-box.full-text,
+        tr.row-alert .kv-box.full-text {
+          background: #ffffff !important;
+          border: 1px solid #fecaca !important;
+          border-left: 3px solid #dc2626 !important;
+        }
+        [data-theme="dark"] tr.row-alert .kv-box.full-text,
+        body.dark-mode tr.row-alert .kv-box.full-text {
+          background: rgba(239, 68, 68, 0.12) !important;
+          border: 1px solid rgba(239, 68, 68, 0.35) !important;
+          border-left: 3px solid #dc2626 !important;
+        }
+
+        .empty-keys { margin-top: 5px !important; font-family: Consolas, monospace !important; font-size: 10px !important; color: #94a3b8 !important; }
+        .empty-keys span { background: rgba(148, 163, 184, 0.15) !important; padding: 1px 4px !important; border-radius: 2px !important; margin-right: 4px !important; }
     </style>
 
     <script>
@@ -2571,38 +2702,13 @@
 
         window.toggleHfdlDetails = function(btn) {
             if (!btn) return;
-            const container = btn.closest('.hfdl-toggle-wrapper');
-            if (!container) return;
-            const box = container.querySelector('.hfdl-details-box');
-            const icon = btn.querySelector('.toggle-icon');
-            const textSpan = btn.querySelector('.toggle-text');
+            const msgCell = btn.closest('.msg-cell') || btn.closest('.hfdl-toggle-wrapper');
+            if (!msgCell) return;
+            const box = msgCell.querySelector('.hfdl-details-box');
             if (!box) return;
-
             const isHidden = (box.style.display === 'none' || getComputedStyle(box).display === 'none');
-            const countMatch = textSpan.innerText.match(/\((\d+\s*st)\)/);
-            const countStr = countMatch ? ` (${countMatch[1]})` : '';
-
-            if (isHidden) {
-                box.style.display = 'block';
-                btn.classList.add('active');
-                if (icon) {
-                    icon.classList.remove('fa-chevron-right');
-                    icon.classList.add('fa-chevron-down');
-                }
-                if (textSpan) {
-                    textSpan.innerText = `Dölj markstationsdetaljer / frekvenser${countStr}`;
-                }
-            } else {
-                box.style.display = 'none';
-                btn.classList.remove('active');
-                if (icon) {
-                    icon.classList.remove('fa-chevron-down');
-                    icon.classList.add('fa-chevron-right');
-                }
-                if (textSpan) {
-                    textSpan.innerText = `Visa markstationsdetaljer / frekvenser${countStr}`;
-                }
-            }
+            box.style.display = isHidden ? 'block' : 'none';
+            btn.classList.toggle('active', isHidden);
         };
 
         window.toggleRawData = function(btn) {
@@ -3175,6 +3281,11 @@
                 else extractedTitle = `${protoName} MEDDELANDE`;
             }
 
+            // Tvätta bort / LABEL: ... ur extractedTitle om labelVal redan finns för att undvika dubbel Label
+            if (labelVal && extractedTitle) {
+                extractedTitle = extractedTitle.replace(/\s*\/\s*LABEL:\s*.+$/i, '').trim();
+            }
+
             // Taggar i Zon A
             let tagsList = [];
             if (labelVal) {
@@ -3186,18 +3297,9 @@
             let emptyKeys = [];
             let kvItems = [];
 
-            function appendOrPushText(text) {
-                if (!text) return;
-                const lastItem = kvItems[kvItems.length - 1];
-                if (lastItem && lastItem.fullText && !lastItem.key) {
-                    lastItem.val += '\n' + text;
-                } else {
-                    kvItems.push({ key: '', val: text, fullText: true, wide: false });
-                }
-            }
-
             if (protoName === 'POCSAG') {
                 const pLines = bodyText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+                const freeLines = [];
                 for (const line of pLines) {
                     const colonIdx = line.indexOf(':');
                     if (colonIdx !== -1) {
@@ -3208,7 +3310,7 @@
                         } else {
                             if (/^(?:Ä\s*Id|Ärende\s*nr|Ärende\s*id)$/i.test(k)) {
                                 tagsList.push(`<span class="msg-label pocsag-id">${escapeHtml(k)} : ${escapeHtml(v)}</span>`);
-                            } else if (v.length >= 60) {
+                            } else if (/^(?:Ärendebeskrivning|Händelsebeskrivning|H\.?\s*beskr|Meddelande|Text)$/i.test(k) || v.length >= 45) {
                                 kvItems.push({ key: k.toUpperCase(), val: v, fullText: true, wide: false });
                             } else {
                                 kvItems.push({ key: k.toUpperCase(), val: v, fullText: false, wide: false });
@@ -3218,9 +3320,12 @@
                         if (pLines.length === 1 && line.length <= 15) {
                             kvItems.push({ key: 'PAYLOAD', val: line, fullText: false, wide: false });
                         } else {
-                            appendOrPushText(line);
+                            freeLines.push(line);
                         }
                     }
+                }
+                if (freeLines.length > 0) {
+                    kvItems.push({ key: 'MEDDELANDETEXT', val: freeLines.join('\n'), fullText: true, wide: false });
                 }
             } else if (decodedFields && typeof decodedFields === 'object' && (decodedFields.is_warning || decodedFields.type_code === 'WRN')) {
                 extractedTitle = 'ECAM COCKPIT VARNING';
@@ -3230,50 +3335,89 @@
             } else if (decodedFields && typeof decodedFields === 'object' && (decodedFields.is_fault_report || decodedFields.type_code === 'FLR')) {
                 extractedTitle = 'ARINC 624 UNDERHÅLLSRAPPORT';
                 kvItems.push({ key: 'FELKOMPONENT', val: decodedFields.fault_desc || 'Teknisk felrapport', fullText: false, wide: true });
-                if (decodedFields.aircraft_type) kvItems.push({ key: 'FLYGPLAN', val: 'Airbus ' + decodedFields.aircraft_type, fullText: false, wide: false });
+                if (decodedFields.aircraft_type && !acftType) kvItems.push({ key: 'FLYGPLAN', val: 'Airbus ' + decodedFields.aircraft_type, fullText: false, wide: false });
                 if (decodedFields.origin && decodedFields.destination) kvItems.push({ key: 'RUTT', val: `${decodedFields.origin} → ${decodedFields.destination}`, fullText: false, wide: false });
                 if (decodedFields.affected) kvItems.push({ key: 'BERÖRDA SYSTEM', val: Array.isArray(decodedFields.affected) ? decodedFields.affected.join(', ') : decodedFields.affected, fullText: false, wide: true });
                 if (decodedFields.pnr) kvItems.push({ key: 'PNR', val: decodedFields.pnr, fullText: false, wide: false });
                 if (decodedFields.flight_time_utc) kvItems.push({ key: 'FLYG TID', val: `${decodedFields.flight_time_utc} UTC`, fullText: false, wide: false });
             } else {
+                const SHORT_HEADER_KEYS = /^(?:SAT|JORDSTATION|KANAL|PRIORITET|EIK|LES|MES|OMRÅDE|POSITION|TID|MARKSTATION|HÖJD|TEMP|VIND|NÄSTA BRYTPUNKT|BLOCK|LEG|AKTIV HF-KANAL|SQUITTER OK|FREKVENSBYTE)$/i;
+
                 const sLines = bodyText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+                const shortHeaders = [];
+                const fullTextLines = [];
+
                 for (const line of sLines) {
                     if (line.includes('Pilotmeddelande:')) {
                         const pMsg = line.replace(/^.*?Pilotmeddelande:\s*/i, '');
                         kvItems.push({ key: 'PILOTMEDDELANDE', val: pMsg, fullText: true, wide: false });
                         continue;
                     }
+
                     const segments = line.split(/\s*\|\s*/);
-                    if (segments.length === 1) {
-                        const s = segments[0].trim();
+                    for (const seg of segments) {
+                        const s = seg.trim();
                         if (!s) continue;
-                        const cM = s.match(/^([A-Za-zåäöÅÄÖ0-9_\s/()\-]+?):\s*(.+)$/);
+                        const cM = s.match(/^([A-Za-zåäöÅÄÖ0-9_\s/()\-]+?):\s*(.*)$/);
                         if (cM && cM[1].length <= 30) {
                             const k = cM[1].trim();
                             const v = cM[2].trim();
-                            const isWide = /Paketstatistik|Hörda markstationer|Tillgängliga|Rutt|Route|Berörda/i.test(k);
-                            const isFull = v.length >= 80;
-                            kvItems.push({ key: k.toUpperCase(), val: v, fullText: isFull, wide: isWide });
-                        } else {
-                            appendOrPushText(s);
-                        }
-                    } else {
-                        for (const seg of segments) {
-                            const s = seg.trim();
-                            if (!s) continue;
-                            const cM = s.match(/^([A-Za-zåäöÅÄÖ0-9_\s/()\-]+?):\s*(.+)$/);
-                            if (cM && cM[1].length <= 30) {
-                                const k = cM[1].trim();
-                                const v = cM[2].trim();
-                                const isWide = /Paketstatistik|Hörda markstationer|Tillgängliga|Rutt|Route|Berörda/i.test(k);
-                                const isFull = v.length >= 80;
-                                kvItems.push({ key: k.toUpperCase(), val: v, fullText: isFull, wide: isWide });
-                            } else {
-                                appendOrPushText(s);
+
+                            // Filtrera bort Flight, Reg, Flygplan, ICAO om värdet redan visas i Kolumn 4
+                            if (/^(?:FLIGHT|REG|FLYGPLAN|ICAO)$/i.test(k)) {
+                                if (k.toUpperCase() === 'FLIGHT' && flightVal) continue;
+                                if (k.toUpperCase() === 'REG' && regVal) continue;
+                                if (k.toUpperCase() === 'ICAO' && icaoVal) continue;
+                                if (k.toUpperCase() === 'FLYGPLAN' && acftType) continue;
+                                const vUpper = v.toUpperCase();
+                                if (flightVal && vUpper === flightVal.toUpperCase()) continue;
+                                if (regVal && vUpper === regVal.toUpperCase()) continue;
+                                if (icaoVal && vUpper === icaoVal.toUpperCase()) continue;
+                                if (acftType && vUpper === acftType.toUpperCase()) continue;
                             }
+
+                            if (SHORT_HEADER_KEYS.test(k)) {
+                                shortHeaders.push({ key: k.toUpperCase(), val: v, fullText: false, wide: false });
+                            } else {
+                                fullTextLines.push(s);
+                            }
+                        } else {
+                            fullTextLines.push(s);
                         }
                     }
                 }
+
+                // Lägg till de korta tekniska header-nycklarna först
+                shortHeaders.forEach(item => kvItems.push(item));
+
+                // Slå ihop all övrig brödtext till EN sammanhängande .kv-box.full-text längst ner i .data-flex
+                if (fullTextLines.length > 0) {
+                    kvItems.push({
+                        key: 'MEDDELANDETEXT',
+                        val: fullTextLines.join('\n'),
+                        fullText: true,
+                        wide: false
+                    });
+                }
+            }
+
+            // Slutlig tvättning av kvItems för icke-POCSAG: ta bort fält som visas i Kolumn 4
+            if (protoName !== 'POCSAG') {
+                kvItems = kvItems.filter(item => {
+                    const k = (item.key || '').trim().toUpperCase();
+                    if (/^(?:FLIGHT|REG|FLYGPLAN|ICAO)$/i.test(k)) {
+                        if (k === 'FLIGHT' && flightVal) return false;
+                        if (k === 'REG' && regVal) return false;
+                        if (k === 'ICAO' && icaoVal) return false;
+                        if (k === 'FLYGPLAN' && acftType) return false;
+                        const vUpper = String(item.val || '').trim().toUpperCase();
+                        if (flightVal && vUpper === flightVal.toUpperCase()) return false;
+                        if (regVal && vUpper === regVal.toUpperCase()) return false;
+                        if (icaoVal && vUpper === icaoVal.toUpperCase()) return false;
+                        if (acftType && vUpper === acftType.toUpperCase()) return false;
+                    }
+                    return true;
+                });
             }
 
             // Trigger & duplikat i Zon A
@@ -3478,8 +3622,27 @@
             if (!tr) return;
             const msgCell = tr.querySelector('.msg-cell');
             if (!msgCell) return;
-            const textEl = msgCell.querySelector('.msg-text');
-            const text = textEl ? (textEl.innerText || textEl.textContent || '') : (msgCell.innerText || msgCell.textContent || '');
+
+            let text = '';
+            const dataFlex = msgCell.querySelector('.data-flex');
+            if (dataFlex) {
+                text = (dataFlex.innerText || dataFlex.textContent || '').trim();
+            } else {
+                const msgMain = msgCell.querySelector('.msg-main');
+                if (msgMain) {
+                    const clone = msgMain.cloneNode(true);
+                    const actions = clone.querySelector('.msg-actions');
+                    if (actions) actions.remove();
+                    const rawBox = clone.querySelector('.raw-data-box');
+                    if (rawBox && (rawBox.style.display === 'none' || getComputedStyle(rawBox).display === 'none')) rawBox.remove();
+                    const hfdlBox = clone.querySelector('.hfdl-details-box');
+                    if (hfdlBox && (hfdlBox.style.display === 'none' || getComputedStyle(hfdlBox).display === 'none')) hfdlBox.remove();
+                    text = (clone.innerText || clone.textContent || '').trim();
+                } else {
+                    const textEl = msgCell.querySelector('.msg-text');
+                    text = textEl ? (textEl.innerText || textEl.textContent || '').trim() : (msgCell.innerText || msgCell.textContent || '').trim();
+                }
+            }
 
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
@@ -3491,11 +3654,11 @@
             const origClass = icon ? icon.className : '';
             btn.classList.add('copied');
             if (icon) icon.className = 'fas fa-check';
-            btn.setAttribute('title', 'Copied!');
+            btn.setAttribute('title', 'Kopierad!');
             setTimeout(() => {
                 btn.classList.remove('copied');
                 if (icon) icon.className = origClass;
-                btn.setAttribute('title', 'Copy message');
+                btn.setAttribute('title', 'Kopiera meddelande');
             }, 1500);
         };
 
@@ -3521,10 +3684,8 @@
             // Filter out TETRA base stations when hideBasestations is active
             $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
                 if (!hideBasestations) return true;
-                const meta = data[2] || '';
-                const addr = data[3] || '';
-                const msg = data[4] || '';
-                if (meta.includes('TETRA-NET') || addr.includes('RAKEL-') || msg.includes('Aktiv TETRA Basstation') || msg.includes('Aktiv Basstation på') || msg.includes('Aktiv Basstation')) {
+                const rowNode = settings.aoData[dataIndex]?.nTr;
+                if (rowNode && rowNode.classList.contains('basestation-row')) {
                     return false;
                 }
                 return true;
@@ -3790,21 +3951,17 @@
                     if (rowEl) {
                         const msgCell = rowEl.querySelector('.msg-cell');
                         if (msgCell) {
-                            let metaBar = msgCell.querySelector('.msg-meta-bar');
-                            if (!metaBar) {
-                                metaBar = document.createElement('div');
-                                metaBar.className = 'msg-meta-bar';
-                                const targetContainer = msgCell.querySelector('.msg-content-wrapper') || msgCell;
-                                targetContainer.appendChild(metaBar);
+                            const titleGroup = msgCell.querySelector('.msg-title-group');
+                            if (titleGroup) {
+                                let badge = titleGroup.querySelector('.repeat-badge');
+                                if (!badge) {
+                                    badge = document.createElement('span');
+                                    badge.className = 'msg-label repeat-badge';
+                                    titleGroup.appendChild(badge);
+                                }
+                                badge.textContent = `${data.repeat_count}x`;
+                                badge.title = `Repeated ${data.repeat_count} times`;
                             }
-                            let badge = metaBar.querySelector('.repeat-badge');
-                            if (!badge) {
-                                badge = document.createElement('span');
-                                badge.className = 'badge repeat-badge meta';
-                                metaBar.appendChild(badge);
-                            }
-                            badge.textContent = `${data.repeat_count}x`;
-                            badge.title = `Repeated ${data.repeat_count} times`;
                         }
                         const tsCell = rowEl.querySelector('.ts-cell');
                         if (tsCell && data.last_timestamp) {
