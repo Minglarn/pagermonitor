@@ -671,8 +671,22 @@ tr:hover .alias-edit-icon-btn { opacity: 1; }
 [data-theme="dark"] .src-acft, body.dark-mode .src-acft { color: #64748b; }
 
 /* 5. MEDDELANDE / TELEMETRI (Flex Layout) */
-.msg-layout { display: flex; gap: 12px; align-items: flex-start; width: 100%; min-width: 0; }
-.msg-main   { flex: 1 1 auto; min-width: 0; }
+.msg-layout {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 0;
+}
+.msg-main {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-self: stretch;
+}
 .msg-top {
     display: flex;
     justify-content: space-between;
@@ -3786,11 +3800,14 @@ td.msg-cell {
 }
 
 .msg-minimap-container {
-    width: 130px !important;
-    min-width: 130px !important;
-    height: 115px !important;
-    min-height: 115px !important;
-    margin: 0 !important;
+    width: 143px !important;
+    min-width: 143px !important;
+    max-width: 143px !important;
+    height: 127px !important;
+    min-height: 127px !important;
+    max-height: 127px !important;
+    align-self: center !important;
+    margin: auto 0 auto auto !important;
     padding: 0 !important;
     border-radius: 6px !important;
     border: 1px solid var(--panel-border, #334155) !important;
@@ -4049,17 +4066,46 @@ table.dataTable tr::after {
     display: none !important;
 }
 
-/* Toppjustera tabellceller i alarmsTable */
-#alarmsTable tbody td,
+/* Centrera TID / # i rutan (både horisontellt och vertikalt) */
+#alarmsTable thead th.col-ts {
+    text-align: center !important;
+    padding: 8px 4px !important;
+}
+
 #alarmsTable tbody td.col-ts,
 #alarmsTable tbody td.ts-cell {
     vertical-align: top !important;
-    text-align: left !important;
+    text-align: center !important;
+    padding: 8px 4px !important;
+}
+
+#alarmsTable tbody td.col-ts .ts-time,
+#alarmsTable tbody td.col-ts .ts-date,
+#alarmsTable tbody td.col-ts .ts-id {
+    text-align: center !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+}
+
+/* PROTOKOLL horisontellt centrerat och i topp med RF / KANAL */
+#alarmsTable thead th.col-proto {
+    text-align: center !important;
+    padding: 8px 4px !important;
 }
 
 #alarmsTable tbody td.col-proto,
 #alarmsTable tbody td.proto-cell {
     text-align: center !important;
+    vertical-align: top !important;
+    padding: 8px 4px !important;
+}
+
+#alarmsTable tbody td.col-proto .badge,
+#alarmsTable tbody td.proto-cell .badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto !important;
     vertical-align: top !important;
 }
 
@@ -4069,5 +4115,94 @@ table.dataTable tr::after {
 #alarmsTable thead th.col-act .dt-column-order {
     display: none !important;
 }
+
+/* 1. Ge RF / KANAL och ENHET / ALIAS 30px mer fast bredd så "(Stockholm/Arlanda)" ryms */
+table#alarmsTable.dataTable.dashboard-dt th.col-rf,
+table#alarmsTable.dataTable.dashboard-dt td.col-rf {
+  width: 155px !important;
+  min-width: 155px !important;
+  max-width: 155px !important;
+}
+
+table#alarmsTable.dataTable.dashboard-dt th.col-source,
+table#alarmsTable.dataTable.dashboard-dt td.col-source {
+  width: 165px !important;
+  min-width: 165px !important;
+  max-width: 165px !important;
+}
+
+/* 2. Gör Frekvens (.rf-freq) och Enhetsnamn (.src-name) till enhetliga piller-badgar i linje med Protokoll-badgen */
+/* Kolumn 2: PROTOKOLL-badge */
+table.dataTable.dashboard-dt .badge {
+  font-size: 11px !important;
+  width: 62px !important;
+  padding: 2px 0 !important;
+  border-radius: 3px !important;
+}
+
+/* Kolumn 3: Frekvens som ett tekniskt piller (.rf-freq) */
+.rf-freq {
+  display: inline-block !important;
+  font-family: var(--msg-font, 'Consolas', monospace) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  background: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  padding: 2px 7px !important;
+  border-radius: 3px !important;
+  line-height: 1.2 !important;
+  margin-bottom: 3px !important;
+}
+
+/* Kolumn 4: Enhet / Flygbolag / Alias som ett piller med stöd för radbrytning */
+.src-name {
+  display: inline-block !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  border-left: 3px solid #0284c7 !important;
+  padding: 3px 7px !important;
+  border-radius: 3px !important;
+  line-height: 1.25 !important;
+  margin-bottom: 2px !important;
+  max-width: 132px !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+/* Dark mode-stöd för de nya pillren */
+[data-theme="dark"] .rf-freq {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+[data-theme="dark"] .src-name {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  border-left-color: #38bdf8 !important;
+  color: #f8fafc !important;
+}
+
+/* 3. Öka textstorleken på övriga rader i de 4 vänstra kolumnerna */
+/* Kolumn 1: TID / # */
+.ts-time { font-size: 13px !important; }
+.ts-date { font-size: 11px !important; }
+.ts-id   { font-size: 11px !important; }
+
+/* Kolumn 3: Sekundära RF-rader */
+.rf-snr  { font-size: 11px !important; margin-top: 2px !important; }
+.rf-mod  { font-size: 11px !important; }
+.rf-gs   { font-size: 11px !important; line-height: 1.25 !important; }
+
+/* Kolumn 4: Sekundära Enhets-rader */
+.src-sub  { font-size: 12px !important; margin-top: 2px !important; }
+.src-icao { font-size: 11px !important; }
+.src-acft { font-size: 11px !important; line-height: 1.2 !important; }
+
 
 

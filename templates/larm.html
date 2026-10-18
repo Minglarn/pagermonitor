@@ -274,8 +274,17 @@
             width: 92px !important;
             min-width: 92px !important;
             max-width: 92px !important;
-            padding: 8px 10px !important;
+            padding: 8px 4px !important;
             vertical-align: top !important;
+            text-align: center !important;
+        }
+
+        table.dataTable.larm-dt td.col-ts .ts-time,
+        table.dataTable.larm-dt td.col-ts .ts-date,
+        table.dataTable.larm-dt td.col-ts .ts-id {
+            text-align: center !important;
+            width: 100% !important;
+            margin: 0 auto !important;
         }
 
         table.dataTable.larm-dt th.col-proto,
@@ -289,20 +298,29 @@
             white-space: nowrap !important;
         }
 
+        table.dataTable.larm-dt td.col-proto .badge,
+        table.dataTable.larm-dt td.proto-cell .badge {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 auto !important;
+            vertical-align: top !important;
+        }
+
         table.dataTable.larm-dt th.col-rf,
         table.dataTable.larm-dt td.col-rf {
-            width: 125px !important;
-            min-width: 125px !important;
-            max-width: 125px !important;
+            width: 155px !important;
+            min-width: 155px !important;
+            max-width: 155px !important;
             padding: 8px 8px !important;
             vertical-align: top !important;
         }
 
         table.dataTable.larm-dt th.col-source,
         table.dataTable.larm-dt td.col-source {
-            width: 135px !important;
-            min-width: 135px !important;
-            max-width: 135px !important;
+            width: 165px !important;
+            min-width: 165px !important;
+            max-width: 165px !important;
             padding: 8px 8px !important;
             vertical-align: top !important;
         }
@@ -333,6 +351,44 @@
             padding: 0.5rem 0.85rem !important;
             vertical-align: top !important;
             height: 1px !important;
+        }
+
+        .msg-layout {
+            display: flex !important;
+            gap: 12px !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+            min-width: 0 !important;
+        }
+
+        .msg-main {
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: flex-start !important;
+            align-self: stretch !important;
+        }
+
+        .msg-minimap-container {
+            width: 143px !important;
+            height: 127px !important;
+            min-width: 143px !important;
+            max-width: 143px !important;
+            min-height: 127px !important;
+            max-height: 127px !important;
+            align-self: center !important;
+            margin: auto 0 auto auto !important;
+            padding: 0 !important;
+            border-radius: 6px !important;
+            border: 1px solid var(--panel-border, #334155) !important;
+            overflow: hidden !important;
+            flex-shrink: 0 !important;
+            cursor: pointer !important;
+            position: relative !important;
+            z-index: 1 !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15) !important;
         }
 
         .msg-content-wrapper {
@@ -1028,6 +1084,16 @@
                 }
             }
 
+            // Fånga Lat: 57.9003, Lon: 19.5393 (används bl.a. av Radiosonder)
+            const mLatLon = text.match(/Lat(?:itud|itude)?\s*:\s*(-?\d{1,2}\.\d{2,6})\s*[,|/;\s]+\s*Lon(?:gitud|gitude)?\s*:\s*(-?\d{1,3}\.\d{2,6})/i);
+            if (mLatLon) {
+                const lat = parseFloat(mLatLon[1]);
+                const lon = parseFloat(mLatLon[2]);
+                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && !(lat === 0 && lon === 0)) {
+                    return { lat, lon };
+                }
+            }
+
             const mNSEW = text.match(/([NS])\s*(\d{1,2}\.\d{2,6})\s*,\s*([EW])\s*(\d{1,3}\.\d{2,6})/i);
             if (mNSEW) {
                 let lat = parseFloat(mNSEW[2]);
@@ -1140,6 +1206,14 @@
                     e.preventDefault();
                     openMapModal(containerEl.dataset.msgId, lat, lon);
                 });
+
+                // Hantera dynamisk storleksförändring när radhöjden anpassas
+                if (window.ResizeObserver) {
+                    const ro = new ResizeObserver(() => {
+                        if (map) map.invalidateSize();
+                    });
+                    ro.observe(containerEl);
+                }
 
                 setTimeout(() => {
                     map.invalidateSize();
@@ -1736,7 +1810,7 @@
             const tdSourceHtml = `
                 <td class="col-source source-cell">
                     <div class="src-header">
-                        <span class="src-name filterable-badge" onclick="filterByCapcode('${escapeHtml(displayAddress)}', '${escapeHtml(alarm.address)}')" title="Klicka för att filtrera">${escapeHtml(nameToDisplay)}</span>
+                        <span class="src-name filterable-badge" onclick="filterByCapcode('${escapeHtml(displayAddress)}', '${escapeHtml(alarm.address)}')" title="${escapeHtml(nameToDisplay)} (Klicka för att filtrera)">${escapeHtml(nameToDisplay)}</span>
                         ${editBtnHtml}
                     </div>
                     ${srcSubHtml}
@@ -1829,6 +1903,25 @@
                 tagsList.push(`<span class="msg-label filterable-badge" onclick="filterByLabel('${escapeHtml(labelVal)}')" title="ACARS Label: ${escapeHtml(labelVal)}">Label: ${escapeHtml(labelVal)}${shortLabel ? ' (' + escapeHtml(shortLabel) + ')' : ''}</span>`);
             }
 
+            // Radiosond (SONDE) - Rubrik och Status-badge i Zon A
+            if (protoName === 'SONDE' || extractedTitle === 'STIGER' || extractedTitle === 'FALLER' || extractedTitle.startsWith('FALLER') || extractedTitle === 'START' || extractedTitle === 'LANDAD' || extractedTitle === 'LANDNING') {
+                if (extractedTitle === 'STIGER') {
+                    extractedTitle = 'RADIOSOND TELEMETRI';
+                    tagsList.push(`<span class="msg-label pocsag-id">STATUS: STIGER</span>`);
+                } else if (extractedTitle === 'FALLER' || extractedTitle.startsWith('FALLER')) {
+                    extractedTitle = 'RADIOSOND TELEMETRI';
+                    tagsList.push(`<span class="msg-label" style="background:#fef3c7; color:#b45309; border-color:#fcd34d;">STATUS: FALLER</span>`);
+                } else if (extractedTitle === 'START') {
+                    extractedTitle = 'RADIOSOND TELEMETRI';
+                    tagsList.push(`<span class="msg-label" style="background:rgba(16, 185, 129, 0.2); color:#10b981; border-color:rgba(16, 185, 129, 0.4);">STATUS: START</span>`);
+                } else if (extractedTitle === 'LANDAD' || extractedTitle === 'LANDNING') {
+                    extractedTitle = 'RADIOSOND TELEMETRI';
+                    tagsList.push(`<span class="msg-label" style="background:rgba(148, 163, 184, 0.2); color:#94a3b8; border-color:rgba(148, 163, 184, 0.4);">STATUS: LANDAD</span>`);
+                } else if (protoName === 'SONDE') {
+                    extractedTitle = 'RADIOSOND TELEMETRI';
+                }
+            }
+
             // Zon B Key-Value Parsning
             let emptyKeys = [];
             let kvItems = [];
@@ -1867,6 +1960,34 @@
                         } else {
                             appendOrPushText(line);
                         }
+                    }
+                }
+            } else if (protoName === 'SONDE') {
+                // Dela upp bodyText på både radbrytningar och pipe-tecken för ren telemetri-grid
+                const sParts = bodyText.split(/[\r\n|]+/).map(p => p.trim()).filter(p => p.length > 0);
+                for (const part of sParts) {
+                    // Om delen innehåller Lat: X, Lon: Y, slå ihop till ETT fält POSITION
+                    const mPos = part.match(/Lat(?:itud|itude)?\s*:\s*(-?\d{1,2}\.\d{2,6})\s*[,/;\s]+\s*Lon(?:gitud|gitude)?\s*:\s*(-?\d{1,3}\.\d{2,6})/i);
+                    if (mPos) {
+                        kvItems.push({ key: 'POSITION', val: `${mPos[1]}, ${mPos[2]}`, fullText: false, wide: false });
+                        continue;
+                    }
+
+                    // Övriga segment med Nyckel: Värde
+                    const cM = part.match(/^([A-Za-zåäöÅÄÖ0-9_\s/()\-]+?):\s*(.*)$/);
+                    if (cM) {
+                        const k = cM[1].trim();
+                        const v = cM[2].trim();
+                        if (v) {
+                            kvItems.push({ key: k.toUpperCase(), val: v, fullText: false, wide: false });
+                        }
+                    } else if (part.includes('Modell:')) {
+                        const mM = part.match(/Modell:\s*([^|]+)/i);
+                        if (mM) {
+                            kvItems.push({ key: 'MODELL', val: mM[1].trim(), fullText: false, wide: false });
+                        }
+                    } else if (part.length > 0) {
+                        kvItems.push({ key: 'INFO', val: part, fullText: false, wide: false });
                     }
                 }
             } else if (decodedFields && typeof decodedFields === 'object' && (decodedFields.is_warning || decodedFields.type_code === 'WRN')) {

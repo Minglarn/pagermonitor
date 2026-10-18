@@ -2,7 +2,49 @@
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## [2026.10.18.15] - Radbrytning i Enhet/Alias-piller (.src-name) och Fullständigt Namn i Hover-tooltip
+- **Radbrytning inuti Enhet/Alias-pillret (`.src-name`) ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Tillåtit naturlig radbrytning (`white-space: normal !important; word-break: break-word !important; overflow: visible !important; text-overflow: clip !important;`) med `max-width: 132px !important;` och `line-height: 1.25 !important;`.
+  - Långa enhetsnamn som t.ex. `Vaisala RS41 (Aktiv)` och `Vaisala RS41 (TROSA_SDR)` klipps inte längre med `...`, utan visas fullt ut över två rader inuti pillret.
+- **Fullständigt namn i title-tooltip vid hover ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - Title-attributet på `.src-name` i `createAlarmRowNode()` visar nu enhetsnamnet/aliaset följt av filter-instruktionen: `title="${escapeHtml(srcMain)} (Klicka för att filtrera)"`.
+
+## [2026.10.18.14] - Piller-design på Frekvens & Enhet, Ökad Textstorlek och +30px Kolumnbredd
+- **Breddad RF / KANAL och ENHET / ALIAS (+30px) ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Kolumn 3 (`col-rf`): Utökad från 125px till fast bredd 155px (`width: 155px !important; min-width: 155px !important; max-width: 155px !important;`). Långa basstationsnamn som `(Stockholm/Arlanda)` ryms nu utan radbrytning.
+  - Kolumn 4 (`col-source`): Utökad från 135px/140px till fast bredd 165px (`width: 165px !important; min-width: 165px !important; max-width: 165px !important;`).
+- **Enhetlig Piller-design för Frekvens (`.rf-freq`) och Enhetsnamn (`.src-name`) ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - `.rf-freq`: Tekniskt piller med monospace, 12px fet stil, ram och bakgrund `#f1f5f9` (mörkt läge: `#1e293b`).
+  - `.src-name`: Matchande piller med 12px fet stil, ram och vänsteraccent `border-left: 3px solid #0284c7` (mörkt läge: `#38bdf8`), samt maxbredd 130px med text-overflow ellipsis.
+  - Kolumn 2 `.badge`: Optimerad till `width: 62px !important; font-size: 11px !important;` i linje med övriga piller.
+- **Ökad textstorlek i de fyra vänstra kolumnerna ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Kolumn 1: `.ts-time` (13px), `.ts-date` (11px), `.ts-id` (11px).
+  - Kolumn 3: `.rf-snr` (11px), `.rf-mod` (11px), `.rf-gs` (11px).
+  - Kolumn 4: `.src-sub` (12px), `.src-icao` (11px), `.src-acft` (11px).
+
+## [2026.10.18.13] - Fast och Enhetlig Storlek på Minikartor (+10%)
+- **Fast och enhetlig storlek på alla minikartor ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Återställt flexibel storlek på minikartan så att kartan inte sträcks eller ändrar dimensioner vid höga rader.
+  - Ökat standardkartans dimensioner med ca 10% från tidigare standard `130px` x `115px` till fast `143px` x `127px` (`width: 143px !important; height: 127px !important; min-width: 143px !important; max-width: 143px !important; min-height: 127px !important; max-height: 127px !important;`).
+  - Minikartorna visas nu med exakt identiska dimensioner på alla meddelanderader oavsett radens höjd (SONDE, VDL2, SAT-C, m.fl.).
+  - Kartan centreras vertikalt (`align-self: center !important; margin: auto 0 auto auto !important;`) intill meddelandet i `.msg-layout`, samtidigt som rubrik och metadata linjerar i toppen.
+
+## [2026.10.18.12] - Radiosond Telemetri-grid (Alternativ A), Full Radhöjd för Minikarta och Centrering
+- **Radiosond (`SONDE`) som Ren Telemetri-grid ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - Konverterat visningen av Radiosond-meddelanden till ren telemetri utan fritextruta (`MEDDELANDETEXT` skapas aldrig).
+  - Zon A rubrik ändrad till `RADIOSOND TELEMETRI` med statusbadge: `STATUS: STIGER`, `STATUS: FALLER` eller `STATUS: START`.
+  - Parsar mätvärdessegment på både radbrytningar och pipe-tecken (`|`), slår samman `Lat: X, Lon: Y` till `{ key: 'POSITION', val: 'lat, lon' }` och lägger alla mätvärden (`HÖJD`, `STIGHASTIGHET`, `FART`, `TEMP`, `FUKT`, `BATT`, `MOTTAGARE`, `POSITION`) som likvärdiga kolumner i `.data-flex`.
+- **Universell Koordinatigenkänning för Minikarta ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - Utökat `extractUniversalCoordinates()` med regex `mLatLon` för att fånga formatet `Lat: 57.9003, Lon: 19.5393` så att minikartan renderas bredvid telemetrin.
+- **Minikarta i Full Radhöjd med Bibehållna Proportioner ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Satt `height: auto !important; align-self: stretch !important; aspect-ratio: 130 / 115 !important; width: auto !important;` på `.msg-minimap-container`.
+  - Minikartan är nu lika hög som raden och sträcker sig från toppen till botten, med exakt bibehållna proportioner (130 / 115 aspect ratio).
+  - Integrerat `ResizeObserver` i `initMinimap()` som anropar `map.invalidateSize()` så kartpanelerna automatiskt ritas om när containern anpassas till radens höjd.
+  - Satt `.msg-layout` till `display: flex !important; align-items: stretch !important; justify-content: space-between !important; height: 100% !important;` och `.msg-main` till vertikalt centrerad (`justify-content: center !important;`).
+- **Placering av Kolumn 1 (`TID / #`) och Kolumn 2 (`PROTOKOLL`) i linje med RF / KANAL ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Kolumn 1 (`col-ts`): `vertical-align: top !important; text-align: center !important; padding: 8px 4px !important;` så att tid, datum och ID startar på exakt samma bashöjd som `RF / KANAL`, men förblir horisontellt centrerade.
+  - Kolumn 2 (`col-proto`): `vertical-align: top !important; text-align: center !important; padding: 8px 4px !important;` med protokollbadgen placerad i toppen på samma höjdlinje som frekvensen i `RF / KANAL`.
+
 ## [2026.10.18.11] - Korrigering av Tabellhuvud, Bredd för PROTOKOLL och Borttagning av Senast-tid
 
 - **Fullständig borttagning av "(Senast: ...)" ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:

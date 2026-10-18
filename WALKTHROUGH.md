@@ -1,13 +1,54 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.18.6`
+- **CalVer**: `2026.10.18.15`
 - **Date**: 2026-10-18
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000007. Radbrytning i Enhet/Alias-piller (.src-name) och Fullständigt Namn i Hover-tooltip (v2026.10.18.15)
+- **Radbrytning inuti Enhet/Alias-pillret (`.src-name`)**:
+  - Tillåtit naturlig radbrytning (`white-space: normal !important; word-break: break-word !important; overflow: visible !important; text-overflow: clip !important;`) med `max-width: 132px !important;` och `line-height: 1.25 !important;`.
+  - Långa enhetsnamn som t.ex. `Vaisala RS41 (Aktiv)` och `Vaisala RS41 (TROSA_SDR)` klipps inte längre med `...`, utan visas fullt ut över två rader inuti pillret.
+- **Fullständigt namn i title-tooltip vid hover**:
+  - Title-attributet på `.src-name` i `createAlarmRowNode()` visar nu enhetsnamnet/aliaset följt av filter-instruktionen: `title="${escapeHtml(srcMain)} (Klicka för att filtrera)"`.
+
+### 000006. Piller-design på Frekvens & Enhet, Ökad Textstorlek och +30px Kolumnbredd (v2026.10.18.14)
+- **Breddad RF / KANAL och ENHET / ALIAS (+30px)**:
+  - Kolumn 3 (`col-rf`) har ökats med 30px från 125px till fast bredd 155px (`width: 155px !important; min-width: 155px !important; max-width: 155px !important;`), vilket gör att långa markstationsnamn som `(Stockholm/Arlanda)` ryms bekvämt.
+  - Kolumn 4 (`col-source`) har ökats till fast bredd 165px (`width: 165px !important; min-width: 165px !important; max-width: 165px !important;`).
+- **Enhetliga Piller-badgar**:
+  - Frekvens (`.rf-freq`): Tekniskt piller med monospace, 12px fet stil, ram och bakgrund `#f1f5f9` (mörkt läge: `#1e293b`).
+  - Enhetsnamn (`.src-name`): Piller med 12px fet stil, ram och distinkt blå vänsteraccent `border-left: 3px solid #0284c7` (mörkt läge: `#38bdf8`), samt maxbredd 130px med text-overflow ellipsis.
+  - Protokollbadge (`.badge`): Optimerad till `width: 62px !important; font-size: 11px !important;` i linje med övriga piller.
+- **Ökad textstorlek i de fyra vänstra kolumnerna**:
+  - Kolumn 1 (`TID / #`): `.ts-time` (13px), `.ts-date` (11px), `.ts-id` (11px).
+  - Kolumn 3 (`RF / KANAL`): `.rf-snr` (11px), `.rf-mod` (11px), `.rf-gs` (11px).
+  - Kolumn 4 (`ENHET / ALIAS`): `.src-sub` (12px), `.src-icao` (11px), `.src-acft` (11px).
+
+### 000005. Fast och Enhetlig Storlek på Minikartor (+10%) (v2026.10.18.13)
+- **Fast och enhetlig storlek oavsett radhöjd**:
+  - Återställt minikartans flexibla storlek (`height: auto`, `align-self: stretch`, `aspect-ratio: 130 / 115`) så att kartan inte töjs eller blir oproportionerligt stor vid höga rader (t.ex. vid långa Inmarsat SAT-C SAR Distress-larm).
+  - Ökat standardkartans mått med ca 10% från tidigare `130px` x `115px` till fast `143px` x `127px` (`width: 143px !important; height: 127px !important; min-width: 143px !important; max-width: 143px !important; min-height: 127px !important; max-height: 127px !important;`).
+  - Samtliga kartor i tabellen har nu exakt samma dimensioner och proportioner oavsett om raden innehåller en enda textrad eller många rader telemetri/fritext.
+  - Kartan centreras vertikalt (`align-self: center !important; margin: auto 0 auto auto !important;`) i meddelandecellens layout.
+
+### 000004. Radiosond Telemetri-grid (Alternativ A), Full Radhöjd för Minikarta och Kolumncentrering (v2026.10.18.12)
+- **Radiosond (`SONDE`) som Ren Telemetri-grid**:
+  - `SONDE`-meddelanden visas nu uteslutande som mätvärdesrutor i en enhetlig grid (`.data-flex`). Ingen fritextruta (`MEDDELANDETEXT`) eller `.kv-box.full-text` skapas.
+  - Rubriken i Zon A är satt till `RADIOSOND TELEMETRI` med statusbadge: `STATUS: STIGER`, `STATUS: FALLER` eller `STATUS: START`.
+  - Alla telemetrivärden (`HÖJD`, `STIGHASTIGHET`, `FART`, `TEMP`, `FUKT`, `BATT`, `MOTTAGARE`, `POSITION`) renderas som likvärdiga kolumnboxar.
+- **Minikarta i Full Radhöjd med Bibehållna Proportioner**:
+  - Minikartan (`.msg-minimap-container`) har satts till `height: auto !important; align-self: stretch !important; aspect-ratio: 130 / 115 !important; width: auto !important; min-height: 115px !important; min-width: 130px !important;`.
+  - Kartan sträcker sig från toppen till botten av raden och är lika hög som raden, samtidigt som den behåller sina ursprungliga proportioner (130 / 115 aspect ratio).
+  - Integrerat en `ResizeObserver` på kartcontainern som anropar Leaflets `map.invalidateSize()` så fort containern ändrar dimensioner vid radlayout.
+  - `.msg-layout` har `display: flex !important; align-items: stretch !important; justify-content: space-between !important; height: 100% !important;` och `.msg-main` är vertikalt centrerad (`justify-content: center !important;`).
+- **Placering av Kolumn 1 (`TID / #`) och Kolumn 2 (`PROTOKOLL`) i linje med RF / KANAL**:
+  - Kolumn 1 (`col-ts`): `vertical-align: top !important; text-align: center !important; padding: 8px 4px !important;` så att tid, datum och ID startar på exakt samma bashöjd som `RF / KANAL`, men förblir horisontellt centrerade.
+  - Kolumn 2 (`col-proto`): `vertical-align: top !important; text-align: center !important; padding: 8px 4px !important;` med protokollbadgen i toppen på samma höjdlinje som frekvensen i `RF / KANAL`.
 
 ### 000000. Kritisk Buggfix, CSS-injektion & Layoutkorrigering i Real-time Monitor (v2026.10.18.6)
 - **Bakgrund och Problem**:

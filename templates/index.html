@@ -609,23 +609,23 @@
             padding-right: 1rem !important;
         }
 
-        /* 6 Fasta Kolumner (Wireshark / C2 Industriell Layout) */
         table.dataTable.dashboard-dt th.col-ts,
         table.dataTable.dashboard-dt td.col-ts,
         table.dataTable.dashboard-dt td.ts-cell {
             width: 92px !important;
             min-width: 92px !important;
             max-width: 92px !important;
-            padding: 8px 6px !important;
+            padding: 8px 4px !important;
+            text-align: center !important;
             vertical-align: top !important;
         }
 
         table.dataTable.dashboard-dt th.col-proto,
         table.dataTable.dashboard-dt td.col-proto,
         table.dataTable.dashboard-dt td.proto-cell {
-            width: 78px !important;
-            min-width: 78px !important;
-            max-width: 85px !important;
+            width: 88px !important;
+            min-width: 88px !important;
+            max-width: 88px !important;
             text-align: center !important;
             padding: 8px 4px !important;
             vertical-align: top !important;
@@ -749,11 +749,14 @@
         }
 
         .msg-minimap-container {
-            width: 130px !important;
-            min-width: 130px !important;
-            height: 115px !important;
-            min-height: 115px !important;
-            margin: 0 !important;
+            width: 143px !important;
+            height: 127px !important;
+            min-width: 143px !important;
+            max-width: 143px !important;
+            min-height: 127px !important;
+            max-height: 127px !important;
+            align-self: center !important;
+            margin: auto 0 auto auto !important;
             padding: 0 !important;
             border-radius: 6px !important;
             border: 1px solid var(--panel-border, #334155) !important;
@@ -1025,12 +1028,23 @@
         .src-acft   { font-size: 10px !important; color: #64748b !important; margin-top: 2px !important; line-height: 1.15 !important; }
 
         /* 4. Meddelandecell: Zon A (Header) + Zon B (Key-Value Grid & Full-text Box) */
-        .msg-layout { display: flex !important; gap: 12px !important; align-items: flex-start !important; width: 100% !important; }
+        .msg-layout {
+          display: flex !important;
+          gap: 12px !important;
+          align-items: center !important;
+          justify-content: space-between !important;
+          width: 100% !important;
+          min-width: 0 !important;
+        }
 
         /* Meddelandecellen ärver användarens valda storlek och typsnitt från Settings */
         .msg-main {
           flex: 1 1 auto !important;
           min-width: 0 !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: flex-start !important;
+          align-self: stretch !important;
           font-size: var(--msg-size, 0.72rem) !important;
         }
 
@@ -1188,18 +1202,65 @@
           box-sizing: border-box !important;
         }
 
-        /* Toppjustera ALLA tabellceller i #alarmsTable (särskilt TID / #) */
-        table#alarmsTable.dataTable.dashboard-dt tbody td,
+        /* Centrera TID / # i rutan (både horisontellt och vertikalt) */
+        table#alarmsTable.dataTable.dashboard-dt thead th.col-ts {
+          text-align: center !important;
+          padding: 8px 4px !important;
+        }
+
         table#alarmsTable.dataTable.dashboard-dt tbody td.col-ts,
         table#alarmsTable.dataTable.dashboard-dt tbody td.ts-cell {
           vertical-align: top !important;
-          text-align: left !important;
+          text-align: center !important;
+          padding: 8px 4px !important;
+        }
+
+        table#alarmsTable.dataTable.dashboard-dt tbody td.col-ts .ts-time,
+        table#alarmsTable.dataTable.dashboard-dt tbody td.col-ts .ts-date,
+        table#alarmsTable.dataTable.dashboard-dt tbody td.col-ts .ts-id {
+          text-align: center !important;
+          width: 100% !important;
+          margin: 0 auto !important;
+        }
+
+        /* PROTOKOLL horisontellt centrerat och i topp med RF / KANAL */
+        table#alarmsTable.dataTable.dashboard-dt thead th.col-proto {
+          text-align: center !important;
+          padding: 8px 4px !important;
         }
 
         table#alarmsTable.dataTable.dashboard-dt tbody td.col-proto,
         table#alarmsTable.dataTable.dashboard-dt tbody td.proto-cell {
           text-align: center !important;
           vertical-align: top !important;
+          padding: 8px 4px !important;
+        }
+
+        table#alarmsTable.dataTable.dashboard-dt tbody td.col-proto .badge,
+        table#alarmsTable.dataTable.dashboard-dt tbody td.proto-cell .badge {
+          display: inline-flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+          margin: 0 auto !important;
+          vertical-align: top !important;
+        }
+
+        /* Övriga tabellceller - alla linjerar i toppen */
+        table#alarmsTable.dataTable.dashboard-dt tbody td.col-rf,
+        table#alarmsTable.dataTable.dashboard-dt tbody td.col-source {
+          vertical-align: top !important;
+          padding: 8px 8px !important;
+        }
+
+        table#alarmsTable.dataTable.dashboard-dt tbody td.col-msg {
+          vertical-align: top !important;
+          height: 1px !important;
+        }
+
+        table#alarmsTable.dataTable.dashboard-dt tbody td.col-act {
+          text-align: center !important;
+          vertical-align: top !important;
+          padding: 8px 4px !important;
         }
 
         /* Dölj "(Senast: ...)" permanent */
@@ -1209,16 +1270,16 @@
 
         /* Justera kolumnbredder så att rubrikerna får plats */
         table#alarmsTable.dataTable.dashboard-dt th.col-ts,
-        table#alarmsTable.dataTable.dashboard-dt td.col-ts     { width: 92px !important; min-width: 92px !important; max-width: 92px !important; padding: 8px 8px !important; }
+        table#alarmsTable.dataTable.dashboard-dt td.col-ts     { width: 92px !important; min-width: 92px !important; max-width: 92px !important; }
 
         table#alarmsTable.dataTable.dashboard-dt th.col-proto,
-        table#alarmsTable.dataTable.dashboard-dt td.col-proto  { width: 88px !important; min-width: 88px !important; max-width: 88px !important; padding: 8px 4px !important; }
+        table#alarmsTable.dataTable.dashboard-dt td.col-proto  { width: 88px !important; min-width: 88px !important; max-width: 88px !important; }
 
         table#alarmsTable.dataTable.dashboard-dt th.col-rf,
-        table#alarmsTable.dataTable.dashboard-dt td.col-rf     { width: 125px !important; min-width: 125px !important; max-width: 125px !important; }
+        table#alarmsTable.dataTable.dashboard-dt td.col-rf     { width: 155px !important; min-width: 155px !important; max-width: 155px !important; }
 
         table#alarmsTable.dataTable.dashboard-dt th.col-source,
-        table#alarmsTable.dataTable.dashboard-dt td.col-source { width: 140px !important; min-width: 140px !important; max-width: 140px !important; }
+        table#alarmsTable.dataTable.dashboard-dt td.col-source { width: 165px !important; min-width: 165px !important; max-width: 165px !important; }
 
         table#alarmsTable.dataTable.dashboard-dt th.col-msg,
         table#alarmsTable.dataTable.dashboard-dt td.col-msg    { width: auto !important; }
@@ -1234,6 +1295,11 @@
           text-align: left !important;
           overflow: hidden !important;
           text-overflow: clip !important;
+        }
+
+        table#alarmsTable.dataTable.dashboard-dt thead th.col-ts {
+          text-align: center !important;
+          padding: 8px 4px !important;
         }
 
         table#alarmsTable.dataTable.dashboard-dt thead th.col-proto {
@@ -1254,6 +1320,94 @@
           font-size: 9px !important;
           opacity: 0.5 !important;
         }
+
+        /* 1. Ge RF / KANAL och ENHET / ALIAS 30px mer fast bredd så "(Stockholm/Arlanda)" ryms */
+        table#alarmsTable.dataTable.dashboard-dt th.col-rf,
+        table#alarmsTable.dataTable.dashboard-dt td.col-rf {
+          width: 155px !important;
+          min-width: 155px !important;
+          max-width: 155px !important;
+        }
+
+        table#alarmsTable.dataTable.dashboard-dt th.col-source,
+        table#alarmsTable.dataTable.dashboard-dt td.col-source {
+          width: 165px !important;
+          min-width: 165px !important;
+          max-width: 165px !important;
+        }
+
+        /* 2. Gör Frekvens (.rf-freq) och Enhetsnamn (.src-name) till enhetliga piller-badgar i linje med Protokoll-badgen */
+        /* Kolumn 2: PROTOKOLL-badge */
+        table.dataTable.dashboard-dt .badge {
+          font-size: 11px !important;
+          width: 62px !important;
+          padding: 2px 0 !important;
+          border-radius: 3px !important;
+        }
+
+        /* Kolumn 3: Frekvens som ett tekniskt piller (.rf-freq) */
+        .rf-freq {
+          display: inline-block !important;
+          font-family: var(--msg-font, 'Consolas', monospace) !important;
+          font-size: 12px !important;
+          font-weight: 700 !important;
+          color: #0f172a !important;
+          background: #f1f5f9 !important;
+          border: 1px solid #cbd5e1 !important;
+          padding: 2px 7px !important;
+          border-radius: 3px !important;
+          line-height: 1.2 !important;
+          margin-bottom: 3px !important;
+        }
+
+        /* Kolumn 4: Enhet / Flygbolag / Alias som ett piller med stöd för radbrytning */
+        .src-name {
+          display: inline-block !important;
+          font-size: 12px !important;
+          font-weight: 700 !important;
+          color: #0f172a !important;
+          background: #f8fafc !important;
+          border: 1px solid #cbd5e1 !important;
+          border-left: 3px solid #0284c7 !important;
+          padding: 3px 7px !important;
+          border-radius: 3px !important;
+          line-height: 1.25 !important;
+          margin-bottom: 2px !important;
+          max-width: 132px !important;
+          white-space: normal !important;
+          word-break: break-word !important;
+          overflow: visible !important;
+          text-overflow: clip !important;
+        }
+
+        /* Dark mode-stöd för de nya pillren */
+        [data-theme="dark"] .rf-freq {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          color: #f8fafc !important;
+        }
+        [data-theme="dark"] .src-name {
+          background: #1e293b !important;
+          border-color: #334155 !important;
+          border-left-color: #38bdf8 !important;
+          color: #f8fafc !important;
+        }
+
+        /* 3. Öka textstorleken på övriga rader i de 4 vänstra kolumnerna */
+        /* Kolumn 1: TID / # */
+        .ts-time { font-size: 13px !important; }
+        .ts-date { font-size: 11px !important; }
+        .ts-id   { font-size: 11px !important; }
+
+        /* Kolumn 3: Sekundära RF-rader */
+        .rf-snr  { font-size: 11px !important; margin-top: 2px !important; }
+        .rf-mod  { font-size: 11px !important; }
+        .rf-gs   { font-size: 11px !important; line-height: 1.25 !important; }
+
+        /* Kolumn 4: Sekundära Enhets-rader */
+        .src-sub  { font-size: 12px !important; margin-top: 2px !important; }
+        .src-icao { font-size: 11px !important; }
+        .src-acft { font-size: 11px !important; line-height: 1.2 !important; }
     </style>
 
     <script>
@@ -1620,6 +1774,16 @@
                 }
             }
 
+            // Fånga Lat: 57.9003, Lon: 19.5393 (används bl.a. av Radiosonder)
+            const mLatLon = text.match(/Lat(?:itud|itude)?\s*:\s*(-?\d{1,2}\.\d{2,6})\s*[,|/;\s]+\s*Lon(?:gitud|gitude)?\s*:\s*(-?\d{1,3}\.\d{2,6})/i);
+            if (mLatLon) {
+                const lat = parseFloat(mLatLon[1]);
+                const lon = parseFloat(mLatLon[2]);
+                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180 && !(lat === 0 && lon === 0)) {
+                    return { lat, lon };
+                }
+            }
+
             // 3. Prioritet 3: N/S lat, E/W lon (fångar N 57.753, E 18.378)
             const mNSEW = text.match(/([NS])\s*(\d{1,2}\.\d{2,6})\s*,\s*([EW])\s*(\d{1,3}\.\d{2,6})/i);
             if (mNSEW) {
@@ -1744,6 +1908,14 @@
                     e.preventDefault();
                     openMapModal(containerEl.dataset.msgId, lat, lon);
                 });
+
+                // Hantera dynamisk storleksförändring när radhöjden anpassas
+                if (window.ResizeObserver) {
+                    const ro = new ResizeObserver(() => {
+                        if (map) map.invalidateSize();
+                    });
+                    ro.observe(containerEl);
+                }
 
                 setTimeout(() => {
                     map.invalidateSize();
@@ -3325,6 +3497,7 @@
             // KOLUMN 4: ENHET / ALIAS (width: 135px)
             // -------------------------------------------------------------
             const nameToDisplay = alarm.alias ? alarm.alias : (displayAddress || alarm.address || '-');
+            const srcMain = nameToDisplay;
             const editBtnHtml = `<button type="button" class="alias-edit-icon-btn" onclick="openAliasModal('${escapeHtml(alarm.address)}')" title="Redigera alias för ${escapeHtml(alarm.address)}"><i class="fas fa-pen"></i></button>`;
 
             let subFlightReg = '';
@@ -3354,7 +3527,7 @@
             const tdSourceHtml = `
                 <td class="col-source source-cell">
                     <div class="src-header">
-                        <span class="src-name filterable-badge" onclick="filterByCapcode('${escapeHtml(displayAddress)}', '${escapeHtml(alarm.address)}')" title="Klicka för att filtrera">${escapeHtml(nameToDisplay)}</span>
+                        <span class="src-name filterable-badge" onclick="filterByCapcode('${escapeHtml(displayAddress)}', '${escapeHtml(alarm.address)}')" title="${escapeHtml(srcMain)} (Klicka för att filtrera)">${escapeHtml(nameToDisplay)}</span>
                         ${editBtnHtml}
                     </div>
                     ${srcSubHtml}
@@ -3452,6 +3625,25 @@
                 tagsList.push(`<span class="msg-label filterable-badge" onclick="filterByLabel('${escapeHtml(labelVal)}')" title="ACARS Label: ${escapeHtml(labelVal)}">Label: ${escapeHtml(labelVal)}${shortLabel ? ' (' + escapeHtml(shortLabel) + ')' : ''}</span>`);
             }
 
+            // Radiosond (SONDE) - Rubrik och Status-badge i Zon A
+            if (protoName === 'SONDE' || extractedTitle === 'STIGER' || extractedTitle === 'FALLER' || extractedTitle.startsWith('FALLER') || extractedTitle === 'START' || extractedTitle === 'LANDAD' || extractedTitle === 'LANDNING') {
+                if (extractedTitle === 'STIGER') {
+                    extractedTitle = 'RADIOSOND TELEMETRI';
+                    tagsList.push(`<span class="msg-label pocsag-id">STATUS: STIGER</span>`);
+                } else if (extractedTitle === 'FALLER' || extractedTitle.startsWith('FALLER')) {
+                    extractedTitle = 'RADIOSOND TELEMETRI';
+                    tagsList.push(`<span class="msg-label" style="background:#fef3c7; color:#b45309; border-color:#fcd34d;">STATUS: FALLER</span>`);
+                } else if (extractedTitle === 'START') {
+                    extractedTitle = 'RADIOSOND TELEMETRI';
+                    tagsList.push(`<span class="msg-label" style="background:rgba(16, 185, 129, 0.2); color:#10b981; border-color:rgba(16, 185, 129, 0.4);">STATUS: START</span>`);
+                } else if (extractedTitle === 'LANDAD' || extractedTitle === 'LANDNING') {
+                    extractedTitle = 'RADIOSOND TELEMETRI';
+                    tagsList.push(`<span class="msg-label" style="background:rgba(148, 163, 184, 0.2); color:#94a3b8; border-color:rgba(148, 163, 184, 0.4);">STATUS: LANDAD</span>`);
+                } else if (protoName === 'SONDE') {
+                    extractedTitle = 'RADIOSOND TELEMETRI';
+                }
+            }
+
             // Zon B Key-Value Parsning
             let emptyKeys = [];
             let kvItems = [];
@@ -3485,6 +3677,34 @@
                 }
                 if (freeLines.length > 0) {
                     kvItems.push({ key: 'MEDDELANDETEXT', val: freeLines.join('\n'), fullText: true, wide: false });
+                }
+            } else if (protoName === 'SONDE') {
+                // Dela upp bodyText på både radbrytningar och pipe-tecken för ren telemetri-grid
+                const sParts = bodyText.split(/[\r\n|]+/).map(p => p.trim()).filter(p => p.length > 0);
+                for (const part of sParts) {
+                    // Om delen innehåller Lat: X, Lon: Y, slå ihop till ETT fält POSITION
+                    const mPos = part.match(/Lat(?:itud|itude)?\s*:\s*(-?\d{1,2}\.\d{2,6})\s*[,/;\s]+\s*Lon(?:gitud|gitude)?\s*:\s*(-?\d{1,3}\.\d{2,6})/i);
+                    if (mPos) {
+                        kvItems.push({ key: 'POSITION', val: `${mPos[1]}, ${mPos[2]}`, fullText: false, wide: false });
+                        continue;
+                    }
+
+                    // Övriga segment med Nyckel: Värde
+                    const cM = part.match(/^([A-Za-zåäöÅÄÖ0-9_\s/()\-]+?):\s*(.*)$/);
+                    if (cM) {
+                        const k = cM[1].trim();
+                        const v = cM[2].trim();
+                        if (v) {
+                            kvItems.push({ key: k.toUpperCase(), val: v, fullText: false, wide: false });
+                        }
+                    } else if (part.includes('Modell:')) {
+                        const mM = part.match(/Modell:\s*([^|]+)/i);
+                        if (mM) {
+                            kvItems.push({ key: 'MODELL', val: mM[1].trim(), fullText: false, wide: false });
+                        }
+                    } else if (part.length > 0) {
+                        kvItems.push({ key: 'INFO', val: part, fullText: false, wide: false });
+                    }
                 }
             } else if (decodedFields && typeof decodedFields === 'object' && (decodedFields.is_warning || decodedFields.type_code === 'WRN')) {
                 extractedTitle = 'ECAM COCKPIT VARNING';
