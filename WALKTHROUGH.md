@@ -1,13 +1,19 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.18.15`
+- **CalVer**: `2026.10.18.16`
 - **Date**: 2026-10-18
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000008. Buggfix: decodeMimeWordsInText i Alarms (larm.html) (v2026.10.18.16)
+- **Buggfix och deklaration av `decodeMimeWordsInText`**:
+  - Åtgärdat felet `ReferenceError: decodeMimeWordsInText is not defined` som inträffade i `createAlarmRowNode()` i [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html).
+  - Felet orsakade tidigare ett felmeddelande ("FAILED TO LOAD ALARMS") när användaren navigerade till `/alarms`.
+  - Funktionen `decodeMimeWordsInText(str)` har nu implementerats i `larm.html`, vilket avkodar MIME RFC 2047-ord (t.ex. vid Inmarsat/ACARS) och låter alla larm renderas utan skriptfel.
 
 ### 000007. Radbrytning i Enhet/Alias-piller (.src-name) och Fullständigt Namn i Hover-tooltip (v2026.10.18.15)
 - **Radbrytning inuti Enhet/Alias-pillret (`.src-name`)**:

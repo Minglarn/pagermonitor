@@ -1377,6 +1377,33 @@
             }
         };
 
+        function decodeMimeWordsInText(str) {
+            if (!str || typeof str !== 'string' || !str.includes('=?')) return str;
+            return str.replace(/=\?([^?]+)\?([BbQq])\?([^?]+)\?=/gi, function(match, charset, enc, data) {
+                try {
+                    const encoding = enc.toUpperCase();
+                    if (encoding === 'B') {
+                        let pad = data.length % 4;
+                        let paddedData = data;
+                        if (pad) paddedData += '='.repeat(4 - pad);
+                        const binaryStr = atob(paddedData);
+                        const bytes = new Uint8Array(binaryStr.length);
+                        for (let i = 0; i < binaryStr.length; i++) {
+                            bytes[i] = binaryStr.charCodeAt(i);
+                        }
+                        const cs = charset.toLowerCase();
+                        let decoderLabel = cs;
+                        if (cs === 'koi8-r' || cs === 'koi8r') decoderLabel = 'koi8-r';
+                        else if (cs === 'utf-8' || cs === 'utf8') decoderLabel = 'utf-8';
+                        else if (cs.includes('8859')) decoderLabel = cs;
+                        const decoder = new TextDecoder(decoderLabel);
+                        return decoder.decode(bytes);
+                    }
+                } catch (e) {}
+                return match;
+            });
+        }
+
         // Helper to construct a table row element (6 kolumner: TID/#, PROTOKOLL, RF/KANAL, ENHET/ALIAS, MEDDELANDE/TELEMETRI, VAL/ÅTGÄRDER)
         function createAlarmRowNode(alarm) {
             const tr = document.createElement('tr');

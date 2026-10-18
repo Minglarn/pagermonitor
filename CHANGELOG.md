@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.18.16] - Buggfix: decodeMimeWordsInText i Alarms (larm.html)
+- **Buggfix i Alarms-vyn ([templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - Implementerat och deklarerat den saknade funktionen `decodeMimeWordsInText(str)` i `larm.html`.
+  - Åtgärdat `ReferenceError: decodeMimeWordsInText is not defined` vid `createAlarmRowNode()` som tidigare orsakade felet "FAILED TO LOAD ALARMS" när man navigerade till `/alarms`.
+  - Nu laddas och renderas alla larm i larmvyn utan fel.
+
 ## [2026.10.18.15] - Radbrytning i Enhet/Alias-piller (.src-name) och Fullständigt Namn i Hover-tooltip
 - **Radbrytning inuti Enhet/Alias-pillret (`.src-name`) ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
   - Tillåtit naturlig radbrytning (`white-space: normal !important; word-break: break-word !important; overflow: visible !important; text-overflow: clip !important;`) med `max-width: 132px !important;` och `line-height: 1.25 !important;`.
