@@ -3,7 +3,19 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
+## [2026.10.18.10] - Isolering av RF Activity CSS & Återställning av DataTables Kolumnbredder
+
+- **Isolering och Namnrymnd för RF Activity Panel ([static/waterfall.css](file:///d:/antigravity/pager-monitor/static/waterfall.css), [static/waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js))**:
+  - Samtliga CSS-regler i `static/waterfall.css` är nu strikt namespacade under `#activityRibbonPanel`.
+  - Omdöpt klasserna `.col-*` (`.col-proto`, `.col-freq`, `.col-rx`, etc.) till `.wf-col-*` så att de inte krockar med tabellcellerna i `#alarmsTable`.
+- **Låsta Kolumnbredder och Tabellskydd ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Tvingande `table-layout: fixed !important;` och `display: table !important;` på `#alarmsTable`.
+  - Fasta bredder med `!important` på kolumnerna: `col-ts` (92px), `col-proto` (72px), `col-rf` (125px), `col-source` (140px), `col-msg` (auto), `col-act` (38px).
+  - Förbjudet och inaktiverat `tr::before` och `tr::after` samt pseudo-element på tabellrader för att förhindra extra flex/grid-celler.
+- **Rensning av Sparade Kolumnbredder i DataTables ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - Konfigurerat `destroy: true` och `autoWidth: false` i båda tabellinitialiseringarna.
+  - Implementerat `stateSaveCallback` och `stateLoadCallback` som automatiskt raderar eventuella sparade kolumnbredder (`col.width`) ur `state`-objektet i `localStorage`.
+  - Infört automatisk rensning av `col.width` i befintliga `DataTables_alarmsTable*`-nycklar i `localStorage` vid sidladdning.
 
 ## [2026.10.18.9] - Remake av RF Activity Panel till Telemetri-instrument
 

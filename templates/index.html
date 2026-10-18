@@ -1149,6 +1149,63 @@
 
         .empty-keys { margin-top: 5px !important; font-family: var(--msg-font, 'Consolas', monospace) !important; font-size: 10px !important; color: #94a3b8 !important; }
         .empty-keys span { background: rgba(148, 163, 184, 0.15) !important; padding: 1px 4px !important; border-radius: 2px !important; margin-right: 4px !important; }
+
+        /* Tvinga äkta table-layout på huvudtabellen så inga grid-regler läcker in */
+        table#alarmsTable.dataTable.dashboard-dt {
+          display: table !important;
+          width: 100% !important;
+          table-layout: fixed !important;
+          border-collapse: collapse !important;
+        }
+
+        table#alarmsTable.dataTable.dashboard-dt thead {
+          display: table-header-group !important;
+        }
+
+        table#alarmsTable.dataTable.dashboard-dt tbody {
+          display: table-row-group !important;
+        }
+
+        table#alarmsTable.dataTable.dashboard-dt tr {
+          display: table-row !important;
+        }
+
+        #alarmsTable tr::before,
+        #alarmsTable tr::after,
+        #alarmsTable th::before,
+        #alarmsTable th::after,
+        table#alarmsTable.dataTable.dashboard-dt tr::before,
+        table#alarmsTable.dataTable.dashboard-dt tr::after {
+          display: none !important;
+          content: none !important;
+          width: 0 !important;
+          height: 0 !important;
+        }
+
+        table#alarmsTable.dataTable.dashboard-dt th,
+        table#alarmsTable.dataTable.dashboard-dt td {
+          display: table-cell !important;
+          box-sizing: border-box !important;
+        }
+
+        /* Lås de 6 kolumnbredderna i #alarmsTable exakt: */
+        table#alarmsTable.dataTable.dashboard-dt th.col-ts,
+        table#alarmsTable.dataTable.dashboard-dt td.col-ts     { width: 92px !important; min-width: 92px !important; max-width: 92px !important; }
+
+        table#alarmsTable.dataTable.dashboard-dt th.col-proto,
+        table#alarmsTable.dataTable.dashboard-dt td.col-proto  { width: 72px !important; min-width: 72px !important; max-width: 72px !important; }
+
+        table#alarmsTable.dataTable.dashboard-dt th.col-rf,
+        table#alarmsTable.dataTable.dashboard-dt td.col-rf     { width: 125px !important; min-width: 125px !important; max-width: 125px !important; }
+
+        table#alarmsTable.dataTable.dashboard-dt th.col-source,
+        table#alarmsTable.dataTable.dashboard-dt td.col-source { width: 140px !important; min-width: 140px !important; max-width: 140px !important; }
+
+        table#alarmsTable.dataTable.dashboard-dt th.col-msg,
+        table#alarmsTable.dataTable.dashboard-dt td.col-msg    { width: auto !important; }
+
+        table#alarmsTable.dataTable.dashboard-dt th.col-act,
+        table#alarmsTable.dataTable.dashboard-dt td.col-act    { width: 38px !important; min-width: 38px !important; max-width: 38px !important; }
     </style>
 
     <script>
@@ -3866,20 +3923,72 @@
                 return 0;
             };
 
+            // Rensa eventuella sparade kolumnbredder ur localStorage så de inte låser tabellen felaktigt
+            try {
+                for (let i = localStorage.length - 1; i >= 0; i--) {
+                    const key = localStorage.key(i);
+                    if (key && (key.startsWith('DataTables_alarmsTable') || key.includes('alarmsTable'))) {
+                        const raw = localStorage.getItem(key);
+                        if (raw) {
+                            try {
+                                const state = JSON.parse(raw);
+                                if (state && state.columns) {
+                                    state.columns.forEach(col => { delete col.width; });
+                                    localStorage.setItem(key, JSON.stringify(state));
+                                }
+                            } catch (err) {}
+                        }
+                    }
+                }
+            } catch (e) {}
+
             // Initialize DataTables
             dataTable = $('#alarmsTable').DataTable({
+                destroy: true,
+                autoWidth: false,
                 stateSave: true,
                 stateDuration: 60 * 60 * 24 * 365, // Persist table settings (page length, sort order, search) for 1 year
+                stateSaveCallback: function (settings, data) {
+                    // Rensa alltid bort kolumnbredder innan DataTables sparar state
+                    if (data && data.columns) {
+                        data.columns.forEach(function (col) {
+                            delete col.width;
+                        });
+                    }
+                    try {
+                        localStorage.setItem('DataTables_' + settings.sInstance, JSON.stringify(data));
+                    } catch (e) {}
+                },
+                stateLoadCallback: function (settings) {
+                    try {
+                        const raw = localStorage.getItem('DataTables_' + settings.sInstance);
+                        if (!raw) return null;
+                        const data = JSON.parse(raw);
+                        if (data && data.columns) {
+                            data.columns.forEach(function (col) {
+                                delete col.width;
+                            });
+                        }
+                        return data;
+                    } catch (e) {
+                        return null;
+                    }
+                },
                 stateLoadParams: function (settings, data) {
                     if (data) {
                         // Tvinga alltid sortering på Kolumn 0 (TID / #) fallande (nyaste händelse först)
                         data.order = [[0, 'desc']];
+                        // Rensa eventuella sparade kolumnbredder så CSS-reglerna bestämmer
+                        if (data.columns) {
+                            data.columns.forEach(col => {
+                                delete col.width;
+                            });
+                        }
                     }
                 },
                 order: [[0, 'desc']], // Default: TID / # (Timestamp) descending
                 pageLength: 50,
                 lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
-                autoWidth: false,
                 language: {
                     search: "",
                     searchPlaceholder: "Snabbfilter...",

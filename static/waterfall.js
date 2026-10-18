@@ -310,18 +310,18 @@ window.WaterfallManager = (function () {
             row.id = `wf-row-${ch.id}`;
 
             row.innerHTML = `
-                <div class="col-val" onclick="event.stopPropagation()">
+                <div class="wf-col-val" onclick="event.stopPropagation()">
                     <input type="checkbox" class="ch-checkbox" id="check-${ch.id}" ${isSelected ? 'checked' : ''} onchange="window.WaterfallManager.toggleChannelFilterById('${ch.id}')" title="${isSelected ? 'Avmarkera filter' : 'Filtrera på denna kanal'}">
                 </div>
-                <div class="col-proto">
+                <div class="wf-col-proto">
                     <span class="wf-proto-badge ${protoInfo.cls}">${protoInfo.name}</span>
                 </div>
-                <div class="col-freq" title="${ch.frequency}">${ch.frequency}</div>
-                <div class="col-rx" title="${ch.name}">${ch.name}</div>
-                <div class="col-time">${timeTrackHtml}</div>
-                <div class="col-last">${lastSeenHtml}</div>
-                <div class="col-rate">${rateStr}</div>
-                <div class="col-vol">
+                <div class="wf-col-freq" title="${ch.frequency}">${ch.frequency}</div>
+                <div class="wf-col-rx" title="${ch.name}">${ch.name}</div>
+                <div class="wf-col-time">${timeTrackHtml}</div>
+                <div class="wf-col-last">${lastSeenHtml}</div>
+                <div class="wf-col-rate">${rateStr}</div>
+                <div class="wf-col-vol">
                     <span class="vol-num">${ch.total60m} msgs</span>
                     <div class="vol-meter">
                         <div class="vol-meter-fill" style="width: ${volPercent}%;"></div>

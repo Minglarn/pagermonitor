@@ -4031,4 +4031,16 @@ td.msg-cell {
         opacity: 1;
         transform: translate(-50%, 0) scale(1);
     }
-}
+}
+
+/* Förhindra att ::before eller ::after på tr skapar en extra flex/grid-cell i tabeller */
+#alarmsTable tr::before,
+#alarmsTable tr::after,
+table.dataTable tr::before,
+table.dataTable tr::after {
+    display: none !important;
+    content: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+

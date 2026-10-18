@@ -2823,3 +2823,27 @@
 - **Verifiering & Enhetstester ([tests/test_waterfall_telemetry.py](file:///d:/antigravity/pager-monitor/tests/test_waterfall_telemetry.py))**:
   - Samtliga 142 enhetstester i hela projektet passerar utan anmärkning (100% OK).
   - Verifierat i webbläsare med skärmdumpar av både kollapsat och expanderat läge samt dynamisk sortering.
+
+### 86. Isolering av RF Activity CSS & Återställning av DataTables Kolumnbredder (v2026.10.18.10)
+- **Isolering av RF Activity-panelens CSS ([static/waterfall.css](file:///d:/antigravity/pager-monitor/static/waterfall.css), [static/waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js))**:
+  - Alla regler i `static/waterfall.css` är nu strikt inkapslade under `#activityRibbonPanel`.
+  - Kolumnklasserna i RF-panelen har döpts om från `.col-proto`, `.col-freq`, `.col-rx` etc. till `.wf-col-proto`, `.wf-col-freq`, `.wf-col-rx` etc. så att de inte krockar med tabellceller i huvudtabellen (`#alarmsTable`).
+- **Tvingande Tabellayout och Fasta Kolumnbredder ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - `table#alarmsTable` tvingas till äkta `display: table !important;` och `table-layout: fixed !important;`.
+  - Alla `tr` tvingas till `display: table-row !important;` och alla `th`/`td` till `display: table-cell !important;`.
+  - Fullständigt inaktiverat `tr::before` och `tr::after` med `display: none !important; content: none !important; width: 0 !important; height: 0 !important;` så inga pseudo-element kan skapa extra flex/grid-celler.
+  - Låsta kolumnbredder med `!important`:
+    - `col-ts`: 92px
+    - `col-proto`: 72px
+    - `col-rf`: 125px
+    - `col-source`: 140px
+    - `col-msg`: auto
+    - `col-act`: 38px
+- **Rensning av DataTables stateSave och Förhindrande av Felaktiga Bredder ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - Satt `destroy: true` och `autoWidth: false` i båda tabellinitialiseringarna.
+  - Implementerat `stateSaveCallback` och `stateLoadCallback` som automatiskt raderar alla `col.width` ur state-objektet innan det sparas eller laddas från `localStorage`.
+  - Infört sidladdningsskript som genomsöker och rensar bort eventuellt sparade kolumnbredder ur befintliga `DataTables_alarmsTable*`-nycklar i `localStorage`.
+- **Verifiering & Enhetstester**:
+  - Samtliga 142 enhetstester passerar felfritt (100% OK).
+  - Visuell verifiering via webbläsare bekräftar att tabellgapet är fullständigt eliminerat och att kolumnerna förblir fasta och symmetriska oavsett om RF-panelen är utfälld eller minimerad.
+

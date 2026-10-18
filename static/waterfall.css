@@ -1,9 +1,10 @@
 /* ==========================================================================
    Activity Ribbon & Radio Waterfall Telemetry Instrument (PagerMonitor)
    Strictly NO emojis. Professional OLED / Telemetry Styling.
+   All styles are strictly scoped under #activityRibbonPanel to prevent CSS leaks.
    ========================================================================== */
 
-.activity-ribbon-panel {
+#activityRibbonPanel.activity-ribbon-panel {
     background: #0f172a;
     border: 1px solid #1e293b;
     border-radius: 8px;
@@ -14,14 +15,14 @@
     flex-shrink: 0;
 }
 
-[data-theme="light"] .activity-ribbon-panel {
+[data-theme="light"] #activityRibbonPanel.activity-ribbon-panel {
     background: #ffffff;
     border-color: #cbd5e1;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
 }
 
 /* 1. Avskalad Instrument Header (.inst-header) */
-.inst-header {
+#activityRibbonPanel .inst-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -34,20 +35,20 @@
     gap: 0.75rem;
 }
 
-.inst-header:hover {
+#activityRibbonPanel .inst-header:hover {
     background: #172136;
 }
 
-[data-theme="light"] .inst-header {
+[data-theme="light"] #activityRibbonPanel .inst-header {
     background: #1e293b;
     color: #f8fafc;
 }
 
-[data-theme="light"] .inst-header:hover {
+[data-theme="light"] #activityRibbonPanel .inst-header:hover {
     background: #283548;
 }
 
-.inst-left {
+#activityRibbonPanel .inst-left {
     display: flex;
     align-items: center;
     gap: 0.65rem;
@@ -55,7 +56,7 @@
     min-width: 0;
 }
 
-.inst-live-pill {
+#activityRibbonPanel .inst-live-pill {
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -70,7 +71,7 @@
     font-family: Consolas, monospace;
 }
 
-.inst-pulse-dot {
+#activityRibbonPanel .inst-pulse-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
@@ -85,7 +86,7 @@
     100% { transform: scale(0.9); opacity: 0.8; }
 }
 
-.inst-title {
+#activityRibbonPanel .inst-title {
     font-size: 12px;
     font-weight: 800;
     letter-spacing: 0.06em;
@@ -93,7 +94,7 @@
     white-space: nowrap;
 }
 
-.inst-subtitle {
+#activityRibbonPanel .inst-subtitle {
     font-size: 10px;
     font-weight: 700;
     color: #64748b;
@@ -104,14 +105,14 @@
     font-family: Consolas, monospace;
 }
 
-.kpi-group {
+#activityRibbonPanel .kpi-group {
     display: flex;
     align-items: center;
     gap: 0.4rem;
     flex-wrap: wrap;
 }
 
-.kpi-box {
+#activityRibbonPanel .kpi-box {
     display: inline-flex;
     align-items: center;
     background: rgba(255, 255, 255, 0.05);
@@ -124,26 +125,26 @@
     white-space: nowrap;
 }
 
-.kpi-box strong {
+#activityRibbonPanel .kpi-box strong {
     color: #38bdf8;
     font-weight: 700;
     margin-left: 4px;
 }
 
-.inst-right {
+#activityRibbonPanel .inst-right {
     display: flex;
     align-items: center;
     gap: 0.65rem;
     flex-shrink: 0;
 }
 
-.inst-controls {
+#activityRibbonPanel .inst-controls {
     display: flex;
     align-items: center;
     gap: 0.5rem;
 }
 
-.inst-sort-group {
+#activityRibbonPanel .inst-sort-group {
     display: inline-flex;
     align-items: center;
     background: rgba(0, 0, 0, 0.35);
@@ -153,7 +154,7 @@
     gap: 2px;
 }
 
-.inst-btn {
+#activityRibbonPanel .inst-btn {
     background: transparent;
     border: none;
     color: #94a3b8;
@@ -167,31 +168,31 @@
     white-space: nowrap;
 }
 
-.inst-btn:hover {
+#activityRibbonPanel .inst-btn:hover {
     color: #ffffff;
     background: rgba(255, 255, 255, 0.08);
 }
 
-.inst-btn.active {
+#activityRibbonPanel .inst-btn.active {
     background: #0284c7;
     color: #ffffff;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-.inst-btn.filter-btn {
+#activityRibbonPanel .inst-btn.filter-btn {
     background: rgba(239, 68, 68, 0.15);
     border: 1px solid rgba(239, 68, 68, 0.35);
     color: #fca5a5;
     padding: 3px 8px;
 }
 
-.inst-btn.filter-btn:hover {
+#activityRibbonPanel .inst-btn.filter-btn:hover {
     background: rgba(239, 68, 68, 0.3);
     color: #ffffff;
     border-color: #ef4444;
 }
 
-.collapse-indicator {
+#activityRibbonPanel .collapse-indicator {
     font-family: Consolas, monospace;
     font-size: 11px;
     font-weight: 800;
@@ -206,23 +207,23 @@
 }
 
 /* När panelen är kollapsad döljs .inst-body och .inst-controls helt */
-.activity-ribbon-panel.collapsed .inst-body,
-.activity-ribbon-panel.collapsed .inst-controls {
+#activityRibbonPanel.collapsed .inst-body,
+#activityRibbonPanel.collapsed .inst-controls {
     display: none !important;
 }
 
 /* 2. Fast Tabellhuvud och Scrollbar Kanal-lista (.inst-body) */
-.inst-body {
+#activityRibbonPanel .inst-body {
     border-top: 1px solid #1e293b;
     background: #0b1120;
 }
 
-[data-theme="light"] .inst-body {
+[data-theme="light"] #activityRibbonPanel .inst-body {
     background: #ffffff;
     border-color: #cbd5e1;
 }
 
-.wf-head {
+#activityRibbonPanel .wf-head {
     display: grid;
     grid-template-columns: 30px 60px 96px 130px 1fr 72px 86px 95px;
     gap: 8px;
@@ -238,27 +239,27 @@
     text-transform: uppercase;
 }
 
-[data-theme="light"] .wf-head {
+[data-theme="light"] #activityRibbonPanel .wf-head {
     background: #f1f5f9;
     border-color: #cbd5e1;
     color: #475569;
 }
 
-.wf-th {
+#activityRibbonPanel .wf-th {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.wf-th.wf-th-val {
+#activityRibbonPanel .wf-th.wf-th-val {
     text-align: center;
 }
 
-.wf-th.wf-th-vol {
+#activityRibbonPanel .wf-th.wf-th-vol {
     text-align: right;
 }
 
-.time-ticks {
+#activityRibbonPanel .time-ticks {
     display: flex;
     justify-content: space-between;
     width: 100%;
@@ -267,13 +268,13 @@
     padding: 0 2px;
 }
 
-.time-ticks .time-now {
+#activityRibbonPanel .time-ticks .time-now {
     color: #38bdf8;
     font-weight: 800;
 }
 
 /* Scrollbar Viewport för exakt 10 rader (10 * 36px = 360px) */
-.wf-scroll-viewport {
+#activityRibbonPanel .wf-scroll-viewport {
     height: 360px;
     max-height: 360px;
     overflow-y: scroll;
@@ -282,33 +283,33 @@
     scrollbar-color: rgba(255, 255, 255, 0.2) rgba(0, 0, 0, 0.2);
 }
 
-.wf-scroll-viewport::-webkit-scrollbar {
+#activityRibbonPanel .wf-scroll-viewport::-webkit-scrollbar {
     width: 6px;
 }
 
-.wf-scroll-viewport::-webkit-scrollbar-track {
+#activityRibbonPanel .wf-scroll-viewport::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.15);
 }
 
-.wf-scroll-viewport::-webkit-scrollbar-thumb {
+#activityRibbonPanel .wf-scroll-viewport::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.2);
     border-radius: 3px;
 }
 
-.wf-scroll-viewport::-webkit-scrollbar-thumb:hover {
+#activityRibbonPanel .wf-scroll-viewport::-webkit-scrollbar-thumb:hover {
     background: #38bdf8;
 }
 
-[data-theme="light"] .wf-scroll-viewport::-webkit-scrollbar-track {
+[data-theme="light"] #activityRibbonPanel .wf-scroll-viewport::-webkit-scrollbar-track {
     background: #f1f5f9;
 }
 
-[data-theme="light"] .wf-scroll-viewport::-webkit-scrollbar-thumb {
+[data-theme="light"] #activityRibbonPanel .wf-scroll-viewport::-webkit-scrollbar-thumb {
     background: #cbd5e1;
 }
 
 /* Kanalrad (.ch-row) - exakt 36px hög */
-.ch-row {
+#activityRibbonPanel .ch-row {
     display: grid;
     grid-template-columns: 30px 60px 96px 130px 1fr 72px 86px 95px;
     gap: 8px;
@@ -325,42 +326,42 @@
     transition: background 0.15s ease;
 }
 
-.ch-row:hover {
+#activityRibbonPanel .ch-row:hover {
     background: rgba(255, 255, 255, 0.05);
 }
 
-[data-theme="light"] .ch-row {
+[data-theme="light"] #activityRibbonPanel .ch-row {
     background: #ffffff;
     border-bottom-color: #f1f5f9;
 }
 
-[data-theme="light"] .ch-row:hover {
+[data-theme="light"] #activityRibbonPanel .ch-row:hover {
     background: #f8fafc;
 }
 
-.ch-row.active-filter {
+#activityRibbonPanel .ch-row.active-filter {
     background: rgba(56, 189, 248, 0.12) !important;
 }
 
 /* Tysta kanaler med 0 meddelanden på 60 min */
-.ch-row.is-silent {
+#activityRibbonPanel .ch-row.is-silent {
     background: rgba(239, 68, 68, 0.07);
     border-left-color: #dc2626 !important;
 }
 
-[data-theme="light"] .ch-row.is-silent {
+[data-theme="light"] #activityRibbonPanel .ch-row.is-silent {
     background: #fff5f5;
     border-left-color: #dc2626 !important;
 }
 
 /* Kolumn 1: VAL (30px) */
-.col-val {
+#activityRibbonPanel .wf-col-val {
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.ch-checkbox {
+#activityRibbonPanel .ch-checkbox {
     width: 14px;
     height: 14px;
     cursor: pointer;
@@ -369,12 +370,12 @@
 }
 
 /* Kolumn 2: PROTO (60px) */
-.col-proto {
+#activityRibbonPanel .wf-col-proto {
     display: flex;
     align-items: center;
 }
 
-.wf-proto-badge {
+#activityRibbonPanel .wf-proto-badge {
     display: inline-block !important;
     width: 56px !important;
     text-align: center !important;
@@ -388,27 +389,27 @@
     user-select: none;
 }
 
-/* Protokoll-unika färger och radkanter */
-.proto-vdl2, .proto-acars { background: #e0f2fe !important; color: #0369a1 !important; border: 1px solid #7dd3fc !important; }
-.proto-hfdl   { background: #fef3c7 !important; color: #b45309 !important; border: 1px solid #fcd34d !important; }
-.proto-satc   { background: #e0e7ff !important; color: #4338ca !important; border: 1px solid #a5b4fc !important; }
-.proto-pocsag { background: #dcfce7 !important; color: #15803d !important; border: 1px solid #86efac !important; }
-.proto-tetra  { background: #cffafe !important; color: #0e7490 !important; border: 1px solid #67e8f9 !important; }
-.proto-sonde  { background: #d1fae5 !important; color: #047857 !important; border: 1px solid #6ee7b7 !important; }
-.proto-rds    { background: #ede9fe !important; color: #6d28d9 !important; border: 1px solid #c4b5fd !important; }
-.proto-afsk   { background: #fce7f3 !important; color: #be185d !important; border: 1px solid #f9a8d4 !important; }
+/* Protokoll-unika färger och radkanter inom #activityRibbonPanel */
+#activityRibbonPanel .proto-vdl2, #activityRibbonPanel .proto-acars { background: #e0f2fe !important; color: #0369a1 !important; border: 1px solid #7dd3fc !important; }
+#activityRibbonPanel .proto-hfdl   { background: #fef3c7 !important; color: #b45309 !important; border: 1px solid #fcd34d !important; }
+#activityRibbonPanel .proto-satc   { background: #e0e7ff !important; color: #4338ca !important; border: 1px solid #a5b4fc !important; }
+#activityRibbonPanel .proto-pocsag { background: #dcfce7 !important; color: #15803d !important; border: 1px solid #86efac !important; }
+#activityRibbonPanel .proto-tetra  { background: #cffafe !important; color: #0e7490 !important; border: 1px solid #67e8f9 !important; }
+#activityRibbonPanel .proto-sonde  { background: #d1fae5 !important; color: #047857 !important; border: 1px solid #6ee7b7 !important; }
+#activityRibbonPanel .proto-rds    { background: #ede9fe !important; color: #6d28d9 !important; border: 1px solid #c4b5fd !important; }
+#activityRibbonPanel .proto-afsk   { background: #fce7f3 !important; color: #be185d !important; border: 1px solid #f9a8d4 !important; }
 
-.ch-row.border-vdl2, .ch-row.border-acars { border-left-color: #0284c7; }
-.ch-row.border-hfdl   { border-left-color: #d97706; }
-.ch-row.border-satc   { border-left-color: #4f46e5; }
-.ch-row.border-pocsag { border-left-color: #16a34a; }
-.ch-row.border-tetra  { border-left-color: #06b6d4; }
-.ch-row.border-sonde  { border-left-color: #10b981; }
-.ch-row.border-rds    { border-left-color: #8b5cf6; }
-.ch-row.border-afsk   { border-left-color: #ec4899; }
+#activityRibbonPanel .ch-row.border-vdl2, #activityRibbonPanel .ch-row.border-acars { border-left-color: #0284c7; }
+#activityRibbonPanel .ch-row.border-hfdl   { border-left-color: #d97706; }
+#activityRibbonPanel .ch-row.border-satc   { border-left-color: #4f46e5; }
+#activityRibbonPanel .ch-row.border-pocsag { border-left-color: #16a34a; }
+#activityRibbonPanel .ch-row.border-tetra  { border-left-color: #06b6d4; }
+#activityRibbonPanel .ch-row.border-sonde  { border-left-color: #10b981; }
+#activityRibbonPanel .ch-row.border-rds    { border-left-color: #8b5cf6; }
+#activityRibbonPanel .ch-row.border-afsk   { border-left-color: #ec4899; }
 
 /* Kolumn 3: FREKVENS (96px) */
-.col-freq {
+#activityRibbonPanel .wf-col-freq {
     font-family: Consolas, monospace;
     font-size: 12px;
     font-weight: 700;
@@ -418,12 +419,12 @@
     text-overflow: ellipsis;
 }
 
-[data-theme="light"] .col-freq {
+[data-theme="light"] #activityRibbonPanel .wf-col-freq {
     color: #0f172a;
 }
 
 /* Kolumn 4: MOTTAGARE / KANAL (130px) */
-.col-rx {
+#activityRibbonPanel .wf-col-rx {
     font-size: 11px;
     font-weight: 600;
     color: #cbd5e1;
@@ -432,12 +433,12 @@
     text-overflow: ellipsis;
 }
 
-[data-theme="light"] .col-rx {
+[data-theme="light"] #activityRibbonPanel .wf-col-rx {
     color: #334155;
 }
 
 /* Kolumn 5: TIDSLINJE (1fr) */
-.col-time {
+#activityRibbonPanel .wf-col-time {
     width: 100%;
     height: 24px;
     display: flex;
@@ -445,7 +446,7 @@
     position: relative;
 }
 
-.time-track {
+#activityRibbonPanel .time-track {
     display: flex;
     gap: 1px;
     align-items: flex-end;
@@ -457,41 +458,41 @@
     box-sizing: border-box;
 }
 
-[data-theme="light"] .time-track {
+[data-theme="light"] #activityRibbonPanel .time-track {
     background: #e2e8f0;
 }
 
-.wf-bar {
+#activityRibbonPanel .wf-bar {
     flex: 1;
     min-width: 1px;
     border-radius: 1px 1px 0 0;
     transition: height 0.15s ease;
 }
 
-.wf-bar.heat-empty {
+#activityRibbonPanel .wf-bar.heat-empty {
     height: 2px !important;
     background: rgba(255, 255, 255, 0.05);
 }
 
-[data-theme="light"] .wf-bar.heat-empty {
+[data-theme="light"] #activityRibbonPanel .wf-bar.heat-empty {
     background: rgba(0, 0, 0, 0.05);
 }
 
 /* Intensitetsfärger */
-.wf-bar.heat-low {
+#activityRibbonPanel .wf-bar.heat-low {
     background: linear-gradient(180deg, #38bdf8 0%, #0284c7 100%);
 }
 
-.wf-bar.heat-med {
+#activityRibbonPanel .wf-bar.heat-med {
     background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
 }
 
-.wf-bar.heat-burst {
+#activityRibbonPanel .wf-bar.heat-burst {
     background: linear-gradient(180deg, #ff4d4d 0%, #dc2626 60%, #991b1b 100%);
     box-shadow: 0 0 4px rgba(220, 38, 38, 0.4);
 }
 
-.time-track-empty {
+#activityRibbonPanel .time-track-empty {
     width: 100%;
     height: 20px;
     display: flex;
@@ -506,30 +507,30 @@
     border: 1px dashed rgba(239, 68, 68, 0.35);
 }
 
-[data-theme="light"] .time-track-empty {
+[data-theme="light"] #activityRibbonPanel .time-track-empty {
     background: #fee2e2;
     color: #b91c1c;
     border-color: #f87171;
 }
 
 /* Kolumn 6: SENAST (72px) */
-.col-last {
+#activityRibbonPanel .wf-col-last {
     font-size: 11px;
     font-family: Consolas, monospace;
     color: #94a3b8;
     white-space: nowrap;
 }
 
-[data-theme="light"] .col-last {
+[data-theme="light"] #activityRibbonPanel .wf-col-last {
     color: #64748b;
 }
 
-.col-last .last-now {
+#activityRibbonPanel .wf-col-last .last-now {
     color: #10b981;
     font-weight: 700;
 }
 
-.col-last .badge-silent {
+#activityRibbonPanel .wf-col-last .badge-silent {
     display: inline-block;
     padding: 1px 4px;
     border-radius: 2px;
@@ -540,14 +541,14 @@
     font-weight: 700;
 }
 
-[data-theme="light"] .col-last .badge-silent {
+[data-theme="light"] #activityRibbonPanel .wf-col-last .badge-silent {
     background: #fee2e2;
     color: #dc2626;
     border-color: #fca5a5;
 }
 
 /* Kolumn 7: MSG/MIN (86px) */
-.col-rate {
+#activityRibbonPanel .wf-col-rate {
     font-family: Consolas, monospace;
     font-size: 11px;
     font-weight: 700;
@@ -556,7 +557,7 @@
 }
 
 /* Kolumn 8: VOLYM (1H) (95px) */
-.col-vol {
+#activityRibbonPanel .wf-col-vol {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -564,18 +565,18 @@
     text-align: right;
 }
 
-.col-vol .vol-num {
+#activityRibbonPanel .wf-col-vol .vol-num {
     font-family: Consolas, monospace;
     font-size: 11px;
     font-weight: 700;
     color: #f8fafc;
 }
 
-[data-theme="light"] .col-vol .vol-num {
+[data-theme="light"] #activityRibbonPanel .wf-col-vol .vol-num {
     color: #0f172a;
 }
 
-.col-vol .vol-meter {
+#activityRibbonPanel .wf-col-vol .vol-meter {
     width: 100%;
     height: 4px;
     background: rgba(255, 255, 255, 0.1);
@@ -583,11 +584,11 @@
     overflow: hidden;
 }
 
-[data-theme="light"] .col-vol .vol-meter {
+[data-theme="light"] #activityRibbonPanel .wf-col-vol .vol-meter {
     background: #e2e8f0;
 }
 
-.col-vol .vol-meter-fill {
+#activityRibbonPanel .wf-col-vol .vol-meter-fill {
     height: 100%;
     background: #0284c7;
     border-radius: 2px;
