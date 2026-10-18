@@ -1188,12 +1188,31 @@
           box-sizing: border-box !important;
         }
 
-        /* Lås de 6 kolumnbredderna i #alarmsTable exakt: */
+        /* Toppjustera ALLA tabellceller i #alarmsTable (särskilt TID / #) */
+        table#alarmsTable.dataTable.dashboard-dt tbody td,
+        table#alarmsTable.dataTable.dashboard-dt tbody td.col-ts,
+        table#alarmsTable.dataTable.dashboard-dt tbody td.ts-cell {
+          vertical-align: top !important;
+          text-align: left !important;
+        }
+
+        table#alarmsTable.dataTable.dashboard-dt tbody td.col-proto,
+        table#alarmsTable.dataTable.dashboard-dt tbody td.proto-cell {
+          text-align: center !important;
+          vertical-align: top !important;
+        }
+
+        /* Dölj "(Senast: ...)" permanent */
+        .last-seen-time {
+          display: none !important;
+        }
+
+        /* Justera kolumnbredder så att rubrikerna får plats */
         table#alarmsTable.dataTable.dashboard-dt th.col-ts,
-        table#alarmsTable.dataTable.dashboard-dt td.col-ts     { width: 92px !important; min-width: 92px !important; max-width: 92px !important; }
+        table#alarmsTable.dataTable.dashboard-dt td.col-ts     { width: 92px !important; min-width: 92px !important; max-width: 92px !important; padding: 8px 8px !important; }
 
         table#alarmsTable.dataTable.dashboard-dt th.col-proto,
-        table#alarmsTable.dataTable.dashboard-dt td.col-proto  { width: 72px !important; min-width: 72px !important; max-width: 72px !important; }
+        table#alarmsTable.dataTable.dashboard-dt td.col-proto  { width: 88px !important; min-width: 88px !important; max-width: 88px !important; padding: 8px 4px !important; }
 
         table#alarmsTable.dataTable.dashboard-dt th.col-rf,
         table#alarmsTable.dataTable.dashboard-dt td.col-rf     { width: 125px !important; min-width: 125px !important; max-width: 125px !important; }
@@ -1206,6 +1225,35 @@
 
         table#alarmsTable.dataTable.dashboard-dt th.col-act,
         table#alarmsTable.dataTable.dashboard-dt td.col-act    { width: 38px !important; min-width: 38px !important; max-width: 38px !important; }
+
+        /* Fixa tabellhuvudet (thead th) så text aldrig kapas eller krockar med sorteringspilar */
+        table#alarmsTable.dataTable.dashboard-dt thead th {
+          font-size: 10px !important;
+          font-weight: 700 !important;
+          padding: 8px 18px 8px 8px !important;
+          text-align: left !important;
+          overflow: hidden !important;
+          text-overflow: clip !important;
+        }
+
+        table#alarmsTable.dataTable.dashboard-dt thead th.col-proto {
+          text-align: center !important;
+          padding: 8px 4px !important;
+        }
+
+        /* Ta bort DataTables sorteringspilar på de smala kolumnerna så de inte skriver över texten */
+        table#alarmsTable.dataTable.dashboard-dt thead th.col-ts .dt-column-order,
+        table#alarmsTable.dataTable.dashboard-dt thead th.col-proto .dt-column-order,
+        table#alarmsTable.dataTable.dashboard-dt thead th.col-act .dt-column-order {
+          display: none !important;
+        }
+
+        /* Gör sorteringspilen på övriga kolumner kompakt och placerad längst till höger */
+        table#alarmsTable.dataTable.dashboard-dt thead th .dt-column-order {
+          right: 5px !important;
+          font-size: 9px !important;
+          opacity: 0.5 !important;
+        }
     </style>
 
     <script>
@@ -2902,12 +2950,6 @@
             const dateObj = new Date(alarm.timestamp);
             const dateStr = dateObj.toLocaleDateString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit' });
             const timeStr = dateObj.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-            let lastSeenHtml = '';
-            if (alarm.last_timestamp && alarm.repeat_count > 1) {
-                const lastDate = new Date(alarm.last_timestamp);
-                const lastTimeStr = lastDate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-                lastSeenHtml = `<div class="last-seen-time">(Senast: ${lastTimeStr})</div>`;
-            }
 
             if (isSystem) {
                 tr.classList.add('system-event-row');
@@ -3221,12 +3263,11 @@
                     <div class="ts-time">${timeStr}</div>
                     <div class="ts-date">${dateStr}</div>
                     <div class="ts-id">#${alarm.id}</div>
-                    ${lastSeenHtml}
                 </td>
             `;
 
             // -------------------------------------------------------------
-            // KOLUMN 2: PROTOKOLL (width: 72px)
+            // KOLUMN 2: PROTOKOLL (width: 88px)
             // -------------------------------------------------------------
             const badgeClass = `badge-${protoName.toLowerCase()}`;
             const tdProtoHtml = `
@@ -4132,18 +4173,6 @@
                                 badge.textContent = `${data.repeat_count}x`;
                                 badge.title = `Repeated ${data.repeat_count} times`;
                             }
-                        }
-                        const tsCell = rowEl.querySelector('.ts-cell');
-                        if (tsCell && data.last_timestamp) {
-                            let lastSeenEl = tsCell.querySelector('.last-seen-time');
-                            const lastDate = new Date(data.last_timestamp);
-                            const lastTimeStr = lastDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                            if (!lastSeenEl) {
-                                lastSeenEl = document.createElement('div');
-                                lastSeenEl.className = 'last-seen-time';
-                                tsCell.appendChild(lastSeenEl);
-                            }
-                            lastSeenEl.textContent = `(Last: ${lastTimeStr})`;
                         }
                         rowEl.classList.remove('repeat-pulse');
                         void rowEl.offsetWidth;

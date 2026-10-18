@@ -1332,12 +1332,6 @@
             const dateObj = new Date(alarm.timestamp);
             const dateStr = dateObj.toLocaleDateString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit' });
             const timeStr = dateObj.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-            let lastSeenHtml = '';
-            if (alarm.last_timestamp && alarm.repeat_count > 1) {
-                const lastDate = new Date(alarm.last_timestamp);
-                const lastTimeStr = lastDate.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-                lastSeenHtml = `<div class="last-seen-time">(Senast: ${lastTimeStr})</div>`;
-            }
 
             if (isSystem) {
                 tr.classList.add('system-event-row');
@@ -1651,12 +1645,11 @@
                     <div class="ts-time">${timeStr}</div>
                     <div class="ts-date">${dateStr}</div>
                     <div class="ts-id">#${alarm.id}</div>
-                    ${lastSeenHtml}
                 </td>
             `;
 
             // -------------------------------------------------------------
-            // KOLUMN 2: PROTOKOLL (width: 72px)
+            // KOLUMN 2: PROTOKOLL (width: 88px)
             // -------------------------------------------------------------
             const badgeClass = `badge-${protoName.toLowerCase()}`;
             const tdProtoHtml = `
@@ -2402,18 +2395,6 @@
                             }
                             badge.textContent = `${data.repeat_count}x`;
                             badge.title = `Repeated ${data.repeat_count} times`;
-                        }
-                        const tsCell = rowEl.querySelector('.ts-cell');
-                        if (tsCell && data.last_timestamp) {
-                            let lastSeenEl = tsCell.querySelector('.last-seen-time');
-                            const lastDate = new Date(data.last_timestamp);
-                            const lastTimeStr = lastDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                            if (!lastSeenEl) {
-                                lastSeenEl = document.createElement('div');
-                                lastSeenEl.className = 'last-seen-time';
-                                tsCell.appendChild(lastSeenEl);
-                            }
-                            lastSeenEl.textContent = `(Last: ${lastTimeStr})`;
                         }
                         rowEl.classList.remove('repeat-pulse');
                         void rowEl.offsetWidth;

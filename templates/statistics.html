@@ -1530,11 +1530,6 @@
             const repeatTag = (m.repeat_count && m.repeat_count > 1) ? `<span class="badge repeat-badge meta" title="Repeated ${m.repeat_count} times">${m.repeat_count}x</span>` : '';
 
             let timeDisplay = time;
-            if (m.last_timestamp && m.repeat_count > 1) {
-                const lastDate = new Date(m.last_timestamp);
-                const lastTimeStr = lastDate.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                timeDisplay += `<div class="last-seen-time">(Last: ${lastTimeStr})</div>`;
-            }
 
             const metaBarBadges = `${freqTag}${bitrateTag}${snrTag}${vdl2BadgesHtml}${funcTag}${duplicateTag}${repeatTag}${rawToggleBadge}`;
             const metaBarHtml = metaBarBadges ? `<div class="msg-meta-bar">${metaBarBadges}</div>` : '';

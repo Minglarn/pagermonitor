@@ -2847,3 +2847,22 @@
   - Samtliga 142 enhetstester passerar felfritt (100% OK).
   - Visuell verifiering via webbläsare bekräftar att tabellgapet är fullständigt eliminerat och att kolumnerna förblir fasta och symmetriska oavsett om RF-panelen är utfälld eller minimerad.
 
+### 87. Korrigering av Tabellhuvud, Bredd för PROTOKOLL och Borttagning av Senast-tid (v2026.10.18.11)
+- **Borttagning av "(Senast: ...)"**:
+  - `lastSeenHtml` och kontrollen `if (alarm.last_timestamp && alarm.repeat_count > 1)` har helt raderats ur `createAlarmRowNode()` i [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html) och [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html).
+  - Borttaget ur cellen `col-ts` i `tdTsHtml`.
+  - Borttaget ur SSE realtidsflödet vid `repeat_update` så att `.last-seen-time` aldrig skapas eller injiceras.
+  - Satta globala CSS-regeln `.last-seen-time { display: none !important; }` i både `index.html` och `static/style.css`.
+- **Toppjustering av Kolumn 1 (`TID / #`)**:
+  - `td.col-ts, td.ts-cell` har nu `vertical-align: top !important; text-align: left !important; padding: 8px 8px !important;` så att tid, datum och ID ligger i toppen och linjerar med övriga kolumner vid höga rader.
+  - `col-proto` har satts till `vertical-align: top !important; text-align: center !important;`.
+- **Korrigerat Tabellhuvud (`thead th`) och Sorteringspilar**:
+  - Kolumnbredden för `col-proto` är ökad från `72px` till `88px` så hela ordet `PROTOKOLL` visas utan kapning.
+  - Teckenstorleken i `thead th` är justerad till `10px` (`0.65rem`) med `font-weight: 700 !important;` och `overflow: hidden !important; text-overflow: clip !important;`.
+  - DataTables sorteringspilar (`.dt-column-order`) har dolts på de smala kolumnerna (`col-ts`, `col-proto`, `col-act`) för att förhindra överlappning mot rubriktexten.
+  - Sorteringspilen på övriga kolumner har gjorts kompakt med `font-size: 9px !important; opacity: 0.5 !important; right: 5px !important;`.
+- **Verifiering & Enhetstester**:
+  - Samtliga 142 enhetstester passerar felfritt (100% OK).
+  - Skärmdump i webbläsare bekräftar att `PROTOKOLL` visas komplett, att sorteringspilarna inte krockar med `#`, och att ingen `(Senast: ...)`-text genereras.
+
+

@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+## [2026.10.18.11] - Korrigering av Tabellhuvud, Bredd för PROTOKOLL och Borttagning av Senast-tid
+
+- **Fullständig borttagning av "(Senast: ...)" ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Raderat variablerna `lastSeenHtml` och kontrollerna `if (alarm.last_timestamp && alarm.repeat_count > 1)` ur `createAlarmRowNode()`.
+  - Tagit bort `${lastSeenHtml}` ur `tdTsHtml` i kolumn 1 (`TID / #`).
+  - Tagit bort hanteringen av `last-seen-time` vid `repeat_update` i realtids-SSE.
+  - Förbjudit och dolt `.last-seen-time` med `display: none !important;` i CSS som extra permanent spärr.
+- **Toppjustering av Kolumn 1 (`TID / #`) ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Satt `vertical-align: top !important; text-align: left !important; padding: 8px 8px !important;` på `td.col-ts, td.ts-cell` så att datum, tid och id inte centreras vertikalt vid höga rader.
+  - Centrerat `col-proto` med `vertical-align: top !important; text-align: center !important;`.
+- **Korrigerat Tabellhuvud (`thead th`) och DataTables Sorteringspilar ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Ökat bredden på `col-proto` från `72px` till `88px` så hela ordet `PROTOKOLL` visas utan kapning.
+  - Minskat teckenstorleken i `thead th` till `10px` (`0.65rem`), satt `font-weight: 700 !important;` och `overflow: hidden !important; text-overflow: clip !important;`.
+  - Dolt DataTables sorteringspilar (`.dt-column-order`) på de smala kolumnerna (`col-ts`, `col-proto`, `col-act`) så att de inte krockar med texten.
+  - Gjort sorteringspilarna på övriga kolumner kompakta (`font-size: 9px !important; opacity: 0.5 !important; right: 5px !important;`).
+
 ## [2026.10.18.10] - Isolering av RF Activity CSS & Återställning av DataTables Kolumnbredder
 
 - **Isolering och Namnrymnd för RF Activity Panel ([static/waterfall.css](file:///d:/antigravity/pager-monitor/static/waterfall.css), [static/waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js))**:

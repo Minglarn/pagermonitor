@@ -4043,4 +4043,31 @@ table.dataTable tr::after {
     width: 0 !important;
     height: 0 !important;
 }
+
+/* Dölj "(Senast: ...)" permanent i alla vyer */
+.last-seen-time {
+    display: none !important;
+}
+
+/* Toppjustera tabellceller i alarmsTable */
+#alarmsTable tbody td,
+#alarmsTable tbody td.col-ts,
+#alarmsTable tbody td.ts-cell {
+    vertical-align: top !important;
+    text-align: left !important;
+}
+
+#alarmsTable tbody td.col-proto,
+#alarmsTable tbody td.proto-cell {
+    text-align: center !important;
+    vertical-align: top !important;
+}
+
+/* Dölj DataTables sorteringspilar i smala kolumner */
+#alarmsTable thead th.col-ts .dt-column-order,
+#alarmsTable thead th.col-proto .dt-column-order,
+#alarmsTable thead th.col-act .dt-column-order {
+    display: none !important;
+}
+
 
