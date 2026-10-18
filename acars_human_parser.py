@@ -463,6 +463,84 @@ def lookup_label(label_code: str) -> str:
         return "Flygbolagsdata (AOC Intern)"
     return ""
 
+# -----------------------------------------------------------------------------
+# Airbus CMS / CFDIU / FDIMU Flygfaser och ATA-kapitel
+# -----------------------------------------------------------------------------
+AIRBUS_FLIGHT_PHASES = {
+    '01': "Pre-flight",
+    '02': "Taxi out",
+    '03': "Take-off",
+    '04': "Initial Climb",
+    '05': "Climb",
+    '06': "Cruise",
+    '07': "Descent",
+    '08': "Approach",
+    '09': "Roll-out/Landing",
+    '10': "Taxi in"
+}
+
+ATA_CHAPTERS = {
+    '21': "Air Conditioning",
+    '22': "Auto Flight",
+    '23': "Communications",
+    '24': "Electrical Power",
+    '25': "Equipment/Furnishings",
+    '26': "Fire Protection",
+    '27': "Flight Controls",
+    '28': "Fuel",
+    '29': "Hydraulic Power",
+    '30': "Ice & Rain Protection",
+    '31': "Instruments/Recorders",
+    '32': "Landing Gear",
+    '33': "Lights",
+    '34': "Navigation",
+    '35': "Oxygen",
+    '36': "Pneumatic",
+    '38': "Water/Waste",
+    '45': "Central Maint System (CMS)",
+    '46': "Information Systems",
+    '49': "APU",
+    '52': "Doors",
+    '70': "Engine",
+    '71': "Engine",
+    '72': "Engine",
+    '73': "Engine",
+    '74': "Engine",
+    '75': "Engine",
+    '76': "Engine",
+    '77': "Engine",
+    '78': "Engine",
+    '79': "Engine",
+    '80': "Engine"
+}
+
+def format_airbus_flight_phase(code: str):
+    """Returnerar (phase_name, phase_code, phase_desc)."""
+    c = str(code).strip() if code is not None else ""
+    name = AIRBUS_FLIGHT_PHASES.get(c)
+    if name:
+        return name, c, f"{name} ({c})"
+    return c or "Okänd", c, c if c else "Okänd"
+
+def format_ata_chapter(c1: str, c2: str = "00", c3: str = "00"):
+    """Returnerar (ata_code, ata_name, ata_desc)."""
+    c1_s = str(c1).strip()
+    c2_s = str(c2).strip()
+    c3_s = str(c3).strip()
+    ata_code = f"{c1_s}-{c2_s}-{c3_s}"
+    name = ATA_CHAPTERS.get(c1_s)
+    if not name:
+        try:
+            n = int(c1_s)
+            if 70 <= n <= 80:
+                name = "Engine"
+        except (ValueError, TypeError):
+            pass
+    if name:
+        return ata_code, name, f"{ata_code} ({name})"
+    return ata_code, "", ata_code
+
+
 def extract_acars_metadata(avlc: dict = None, acars: dict = None, vdl2_frame: dict = None) -> dict:
     """
     Extraherar strukturerade metadatafält för ACARS/VDL2.
@@ -842,64 +920,93 @@ def parse_acars_payload(text: str, label: str = None, metadata: dict = None) -> 
 
     # -------------------------------------------------------------------------
     # 4. Airbus Cockpit Warning (WRN / Label H1):
-    # Exempel: "WRN/PNRC12860AA07/WN26101704400034000006NAV ADS-B RPTG 2 FAULT"
+    # Exempel: "WRN/PNRC12860AA07/WN26101816350034000006NAV ADS-B TRAF FAULT"
     # -------------------------------------------------------------------------
-    elif 'WRN/' in stripped or stripped.startswith('WRN') or '/WRN/' in stripped:
-        pnr = None
-        m_pnr = re.search(r'(?:/PNR|\bPNR)\s*([A-Z0-9]+)', stripped)
-        if m_pnr:
-            pnr = m_pnr.group(1).strip()
+    elif 'WRN/' in stripped or '/WRN/' in stripped or re.search(r'\bWRN\/', stripped):
+        clean_text = stripped.replace('\r', '').replace('\n', ' ').strip('\x03\x17 ')
+        m_wrn = re.search(
+            r'WRN\/PN(?:R|\b)?([A-Z0-9]+)\/WN(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([^\r\n\x03\x17]+)',
+            clean_text
+        )
+        if m_wrn:
+            pnr = m_wrn.group(1).strip()
+            if pnr.startswith('R') and len(pnr) > 7:
+                pnr = pnr[1:]
 
-        wn_code = None
-        fault_text = None
-        m_wn = re.search(r'(?:/WN|\bWN)\s*([0-9]{10,25})\s*(.*?)(?:/|$)', stripped)
-        if m_wn:
-            wn_code = f"WN{m_wn.group(1).strip()}"
-            fault_text = m_wn.group(2).strip()
+            yy, mm, dd = m_wrn.group(2), m_wrn.group(3), m_wrn.group(4)
+            date_str = f"20{yy}-{mm}-{dd}"
+
+            hh, mn, ss = m_wrn.group(5), m_wrn.group(6), m_wrn.group(7)
+            time_str = f"{hh}:{mn}:{ss}"
+
+            c1, c2, c3 = m_wrn.group(8), m_wrn.group(9), m_wrn.group(10)
+            ata_code, ata_name, ata_desc = format_ata_chapter(c1, c2, c3)
+
+            phase_code = m_wrn.group(11)
+            phase_name, _, phase_desc = format_airbus_flight_phase(phase_code)
+
+            ecam_warning = m_wrn.group(12).strip().rstrip('/\x03\x17 ')
+
+            fields = {
+                "Typ": "Airbus ECAM-Varning",
+                "Larm": ecam_warning,
+                "ATA": ata_desc,
+                "Flygfas": phase_desc,
+                "Tid": f"{time_str} UTC",
+                "Artikelnummer (PNR)": pnr,
+                "Datum": date_str
+            }
+            result = {
+                'report_type': 'Airbus ECAM-Varning',
+                'type_code': 'WRN',
+                'is_warning': True,
+                'severity': 'warning',
+                'pnr': pnr,
+                'date': date_str,
+                'flight_time_utc': time_str,
+                'time_utc': time_str,
+                'ata': ata_code,
+                'ata_name': ata_name,
+                'ata_desc': ata_desc,
+                'phase': phase_name,
+                'phase_code': phase_code,
+                'phase_desc': phase_desc,
+                'warning_text': ecam_warning,
+                'fault_text': ecam_warning,
+                'summary': f"Larm: {ecam_warning} | ATA: {ata_desc} | Fas: {phase_desc} | Tid: {time_str} UTC (PNR: {pnr})",
+                'fields': fields
+            }
         else:
-            m_wn_alt = re.search(r'(?:/WN|\bWN)\s*([A-Z0-9]{10,30})(.*?)(?:/|$)', stripped)
-            if m_wn_alt:
-                wn_code = f"WN{m_wn_alt.group(1).strip()}" if not m_wn_alt.group(1).startswith('WN') else m_wn_alt.group(1).strip()
-                fault_text = m_wn_alt.group(2).strip()
-
-        if not fault_text:
-            parts = [p.strip() for p in stripped.split('/') if p.strip()]
-            for p in parts:
-                if not p.startswith('WRN') and not p.startswith('PNR') and not p.startswith('WN'):
-                    fault_text = p
-                    break
-
-        if not fault_text:
-            fault_text = "ECAM Varning"
-
-        fields = {
-            "Typ": "ECAM Cockpit Warning",
-            "Varning": fault_text
-        }
-        if pnr:
-            fields["Artikelnummer (PNR)"] = pnr
-        if wn_code:
-            fields["Varningskod"] = wn_code
-
-        result = {
-            'report_type': 'ECAM Cockpit Warning',
-            'type_code': 'WRN',
-            'is_warning': True,
-            'severity': 'warning',
-            'pnr': pnr,
-            'warning_code': wn_code,
-            'fault_text': fault_text,
-            'warning_text': fault_text,
-            'summary': f"ECAM Varning: {fault_text}",
-            'fields': fields
-        }
+            # Fallback för avvikande / korta WRN/PN-meddelanden
+            m_pnr = re.search(r'(?:/PNR|\bPNR|/PN|\bPN)\s*([A-Z0-9]+)', clean_text)
+            pnr = m_pnr.group(1).strip() if m_pnr else None
+            if pnr and pnr.startswith('R') and len(pnr) > 7:
+                pnr = pnr[1:]
+            m_fb = re.search(r'WRN\/PN(?:R|\b)?([A-Z0-9]+)?(?:\/WN([^\/\r\n\x03\x17]+))?\/?\s*([^\r\n\x03\x17]+)?', clean_text)
+            desc = (m_fb.group(3) or '').strip().rstrip('/\x03\x17 ') if m_fb else "ECAM Varning"
+            if not desc:
+                desc = "ECAM Varning"
+            fields = {"Typ": "Airbus ECAM-Varning", "Larm": desc}
+            if pnr:
+                fields["Artikelnummer (PNR)"] = pnr
+            result = {
+                'report_type': 'Airbus ECAM-Varning',
+                'type_code': 'WRN',
+                'is_warning': True,
+                'severity': 'warning',
+                'pnr': pnr,
+                'warning_text': desc,
+                'fault_text': desc,
+                'summary': f"Larm: {desc}",
+                'fields': fields
+            }
 
     # -------------------------------------------------------------------------
     # 5. Airbus Maintenance / Fault Report (FLR / REP003 / ARINC 624 / Label H1):
     # Exempel: "A320,029566,1,1,TB000000/REP003,64,01,1/CCHB-JDF,OCT17,043255,ESSA,LSZH,0001/.../FLR/PNRC12860AA07/FR26101704390034363106MMR 1+2 (40RT1+2)/     ATC 1 (1SH1)/IDATC 1,ATC 2"
     # -------------------------------------------------------------------------
     elif '/FLR/' in stripped or 'FLR/' in stripped or (re.search(r'\bREP[0-9]{3}\b', stripped) and re.search(r'/FR[0-9]{10,25}', stripped)):
-        normalized = re.sub(r'[\r\n]+', '', stripped)
+        normalized = re.sub(r'[\r\n\x03\x17]+', '', stripped)
 
         # 1. Flygplanstyp
         ac_type = None
@@ -930,57 +1037,89 @@ def parse_acars_payload(text: str, label: str = None, metadata: dict = None) -> 
             origin = m_route.group(2)
             destination = m_route.group(3)
 
-        # 5. PNR (Part Number)
+        # 5. CEN bonus-extraktion (Höjd, CAS-fart, Mach)
+        alt_raw = None
+        alt_fmt = None
+        spd_raw = None
+        mach_raw = None
+        m_cen = re.search(r'\/CEN\d{3},(\d+),(\d+),(\d+)', normalized)
+        if m_cen:
+            alt_raw = int(m_cen.group(1))
+            spd_raw = int(m_cen.group(2))
+            mach_raw = m_cen.group(3)
+            alt_fmt = f"{alt_raw:,} ft".replace(',', ' ')
+
+        # 6. FLR mönster
+        m_flr = re.search(
+            r'\/?FLR\/PN(?:R|\b)?([A-Z0-9]+)\/FR(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})([^\/\r\n\x03\x17]+)(?:\/\s*([^\/\r\n\x03\x17]+))?(?:\/ID([^\r\n\x03\x17]+))?',
+            normalized
+        )
+
         pnr = None
-        m_pnr = re.search(r'/PNR\s*([A-Z0-9]+)/', normalized)
-        if m_pnr:
-            pnr = m_pnr.group(1).strip()
+        date_str = None
+        flr_time_str = None
+        ata_code, ata_name, ata_desc = "", "", ""
+        phase_code, phase_name, phase_desc = "", "", ""
+        comp1 = None
+        comp2 = None
+        aff_id = None
+        fel_part = None
 
-        # 6. Felkod och felbeskrivning
-        fr_code = None
-        fault_desc = None
-        affected = []
+        if m_flr:
+            pnr = m_flr.group(1).strip()
+            if pnr.startswith('R') and len(pnr) > 7:
+                pnr = pnr[1:]
+            yy, mm, dd = m_flr.group(2), m_flr.group(3), m_flr.group(4)
+            date_str = f"20{yy}-{mm}-{dd}"
+            hh, mn, ss = m_flr.group(5), m_flr.group(6), m_flr.group(7)
+            flr_time_str = f"{hh}:{mn}:{ss}"
 
-        m_fr = re.search(r'/FR([0-9]{10,25})(.*?)(?:/(?:ID|\s*[A-Z0-9\s]+(?:\(|$)|$))', normalized)
-        if m_fr:
-            fr_code = f"FR{m_fr.group(1).strip()}"
-            fault_desc = m_fr.group(2).strip()
+            c1, c2, c3 = m_flr.group(8), m_flr.group(9), m_flr.group(10)
+            ata_code, ata_name, ata_desc = format_ata_chapter(c1, c2, c3)
 
-        flr_body_match = re.search(r'/FR[0-9]{10,25}(.*?)(?:/ID|$)', normalized)
-        if flr_body_match:
-            flr_body = flr_body_match.group(1)
-            chunks = [c.strip() for c in flr_body.split('/') if c.strip()]
-            if chunks:
-                if not fault_desc:
-                    fault_desc = chunks[0]
-                for c in chunks[1:]:
-                    if c not in affected:
-                        affected.append(c)
+            phase_code = m_flr.group(11)
+            phase_name, _, phase_desc = format_airbus_flight_phase(phase_code)
 
-        m_id = re.search(r'/ID([A-Z0-9\s,/-]+?)(?:/|$)', normalized)
-        if m_id:
-            id_text = m_id.group(1).strip()
-            for item in id_text.split(','):
-                it = item.strip()
-                if it and not any(it in a for a in affected):
-                    affected.append(it)
+            comp1 = m_flr.group(12).strip()
+            comp2 = (m_flr.group(13) or '').strip()
+            aff_id = (m_flr.group(14) or '').strip()
 
-        rep_label = f"Teknisk felrapport ({rep_type or 'FLR'})"
+            if comp2.startswith('ID'):
+                if not aff_id:
+                    aff_id = comp2[2:].strip()
+                comp2 = ''
+
+            if comp2:
+                fel_part = f"{comp1} & {comp2}"
+            else:
+                fel_part = comp1
+            if aff_id:
+                fel_part += f" [Påverkar: {aff_id}]"
+
+        is_rep003 = bool(rep_type or m_ac)
+        rep_label = f"Airbus FDIMU/Systemrapport #{m_rep.group(1) if m_rep else '003'}" if is_rep003 else "Airbus CFDIU-Felrapport"
+
         fields = {
             "Typ": rep_label
         }
-        if fault_desc:
-            fields["Feldetalj"] = fault_desc
-        if affected:
-            fields["Berörda system"] = ", ".join(affected)
+        if fel_part:
+            fields["Fel"] = fel_part
+        elif comp1:
+            fields["Fel"] = comp1
+        if ata_desc:
+            fields["ATA"] = ata_desc
+        if phase_desc:
+            fields["Flygfas"] = phase_desc
         if pnr:
             fields["Artikelnummer (PNR)"] = pnr
+        if flr_time_str or flight_time:
+            fields["Tid"] = f"{flr_time_str or flight_time} UTC"
+        if alt_fmt:
+            fields["Höjd"] = f"{alt_fmt} ({spd_raw} kt)"
         if ac_type:
             fields["Flygplan"] = f"Airbus {ac_type}"
         if origin and destination:
             fields["Rutt"] = f"{format_airport(origin)} → {format_airport(destination)}"
-        if flight_time:
-            fields["Tid (UTC)"] = flight_time
 
         result = {
             'report_type': rep_label,
@@ -993,13 +1132,25 @@ def parse_acars_payload(text: str, label: str = None, metadata: dict = None) -> 
             'origin': origin,
             'destination': destination,
             'route': f"{origin} -> {destination}" if (origin and destination) else None,
-            'flight_time_utc': flight_time,
+            'flight_time_utc': flr_time_str or flight_time,
+            'time_utc': flr_time_str or flight_time,
             'pnr': pnr,
-            'fr_code': fr_code,
-            'fault_desc': fault_desc,
-            'fault_text': fault_desc,
-            'affected': affected,
-            'affected_systems': ", ".join(affected) if affected else None,
+            'date': date_str,
+            'ata': ata_code,
+            'ata_name': ata_name,
+            'ata_desc': ata_desc,
+            'phase': phase_name,
+            'phase_code': phase_code,
+            'phase_desc': phase_desc,
+            'component1': comp1,
+            'component2': comp2,
+            'affected_systems': aff_id,
+            'affected': [a.strip() for a in aff_id.split(',')] if aff_id else ([comp2] if comp2 else []),
+            'fault_desc': comp1 or "Felrapport",
+            'fault_text': fel_part or comp1 or "Felrapport",
+            'alt_ft': alt_raw,
+            'cas_kt': spd_raw,
+            'mach': mach_raw,
             'fields': fields
         }
 
@@ -1067,28 +1218,108 @@ def rule_fm_flight_report(text: str, label: str = None, metadata: dict = None) -
 def rule_airbus_ecam_warning(text: str, label: str = None, metadata: dict = None) -> str:
     """
     Airbus ECAM Cockpit Warning (WRN / Label H1).
-    Exempel: WRN/PNRC12860AA07/WN26101704400034000006NAV ADS-B RPTG 2 FAULT
+    Exempel: WRN/PNRC12860AA07/WN26101816350034000006NAV ADS-B TRAF FAULT
     """
-    parsed = parse_acars_payload(text, label=label, metadata=metadata)
-    if not parsed or not parsed.get('is_warning'):
+    if not text or 'WRN/' not in text:
         return None
 
-    fault_text = parsed.get('fault_text') or "Varning i förarkabin"
-    pnr = parsed.get('pnr')
-    wn = parsed.get('warning_code')
+    clean_text = text.replace('\r', '').replace('\n', ' ').strip('\x03\x17 ')
 
-    parts = [f"ECAM Varning: {fault_text}"]
-    details = []
-    if pnr:
-        details.append(f"PNR: {pnr}")
-    if wn:
-        details.append(f"Varningskod: {wn}")
+    # 1. Mönster med 20-siffrig WN-kod:
+    # Grupp 1: PNR
+    # Grupp 2-4: Datum (20YY-MM-DD)
+    # Grupp 5-7: Tid (HH:MM:SS UTC)
+    # Grupp 8-10: ATA-kapitel (XX-XX-XX) + namn
+    # Grupp 11: Flygfas (Fasnamn (kod))
+    # Grupp 12: ECAM-varning
+    m = re.search(
+        r'WRN\/PN(?:R|\b)?([A-Z0-9]+)\/WN(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([^\r\n\x03\x17]+)',
+        clean_text
+    )
 
-    if details:
-        parts.append(f"({' | '.join(details)})")
+    if m:
+        pnr = m.group(1).strip()
+        if pnr.startswith('R') and len(pnr) > 7:
+            pnr = pnr[1:]
 
-    summary = " ".join(parts)
-    return f"[ECAM Cockpit Warning] {summary}\nRådata: {text.strip()}"
+        yy, mm, dd = m.group(2), m.group(3), m.group(4)
+        date_str = f"20{yy}-{mm}-{dd}"
+
+        hh, mn, ss = m.group(5), m.group(6), m.group(7)
+        time_str = f"{hh}:{mn}:{ss}"
+
+        c1, c2, c3 = m.group(8), m.group(9), m.group(10)
+        ata_code, ata_name, ata_desc = format_ata_chapter(c1, c2, c3)
+
+        phase_code = m.group(11)
+        phase_name, _, phase_desc = format_airbus_flight_phase(phase_code)
+
+        ecam_warning = m.group(12).strip().rstrip('/\x03\x17 ')
+
+        if isinstance(metadata, dict):
+            metadata['decoded_fields'] = {
+                'report_type': 'Airbus ECAM-Varning',
+                'type_code': 'WRN',
+                'is_warning': True,
+                'severity': 'warning',
+                'pnr': pnr,
+                'date': date_str,
+                'flight_time_utc': time_str,
+                'time_utc': time_str,
+                'ata': ata_code,
+                'ata_name': ata_name,
+                'ata_desc': ata_desc,
+                'phase': phase_name,
+                'phase_code': phase_code,
+                'phase_desc': phase_desc,
+                'warning_text': ecam_warning,
+                'fault_text': ecam_warning,
+                'summary': f"Larm: {ecam_warning} | ATA: {ata_desc} | Fas: {phase_desc} | Tid: {time_str} UTC (PNR: {pnr})",
+                'fields': {
+                    "Typ": "Airbus ECAM-Varning",
+                    "Larm": ecam_warning,
+                    "ATA": ata_desc,
+                    "Flygfas": phase_desc,
+                    "Tid": f"{time_str} UTC",
+                    "Artikelnummer (PNR)": pnr,
+                    "Datum": date_str
+                }
+            }
+
+        summary = f"[Airbus ECAM-Varning] Larm: {ecam_warning} | ATA: {ata_desc} | Fas: {phase_desc} | Tid: {time_str} UTC (PNR: {pnr})"
+        return f"{summary}\nRådata: {text.strip()}"
+
+    # 2. Fallback för korta / avvikande WRN/PN-meddelanden så att de aldrig faller igenom till [FMS/Systemtelemetri] Kodat datapaket
+    m_fb = re.search(r'WRN\/PN(?:R|\b)?([A-Z0-9]+)?(?:\/WN([^\/\r\n\x03\x17]+))?\/?\s*([^\r\n\x03\x17]+)?', clean_text)
+    if m_fb:
+        pnr = (m_fb.group(1) or '').strip()
+        if pnr.startswith('R') and len(pnr) > 7:
+            pnr = pnr[1:]
+        wn_raw = (m_fb.group(2) or '').strip()
+        desc = (m_fb.group(3) or '').strip().rstrip('/\x03\x17 ')
+        if not desc and wn_raw:
+            desc = wn_raw
+        if not desc:
+            desc = "ECAM Varning"
+
+        if isinstance(metadata, dict):
+            metadata['decoded_fields'] = {
+                'report_type': 'Airbus ECAM-Varning',
+                'type_code': 'WRN',
+                'is_warning': True,
+                'severity': 'warning',
+                'pnr': pnr,
+                'warning_text': desc,
+                'fault_text': desc,
+                'summary': f"Larm: {desc}",
+                'fields': {"Typ": "Airbus ECAM-Varning", "Larm": desc}
+            }
+
+        pnr_part = f" (PNR: {pnr})" if pnr else ""
+        summary = f"[Airbus ECAM-Varning] Larm: {desc}{pnr_part}"
+        return f"{summary}\nRådata: {text.strip()}"
+
+    return None
 
 
 def rule_airbus_fault_report(text: str, label: str = None, metadata: dict = None) -> str:
@@ -1096,42 +1327,208 @@ def rule_airbus_fault_report(text: str, label: str = None, metadata: dict = None
     Airbus Maintenance / Fault Report (FLR / REP003 / ARINC 624 / Label H1).
     Exempel: A320,029566,1,1,TB000000/REP003,64,01,1/CCHB-JDF,OCT17,043255,ESSA,LSZH,0001/.../FLR/PNRC12860AA07/FR26101704390034363106MMR 1+2 (40RT1+2)/     ATC 1 (1SH1)/IDATC 1,ATC 2
     """
-    parsed = parse_acars_payload(text, label=label, metadata=metadata)
-    if not parsed or not parsed.get('is_fault_report'):
+    if not text:
         return None
 
-    rep_type = parsed.get('report_code') or 'FLR'
-    ac_type = parsed.get('aircraft_type')
-    fault_desc = parsed.get('fault_desc') or "Underhållsrapport"
-    pnr = parsed.get('pnr')
-    affected = parsed.get('affected') or []
-    origin = parsed.get('origin')
-    destination = parsed.get('destination')
-    flight_time = parsed.get('flight_time_utc')
+    # Normalisera och rensa bort radbrytningar och kontrolltecken
+    normalized = re.sub(r'[\r\n\x03\x17]+', '', text)
 
-    header_parts = []
-    if ac_type:
-        header_parts.append(f"Flygplan: Airbus {ac_type}")
-    if origin and destination:
-        header_parts.append(f"Rutt: {format_airport(origin)} → {format_airport(destination)}")
-    if flight_time:
-        header_parts.append(f"Tid: {flight_time} UTC")
+    # Kontrollera om meddelandet innehåller felrapport (FLR eller FR)
+    has_flr = bool(re.search(r'\/?FLR\/', normalized) or '/FR' in normalized or 'FLR/' in normalized or re.search(r'\bFLR\b', normalized))
+    if not has_flr:
+        return None
 
-    details = []
-    details.append(f"Feldetalj: {fault_desc}")
-    if affected:
-        details.append(f"Berörda system: {', '.join(affected)}")
-    if pnr:
-        details.append(f"PNR: {pnr}")
+    # 1. Flygplanstyp & rapportnummer från REP-header
+    is_rep = bool(re.search(r'\bA\d{3}\b', normalized) or '/REP' in normalized or 'REP00' in normalized)
+    ac_type = None
+    rep_num = "003"
+    orig_icao = None
+    dest_icao = None
+    time_utc = None
+    reg = None
 
-    summary_items = []
-    if header_parts:
-        summary_items.append(" | ".join(header_parts))
-    if details:
-        summary_items.append(" | ".join(details))
+    m_hdr = re.search(
+        r'(A\d{3})[^/]*/REP(\d+)[^/]*/CC([A-Z0-9-]+),([A-Z]{3}\d{2}),(\d{6}),([A-Z]{4}),([A-Z]{4})',
+        normalized
+    )
+    if m_hdr:
+        ac_type = m_hdr.group(1).strip()
+        rep_num = m_hdr.group(2).strip()
+        reg = m_hdr.group(3).strip()
+        t_raw = m_hdr.group(5).strip()
+        orig_icao = m_hdr.group(6).strip().upper()
+        dest_icao = m_hdr.group(7).strip().upper()
+        time_utc = f"{t_raw[0:2]}:{t_raw[2:4]}:{t_raw[4:6]}" if len(t_raw) == 6 else t_raw
+    else:
+        m_ac = re.search(r'\b(A\d{3})\b', normalized)
+        if m_ac:
+            ac_type = m_ac.group(1).strip()
+        m_rep = re.search(r'/REP(\d+)', normalized)
+        if m_rep:
+            rep_num = m_rep.group(1).strip()
+        m_route = re.search(r',(\d{6}),([A-Z]{4}),([A-Z]{4})\b', normalized)
+        if m_route:
+            t_raw = m_route.group(1).strip()
+            time_utc = f"{t_raw[0:2]}:{t_raw[2:4]}:{t_raw[4:6]}" if len(t_raw) == 6 else t_raw
+            orig_icao = m_route.group(2).strip().upper()
+            dest_icao = m_route.group(3).strip().upper()
 
-    summary = "\n".join(summary_items)
-    return f"[Teknisk Felrapport ({rep_type})] {summary}\nRådata: {text.strip()}"
+    if isinstance(metadata, dict):
+        if dest_icao and not metadata.get('dst_airport'):
+            metadata['dst_airport'] = dest_icao
+        if orig_icao and not metadata.get('src_airport'):
+            metadata['src_airport'] = orig_icao
+        if reg and not metadata.get('reg'):
+            metadata['reg'] = reg
+
+    # 2. Bonus-extraktion ur CEN-segmentet (/CENddd,alt,cas,mach)
+    alt_fmt = None
+    spd_kt = None
+    m_cen = re.search(r'\/CEN\d{3},(\d+),(\d+),(\d+)', normalized)
+    if m_cen:
+        alt_val = int(m_cen.group(1))
+        spd_kt = int(m_cen.group(2))
+        alt_fmt = f"{alt_val:,} ft".replace(',', ' ')
+        if isinstance(metadata, dict):
+            metadata['alt_ft'] = alt_val
+
+    # 3. Parsa FLR / FR-delen
+    m_flr = re.search(
+        r'\/?FLR\/PN(?:R|\b)?([A-Z0-9]+)\/FR(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})([^\/\r\n\x03\x17]+)(?:\/\s*([^\/\r\n\x03\x17]+))?(?:\/ID([^\r\n\x03\x17]+))?',
+        normalized
+    )
+
+    if not m_flr and not is_rep:
+        return None
+
+    pnr = None
+    flr_time_str = None
+    ata_code, ata_name, ata_desc = "", "", ""
+    phase_code, phase_name, phase_desc = "", "", ""
+    comp1 = None
+    comp2 = None
+    aff_id = None
+    fel_str = ""
+
+    if m_flr:
+        pnr = m_flr.group(1).strip()
+        if pnr.startswith('R') and len(pnr) > 7:
+            pnr = pnr[1:]
+
+        yy, mm, dd = m_flr.group(2), m_flr.group(3), m_flr.group(4)
+        date_str = f"20{yy}-{mm}-{dd}"
+
+        hh, mn, ss = m_flr.group(5), m_flr.group(6), m_flr.group(7)
+        flr_time_str = f"{hh}:{mn}:{ss}"
+
+        c1, c2, c3 = m_flr.group(8), m_flr.group(9), m_flr.group(10)
+        ata_code, ata_name, ata_desc = format_ata_chapter(c1, c2, c3)
+
+        phase_code = m_flr.group(11)
+        phase_name, _, phase_desc = format_airbus_flight_phase(phase_code)
+
+        comp1 = m_flr.group(12).strip()
+        comp2 = (m_flr.group(13) or '').strip()
+        aff_id = (m_flr.group(14) or '').strip()
+
+        if comp2.startswith('ID'):
+            if not aff_id:
+                aff_id = comp2[2:].strip()
+            comp2 = ''
+
+        if comp2:
+            fel_str = f"{comp1} & {comp2}"
+        else:
+            fel_str = comp1
+        if aff_id:
+            fel_str += f" [Påverkar: {aff_id}]"
+
+    # Bestäm om det är kombinerad REP-rapport eller fristående FLR-rapport
+    if is_rep and (m_hdr or ac_type or orig_icao):
+        orig_fmt = format_airport(orig_icao) if orig_icao else ""
+        dest_fmt = format_airport(dest_icao) if dest_icao else ""
+        route_str = f"Rutt: {orig_fmt} → {dest_fmt}" if (orig_fmt and dest_fmt) else ""
+
+        header_items = [f"Flygplan: {ac_type}" if ac_type else None, route_str or None]
+        header_text = " | ".join([h for h in header_items if h])
+
+        ext_parts = []
+        if alt_fmt and spd_kt:
+            ext_parts.append(f"Höjd: {alt_fmt} ({spd_kt} kt)")
+        elif alt_fmt:
+            ext_parts.append(f"Höjd: {alt_fmt}")
+
+        if fel_str:
+            ext_parts.append(f"Fel: {fel_str}")
+        elif comp1:
+            ext_parts.append(f"Fel: {comp1}")
+
+        if ata_desc:
+            ext_parts.append(f"ATA: {ata_desc}")
+        if phase_desc:
+            ext_parts.append(f"Fas: {phase_desc}")
+
+        ext_text = (" | " + " | ".join(ext_parts)) if ext_parts else ""
+        summary = f"[Airbus FDIMU/Systemrapport #{rep_num}] {header_text}{ext_text}"
+
+        if isinstance(metadata, dict):
+            metadata['decoded_fields'] = {
+                'report_type': f"Airbus FDIMU/Systemrapport #{rep_num}",
+                'type_code': 'FLR',
+                'is_fault_report': True,
+                'severity': 'fault',
+                'aircraft_type': ac_type,
+                'report_code': f"REP{rep_num}",
+                'origin': orig_icao,
+                'destination': dest_icao,
+                'route': f"{orig_icao} -> {dest_icao}" if (orig_icao and dest_icao) else None,
+                'pnr': pnr,
+                'ata': ata_code,
+                'ata_name': ata_name,
+                'ata_desc': ata_desc,
+                'phase': phase_name,
+                'phase_code': phase_code,
+                'phase_desc': phase_desc,
+                'component1': comp1,
+                'component2': comp2,
+                'affected_systems': aff_id,
+                'fault_desc': comp1 or "Systemfel",
+                'fault_text': fel_str or comp1 or "Systemfel",
+                'summary': summary
+            }
+
+        return f"{summary}\nRådata: {text.strip()}"
+
+    elif m_flr:
+        # Fristående /FLR/PN utan REP
+        summary_fel = fel_str or comp1
+        summary = f"[Airbus CFDIU-Felrapport] Fel: {summary_fel} | ATA: {ata_desc} | Fas: {phase_desc} | Tid: {flr_time_str} UTC (PNR: {pnr})"
+
+        if isinstance(metadata, dict):
+            metadata['decoded_fields'] = {
+                'report_type': 'Airbus CFDIU-Felrapport',
+                'type_code': 'FLR',
+                'is_fault_report': True,
+                'severity': 'fault',
+                'pnr': pnr,
+                'time_utc': flr_time_str,
+                'ata': ata_code,
+                'ata_name': ata_name,
+                'ata_desc': ata_desc,
+                'phase': phase_name,
+                'phase_code': phase_code,
+                'phase_desc': phase_desc,
+                'component1': comp1,
+                'component2': comp2,
+                'affected_systems': aff_id,
+                'fault_desc': comp1 or "Systemfel",
+                'fault_text': summary_fel,
+                'summary': summary
+            }
+
+        return f"{summary}\nRådata: {text.strip()}"
+
+    return None
 
 
 
@@ -1842,6 +2239,13 @@ def rule_boeing_plf_fault_report(text: str, label: str = None, metadata: dict = 
 
 def rule_airbus_aids_fdimu_report(text: str, label: str = None, metadata: dict = None) -> str:
     """Airbus AIDS / FDIMU systemrapporter (/REP och /CC headers)."""
+    if not text:
+        return None
+    if '/FLR/' in text or 'FLR/' in text or '/FR' in text:
+        flr_res = rule_airbus_fault_report(text, label=label, metadata=metadata)
+        if flr_res:
+            return flr_res
+
     stripped = text.strip()
     m = re.search(
         r'^(A\d{3})[^/]*/REP(\d+)[^/]*/CC([A-Z0-9-]+),([A-Z]{3}\d{2}),(\d{6}),([A-Z]{4}),([A-Z]{4})',

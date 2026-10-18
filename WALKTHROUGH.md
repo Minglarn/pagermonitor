@@ -38,6 +38,10 @@
      - `copyMessageText`: Hämtar meddelandetext ur `.data-flex` eller `.msg-main` med exkludering av tekniska knappar.
      - `repeat_update`: Lägger/uppdaterar `.repeat-badge` direkt i `.msg-title-group`.
      - `hideBasestations`: Kontrollerar `rowNode.classList.contains('basestation-row')`.
+  6. **Slimmad Kollapsad Sidopanel ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css), [static/console.css](file:///d:/antigravity/pager-monitor/static/console.css))**:
+     - Minskat `--sidebar-collapsed-width` från `80px` till `54px` (30% smalare) för att frigöra maximalt horisontellt utrymme åt realtidsflödet.
+     - Ikonernas storlek förblir oförändrad (`1.2rem` för nav-ikoner, `1.5rem` för satellitikonen och `1.15rem` för toggle-ikonen).
+     - Satellitikonen, nav-länkarna (42x42px klickyta) och toggle-knappen centreras nu symmetriskt längs en rak vertikal axel.
 - **Verifiering**:
   - Samtliga 135 enhetstester passerar grönt.
   - Strikt förbud mot emojis efterlevt på hela webbplatsen.
@@ -2734,3 +2738,53 @@
   - Verifierat i webbläsaren att nya meddelanden injiceras i tabellens topp i realtid utan manuell omläsning.
   - Versionsbump till CalVer `2026.10.15.22` i [app.py](file:///d:/antigravity/pager-monitor/app.py), [CHANGELOG.md](file:///d:/antigravity/pager-monitor/CHANGELOG.md) och [WALKTHROUGH.md](file:///d:/antigravity/pager-monitor/WALKTHROUGH.md).
 
+### 83. Dynamisk Koppling till Settings för Typsnitt (--msg-font), Storlek (--msg-size) och Consolas som Standard (v2026.10.18.7)
+- **Dynamisk Font- och Storlekskoppling ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - Kopplat meddelandecellerna och textfälten till CSS-variablerna `--msg-font` och `--msg-size`:
+    - `.msg-main`: `font-size: var(--msg-size, 0.72rem) !important;`.
+    - `.msg-title`: `font-size: calc(var(--msg-size, 0.72rem) * 0.92) !important;` (skalar proportionellt med reglaget).
+    - `.data-k`: `font-size: calc(var(--msg-size, 0.72rem) * 0.78) !important;` (etiketter för datanycklar).
+    - `.data-v`: `font-family: var(--msg-font, 'Consolas', monospace) !important; font-size: var(--msg-size, 0.72rem) !important;`.
+    - `.raw-data-box`, `.hfdl-details-box`: `font-family: var(--msg-font, 'Consolas', monospace) !important; font-size: calc(var(--msg-size, 0.72rem) * 0.92) !important;`.
+  - Samtliga vänsterkolumner (`.badge`, `.ts-time`, `.ts-date`, `.ts-id`, `.rf-freq`, `.rf-snr`, `.rf-mod`, `.rf-gs`, `.src-sub`, `.src-icao`, `.empty-keys`) använder nu `font-family: var(--msg-font, 'Consolas', monospace) !important;`.
+- **Systemtypsnittet Consolas i Settings & Databas ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+  - Lagt till `<option value="Consolas">Consolas (Operativ Standard)</option>` överst i typsnittsmenyn under Interface & Typography.
+  - Satt `'message_font': 'Consolas'` och `'message_font_size': '0.72'` som standardvärden i `database.py`.
+  - Uppdaterat live-förhandsgranskningen i Settings (`updatePreviewUI`) till att stödja och visa Consolas.
+- **Initialisering utan Flimmer ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - `fetchSettings()` applicerar `const fontName = settings.message_font || 'Consolas'; document.documentElement.style.setProperty('--msg-font', `'${fontName}', Consolas, monospace');` och persisterar till `localStorage`.
+  - Tidig initiering i `<head>` sätter variablerna innan sidan renderas för noll flimmer vid sidvisning.
+- **Slimmad Sidopanel ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css), [static/console.css](file:///d:/antigravity/pager-monitor/static/console.css))**:
+  - Minskat bredden på kollapsad sidomeny till `54px` med perfekt centrerade 42x42px knappar och oförändrad ikonstorlek.
+- **Spårbarhet & Verifiering**:
+  - Samtliga 135 enhetstester passerar felfritt.
+  - Versionsbump till CalVer `2026.10.18.7` i `app.py`, `CHANGELOG.md` och `WALKTHROUGH.md`.
+
+### 84. Avkodning av Airbus CFDIU/CMS Tekniska Fel- och Varningsrapporter (Label H1) (v2026.10.18.8)
+- **Ny Regex- och Parsningslogik för Cockpit Warning (`WRN/PN`) ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Ersatt den tidigare `[ECAM Cockpit Warning]`-regeln helt med en precis uppackning av den 20-siffriga koden.
+  - Regex utan hårt startankare `^`: `WRN\/PN([A-Z0-9]+)\/WN(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([^\r\n\x03\x17]+)`.
+  - Extraherar och formaterar:
+    - PNR (Part Number / Avkodnings-ID).
+    - Datum: `20YY-MM-DD`.
+    - Tid: `HH:MM:SS UTC`.
+    - ATA-kapitel: `XX-XX-XX` med slaget kapitelnamn (t.ex. `34-00-00 (Navigation)`).
+    - Flygfas: Uppslagen mot officiell tabell för Airbus (t.ex. `Cruise (06)`).
+    - Larm/Varningstext: Trimmat meddelande (t.ex. `NAV ADS-B TRAF FAULT`).
+  - Standardiserad presentation: `[Airbus ECAM-Varning] Larm: <ECAM-varning> | ATA: <XX-XX-XX> (<ATA-namn>) | Fas: <Fasnamn> (<Faskod>) | Tid: <HH:MM:SS> UTC (PNR: <PNR>)`.
+- **Utökad Felrapportsparser för Failure Reports (`/FLR/PN` och `REP003`) ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Implementerat flexibelt regex för att hantera felrapporter både inuti Airbus FDIMU-rapporter (`REP003`) och som fristående meddelanden:
+    `\/?FLR\/PN([A-Z0-9]+)\/FR(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})([^\/\r\n\x03\x17]+)(?:\/\s*([^\/\r\n\x03\x17]+))?(?:\/ID([^\r\n\x03\x17]+))?`.
+  - Parsar primär felande enhet, sekundär komponent samt påverkade system (`/ID`).
+  - Extraherar höjd (ft) och CAS-hastighet (kt) från inbäddade `/CEN`-segment (`/CEN040,25705,314,760...` -> `Höjd: 25 705 ft (314 kt)`).
+  - Skapar sammanhängande presentation för kombinerad `REP003`: `[Airbus FDIMU/Systemrapport #003] Flygplan: <Typ> | Rutt: <ICAO> (<Flygplats>) → <ICAO> (<Flygplats>) | Höjd: <Höjd> ft (<Fart> kt) | Fel: <Komp1> & <Komp2> [Påverkar: <ID>] | ATA: <XX-XX-XX> (<ATA-namn>) | Fas: <Fasnamn> (<Faskod>)`.
+  - Skapar distinkt presentation för fristående FLR: `[Airbus CFDIU-Felrapport] Fel: <Komp1> & <Komp2> [Påverkar: <ID>] | ATA: <XX-XX-XX> (<ATA-namn>) | Fas: <Fasnamn> (<Faskod>) | Tid: <HH:MM:SS> UTC (PNR: <PNR>)`.
+- **Uppslagstabeller för Flygfaser och ATA-kapitel ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - `AIRBUS_FLIGHT_PHASES`: 01 (Pre-flight), 02 (Taxi out), 03 (Take-off), 04 (Initial Climb), 05 (Climb), 06 (Cruise), 07 (Descent), 08 (Approach), 09 (Roll-out/Landing), 10 (Taxi in).
+  - `ATA_CHAPTERS`: 21 (Air Conditioning), 22 (Auto Flight), 23 (Communications), 24 (Electrical Power), 25 (Equipment/Furnishings), 26 (Fire Protection), 27 (Flight Controls), 28 (Fuel), 29 (Hydraulic Power), 30 (Ice & Rain Protection), 31 (Instruments/Recorders), 32 (Landing Gear), 33 (Lights), 34 (Navigation), 35 (Oxygen), 36 (Pneumatic), 38 (Water/Waste), 45 (Central Maint System (CMS)), 46 (Information Systems), 49 (APU), 52 (Doors), 70-80 (Engine).
+- **Skydd mot Telemetri-fallback ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Tillagt undantag så att `WRN/` och `FLR/` aldrig fångas upp som `[FMS/Systemtelemetri] Kodat datapaket`.
+- **Verifiering & Enhetstester ([tests/test_acars.py](file:///d:/antigravity/pager-monitor/tests/test_acars.py))**:
+  - Skapat och uppdaterat tester för `WRN/PN` med och utan HFDL-prefix, `REP003` med `/FLR/PN` och `/CEN`, fristående `FLR/PN` samt flerradiga meddelanden med radbrytningar mitt i ID-fält.
+  - Samtliga 137 enhetstester i hela projektet passerar utan anmärkning (100% OK).
+  - Versionsbump till CalVer `2026.10.18.8` i `app.py`, `CHANGELOG.md` och `WALKTHROUGH.md`.

@@ -51,7 +51,7 @@
 .sidebar.collapsed ~ .main-content .console-dock,
 body.sidebar-is-collapsed .console-dock,
 body:has(.sidebar.collapsed) .console-dock {
-    left: var(--sidebar-collapsed-width, 80px);
+    left: var(--sidebar-collapsed-width, 54px);
 }
 
 @media (max-width: 768px) {

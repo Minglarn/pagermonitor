@@ -418,8 +418,9 @@ def humanize_acars_message(label, msg_text, acars_dict=None):
     # 6. Modulär Human ACARS Parser för specialiserade mönster (Label 38, H1 POSN, H1 RESREQ, 83 ETA, MM m.fl.)
     res = parse_human_acars(txt, label=lbl, metadata=acars_dict)
     if res == txt and '\nRådata:' not in res and lbl in ('H1', 'H2', 'DF', '5Z') and txt:
+        is_wrn_or_flr = ('WRN/' in txt or '/FLR/' in txt or 'FLR/PN' in txt or '/FR' in txt)
         is_readable = bool(re.search(r'\b[A-Za-z]{3,}\s+[A-Za-z]{3,}\b', txt))
-        if not is_readable:
+        if not is_readable and not is_wrn_or_flr:
             return f"[FMS/Systemtelemetri] Kodat datapaket ({len(txt)} tecken)\nRådata: {txt}"
     return res
 
@@ -1594,8 +1595,9 @@ def parse_vdl2_frame(data, filter_empty=True, filter_links=False):
             # Parsa genom acars_human_parser med strip_prefix=True för ren text
             parsed_human = parse_human_acars(msg_text, label=label, metadata=acars, strip_prefix=True)
             if lbl_clean in ('H1', 'H2', 'DF', '5Z') and parsed_human == msg_text and '\nRådata:' not in parsed_human:
+                is_wrn_or_flr = ('WRN/' in msg_text or '/FLR/' in msg_text or 'FLR/PN' in msg_text or '/FR' in msg_text)
                 is_readable = bool(re.search(r'\b[A-Za-z]{3,}\s+[A-Za-z]{3,}\b', msg_text))
-                if not is_readable:
+                if not is_readable and not is_wrn_or_flr:
                     parsed_human = f"[FMS/Systemtelemetri] Kodat datapaket ({len(msg_text)} tecken)\nRådata: {msg_text}"
         if parsed_human:
             message_lines.append(parsed_human)

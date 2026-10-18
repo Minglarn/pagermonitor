@@ -5,6 +5,44 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.18.8] - Avkodning av Airbus CFDIU/CMS Tekniska Fel- och Varningsrapporter (Label H1)
+
+- **Uppdaterad ECAM Cockpit Warning-parser (`WRN/PN`) ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Ersatt den tidigare grova regeln för `[ECAM Cockpit Warning]`.
+  - Nytt regex utan tvingande startankar (`^`) för att stödja HFDL och VDL2 med prefix: `WRN\/PN([A-Z0-9]+)\/WN(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})\s*([^\r\n\x03\x17]+)`.
+  - Packar upp samtliga 20 siffror: Datum (`20YY-MM-DD`), Tid (`HH:MM:SS UTC`), ATA-kapitel (`XX-XX-XX` med kapitelnamn), och Flygfas (`Fasnamn (Faskod)`).
+  - Standardiserat utdataformat: `[Airbus ECAM-Varning] Larm: <ECAM-varning> | ATA: <XX-XX-XX> (<ATA-namn>) | Fas: <Fasnamn> (<Faskod>) | Tid: <HH:MM:SS> UTC (PNR: <PNR>)`.
+- **Utökad felrapportsparser för `/FLR/PN` och `REP003` ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Parsar Failure Reports (FLR/FR) med regex: `\/?FLR\/PN([A-Z0-9]+)\/FR(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})([^\/\r\n\x03\x17]+)(?:\/\s*([^\/\r\n\x03\x17]+))?(?:\/ID([^\r\n\x03\x17]+))?`.
+  - Extraherar PNR, datum, tid, ATA-kod, flygfas, primär och sekundär felande komponent samt påverkade system (`/ID`).
+  - Bonus-extraktion för flygdata ur `CEN`-segmentet (`Höjd: <alt> ft (<fart> kt)`).
+  - Kombinerad `REP003`-rapport: `[Airbus FDIMU/Systemrapport #003] Flygplan: ... | Rutt: ... | Höjd: ... | Fel: ... | ATA: ... | Fas: ...`.
+  - Fristående FLR-rapport: `[Airbus CFDIU-Felrapport] Fel: ... | ATA: ... | Fas: ... | Tid: ... (PNR: ...)`.
+- **Skydd mot felaktig telemetri-fallback ([vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Meddelanden med `WRN/` och `FLR/` skyddas mot att klassificeras som generiska kodade telemetripaket (`[FMS/Systemtelemetri] Kodat datapaket`).
+- **Uppslagstabeller för Airbus flygfaser och ATA-kapitel ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Implementerat `AIRBUS_FLIGHT_PHASES` (faser 01–10) och `ATA_CHAPTERS` (fullständig uppslagstabell för flygelektronik och flygplanssystem).
+
+## [2026.10.18.7] - Dynamisk Koppling till Settings för Typsnitt (--msg-font), Storlek (--msg-size) och Consolas som Standard
+
+- **Koppling av Meddelandecell och Tabell till `--msg-font` och `--msg-size` ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - Ersatt hårdkodade pixelstorlekar och typsnitt med dynamiska CSS-variabler:
+    - `.msg-main`: `font-size: var(--msg-size, 0.72rem) !important;`.
+    - `.msg-title`: `font-size: calc(var(--msg-size, 0.72rem) * 0.92) !important;` (skalar proportionerligt med användarens storleksreglage).
+    - `.data-k`: `font-size: calc(var(--msg-size, 0.72rem) * 0.78) !important;` (rubriketikett för datafält).
+    - `.data-v`: `font-family: var(--msg-font, 'Consolas', monospace) !important; font-size: var(--msg-size, 0.72rem) !important;`.
+    - `.raw-data-box`, `.hfdl-details-box`: `font-family: var(--msg-font, 'Consolas', monospace) !important; font-size: calc(var(--msg-size, 0.72rem) * 0.92) !important;`.
+  - Samtliga vänsterkolumner (`.badge`, `.ts-time`, `.ts-date`, `.ts-id`, `.rf-freq`, `.rf-snr`, `.rf-mod`, `.rf-gs`, `.src-sub`, `.src-icao`, `.empty-keys`) använder nu `font-family: var(--msg-font, 'Consolas', monospace) !important;` för ett helt enhetligt utseende.
+- **Tillägg av Consolas i Settings & Databas ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+  - Lagt till `<option value="Consolas">Consolas (Operativ Standard)</option>` överst i typsnittsväljaren under Interface & Typography.
+  - Uppdaterat standardinställningar i `database.py` till `'message_font': 'Consolas'` och `'message_font_size': '0.72'`.
+  - Uppdaterat live-förhandsgranskningen i Settings (`updatePreviewUI`) så att den omedelbart reflekterar Consolas och valt storleksvärde.
+- **Snabb Initialisering utan Flimmer ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - `fetchSettings()` applicerar `const fontName = settings.message_font || 'Consolas'; document.documentElement.style.setProperty('--msg-font', `'${fontName}', Consolas, monospace');` samt sparar i `localStorage`.
+  - Head-scriptet läser `pagermonitor_msg_font` och `pagermonitor_msg_size` direkt vid sidladdning före rendering för att eliminera flimmer.
+- **Kompakt Kollapsad Sidopanel ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css), [static/console.css](file:///d:/antigravity/pager-monitor/static/console.css))**:
+  - Slimmad sidopanelsbredd till `54px` vid minimerat läge med bibehållen ikonstorlek.
+
 ## [2026.10.18.6] - Kritisk Buggfix, CSS-injektion & Layoutkorrigering i Real-time Monitor
 
 - **CSS-injektion i `<style>`-blocket ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
@@ -25,6 +63,9 @@ and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
   - `window.copyMessageText`: Hämtar text från `.data-flex` eller `.msg-main` med exkludering av tekniska knappar i `.msg-actions`.
   - `repeat_update`: Placerar `.repeat-badge` direkt i `.msg-title-group` i stället för att generera en separat `.msg-meta-bar`.
   - DataTables basstationsfilter: Kontrollerar `rowNode.classList.contains('basestation-row')` via `settings.aoData[dataIndex]?.nTr` för exakt och feltolerant filtrering.
+- **Slimmad Kollapsad Sidopanel ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css), [static/console.css](file:///d:/antigravity/pager-monitor/static/console.css))**:
+  - Minskat bredden på kollapsad sidopanel från `80px` till `54px` för en mycket mer kompakt och slimmad sidomeny.
+  - Ikonernas storlek behålls helt intakt (`1.2rem` och `1.5rem`), medan satellitikon, nav-knappar (42x42px) och toggle-knapp centreras perfekt.
 
 ## [2026.10.18.5] - Kritisk Fix: Millisekund-kronologisk Tidssortering (Unix Epoch)
 

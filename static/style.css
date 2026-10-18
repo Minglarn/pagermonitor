@@ -24,11 +24,11 @@
 
     /* Sidebar settings */
     --sidebar-width: 260px;
-    --sidebar-collapsed-width: 80px;
+    --sidebar-collapsed-width: 54px;
 
     /* Font Settings */
-    --msg-font: 'JetBrains Mono', monospace;
-    --msg-size: 1rem;
+    --msg-font: 'Consolas', 'JetBrains Mono', monospace;
+    --msg-size: 0.72rem;
 }
 
 [data-theme="light"] {
@@ -109,6 +109,12 @@ body {
     min-height: 80px;
 }
 
+.sidebar.collapsed .sidebar-header {
+    padding: 1.25rem 0;
+    justify-content: center;
+    min-height: 72px;
+}
+
 .sidebar-logo {
     display: flex;
     flex-direction: column;
@@ -155,6 +161,12 @@ body {
     gap: 0.5rem;
 }
 
+.sidebar.collapsed .sidebar-nav {
+    padding: 0.5rem 0;
+    align-items: center;
+    gap: 0.4rem;
+}
+
 .nav-item {
     display: flex;
     align-items: center;
@@ -166,10 +178,30 @@ body {
     white-space: nowrap;
 }
 
+.sidebar.collapsed .nav-item {
+    padding: 0;
+    width: 42px;
+    height: 42px;
+    min-width: 42px;
+    justify-content: center;
+    align-items: center;
+    border-radius: 8px;
+    margin: 0 auto;
+}
+
 .nav-item i {
     font-size: 1.2rem;
     min-width: 24px;
     display: flex;
+    justify-content: center;
+}
+
+.sidebar.collapsed .nav-item i {
+    font-size: 1.2rem;
+    min-width: unset;
+    margin: 0;
+    display: flex;
+    align-items: center;
     justify-content: center;
 }
 
@@ -197,6 +229,13 @@ body {
     border-top: 1px solid var(--panel-border);
 }
 
+.sidebar.collapsed .sidebar-footer {
+    padding: 0.75rem 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
 .sidebar-toggle {
     width: 100%;
     background: none;
@@ -208,6 +247,20 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-toggle {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar.collapsed .sidebar-toggle i {
+    font-size: 1.15rem;
 }
 
 .sidebar-toggle:hover {

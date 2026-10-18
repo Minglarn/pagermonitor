@@ -967,6 +967,11 @@
 
         /* --- STRIKT OPERATIV DESIGN OVERRIDES --- */
 
+        :root {
+          --msg-font: 'Consolas', 'JetBrains Mono', monospace;
+          --msg-size: 0.72rem;
+        }
+
         /* 1. Färgad protokoll-indikator på första cellen i varje rad */
         table.dataTable.dashboard-dt tbody tr.proto-vdl2 > td:first-child,
         table.dataTable.dashboard-dt tbody tr.proto-acars > td:first-child  { border-left: 4px solid #0284c7 !important; }
@@ -984,7 +989,7 @@
           display: inline-block !important;
           width: 56px !important;
           text-align: center !important;
-          font-family: Consolas, 'JetBrains Mono', monospace !important;
+          font-family: var(--msg-font, 'Consolas', monospace) !important;
           font-size: 10px !important;
           font-weight: 700 !important;
           padding: 2px 0 !important;
@@ -1001,27 +1006,34 @@
         .badge.badge-rds    { background: #ede9fe !important; color: #6d28d9 !important; border: 1px solid #c4b5fd !important; }
         .badge.badge-afsk   { background: #fce7f3 !important; color: #be185d !important; border: 1px solid #f9a8d4 !important; }
 
-        /* 3. Enhetlig, skarp typografi (11px/12px) i ALLA kolumner - blockera --msg-size arv! */
-        .ts-time { font-family: Consolas, monospace !important; font-weight: 700 !important; font-size: 12px !important; color: var(--text-primary) !important; }
-        .ts-date { font-family: Consolas, monospace !important; font-size: 10px !important; color: #64748b !important; margin-top: 1px !important; }
-        .ts-id   { font-family: Consolas, monospace !important; font-size: 10px !important; color: #94a3b8 !important; margin-top: 2px !important; }
+        /* 3. Enhetlig typografi i ALLA kolumner kopplad till --msg-font */
+        .ts-time { font-family: var(--msg-font, 'Consolas', monospace) !important; font-weight: 700 !important; font-size: 12px !important; color: var(--text-primary) !important; }
+        .ts-date { font-family: var(--msg-font, 'Consolas', monospace) !important; font-size: 10px !important; color: #64748b !important; margin-top: 1px !important; }
+        .ts-id   { font-family: var(--msg-font, 'Consolas', monospace) !important; font-size: 10px !important; color: #94a3b8 !important; margin-top: 2px !important; }
 
-        .rf-freq { font-family: Consolas, monospace !important; font-weight: 700 !important; font-size: 11px !important; color: var(--text-primary) !important; display: inline-block; }
-        .rf-snr  { font-family: Consolas, monospace !important; font-size: 10px !important; font-weight: 700 !important; margin-top: 2px !important; }
+        .rf-freq { font-family: var(--msg-font, 'Consolas', monospace) !important; font-weight: 700 !important; font-size: 11px !important; color: var(--text-primary) !important; display: inline-block; }
+        .rf-snr  { font-family: var(--msg-font, 'Consolas', monospace) !important; font-size: 10px !important; font-weight: 700 !important; margin-top: 2px !important; }
         .rf-snr-good { color: #16a34a !important; }
         .rf-snr-low  { color: #d97706 !important; }
-        .rf-mod  { font-family: Consolas, monospace !important; font-size: 10px !important; color: #64748b !important; margin-top: 1px !important; }
-        .rf-gs   { font-size: 10px !important; color: #64748b !important; margin-top: 2px !important; line-height: 1.2 !important; }
+        .rf-mod  { font-family: var(--msg-font, 'Consolas', monospace) !important; font-size: 10px !important; color: #64748b !important; margin-top: 1px !important; }
+        .rf-gs   { font-family: var(--msg-font, 'Consolas', monospace) !important; font-size: 10px !important; color: #64748b !important; margin-top: 2px !important; line-height: 1.2 !important; }
 
         .src-header { display: flex !important; justify-content: space-between !important; align-items: flex-start !important; gap: 4px !important; }
         .src-name   { font-weight: 700 !important; font-size: 12px !important; color: var(--text-primary) !important; line-height: 1.15 !important; }
-        .src-sub    { font-family: Consolas, monospace !important; font-size: 11px !important; color: #0284c7 !important; margin-top: 3px !important; font-weight: 700 !important; }
-        .src-icao   { font-family: Consolas, monospace !important; font-size: 10px !important; color: #64748b !important; margin-top: 1px !important; }
+        .src-sub    { font-family: var(--msg-font, 'Consolas', monospace) !important; font-size: 11px !important; color: #0284c7 !important; margin-top: 3px !important; font-weight: 700 !important; }
+        .src-icao   { font-family: var(--msg-font, 'Consolas', monospace) !important; font-size: 10px !important; color: #64748b !important; margin-top: 1px !important; }
         .src-acft   { font-size: 10px !important; color: #64748b !important; margin-top: 2px !important; line-height: 1.15 !important; }
 
         /* 4. Meddelandecell: Zon A (Header) + Zon B (Key-Value Grid & Full-text Box) */
         .msg-layout { display: flex !important; gap: 12px !important; align-items: flex-start !important; width: 100% !important; }
-        .msg-main   { flex: 1 1 auto !important; min-width: 0 !important; font-size: 11px !important; }
+
+        /* Meddelandecellen ärver användarens valda storlek och typsnitt från Settings */
+        .msg-main {
+          flex: 1 1 auto !important;
+          min-width: 0 !important;
+          font-size: var(--msg-size, 0.72rem) !important;
+        }
+
         .msg-top {
           display: flex !important;
           justify-content: space-between !important;
@@ -1033,10 +1045,19 @@
           margin-bottom: 6px !important;
         }
         .msg-title-group { display: flex !important; align-items: center !important; flex-wrap: wrap !important; gap: 6px !important; }
-        .msg-title { font-family: 'Inter', sans-serif !important; font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase !important; color: var(--text-primary) !important; letter-spacing: 0.3px !important; }
+
+        /* Rubriken i Zon A skalar proportionerligt med --msg-size */
+        .msg-title {
+          font-family: 'Inter', sans-serif !important;
+          font-size: calc(var(--msg-size, 0.72rem) * 0.92) !important;
+          font-weight: 700 !important;
+          text-transform: uppercase !important;
+          color: var(--text-primary) !important;
+          letter-spacing: 0.3px !important;
+        }
 
         .msg-label {
-          font-family: Consolas, monospace !important;
+          font-family: var(--msg-font, 'Consolas', monospace) !important;
           font-size: 10px !important;
           font-weight: 600 !important;
           color: #6d28d9 !important;
@@ -1050,7 +1071,7 @@
 
         .msg-actions { display: flex !important; gap: 6px !important; flex-shrink: 0 !important; }
         .btn-tech {
-          font-family: Consolas, monospace !important;
+          font-family: var(--msg-font, 'Consolas', monospace) !important;
           font-size: 10px !important;
           color: #0284c7 !important;
           background: #f0f9ff !important;
@@ -1064,8 +1085,28 @@
 
         .data-flex { display: flex !important; flex-wrap: wrap !important; gap: 6px 18px !important; align-items: flex-start !important; }
         .kv-box { display: flex !important; flex-direction: column !important; min-width: 95px !important; }
-        .data-k { font-family: 'Inter', sans-serif !important; font-size: 9px !important; font-weight: 700 !important; color: #64748b !important; text-transform: uppercase !important; letter-spacing: 0.3px !important; line-height: 1.2 !important; }
-        .data-v { font-family: Consolas, monospace !important; font-size: 11px !important; color: var(--text-primary) !important; font-weight: 600 !important; margin-top: 1px !important; line-height: 1.35 !important; white-space: pre-wrap !important; }
+
+        /* Etiketten ovanför värdet (.data-k) skalar proportionerligt (ca 78% av --msg-size) */
+        .data-k {
+          font-family: 'Inter', sans-serif !important;
+          font-size: calc(var(--msg-size, 0.72rem) * 0.78) !important;
+          font-weight: 700 !important;
+          color: #64748b !important;
+          text-transform: uppercase !important;
+          letter-spacing: 0.3px !important;
+          line-height: 1.2 !important;
+        }
+
+        /* Själva meddelandevärdet (.data-v) styrs DIREKT av Settings (Message Font & Font Size) */
+        .data-v {
+          font-family: var(--msg-font, 'Consolas', monospace) !important;
+          font-size: var(--msg-size, 0.72rem) !important;
+          color: var(--text-primary) !important;
+          font-weight: 600 !important;
+          margin-top: 2px !important;
+          line-height: 1.35 !important;
+          white-space: pre-wrap !important;
+        }
 
         /* 5. INRAMAD RUTA FÖR MEDDELANDETEXT / FRITEXT (.kv-box.full-text) */
         .kv-box.full-text,
@@ -1098,7 +1139,15 @@
           border-left: 3px solid #dc2626 !important;
         }
 
-        .empty-keys { margin-top: 5px !important; font-family: Consolas, monospace !important; font-size: 10px !important; color: #94a3b8 !important; }
+        /* Rådata-rutan och HFDL-detaljer följer också --msg-font och --msg-size */
+        .raw-data-box,
+        .hfdl-details-box {
+          font-family: var(--msg-font, 'Consolas', monospace) !important;
+          font-size: calc(var(--msg-size, 0.72rem) * 0.92) !important;
+          line-height: 1.4 !important;
+        }
+
+        .empty-keys { margin-top: 5px !important; font-family: var(--msg-font, 'Consolas', monospace) !important; font-size: 10px !important; color: #94a3b8 !important; }
         .empty-keys span { background: rgba(148, 163, 184, 0.15) !important; padding: 1px 4px !important; border-radius: 2px !important; margin-right: 4px !important; }
     </style>
 
@@ -1108,10 +1157,11 @@
             const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
 
-            const savedMsgSize = localStorage.getItem('pagermonitor_msg_size');
-            if (savedMsgSize) {
-                document.documentElement.style.setProperty('--msg-size', `${savedMsgSize}rem`);
-            }
+            const savedMsgFont = localStorage.getItem('pagermonitor_msg_font') || 'Consolas';
+            document.documentElement.style.setProperty('--msg-font', `'${savedMsgFont}', Consolas, monospace`);
+
+            const savedMsgSize = localStorage.getItem('pagermonitor_msg_size') || '0.72';
+            document.documentElement.style.setProperty('--msg-size', `${savedMsgSize}rem`);
 
             const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
             if (isCollapsed) {
@@ -3526,13 +3576,13 @@
                 const res = await fetch('/api/settings');
                 const settings = await res.json();
                 appSettings = settings;
-                if (settings.message_font) {
-                    document.documentElement.style.setProperty('--msg-font', `'${settings.message_font}', monospace`);
-                }
-                if (settings.message_font_size) {
-                    document.documentElement.style.setProperty('--msg-size', `${settings.message_font_size}rem`);
-                    localStorage.setItem('pagermonitor_msg_size', settings.message_font_size);
-                }
+                const fontName = settings.message_font || 'Consolas';
+                document.documentElement.style.setProperty('--msg-font', `'${fontName}', Consolas, monospace`);
+                localStorage.setItem('pagermonitor_msg_font', fontName);
+
+                const fontSize = settings.message_font_size || '0.72';
+                document.documentElement.style.setProperty('--msg-size', `${fontSize}rem`);
+                localStorage.setItem('pagermonitor_msg_size', fontSize);
             } catch (e) {
                 console.error('Failed to load settings:', e);
             }

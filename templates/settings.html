@@ -168,6 +168,7 @@
                                                     Message Font
                                                 </label>
                                                 <select id="message_font" class="form-input">
+                                                    <option value="Consolas">Consolas (Operativ Standard)</option>
                                                     <option value="JetBrains Mono">JetBrains Mono</option>
                                                     <option value="Fira Code">Fira Code</option>
                                                     <option value="Inconsolata">Inconsolata</option>
@@ -1583,10 +1584,10 @@
         const sensitivityValLabel = document.getElementById('sensitivity_val');
 
         function updatePreviewUI() {
-            const font = fontSelect.value;
-            const size = fontSlider.value;
+            const font = fontSelect.value || 'Consolas';
+            const size = fontSlider.value || '0.72';
             fontSizeValLabel.innerText = size;
-            previewTextContent.style.fontFamily = `'${font}', monospace`;
+            previewTextContent.style.fontFamily = `'${font}', Consolas, monospace`;
             previewTextContent.style.fontSize = `${size}rem`;
             previewFontLabel.innerText = `${font} • ${size}rem`;
         }
@@ -1620,10 +1621,16 @@
             fetch('/api/settings')
                 .then(res => res.json())
                 .then(data => {
-                    if (data.message_font) fontSelect.value = data.message_font;
+                    const fontVal = data.message_font || 'Consolas';
+                    fontSelect.value = fontVal;
+                    localStorage.setItem('pagermonitor_msg_font', fontVal);
+                    document.documentElement.style.setProperty('--msg-font', `'${fontVal}', Consolas, monospace`);
+
                     if (data.message_font_size) {
                         fontSlider.value = data.message_font_size;
                         fontSizeValLabel.innerText = data.message_font_size;
+                        localStorage.setItem('pagermonitor_msg_size', data.message_font_size);
+                        document.documentElement.style.setProperty('--msg-size', `${data.message_font_size}rem`);
                     }
                     garbageFilterCheckbox.checked = (data.garbage_filter !== 'false');
                     const sens = data.garbage_filter_sensitivity || '50';
@@ -2362,12 +2369,15 @@
 
             // Font & Size Live Preview + Auto-save
             fontSelect.addEventListener('change', () => {
+                localStorage.setItem('pagermonitor_msg_font', fontSelect.value);
+                document.documentElement.style.setProperty('--msg-font', `'${fontSelect.value}', Consolas, monospace`);
                 updatePreviewUI();
                 debouncedSaveAppearance();
             });
 
             fontSlider.addEventListener('input', () => {
                 localStorage.setItem('pagermonitor_msg_size', fontSlider.value);
+                document.documentElement.style.setProperty('--msg-size', `${fontSlider.value}rem`);
                 updatePreviewUI();
                 debouncedSaveAppearance();
             });

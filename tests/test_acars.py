@@ -138,23 +138,38 @@ class TestAcarsPayloadAndReceiver(unittest.TestCase):
         self.assertIn('SAS', test_msg.get('airline', ''))
 
     def test_parse_airbus_ecam_warning(self):
-        raw = "WRN/PNRC12860AA07/WN26101704400034000006NAV ADS-B RPTG 2 FAULT"
+        raw = "WRN/PNRC12860AA07/WN26101816350034000006NAV ADS-B TRAF FAULT"
         meta = {}
         fields = parse_acars_payload(raw, label="H1", metadata=meta)
         self.assertIsNotNone(fields)
         self.assertTrue(fields.get('is_warning'))
         self.assertEqual(fields.get('pnr'), 'C12860AA07')
-        self.assertEqual(fields.get('warning_code'), 'WN26101704400034000006')
-        self.assertEqual(fields.get('fault_text'), 'NAV ADS-B RPTG 2 FAULT')
-        self.assertEqual(fields.get('summary'), 'ECAM Varning: NAV ADS-B RPTG 2 FAULT')
+        self.assertEqual(fields.get('ata'), '34-00-00')
+        self.assertEqual(fields.get('ata_name'), 'Navigation')
+        self.assertEqual(fields.get('phase'), 'Cruise')
+        self.assertEqual(fields.get('phase_code'), '06')
+        self.assertEqual(fields.get('warning_text'), 'NAV ADS-B TRAF FAULT')
 
         # Kontrollera human formatted version
         formatted = parse_human_acars(raw, label="H1", metadata=meta)
-        self.assertIn('ECAM Cockpit Warning', formatted)
-        self.assertIn('NAV ADS-B RPTG 2 FAULT', formatted)
-        self.assertIn('C12860AA07', formatted)
-        self.assertIn('decoded_fields', meta)
-        self.assertEqual(meta['decoded_fields'].get('fault_text'), 'NAV ADS-B RPTG 2 FAULT')
+        self.assertIn('[Airbus ECAM-Varning]', formatted)
+        self.assertIn('Larm: NAV ADS-B TRAF FAULT', formatted)
+        self.assertIn('ATA: 34-00-00 (Navigation)', formatted)
+        self.assertIn('Fas: Cruise (06)', formatted)
+        self.assertIn('Tid: 16:35:00 UTC', formatted)
+        self.assertIn('PNR: C12860AA07', formatted)
+        self.assertNotIn('WN261018', formatted.split('\nRådata:')[0])
+
+    def test_parse_airbus_ecam_warning_hfdl_prefix(self):
+        raw = "[HFDL GS: Shannon] WRN/PNRC12860AA07/WN26101816350034000006NAV ADS-B TRAF FAULT\r\n\x03"
+        formatted = parse_human_acars(raw, label="H1")
+        self.assertIn('[Airbus ECAM-Varning]', formatted)
+        self.assertIn('Larm: NAV ADS-B TRAF FAULT', formatted)
+        self.assertIn('ATA: 34-00-00 (Navigation)', formatted)
+        self.assertIn('Fas: Cruise (06)', formatted)
+        self.assertIn('Tid: 16:35:00 UTC', formatted)
+        self.assertIn('PNR: C12860AA07', formatted)
+        self.assertNotIn('Kodat datapaket', formatted)
 
     def test_parse_airbus_fault_report(self):
         raw = "A320,029566,1,1,TB000000/REP003,64,01,1/CCHB-JDF,OCT17,043255,ESSA,LSZH,0001/C0SW060053740013/C151,55704,4000,48,0110,0,0110,48,X/CEN040,25705,314,760,6693,335,W22074/C21020420-2-121/C35003956/C45321231-23/FLR/PNRC12860AA07/FR26101704390034363106MMR 1+2 (40RT1+2)/     ATC 1 (1SH1)/IDATC 1,ATC 2"
@@ -166,20 +181,38 @@ class TestAcarsPayloadAndReceiver(unittest.TestCase):
         self.assertEqual(fields.get('report_code'), 'REP003')
         self.assertEqual(fields.get('origin'), 'ESSA')
         self.assertEqual(fields.get('destination'), 'LSZH')
-        self.assertEqual(fields.get('flight_time_utc'), '04:32:55')
         self.assertEqual(fields.get('pnr'), 'C12860AA07')
-        self.assertEqual(fields.get('fault_desc'), 'MMR 1+2 (40RT1+2)')
-        self.assertIn('ATC 1 (1SH1)', fields.get('affected', []))
-        self.assertIn('ATC 2', fields.get('affected', []))
+        self.assertEqual(fields.get('ata'), '34-36-31')
+        self.assertEqual(fields.get('ata_name'), 'Navigation')
+        self.assertEqual(fields.get('phase'), 'Cruise')
+        self.assertEqual(fields.get('alt_ft'), 25705)
+        self.assertEqual(fields.get('cas_kt'), 314)
+        self.assertEqual(fields.get('component1'), 'MMR 1+2 (40RT1+2)')
+        self.assertEqual(fields.get('component2'), 'ATC 1 (1SH1)')
+        self.assertEqual(fields.get('affected_systems'), 'ATC 1,ATC 2')
 
         # Kontrollera human formatted version
         formatted = parse_human_acars(raw, label="H1", metadata=meta)
-        self.assertIn('Teknisk Felrapport (REP003)', formatted)
-        self.assertIn('MMR 1+2 (40RT1+2)', formatted)
-        self.assertIn('Airbus A320', formatted)
-        self.assertIn('decoded_fields', meta)
+        self.assertIn('[Airbus FDIMU/Systemrapport #003]', formatted)
+        self.assertIn('Flygplan: A320', formatted)
+        self.assertIn('Höjd: 25 705 ft (314 kt)', formatted)
+        self.assertIn('Fel: MMR 1+2 (40RT1+2) & ATC 1 (1SH1) [Påverkar: ATC 1,ATC 2]', formatted)
+        self.assertIn('ATA: 34-36-31 (Navigation)', formatted)
+        self.assertIn('Fas: Cruise (06)', formatted)
+        self.assertNotIn('FR261017043900', formatted.split('\nRådata:')[0])
         self.assertEqual(meta.get('dst_airport'), 'LSZH')
         self.assertEqual(meta.get('src_airport'), 'ESSA')
+
+    def test_parse_airbus_fault_report_standalone(self):
+        raw = "FLR/PNRC12860AA07/FR26101704390034363106MMR 1+2 (40RT1+2)/     ATC 1 (1SH1)/IDATC 1,ATC 2"
+        meta = {}
+        formatted = parse_human_acars(raw, label="H1", metadata=meta)
+        self.assertIn('[Airbus CFDIU-Felrapport]', formatted)
+        self.assertIn('Fel: MMR 1+2 (40RT1+2) & ATC 1 (1SH1) [Påverkar: ATC 1,ATC 2]', formatted)
+        self.assertIn('ATA: 34-36-31 (Navigation)', formatted)
+        self.assertIn('Fas: Cruise (06)', formatted)
+        self.assertIn('Tid: 04:39:00 UTC (PNR: C12860AA07)', formatted)
+        self.assertNotIn('FR261017', formatted.split('\nRådata:')[0])
 
     def test_parse_airbus_fault_report_multiline(self):
         raw_multiline = (
@@ -195,9 +228,15 @@ class TestAcarsPayloadAndReceiver(unittest.TestCase):
         self.assertIsNotNone(fields)
         self.assertTrue(fields.get('is_fault_report'))
         self.assertEqual(fields.get('pnr'), 'C12860AA07')
-        self.assertEqual(fields.get('fault_desc'), 'MMR 1+2 (40RT1+2)')
-        self.assertIn('ATC 1 (1SH1)', fields.get('affected', []))
-        self.assertIn('ATC 2', fields.get('affected', []))
+        self.assertEqual(fields.get('component1'), 'MMR 1+2 (40RT1+2)')
+        self.assertEqual(fields.get('component2'), 'ATC 1 (1SH1)')
+
+        formatted = parse_human_acars(raw_multiline, label="H1", metadata=meta)
+        self.assertIn('[Airbus FDIMU/Systemrapport #003]', formatted)
+        self.assertIn('Höjd: 25 705 ft (314 kt)', formatted)
+        self.assertIn('MMR 1+2 (40RT1+2) & ATC 1 (1SH1)', formatted)
+        self.assertIn('ATA: 34-36-31 (Navigation)', formatted)
+        self.assertIn('Fas: Cruise (06)', formatted)
 
 if __name__ == '__main__':
     unittest.main()

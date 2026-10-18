@@ -469,10 +469,11 @@
             const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
 
-            const savedMsgSize = localStorage.getItem('pagermonitor_msg_size');
-            if (savedMsgSize) {
-                document.documentElement.style.setProperty('--msg-size', `${savedMsgSize}rem`);
-            }
+            const savedMsgFont = localStorage.getItem('pagermonitor_msg_font') || 'Consolas';
+            document.documentElement.style.setProperty('--msg-font', `'${savedMsgFont}', Consolas, monospace`);
+
+            const savedMsgSize = localStorage.getItem('pagermonitor_msg_size') || '0.72';
+            document.documentElement.style.setProperty('--msg-size', `${savedMsgSize}rem`);
 
             const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
             if (isCollapsed) {
@@ -2035,13 +2036,13 @@
                 const res = await fetch('/api/settings');
                 const settings = await res.json();
                 appSettings = settings;
-                if (settings.message_font) {
-                    document.documentElement.style.setProperty('--msg-font', `'${settings.message_font}', monospace`);
-                }
-                if (settings.message_font_size) {
-                    document.documentElement.style.setProperty('--msg-size', `${settings.message_font_size}rem`);
-                    localStorage.setItem('pagermonitor_msg_size', settings.message_font_size);
-                }
+                const fontName = settings.message_font || 'Consolas';
+                document.documentElement.style.setProperty('--msg-font', `'${fontName}', Consolas, monospace`);
+                localStorage.setItem('pagermonitor_msg_font', fontName);
+
+                const fontSize = settings.message_font_size || '0.72';
+                document.documentElement.style.setProperty('--msg-size', `${fontSize}rem`);
+                localStorage.setItem('pagermonitor_msg_size', fontSize);
             } catch (e) {
                 console.error('Failed to load settings:', e);
             }
