@@ -638,33 +638,43 @@ def get_alert_words():
         })
     return alerts
 
-def check_alert_words(message):
+def check_alert_words(message, extra_fields=None):
     """Scan a message for active alert words and return the first match (word, color) or None.
     Matches ONLY whole words using Unicode-aware word boundaries.
+    Also checks extra_fields (e.g. flight, reg, address) and message headers (before Rådata:).
     """
-    if not message:
-        return None
-    body_text = extract_body_for_alert_matching(message)
-    if not body_text:
+    if not message and not extra_fields:
         return None
     alerts = get_alert_words()
+    if not alerts:
+        return None
     # Sort by length descending to match longest word first (standard practice)
     alerts.sort(key=lambda x: len(x['word']), reverse=True)
     
-    msg_str = body_text
+    body_text = extract_body_for_alert_matching(message) if message else ""
+    extra_text = ""
+    if extra_fields:
+        if isinstance(extra_fields, (list, tuple, set)):
+            extra_text = " ".join(str(f) for f in extra_fields if f)
+        else:
+            extra_text = str(extra_fields)
+            
+    combined_texts = [body_text, extra_text]
+    
     for alert in alerts:
-        if not alert['is_active'] or not alert.get('word'):
+        if not alert.get('is_active') or not alert.get('word'):
             continue
         word = str(alert['word']).strip()
         if not word:
             continue
         # Helordsmatchning som hindrar att t.ex. 'LIGHT' matchar inuti 'Flight'
         pattern = rf'(?<![a-zA-Z0-9åäöÅÄÖ]){re.escape(word)}(?![a-zA-Z0-9åäöÅÄÖ])'
-        if re.search(pattern, msg_str, re.IGNORECASE):
-            return {
-                'word': alert['word'],
-                'color': alert['color']
-            }
+        for t in combined_texts:
+            if t and re.search(pattern, t, re.IGNORECASE):
+                return {
+                    'word': alert['word'],
+                    'color': alert['color']
+                }
     return None
 
 def save_alert_word(word, color, is_active=True):

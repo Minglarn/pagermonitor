@@ -1,13 +1,42 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.17.2`
-- **Date**: 2026-10-17
+- **CalVer**: `2026.10.18.1`
+- **Date**: 2026-10-18
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000000. Statistik per Protokoll & Frekvens, Avdelare & Telemetriläsbarhet, samt MQTT-larmparitet (v2026.10.18.1)
+- **Bakgrund och Problem**:
+  - Statistikdiagrammet för aktivitetsfördelning ("Activity Distribution" / "Hourly Distribution") visade enbart en sammanlagd linje och saknade möjlighet att bryta ner trafiken per radioprotokoll eller per frekvens.
+  - Diagrammen "Activity per Frequency" och "Alert Word Hits" i statistikvyn respekterade inte det valda datumintervallet (de visade statisk global data).
+  - Telemetriraden under meddelandena i gränssnittet flöt ihop med händelsebrickor (event badges) och texten var svårläst på högupplösta skärmar (1440p / 4K).
+  - Larmordsdetektering och MQTT-larmattribut (`is_alert`, `alert_word`, `alert_color`) skickades endast för POCSAG-meddelanden men saknades eller var inkompletta för övriga protokoll (VDL2, ACARS, HFDL, Inmarsat STD-C och RadioSonder).
+- **Implementerade Förbättringar**:
+  1. **Statistikdiagram med Interaktiva Vyer ([templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+     - Lagt till vyväljare ovanför diagrammet: `Total`, `Per Protocol` och `Per Frequency`.
+     - Backend-endpointen `/api/stats/range-activity` beräknar nu automatiskt både för enskild 24-timmarsdag och flerdagarsintervall:
+       - `data`: Total volym per tidsenhet.
+       - `by_protocol`: Trafik fördelad per protokoll (POCSAG, VDL2, ACARS, SATC, HFDL, SONDE, TETRA m.fl.).
+       - `by_frequency`: Trafik fördelad per de 10 mest aktiva radiofrekvenserna.
+     - Diagrammet renderas med distinkta färgteman anpassade för mörkt tema och visar interaktiv legend med punktmarkörer vid val av protokoll/frekvens.
+  2. **Datumfiltrering för Frekvenser och Larmord ([templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+     - Backend-endpoints `/api/stats/alert-hits` och `/api/stats/freq-hits` tar nu emot `start` och `end` som query-parametrar och filtrerar mot `DATE(timestamp)`.
+     - `renderGlobalCharts(startDate, endDate)` i frontend anropas nu dynamiskt varje gång datum eller tidsintervall ändras, vilket gör att cirkeldiagrammet för larmord och stapeldiagrammet för frekvenser uppdateras i synk med tabellen.
+  3. **Visuell Avdelare och Läsbarhet för Telemetrirad ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+     - Infört en subtil visuell linje (`border-top: 1px solid rgba(255, 255, 255, 0.12)`) ovanför `.msg-telemetry-line` för att ge tydlig separation mellan händelsebrickor och tekniska data.
+     - Justerat padding och marginaler (`padding-top: 0.45rem`, `margin-top: 0.65rem`).
+     - Ökat textstorleken från `0.73rem` till `0.88rem` för hela telemetriblocket och `.telemetry-item` för att garantera skarp läsbarhet på moderna högupplösta displayer.
+  4. **MQTT-larmparitet och Enhetlig Larmordsvalidering ([database.py](file:///d:/antigravity/pager-monitor/database.py), [satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py), [hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py), [sonde_receiver.py](file:///d:/antigravity/pager-monitor/sonde_receiver.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_receiver.py](file:///d:/antigravity/pager-monitor/acars_receiver.py))**:
+     - Alla protokollflöden körs nu igenom `check_alert_words(message, extra_fields)`.
+     - Extra fält (flightnummer, flygplansregistrering, markstation, sondmodell, etc.) söks igenom för larmord utan att syntetiska rubriker orsakar falsklarm.
+     - Metadata som publiceras till MQTT innehåller alltid `is_alert` (bool), `alert_word` (str/null) och `alert_color` (str/null).
+     - Inmarsat STD-C nödanrop med prioritet `DISTRESS`, `URGENT` eller `SAR` klassificeras och larmas automatiskt oavsett om specifika larmord förekommer i fritexten.
+- **Verifiering**:
+  - Samtliga 135 enhetstester i testsviten passerar med 100% grönt utfall.
 
 ### 00000. Förbättrad Layout, Visuell Hierarki och Läsbarhet i Meddelandelistan (v2026.10.17.2)
 - **Bakgrund och Problem**:

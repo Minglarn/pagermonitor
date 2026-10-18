@@ -2134,8 +2134,10 @@ class VDL2Receiver:
         if is_duplicate and dup_handling == 'discard':
             return
 
-        # Kontrollera larmord (endast på själva meddelandetexten med helordsmatchning)
-        alert_match = check_alert_words(message)
+        # Kontrollera larmord (både meddelandetext och flyg, reg, anrop, station)
+        extra_fields = [flight, parsed.get('reg'), address, alias, parsed.get('icao'), parsed.get('station')]
+        alert_match = check_alert_words(message, extra_fields=extra_fields)
+        is_alert_hit = bool(alert_match)
         now_iso = datetime.now().isoformat()
 
         lat_val = parsed.get('lat')
@@ -2147,8 +2149,9 @@ class VDL2Receiver:
         metadata = {
             'protocol': protocol_type,
             'bitrate': bitrate,
-            'function': 1 if has_pos else 0,
+            'function': 1 if (is_alert_hit or has_pos) else 0,
             'frequency': freq,
+            'is_alert': is_alert_hit,
             'alert_word': alert_match['word'] if alert_match else None,
             'alert_color': alert_match['color'] if alert_match else None,
             'sdr_name': 'VDL2-Mätning',

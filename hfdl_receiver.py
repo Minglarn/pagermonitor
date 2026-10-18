@@ -514,7 +514,16 @@ def parse_hfdl_frame(payload, only_messages=True):
         metadata['lat'] = lat
         metadata['lon'] = lon
 
-    is_alert = check_alert_words(message_body)
+    extra_fields = [flight_id, reg, icao, ac_model, gs_name]
+    alert_match = check_alert_words(full_message, extra_fields=extra_fields)
+    is_alert_hit = bool(alert_match)
+
+    metadata['is_alert'] = is_alert_hit
+    metadata['alert_word'] = alert_match['word'] if alert_match else None
+    metadata['alert_color'] = alert_match['color'] if alert_match else None
+    metadata['is_duplicate'] = False
+    metadata['repeat_count'] = 1
+    metadata['sdr_name'] = 'HFDL-Mätning'
 
     return {
         'address': address,
@@ -524,7 +533,9 @@ def parse_hfdl_frame(payload, only_messages=True):
         'bitrate': bitrate_str,
         'snr': snr_str,
         'metadata': metadata,
-        'is_alert': is_alert,
+        'is_alert': is_alert_hit,
+        'alert_word': metadata['alert_word'],
+        'alert_color': metadata['alert_color'],
         'flight': flight_id,
         'reg': reg,
         'icao': icao,
@@ -790,7 +801,8 @@ class HfdlReceiver:
             return
 
         now_ts = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
-        func_code = 1 if (parsed.get('lat') is not None and parsed.get('lon') is not None) else 0
+        is_alert_hit = bool(parsed.get('is_alert'))
+        func_code = 1 if (is_alert_hit or (parsed.get('lat') is not None and parsed.get('lon') is not None)) else 0
 
         # Spara till databasen
         saved_id, saved_ts = save_message(
@@ -830,6 +842,9 @@ class HfdlReceiver:
             'frequency': parsed['frequency'],
             'bitrate': parsed['bitrate'],
             'function_code': func_code,
+            'is_alert': is_alert_hit,
+            'alert_word': parsed.get('alert_word'),
+            'alert_color': parsed.get('alert_color'),
             'is_duplicate': False,
             'repeat_count': 1,
             'last_timestamp': saved_ts

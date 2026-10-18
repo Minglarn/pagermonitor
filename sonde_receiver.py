@@ -363,6 +363,39 @@ class SondeReceiver:
                 logger.warning(f"[SONDE] UDP-fel: {e}")
                 time.sleep(0.5)
 
+    def _publish_sonde_event(self, address, message, timestamp, alias, bitrate, freq_str, sonde, extra_alert_fields=None):
+        extra = [sonde.model, sonde.station, address, alias]
+        if extra_alert_fields:
+            extra.extend(extra_alert_fields)
+        alert_match = check_alert_words(message, extra_fields=extra)
+        is_alert_hit = bool(alert_match)
+
+        metadata = {
+            'protocol': 'SONDE',
+            'bitrate': bitrate,
+            'sdr_name': 'Radiosond',
+            'is_alert': is_alert_hit,
+            'alert_word': alert_match['word'] if alert_match else None,
+            'alert_color': alert_match['color'] if alert_match else None,
+            'is_duplicate': False,
+            'repeat_count': 1,
+            'last_timestamp': timestamp,
+            'frequency': freq_str,
+            'lat': sonde.lat,
+            'lon': sonde.lon,
+            'alt': sonde.alt,
+            'max_alt': sonde.max_alt,
+            'vel_v': sonde.vel_v,
+            'vel_h': sonde.vel_h,
+            'heading': sonde.heading,
+            'temp': sonde.temp,
+            'snr': f"{sonde.snr:.1f} dB" if sonde.snr is not None else None,
+            'sonde_model': sonde.model,
+            'station': sonde.station
+        }
+        publish_message(address, message, timestamp, alias, metadata=metadata)
+        return is_alert_hit, metadata
+
     def _handle_payload(self, data):
         """Parsar inkommande JSON och hanterar milstolpar, databas och SSE."""
         if not isinstance(data, dict):
@@ -443,17 +476,24 @@ class SondeReceiver:
             if sonde.lat is not None and sonde.lon is not None:
                 launch_msg += f" | Lat: {sonde.lat:.4f}, Lon: {sonde.lon:.4f}"
 
+            start_alias = f"{model_str} ({station})" if station else model_str
+            now_iso = datetime.now().isoformat()
+            is_start_alert, start_meta = self._publish_sonde_event(
+                callsign, launch_msg, now_iso, start_alias, "SONDE-START", freq_str, sonde
+            )
             msg_id, ts = save_message(
                 address=callsign,
                 message=launch_msg,
-                alias=f"{model_str} ({station})" if station else model_str,
-                function_code=1,
+                alias=start_alias,
+                function_code=1 if is_start_alert else 0,
                 bitrate="SONDE-START",
                 frequency=freq_str,
                 is_duplicate=False,
                 repeat_count=1,
-                last_timestamp=None
+                last_timestamp=None,
+                metadata=start_meta
             )
+            start_meta['last_timestamp'] = ts
             logger.info(f"[SONDE NY] {callsign} ({model_str}) på {freq_str} från station {station}")
             
             # Initiera även den aktiva raden i databasen för kontinuerlig uppdatering
@@ -461,16 +501,18 @@ class SondeReceiver:
             if sonde.lat is not None and sonde.lon is not None:
                 active_summary += f" | Lat: {sonde.lat:.4f}, Lon: {sonde.lon:.4f}"
                 
+            active_alias = f"{model_str} (Aktiv)"
             active_id, active_ts = save_message(
                 address=callsign,
                 message=active_summary,
-                alias=f"{model_str} (Aktiv)",
-                function_code=1,
+                alias=active_alias,
+                function_code=1 if is_start_alert else 0,
                 bitrate="SONDE",
                 frequency=freq_str,
                 is_duplicate=False,
                 repeat_count=1,
-                last_timestamp=None
+                last_timestamp=None,
+                metadata=start_meta
             )
             sonde.db_active_row_id = active_id
             sonde.last_db_time = now
@@ -485,12 +527,15 @@ class SondeReceiver:
                         'timestamp': ts,
                         'address': callsign,
                         'message': launch_msg,
-                        'alias': f"{model_str} ({station})" if station else model_str,
+                        'alias': start_alias,
                         'protocol': 'SONDE',
                         'bitrate': 'SONDE-START',
                         'frequency': freq_str,
                         'sdr_name': 'Radiosond',
                         'snr': snr_display,
+                        'is_alert': is_start_alert,
+                        'alert_word': start_meta['alert_word'],
+                        'alert_color': start_meta['alert_color'],
                         'repeat_count': 1,
                         'lat': sonde.lat,
                         'lon': sonde.lon
@@ -501,12 +546,15 @@ class SondeReceiver:
                         'timestamp': active_ts,
                         'address': callsign,
                         'message': active_summary,
-                        'alias': f"{model_str} (Aktiv)",
+                        'alias': active_alias,
                         'protocol': 'SONDE',
                         'bitrate': 'SONDE',
                         'frequency': freq_str,
                         'sdr_name': 'Radiosond',
                         'snr': snr_display,
+                        'is_alert': is_start_alert,
+                        'alert_word': start_meta['alert_word'],
+                        'alert_color': start_meta['alert_color'],
                         'repeat_count': 1,
                         'lat': sonde.lat,
                         'lon': sonde.lon
@@ -527,17 +575,25 @@ class SondeReceiver:
             if sonde.lat is not None and sonde.lon is not None:
                 burst_msg += f" | Lat: {sonde.lat:.4f}, Lon: {sonde.lon:.4f}"
 
+            now_iso = datetime.now().isoformat()
+            burst_alias = f"{model_str} (Burst)"
+            is_burst_alert, burst_meta = self._publish_sonde_event(
+                callsign, burst_msg, now_iso, burst_alias, "SONDE-BURST", freq_str, sonde, extra_alert_fields=["BURST", "SPRÄNGD"]
+            )
+
             b_id, b_ts = save_message(
                 address=callsign,
                 message=burst_msg,
-                alias=f"{model_str} (Burst)",
-                function_code=3,
+                alias=burst_alias,
+                function_code=1 if is_burst_alert else 3,
                 bitrate="SONDE-BURST",
                 frequency=freq_str,
                 is_duplicate=False,
                 repeat_count=1,
-                last_timestamp=None
+                last_timestamp=None,
+                metadata=burst_meta
             )
+            burst_meta['last_timestamp'] = b_ts
             logger.info(f"[SONDE BURST] {callsign} nådde {int(sonde.max_alt):,} m!")
             if self.callback:
                 try:
@@ -548,12 +604,15 @@ class SondeReceiver:
                         'timestamp': b_ts,
                         'address': callsign,
                         'message': burst_msg,
-                        'alias': f"{model_str} (Burst)",
+                        'alias': burst_alias,
                         'protocol': 'SONDE',
                         'bitrate': 'SONDE-BURST',
                         'frequency': freq_str,
                         'sdr_name': 'Radiosond',
                         'snr': snr_display,
+                        'is_alert': is_burst_alert,
+                        'alert_word': burst_meta['alert_word'],
+                        'alert_color': burst_meta['alert_color'],
                         'repeat_count': 1,
                         'lat': sonde.lat,
                         'lon': sonde.lon
@@ -573,17 +632,25 @@ class SondeReceiver:
             if sonde.lat is not None and sonde.lon is not None:
                 land_msg += f" | Slutposition: Lat: {sonde.lat:.4f}, Lon: {sonde.lon:.4f}"
 
+            now_iso = datetime.now().isoformat()
+            land_alias = f"{model_str} (Landad)"
+            is_land_alert, land_meta = self._publish_sonde_event(
+                callsign, land_msg, now_iso, land_alias, "SONDE-LAND", freq_str, sonde, extra_alert_fields=["LANDAD", "LANDNING"]
+            )
+
             l_id, l_ts = save_message(
                 address=callsign,
                 message=land_msg,
-                alias=f"{model_str} (Landad)",
-                function_code=2,
+                alias=land_alias,
+                function_code=1 if is_land_alert else 2,
                 bitrate="SONDE-LAND",
                 frequency=freq_str,
                 is_duplicate=False,
                 repeat_count=1,
-                last_timestamp=None
+                last_timestamp=None,
+                metadata=land_meta
             )
+            land_meta['last_timestamp'] = l_ts
             logger.info(f"[SONDE LANDNING] {callsign} landade vid Lat: {sonde.lat}, Lon: {sonde.lon}")
             if self.callback:
                 try:
@@ -594,12 +661,15 @@ class SondeReceiver:
                         'timestamp': l_ts,
                         'address': callsign,
                         'message': land_msg,
-                        'alias': f"{model_str} (Landad)",
+                        'alias': land_alias,
                         'protocol': 'SONDE',
                         'bitrate': 'SONDE-LAND',
                         'frequency': freq_str,
                         'sdr_name': 'Radiosond',
                         'snr': snr_display,
+                        'is_alert': is_land_alert,
+                        'alert_word': land_meta['alert_word'],
+                        'alert_color': land_meta['alert_color'],
                         'repeat_count': 1,
                         'lat': sonde.lat,
                         'lon': sonde.lon

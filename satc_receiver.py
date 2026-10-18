@@ -1017,18 +1017,39 @@ class SatCReceiver:
         frequency = parsed['frequency']
         bitrate = parsed['bitrate']
 
-        # Kontrollera larmord ENDAST mot den faktiska brödtexten
+        # Kontrollera larmord mot meddelandetext, brödtext och fält (prioritet, tjänst, LES)
         body_to_check = parsed.get('body_text') or ""
-        alert_match = check_alert_words(body_to_check)
-        is_alert_hit = bool(alert_match)
+        prio = str(parsed.get('priority') or '').upper()
+        service_name = str(parsed.get('service_badge') or '')
+        
+        extra_fields = [prio, service_name, parsed.get('les_name'), parsed.get('les')]
+        alert_match = check_alert_words(message, extra_fields=extra_fields)
+        
+        # Automatisk nödlarmning för DISTRESS, URGENT eller SAR om inte specifikt larmord matchade
+        is_emergency = prio in ('DISTRESS', 'URGENT') or 'SAR' in service_name.upper()
+        
+        if alert_match:
+            is_alert_hit = True
+            alert_word = alert_match.get('word')
+            alert_color = alert_match.get('color', '#ef4444')
+        elif is_emergency:
+            is_alert_hit = True
+            alert_word = prio if prio in ('DISTRESS', 'URGENT') else 'SAR'
+            alert_color = '#ef4444' if prio == 'DISTRESS' else '#f59e0b'
+        else:
+            is_alert_hit = False
+            alert_word = None
+            alert_color = None
 
         metadata = dict(parsed['metadata'])
         metadata['is_alert'] = is_alert_hit
-        if alert_match:
-            metadata['alert_word'] = alert_match.get('word')
-            metadata['alert_color'] = alert_match.get('color')
+        metadata['alert_word'] = alert_word
+        metadata['alert_color'] = alert_color
+        metadata['is_duplicate'] = False
+        metadata['repeat_count'] = 1
+        metadata['sdr_name'] = 'Inmarsat STD-C'
 
-        # Spara till databas (function_code=1 ENDAST vid träff i användarens larmordslista)
+        # Spara till databas (function_code=1 vid larmträff)
         try:
             msg_id, timestamp = save_message(
                 address=address,
@@ -1069,8 +1090,8 @@ class SatCReceiver:
             'frequency': frequency,
             'bitrate': bitrate,
             'is_alert': is_alert_hit,
-            'alert_word': alert_match.get('word') if alert_match else None,
-            'alert_color': alert_match.get('color') if alert_match else None,
+            'alert_word': alert_word,
+            'alert_color': alert_color,
             'is_duplicate': False,
             'repeat_count': 1,
             'last_timestamp': timestamp

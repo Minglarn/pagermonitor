@@ -1187,13 +1187,20 @@ th:first-child,
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.45rem;
-    margin-top: 0.35rem;
-    font-size: 0.73rem;
-    color: var(--text-secondary);
+    gap: 0.55rem;
+    margin-top: 0.65rem;
+    padding-top: 0.45rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    font-size: 0.88rem;
+    color: var(--text-secondary, #94a3b8);
     font-family: var(--msg-font, monospace);
-    line-height: 1.35;
-    opacity: 0.85;
+    line-height: 1.4;
+    opacity: 0.95;
+}
+
+[data-theme="light"] .msg-telemetry-line {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    color: #475569;
 }
 
 .msg-telemetry-line:hover {
@@ -1204,12 +1211,18 @@ th:first-child,
     display: inline-flex;
     align-items: center;
     color: inherit;
+    font-size: 0.88rem;
 }
 
 .telemetry-sep {
-    color: rgba(255, 255, 255, 0.25);
-    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 0.75rem;
     user-select: none;
+    margin: 0 0.15rem;
+}
+
+[data-theme="light"] .telemetry-sep {
+    color: rgba(0, 0, 0, 0.3);
 }
 
 .filterable-telemetry {
@@ -1218,7 +1231,7 @@ th:first-child,
 }
 
 .filterable-telemetry:hover {
-    color: var(--accent-color, #38bdf8);
+    color: var(--accent, #38bdf8);
     text-decoration: underline;
 }
 

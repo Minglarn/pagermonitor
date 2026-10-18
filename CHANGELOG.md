@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.18.1] - Statistik per Protokoll & Frekvens, Avdelare & Telemetriläsbarhet, samt MQTT-larmparitet
+
+- **Statistikdiagram per Protokoll & Frekvens ([templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Utökat aktivitetsdiagrammet i statistikvyn med vyväljare (`Total`, `Per Protocol`, `Per Frequency`).
+  - Backend-endpointen `/api/stats/range-activity` beräknar och returnerar nu data uppdelat på protokoll (`by_protocol`) och frekvenser (`by_frequency`) för både 24-timmars enskild dag och flerdagarsintervall.
+  - Implementerat linje- och stapelrendering med färgpaletter per protokoll och frekvens.
+  - Kopplat datumfiltrering (`start` & `end`) till "Activity per Frequency" och "Alert Word Hits" så att de alltid respekterar det valda datumintervallet i stället för att visa historiska totaler.
+- **Visuell Avdelare och Läsbarhet för Telemetrirad ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Lagt till en diskret visuell avdelare (`border-top: 1px solid rgba(255, 255, 255, 0.12)`) ovanför `.msg-telemetry-line` för att separera händelsebrickor från den tekniska telemetrin.
+  - Ökat textstorleken på telemetriraden och `.telemetry-item` från `0.73rem` till `0.88rem` för förbättrad läsbarhet på högupplösta bildskärmar.
+- **MQTT-larmparitet och Larmordsmatchning för Samtliga Flöden ([database.py](file:///d:/antigravity/pager-monitor/database.py), [satc_receiver.py](file:///d:/antigravity/pager-monitor/satc_receiver.py), [hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py), [sonde_receiver.py](file:///d:/antigravity/pager-monitor/sonde_receiver.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_receiver.py](file:///d:/antigravity/pager-monitor/acars_receiver.py))**:
+  - Säkerställt att samtliga digitala flöden (VDL2, RadioSonder, Inmarsat STD-C, HFDL, ACARS samt POCSAG) körs genom larmordsvalidering via `check_alert_words`.
+  - Samtliga MQTT-meddelanden berikas med `is_alert`, `alert_word` och `alert_color` i metadata.
+  - Automatisk larmklassificering för Inmarsat STD-C vid `DISTRESS`, `URGENT` eller `SAR`.
+  - Isolerat syntetiska format- och systemheaders från larmordssökningen för att förhindra falsklarm.
+
 ## [2026.10.17.2] - Förbättrad Layout, Visuell Hierarki och Läsbarhet i Meddelandelistan
 
 - **Kollapsa Omfattande HFDL-data ([hfdl_receiver.py](file:///d:/antigravity/pager-monitor/hfdl_receiver.py), [templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:

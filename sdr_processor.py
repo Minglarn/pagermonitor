@@ -625,7 +625,8 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         
                     logger.info(f"[{config['name']}] DECODED -> Address: {address}, Alias: {alias}, Msg: {message} {'(DUPLICATE)' if is_duplicate else ''}")
                     
-                    alert_match = check_alert_words(message)
+                    alert_match = check_alert_words(message, extra_fields=[address, alias])
+                    is_alert_hit = bool(alert_match)
                     msg_id, timestamp = save_message(address, message, alias, function_code, f"{protocol_type} {bitrate}".strip(), frequency=freq, is_duplicate=is_duplicate, repeat_count=1, last_timestamp=None)
                     
                     with cache_lock:
@@ -640,6 +641,7 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         'bitrate': bitrate,
                         'function': function_code,
                         'frequency': freq,
+                        'is_alert': is_alert_hit,
                         'alert_word': alert_match['word'] if alert_match else None,
                         'alert_color': alert_match['color'] if alert_match else None,
                         'sdr_name': config['name'],

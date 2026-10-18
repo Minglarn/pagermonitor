@@ -535,11 +535,14 @@ class ACARSReceiver:
         if is_duplicate and dup_handling == 'discard':
             return
 
-        # Kontrollera larmord
-        alert_match = check_alert_words(message)
+        # Kontrollera larmord (både formaterad text, råtext och metadata)
+        extra_fields = [flight, reg, address, alias, parsed.get('raw_text'), parsed.get('station_id')]
+        alert_match = check_alert_words(message, extra_fields=extra_fields)
+        is_alert_hit = bool(alert_match)
         now_iso = datetime.now().isoformat()
 
         metadata = dict(parsed['metadata'])
+        metadata['is_alert'] = is_alert_hit
         metadata['alert_word'] = alert_match['word'] if alert_match else None
         metadata['alert_color'] = alert_match['color'] if alert_match else None
         metadata['is_duplicate'] = is_duplicate
@@ -555,7 +558,7 @@ class ACARSReceiver:
             address=address,
             message=message,
             alias=alias,
-            function_code=1 if has_pos else 0,
+            function_code=1 if (is_alert_hit or has_pos) else 0,
             bitrate='VHF-ACARS',
             frequency=freq,
             is_duplicate=is_duplicate,
@@ -602,7 +605,10 @@ class ACARSReceiver:
             'bitrate': 'VHF-ACARS',
             'protocol': 'ACARS',
             'source_type': 'ACARS',
-            'function_code': 1 if has_pos else 0,
+            'function_code': 1 if (is_alert_hit or has_pos) else 0,
+            'is_alert': is_alert_hit,
+            'alert_word': metadata['alert_word'],
+            'alert_color': metadata['alert_color'],
             'is_duplicate': is_duplicate,
             'repeat_count': 1,
             'last_timestamp': timestamp,

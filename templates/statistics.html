@@ -628,14 +628,14 @@
                     </section>
 
                     <section class="glass-panel">
-                        <h2>Alert Word Hits (Total)</h2>
+                        <h2 id="alertHitsTitle">Alert Word Hits</h2>
                         <div style="height: 300px;">
                             <canvas id="alertHitsChart"></canvas>
                         </div>
                     </section>
 
                     <section class="glass-panel">
-                        <h2>Activity per Frequency</h2>
+                        <h2 id="freqHitsTitle">Activity per Frequency</h2>
                         <div style="height: 300px;">
                             <canvas id="freqHitsChart"></canvas>
                         </div>
@@ -643,8 +643,15 @@
                 </div>
 
                 <section class="glass-panel" style="margin-top: 1.5rem;">
-                    <h2 id="activityChartTitle">Activity Distribution</h2>
-                    <div style="height: 300px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
+                        <h2 id="activityChartTitle" style="margin: 0;">Activity Distribution</h2>
+                        <div class="preset-buttons" style="margin: 0;">
+                            <button type="button" class="btn btn-preset active" id="btnViewTotal" onclick="setActivityView('total')">Total</button>
+                            <button type="button" class="btn btn-preset" id="btnViewProtocol" onclick="setActivityView('protocol')">Per Protocol</button>
+                            <button type="button" class="btn btn-preset" id="btnViewFrequency" onclick="setActivityView('frequency')">Per Frequency</button>
+                        </div>
+                    </div>
+                    <div style="height: 340px;">
                         <canvas id="countPerHourChart"></canvas>
                     </div>
                 </section>
@@ -747,11 +754,24 @@
                 }
 
                 // Alert hits
-                const alertHits = await fetchJSON('/api/stats/alert-hits');
+                const dateQuery = (startDate && endDate) ? `?start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}` : '';
+                const periodLabel = (startDate && endDate) ? (startDate === endDate ? ` (${startDate})` : ` (${startDate} - ${endDate})`) : '';
+
+                const alertTitleElem = document.getElementById('alertHitsTitle');
+                if (alertTitleElem) alertTitleElem.innerText = `Alert Word Hits${periodLabel}`;
+
+                const freqTitleElem = document.getElementById('freqHitsTitle');
+                if (freqTitleElem) freqTitleElem.innerText = `Activity per Frequency${periodLabel}`;
+
+                const alertHits = await fetchJSON(`/api/stats/alert-hits${dateQuery}`);
+                if (alertHitsChartInstance) {
+                    alertHitsChartInstance.destroy();
+                    alertHitsChartInstance = null;
+                }
                 if (alertHits.length > 0) {
                     const alertLabels = alertHits.map(a => a.word);
                     const alertCounts = alertHits.map(a => a.hits);
-                    new Chart(document.getElementById('alertHitsChart'), {
+                    alertHitsChartInstance = new Chart(document.getElementById('alertHitsChart'), {
                         type: 'doughnut',
                         data: {
                             labels: alertLabels,
@@ -772,11 +792,15 @@
                 }
 
                 // Frequency hits
-                const freqHits = await fetchJSON('/api/stats/freq-hits');
+                const freqHits = await fetchJSON(`/api/stats/freq-hits${dateQuery}`);
+                if (freqHitsChartInstance) {
+                    freqHitsChartInstance.destroy();
+                    freqHitsChartInstance = null;
+                }
                 if (freqHits.length > 0) {
                     const freqLabels = freqHits.map(f => f.frequency);
                     const freqCounts = freqHits.map(f => f.hits);
-                    new Chart(document.getElementById('freqHitsChart'), {
+                    freqHitsChartInstance = new Chart(document.getElementById('freqHitsChart'), {
                         type: 'bar',
                         data: {
                             labels: freqLabels,
@@ -805,7 +829,158 @@
             }
         }
 
+        let alertHitsChartInstance = null;
+        let freqHitsChartInstance = null;
         let activityChart = null;
+        let currentActivityData = null;
+        let currentActivityView = 'total';
+
+        const PROTO_COLORS = {
+            'POCSAG': { border: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)' },
+            'VDL2':   { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.15)' },
+            'ACARS':  { border: '#a855f7', bg: 'rgba(168, 85, 247, 0.15)' },
+            'SATC':   { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
+            'HFDL':   { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.15)' },
+            'SONDE':  { border: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' },
+            'TETRA':  { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.15)' },
+            'RDS':    { border: '#94a3b8', bg: 'rgba(148, 163, 184, 0.15)' },
+            'AFSK':   { border: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.15)' }
+        };
+
+        const FREQ_PALETTE = [
+            '#38bdf8', '#a855f7', '#10b981', '#f59e0b', '#ec4899', '#06b6d4', '#eab308', '#6366f1', '#f43f5e', '#14b8a6'
+        ];
+
+        function setActivityView(viewType) {
+            currentActivityView = viewType;
+            ['btnViewTotal', 'btnViewProtocol', 'btnViewFrequency'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) btn.classList.remove('active');
+            });
+            if (viewType === 'total') {
+                document.getElementById('btnViewTotal')?.classList.add('active');
+            } else if (viewType === 'protocol') {
+                document.getElementById('btnViewProtocol')?.classList.add('active');
+            } else if (viewType === 'frequency') {
+                document.getElementById('btnViewFrequency')?.classList.add('active');
+            }
+            renderActivityChart();
+        }
+
+        function renderActivityChart() {
+            if (!currentActivityData) return;
+            const mode = currentActivityData.mode;
+            let chartLabels = [];
+            let datasets = [];
+
+            if (mode === 'hours') {
+                chartLabels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
+            } else {
+                chartLabels = (currentActivityData.data || []).map(d => d.label);
+            }
+
+            if (currentActivityView === 'total') {
+                let chartCounts = [];
+                if (mode === 'hours') {
+                    chartCounts = Array(24).fill(0);
+                    (currentActivityData.data || []).forEach(item => {
+                        chartCounts[item.label] = item.count;
+                    });
+                } else {
+                    chartCounts = (currentActivityData.data || []).map(d => d.count);
+                }
+                datasets.push({
+                    label: 'Alla meddelanden',
+                    data: chartCounts,
+                    borderColor: '#38bdf8',
+                    backgroundColor: mode === 'hours' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.6)',
+                    fill: true,
+                    tension: 0.35,
+                    borderRadius: mode === 'hours' ? 0 : 4,
+                    pointRadius: mode === 'hours' ? 4 : 0,
+                    pointBackgroundColor: '#38bdf8'
+                });
+            } else if (currentActivityView === 'protocol') {
+                const byProto = currentActivityData.by_protocol || {};
+                const protoNames = Object.keys(byProto).filter(p => {
+                    const arr = byProto[p];
+                    return Array.isArray(arr) && arr.some(v => v > 0);
+                });
+                protoNames.forEach(proto => {
+                    const cInfo = PROTO_COLORS[proto] || { border: '#e2e8f0', bg: 'rgba(226, 232, 240, 0.15)' };
+                    datasets.push({
+                        label: proto,
+                        data: byProto[proto],
+                        borderColor: cInfo.border,
+                        backgroundColor: mode === 'hours' ? cInfo.bg : cInfo.border,
+                        fill: false,
+                        tension: 0.35,
+                        borderRadius: mode === 'hours' ? 0 : 4,
+                        pointRadius: mode === 'hours' ? 3 : 0,
+                        pointBackgroundColor: cInfo.border,
+                        borderWidth: 2
+                    });
+                });
+            } else if (currentActivityView === 'frequency') {
+                const byFreq = currentActivityData.by_frequency || {};
+                const sortedFreqs = Object.keys(byFreq)
+                    .map(f => ({ freq: f, total: (byFreq[f] || []).reduce((a, b) => a + b, 0) }))
+                    .filter(item => item.total > 0)
+                    .sort((a, b) => b.total - a.total)
+                    .slice(0, 10);
+
+                sortedFreqs.forEach((item, idx) => {
+                    const color = FREQ_PALETTE[idx % FREQ_PALETTE.length];
+                    datasets.push({
+                        label: `${item.freq} (${item.total})`,
+                        data: byFreq[item.freq],
+                        borderColor: color,
+                        backgroundColor: color,
+                        fill: false,
+                        tension: 0.35,
+                        borderRadius: mode === 'hours' ? 0 : 4,
+                        pointRadius: mode === 'hours' ? 3 : 0,
+                        pointBackgroundColor: color,
+                        borderWidth: 2
+                    });
+                });
+            }
+
+            if (activityChart) {
+                activityChart.destroy();
+                activityChart = null;
+            }
+
+            const showLegend = currentActivityView !== 'total';
+
+            activityChart = new Chart(document.getElementById('countPerHourChart'), {
+                type: mode === 'hours' ? 'line' : (currentActivityView === 'total' ? 'bar' : 'line'),
+                data: {
+                    labels: chartLabels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: showLegend,
+                            position: 'top',
+                            labels: {
+                                color: '#e2e8f0',
+                                usePointStyle: true,
+                                boxWidth: 8,
+                                font: { size: 12, family: 'Inter, sans-serif' }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.08)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
 
         function formatDateISO(dateObj) {
             const year = dateObj.getFullYear();
@@ -1202,6 +1377,9 @@
             }
 
             try {
+                // Uppdatera även frekvens- och larmordsdiagram för den valda perioden!
+                await renderGlobalCharts(startDate, endDate);
+
                 // Fetch messages for the range
                 const msgs = await fetchJSON(`/api/stats/range?start=${startDate}&end=${endDate}`);
                 loading.style.display = 'none';
@@ -1217,53 +1395,10 @@
                     }
                 }
 
-                // Fetch activity distribution
+                // Fetch activity distribution (total, per protocol, per frequency)
                 const activityRes = await fetchJSON(`/api/stats/range-activity?start=${startDate}&end=${endDate}`);
-                const mode = activityRes.mode;
-                let chartLabels = [];
-                let chartCounts = [];
-
-                if (mode === 'hours') {
-                    chartLabels = Array.from({ length: 24 }, (_, i) => `${i}:00`);
-                    chartCounts = Array(24).fill(0);
-                    (activityRes.data || []).forEach(item => {
-                        chartCounts[item.label] = item.count;
-                    });
-                } else {
-                    chartLabels = (activityRes.data || []).map(d => d.label);
-                    chartCounts = (activityRes.data || []).map(d => d.count);
-                }
-
-                if (activityChart) activityChart.destroy();
-
-                activityChart = new Chart(document.getElementById('countPerHourChart'), {
-                    type: mode === 'hours' ? 'line' : 'bar',
-                    data: {
-                        labels: chartLabels,
-                        datasets: [{
-                            label: 'Messages',
-                            data: chartCounts,
-                            borderColor: '#38bdf8',
-                            backgroundColor: mode === 'hours' ? 'rgba(56, 189, 248, 0.15)' : 'rgba(56, 189, 248, 0.6)',
-                            fill: true,
-                            tension: 0.35,
-                            borderRadius: mode === 'hours' ? 0 : 4,
-                            pointRadius: mode === 'hours' ? 4 : 0,
-                            pointBackgroundColor: '#38bdf8'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        },
-                        scales: {
-                            y: { beginAtZero: true, grid: { color: 'rgba(255, 255, 255, 0.08)' } },
-                            x: { grid: { display: false } }
-                        }
-                    }
-                });
+                currentActivityData = activityRes;
+                renderActivityChart();
             } catch (err) {
                 console.error('Error loading range data:', err);
                 loading.innerText = 'Failed to fetch data.';
@@ -1431,8 +1566,6 @@
             }
             window.addEventListener('scroll', checkScrollTop);
 
-            await renderGlobalCharts();
-
             const startPicker = document.getElementById('startDate');
             const endPicker = document.getElementById('endDate');
 
@@ -1453,7 +1586,8 @@
                     const todayStr = formatDateISO(new Date());
                     startPicker.value = todayStr;
                     endPicker.value = todayStr;
-                    if (statDataTable) statDataTable.clear().draw();
+                    setPresetActive('btnPresetToday');
+                    await loadRangeData(todayStr, todayStr);
                 }
             } catch (err) {
                 console.error('Error fetching dates:', err);
