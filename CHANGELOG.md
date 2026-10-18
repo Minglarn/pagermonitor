@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.18.5] - Kritisk Fix: Millisekund-kronologisk Tidssortering (Unix Epoch)
+
+- **Kritisk Fix: Kronologisk Tidsordning ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - Åtgärdat allvarlig bugg där DataTables sorterade kolumn 0 alfabetiskt som en ren textsträng baserat på cellens HTML-innehåll. Eftersom cellen inleddes med klockslaget (`<div class="ts-time">HH:MM:SS</div>`) sorterades meddelanden strikt på klockslaget oberoende av datum, vilket fick gamla meddelanden från kvällstid (t.ex. 22:34 från 16 okt) att hamna ovanför nya meddelanden (19:10 från 18 okt).
+  - Implementerat fullständig millisekund-ordning:
+    - Lagt till `<span class="sort-timestamp" style="display:none;">${epochMs}</span>` som första element i cellen så att även enkel textsortering alltid läser millisekundvärdet först.
+    - Satt `data-order="${epochMs}"` på cellen.
+    - Registrerat custom DataTables-sorterare `ts-epoch` (`$.fn.dataTable.ext.type.order['ts-epoch-pre']`) som parser millisekundsvärdet och ISO-datum och sorterar matematiskt som tal.
+    - Konfigurerat `columnDefs` med `type: 'ts-epoch'` på kolumn 0.
+    - Tvingat `data.order = [[0, 'desc']]` i `stateLoadParams` så att webbläsarens sparade `localStorage`-state aldrig låser tabellen vid felaktig sortering.
+
 ## [2026.10.18.4] - Fix för Sortering, Textstorlek, Hovringspaus och Ljusblått Zebramönster
 
 - **Kritisk Fix: Tabellsortering & VDL2-återgång ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:

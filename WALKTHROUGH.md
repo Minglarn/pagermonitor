@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.18.4`
+- **CalVer**: `2026.10.18.5`
 - **Date**: 2026-10-18
 - **Language**: English / Swedish
 
@@ -9,7 +9,22 @@
 
 ## Overview of Implemented Features
 
-### 000000. Fix för Sortering, Textstorlek, Hovringspaus och Ljusblått Zebramönster (v2026.10.18.4)
+### 000000. Kritisk Fix: Millisekund-kronologisk Tidssortering (Unix Epoch) (v2026.10.18.5)
+- **Bakgrund och Problem**:
+  - Användaren upptäckte att inkommande meddelanden låg "huller om buller" tidsmässigt: gamla meddelanden från kvällstid (t.ex. 22:34 från 16 okt och 22:00 från 14 okt) låg ovanför dagens meddelanden (19:10 från 18 okt).
+  - Rotorsak: DataTables tolkade kolumn 0 som en ren textsträng. Eftersom cellen inleddes med klockslaget (`<div class="ts-time">${timeStr}</div>`) sorterades strängen alfabetiskt på klockslaget (`"22:34:34..."` > `"22:00:51..."` > `"19:10:34..."`). Därmed hamnade alla meddelanden från sena kvällar från tidigare dagar felaktigt överst. Dessutom låste webbläsarens sparade `stateSave` fast feltillstånd.
+- **Implementerade Förbättringar**:
+  1. **Tredubbelt Kronologiskt Skydd ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+     - Lagt till `<span class="sort-timestamp" style="display:none;">${epochMs}</span>` som första element i cellen så att även textbaserad sortering alltid läser Unix-millisekunder först.
+     - Satt `data-order="${epochMs}"` på cellen.
+     - Registrerat custom DataTables-sorterare `ts-epoch` (`$.fn.dataTable.ext.type.order['ts-epoch-pre']`) som parser numerisk epoch och ISO-datum och sorterar matematiskt som tal.
+     - Konfigurerat `columnDefs` med `type: 'ts-epoch'` på kolumn 0.
+     - Tvingat `data.order = [[0, 'desc']]` i `stateLoadParams` så att webbläsarens sparade `localStorage`-state aldrig låser tabellen vid felaktig sortering.
+- **Verifiering**:
+  - Samtliga 135 enhetstester passerar med grönt utfall.
+  - Totalförbud mot emojis har upprätthållits.
+
+### 000001. Fix för Sortering, Textstorlek, Hovringspaus och Ljusblått Zebramönster (v2026.10.18.4)
 - **Bakgrund och Problem**:
   1. **Tabellsortering och VDL2-återgång**: Vid mottagande av nya SSE-meddelanden samt när paus släpptes anropades `dataTable.order([[1, 'desc']])`. Då kolumn 1 ändrats från timestamp till Protokoll i den nya 6-kolumners layouten ledde detta till att tabellen omedelbart sorterades alfabetiskt fallande på protokollnamn ("V" för VDL2 hamnade först i alfabetet och tryckte ner alla andra protokoll).
   2. **Hovringspaus & Buffert-flush**: När användaren hovrade över flödet pausades det som önskat, men när musen togs bort visades inte de nya meddelandena eftersom `dataTable.order([[1, 'desc']])` flyttade nya icke-VDL2-meddelanden långt ner, samt att `mouseleave` endast lyssnade på `<table>` istället för hela flödespanelen `.table-container`.

@@ -2664,6 +2664,17 @@
 
             const isSystem = alarm.address === 'SYSTEM' || alarm.frequency === 'RESTART' || alarm.is_system;
 
+            let epochMs = 0;
+            if (alarm.timestamp) {
+                const dObj = new Date(alarm.timestamp);
+                if (!isNaN(dObj.getTime())) {
+                    epochMs = dObj.getTime();
+                }
+            }
+            if (!epochMs && alarm.id) {
+                epochMs = 1700000000000 + Number(alarm.id);
+            }
+
             const dateObj = new Date(alarm.timestamp);
             const dateStr = dateObj.toLocaleDateString('sv-SE', { year: 'numeric', month: '2-digit', day: '2-digit' });
             const timeStr = dateObj.toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
@@ -2682,7 +2693,8 @@
                 tr.setAttribute('data-address', alarm.address || 'SYSTEM');
                 tr.setAttribute('data-alias', displayInstance);
                 tr.innerHTML = `
-                    <td class="col-ts ts-cell" data-order="${alarm.timestamp}">
+                    <td class="col-ts ts-cell" data-order="${epochMs}">
+                        <span class="sort-timestamp" style="display:none;">${epochMs}</span>
                         <div class="ts-time">${timeStr}</div>
                         <div class="ts-date">${dateStr}</div>
                         <div class="ts-id">#${alarm.id}</div>
@@ -2980,7 +2992,8 @@
             // KOLUMN 1: TID / # (width: 92px)
             // -------------------------------------------------------------
             const tdTsHtml = `
-                <td class="col-ts ts-cell" data-order="${alarm.timestamp}">
+                <td class="col-ts ts-cell" data-order="${epochMs}">
+                    <span class="sort-timestamp" style="display:none;">${epochMs}</span>
                     <div class="ts-time">${timeStr}</div>
                     <div class="ts-date">${dateStr}</div>
                     <div class="ts-id">#${alarm.id}</div>
@@ -3616,13 +3629,28 @@
 
             updateBasestationBtnUI();
 
+            // Custom DataTables-sorterare som alltid sorterar kronologiskt efter Unix epoch
+            $.fn.dataTable.ext.type.order['ts-epoch-pre'] = function (d) {
+                if (!d) return 0;
+                const numM = String(d).match(/(?:sort-timestamp["'][^>]*>(\d+)|data-order=["'](\d+))/);
+                if (numM) return parseInt(numM[1] || numM[2], 10);
+                const dMatch = String(d).match(/(\d{4}-\d{2}-\d{2}).*?(\d{2}:\d{2}:\d{2})/s);
+                if (dMatch) {
+                    const t = Date.parse(`${dMatch[1]}T${dMatch[2]}`);
+                    if (!isNaN(t)) return t;
+                }
+                const numOnly = String(d).match(/\b(\d{12,14})\b/);
+                if (numOnly) return parseInt(numOnly[1], 10);
+                return 0;
+            };
+
             // Initialize DataTables
             dataTable = $('#alarmsTable').DataTable({
                 stateSave: true,
                 stateDuration: 60 * 60 * 24 * 365, // Persist table settings (page length, sort order, search) for 1 year
                 stateLoadParams: function (settings, data) {
-                    // Om sparat tillstånd i localStorage hade sortering på kolumn 1 (protokoll), återställ till kolumn 0 (tidpunkt)
-                    if (data && data.order && data.order.length > 0 && data.order[0][0] === 1) {
+                    if (data) {
+                        // Tvinga alltid sortering på Kolumn 0 (TID / #) fallande (nyaste händelse först)
                         data.order = [[0, 'desc']];
                     }
                 },
@@ -3646,7 +3674,7 @@
                     }
                 },
                 columnDefs: [
-                    { targets: 0, className: 'col-ts ts-cell' },
+                    { targets: 0, className: 'col-ts ts-cell', type: 'ts-epoch' },
                     { targets: 1, className: 'col-proto proto-cell' },
                     { targets: 2, className: 'col-rf rf-cell' },
                     { targets: 3, className: 'col-source source-cell' },
