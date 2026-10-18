@@ -217,22 +217,30 @@
             background: rgba(56, 189, 248, 0.12) !important;
         }
 
-        /* Light Theme Table Striping */
+        /* Light Theme Table Striping - Vit och ren ljusblå (#f0f7ff) */
+        [data-theme="light"] table.dataTable.stats-dt {
+            --dt-row-stripe: 240, 247, 255 !important;
+            --dt-row-hover: 224, 242, 254 !important;
+        }
+
         [data-theme="light"] table.dataTable.stats-dt thead th {
             background: #ffffff !important;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
         }
 
-        [data-theme="light"] table.dataTable.stats-dt tbody tr:nth-child(odd) {
-            background: #ffffff !important;
+        [data-theme="light"] table.dataTable.stats-dt tbody tr:nth-child(odd),
+        [data-theme="light"] table.dataTable.stats-dt tbody tr:nth-child(odd) > td {
+            background-color: #ffffff !important;
         }
 
-        [data-theme="light"] table.dataTable.stats-dt tbody tr:nth-child(even) {
-            background: #eef2f6 !important;
+        [data-theme="light"] table.dataTable.stats-dt tbody tr:nth-child(even),
+        [data-theme="light"] table.dataTable.stats-dt tbody tr:nth-child(even) > td {
+            background-color: #f0f7ff !important;
         }
 
-        [data-theme="light"] table.dataTable.stats-dt tbody tr:hover {
-            background: #e2e8f0 !important;
+        [data-theme="light"] table.dataTable.stats-dt tbody tr:hover,
+        [data-theme="light"] table.dataTable.stats-dt tbody tr:hover > td {
+            background-color: #e0f2fe !important;
         }
 
         table.dataTable.stats-dt tbody td {

@@ -1,7 +1,7 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.18.3`
+- **CalVer**: `2026.10.18.4`
 - **Date**: 2026-10-18
 - **Language**: English / Swedish
 
@@ -9,7 +9,33 @@
 
 ## Overview of Implemented Features
 
-### 000000. UI-fix för Statistik: Temafärger, Diagramrendering och Knappdesign (v2026.10.18.3)
+### 000000. Fix för Sortering, Textstorlek, Hovringspaus och Ljusblått Zebramönster (v2026.10.18.4)
+- **Bakgrund och Problem**:
+  1. **Tabellsortering och VDL2-återgång**: Vid mottagande av nya SSE-meddelanden samt när paus släpptes anropades `dataTable.order([[1, 'desc']])`. Då kolumn 1 ändrats från timestamp till Protokoll i den nya 6-kolumners layouten ledde detta till att tabellen omedelbart sorterades alfabetiskt fallande på protokollnamn ("V" för VDL2 hamnade först i alfabetet och tryckte ner alla andra protokoll).
+  2. **Hovringspaus & Buffert-flush**: När användaren hovrade över flödet pausades det som önskat, men när musen togs bort visades inte de nya meddelandena eftersom `dataTable.order([[1, 'desc']])` flyttade nya icke-VDL2-meddelanden långt ner, samt att `mouseleave` endast lyssnade på `<table>` istället för hela flödespanelen `.table-container`.
+  3. **Grått Zebramönster**: I ljust läge hade varannan rad och tabellceller grå bakgrund (`#eef2f6`, `rgba(0,0,0,0.022)`) och grå boxar inuti meddelandena (`.kv-box.full-text`), vilket gjorde tabellen mörk och svårläst.
+  4. **Textstorlek & Radbrytning**: Flödestexten anpassade sig inte efter inställningen för Font Size på grund av hårdkodade pixelvärden i CSS och att `fontSlider` saknade sparfunktion till `localStorage`. Dessutom radbröts protokollnamn som "VDL2" till två rader ("VDL" och "2"), och fler-raders meddelanden delades upp i flera separata rutor.
+- **Implementerade Förbättringar**:
+  1. **Korrigerad Tabellsortering & State-skydd ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+     - Ändrat alla sorteringsanrop från `order([[1, 'desc']])` till `order([[0, 'desc']])` (kolumn 0: TID / # fallande) så att de senaste händelserna alltid placeras överst.
+     - Lagt till `stateLoadParams` i DataTables-konfigurationen som detekterar och återställer eventuellt felaktigt sparat sorteringstillstånd från `localStorage`.
+  2. **Robust Hovringspaus & Direkt Flush ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+     - Ändrat lyssnare för hovringspaus från `#alarmsTable` till hela `.table-container` och lagt till `window.blur`-lyssnare.
+     - Uppdaterat `flushPausedMessages()` att anropa `dataTable.order([[0, 'desc']]).draw()` så att buffrade händelser omedelbart visas överst på sidan.
+  3. **Återställning av Ljusblått Zebramönster ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+     - Ersatt all grå bakgrund med ren vit (`#ffffff`) för udda rader och mjuk, klar ljusblå (`#f0f7ff`) för jämna rader, samt himmelsblå hover (`#e0f2fe`).
+     - Applicerat bakgrundsfärgerna på både `tr` och `tr > td` samt satt DataTables 2-variablerna `--dt-row-stripe` och `--dt-row-hover`.
+     - Gjort `.kv-box.full-text` transparent utan grå kanter så meddelandet flyter rent.
+  4. **Textstorlek & Ingen Radbrytning i Ord ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css), [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+     - Skalat samtliga celler efter `var(--msg-size)` med proportionella `calc()`-värden.
+     - Lagt till `white-space: nowrap !important` och breddat kolumnen för att permanent förhindra radbrytning i protokollnamn ("VDL2").
+     - Sammanfogat konsekutiva fritextrader i `index.html` och `larm.html` till en enda sammanhållen meddelanderuta.
+     - Lagt till direktläsning och direktsparande av `--msg-size` i `localStorage` för noll flimmer.
+- **Verifiering**:
+  - Samtliga 135 enhetstester passerar grönt.
+  - Totalförbud mot emojis har följts strikt.
+
+### 000001. UI-fix för Statistik: Temafärger, Diagramrendering och Knappdesign (v2026.10.18.3)
 - **Bakgrund och Problem**:
   - I ljust tema (`data-theme="light"`) var diagramtexter, skalor och legender nästan osynliga (mycket ljusgrå/vit text `#e2e8f0` mot vit bakgrund).
   - Titlarna för "Alert Word Hits" och "Activity per Frequency" visade `([object HTMLInputElement] - [object HTMLInputElement])` på grund av felaktigt refererade globala element istället för datumsträngar.

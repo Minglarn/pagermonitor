@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Calendar Versioning (CalVer) `YYYY.0M.0D`.
 
+## [2026.10.18.4] - Fix för Sortering, Textstorlek, Hovringspaus och Ljusblått Zebramönster
+
+- **Kritisk Fix: Tabellsortering & VDL2-återgång ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Åtgärdat fel där `dataTable.order([[1, 'desc']])` anropades vid inkommande SSE-meddelanden och när paus släpptes. Då kolumn 1 ändrats till Protokoll i den nya layouten ledde detta till att tabellen automatiskt sorterades alfabetiskt fallande på protokoll och tvingade upp VDL2 överst hela tiden.
+  - Återställt sorteringsordning till kolumn 0 (`TID / #`) `desc` så att nyaste händelser alltid placeras överst.
+  - Lagt till `stateLoadParams` som automatiskt återställer felaktigt sparat state i användarens `localStorage`.
+- **Fix för Hovringspaus & Automatisk Flush ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Flyttat lyssnare för hovringspaus till `.table-container` samt lagt till `window.blur`-lyssnare så att pausen släpps tillförlitligt när musen lämnar panelen.
+  - Säkerställt att `flushPausedMessages()` kör `dataTable.order([[0, 'desc']]).draw()` så att buffrade meddelanden omedelbart visas överst utan att sidan behöver laddas om.
+- **Återställning av Ljusblått Zebramönster ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Tagit bort all grå bakgrundsfärg (`#eef2f6`, `rgba(0, 0, 0, 0.022)`) och grå kanter i ljust läge.
+  - Återställt ren vit (`#ffffff`) för udda rader och mjuk klar ljusblå (`#f0f7ff`) för jämna rader, samt himmelsblå hover (`#e0f2fe`).
+  - Applicerat bakgrundsfärg på både `tr` och `tr > td` samt satt DataTables 2-variablerna `--dt-row-stripe` och `--dt-row-hover`.
+- **Textskalning & Typsnittsstorlek ([static/style.css](file:///d:/antigravity/pager-monitor/static/style.css), [templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+  - Kopplat `fontSlider` i inställningar till `localStorage.setItem('pagermonitor_msg_size', ...)` för omedelbar tillämpning utan flimmer.
+  - Ersatt hårda pixelvärden i tabellceller med `var(--msg-size)` och proportionella skalningsberäkningar.
+  - Förhindrat oönskad radbrytning i protokollnamn ("VDL2") genom `white-space: nowrap !important`.
+  - Slagit samman konsekutiva fritextrader i Inmarsat STD-C och POCSAG till en sammanhållen ruta istället för separata rutor per rad.
+
 ## [2026.10.18.3] - UI-fix för Statistik: Temafärger, Diagramrendering och Knappdesign
 
 - **Fix för Ljust/Mörkt Tema i Diagram ([templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:

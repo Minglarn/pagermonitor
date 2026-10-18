@@ -217,16 +217,19 @@
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
         }
 
-        [data-theme="light"] table.dataTable.larm-dt tbody tr:nth-child(odd) {
-            background: #fef2f2 !important;
+        [data-theme="light"] table.dataTable.larm-dt tbody tr:nth-child(odd),
+        [data-theme="light"] table.dataTable.larm-dt tbody tr:nth-child(odd) > td {
+            background-color: #fef2f2 !important;
         }
 
-        [data-theme="light"] table.dataTable.larm-dt tbody tr:nth-child(even) {
-            background: #fee2e2 !important;
+        [data-theme="light"] table.dataTable.larm-dt tbody tr:nth-child(even),
+        [data-theme="light"] table.dataTable.larm-dt tbody tr:nth-child(even) > td {
+            background-color: #fee2e2 !important;
         }
 
-        [data-theme="light"] table.dataTable.larm-dt tbody tr:hover {
-            background: #fecaca !important;
+        [data-theme="light"] table.dataTable.larm-dt tbody tr:hover,
+        [data-theme="light"] table.dataTable.larm-dt tbody tr:hover > td {
+            background-color: #fecaca !important;
         }
 
         /* Light Theme Base station row striping */
@@ -277,12 +280,13 @@
 
         table.dataTable.larm-dt th.col-proto,
         table.dataTable.larm-dt td.col-proto {
-            width: 72px !important;
-            min-width: 72px !important;
-            max-width: 72px !important;
-            padding: 8px 6px !important;
+            width: 78px !important;
+            min-width: 78px !important;
+            max-width: 85px !important;
+            padding: 8px 4px !important;
             vertical-align: top !important;
             text-align: center !important;
+            white-space: nowrap !important;
         }
 
         table.dataTable.larm-dt th.col-rf,
@@ -460,10 +464,15 @@
     </style>
 
     <script>
-        // Apply theme immediately to prevent flickering
+        // Apply theme and font size immediately to prevent flickering
         (function () {
             const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
+
+            const savedMsgSize = localStorage.getItem('pagermonitor_msg_size');
+            if (savedMsgSize) {
+                document.documentElement.style.setProperty('--msg-size', `${savedMsgSize}rem`);
+            }
 
             const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
             if (isCollapsed) {
@@ -1817,6 +1826,16 @@
             let emptyKeys = [];
             let kvItems = [];
 
+            function appendOrPushText(text) {
+                if (!text) return;
+                const lastItem = kvItems[kvItems.length - 1];
+                if (lastItem && lastItem.fullText && !lastItem.key) {
+                    lastItem.val += '\n' + text;
+                } else {
+                    kvItems.push({ key: '', val: text, fullText: true, wide: false });
+                }
+            }
+
             if (protoName === 'POCSAG') {
                 const pLines = bodyText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
                 for (const line of pLines) {
@@ -1839,7 +1858,7 @@
                         if (pLines.length === 1 && line.length <= 15) {
                             kvItems.push({ key: 'PAYLOAD', val: line, fullText: false, wide: false });
                         } else {
-                            kvItems.push({ key: '', val: line, fullText: true, wide: false });
+                            appendOrPushText(line);
                         }
                     }
                 }
@@ -1865,18 +1884,33 @@
                         continue;
                     }
                     const segments = line.split(/\s*\|\s*/);
-                    for (const seg of segments) {
-                        const s = seg.trim();
+                    if (segments.length === 1) {
+                        const s = segments[0].trim();
                         if (!s) continue;
                         const cM = s.match(/^([A-Za-zåäöÅÄÖ0-9_\s/()\-]+?):\s*(.+)$/);
-                        if (cM) {
+                        if (cM && cM[1].length <= 30) {
                             const k = cM[1].trim();
                             const v = cM[2].trim();
                             const isWide = /Paketstatistik|Hörda markstationer|Tillgängliga|Rutt|Route|Berörda/i.test(k);
                             const isFull = v.length >= 80;
                             kvItems.push({ key: k.toUpperCase(), val: v, fullText: isFull, wide: isWide });
                         } else {
-                            kvItems.push({ key: '', val: s, fullText: true, wide: false });
+                            appendOrPushText(s);
+                        }
+                    } else {
+                        for (const seg of segments) {
+                            const s = seg.trim();
+                            if (!s) continue;
+                            const cM = s.match(/^([A-Za-zåäöÅÄÖ0-9_\s/()\-]+?):\s*(.+)$/);
+                            if (cM && cM[1].length <= 30) {
+                                const k = cM[1].trim();
+                                const v = cM[2].trim();
+                                const isWide = /Paketstatistik|Hörda markstationer|Tillgängliga|Rutt|Route|Berörda/i.test(k);
+                                const isFull = v.length >= 80;
+                                kvItems.push({ key: k.toUpperCase(), val: v, fullText: isFull, wide: isWide });
+                            } else {
+                                appendOrPushText(s);
+                            }
                         }
                     }
                 }
@@ -1993,6 +2027,7 @@
                 }
                 if (settings.message_font_size) {
                     document.documentElement.style.setProperty('--msg-size', `${settings.message_font_size}rem`);
+                    localStorage.setItem('pagermonitor_msg_size', settings.message_font_size);
                 }
             } catch (e) {
                 console.error('Failed to load settings:', e);

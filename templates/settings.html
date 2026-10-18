@@ -2367,6 +2367,7 @@
             });
 
             fontSlider.addEventListener('input', () => {
+                localStorage.setItem('pagermonitor_msg_size', fontSlider.value);
                 updatePreviewUI();
                 debouncedSaveAppearance();
             });

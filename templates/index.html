@@ -490,16 +490,19 @@
             transition: background 0.15s ease;
         }
 
-        table.dataTable.dashboard-dt tbody tr:nth-child(odd) {
-            background: #0a0a0a !important;
+        table.dataTable.dashboard-dt tbody tr:nth-child(odd),
+        table.dataTable.dashboard-dt tbody tr:nth-child(odd) > td {
+            background-color: #0a0a0a !important;
         }
 
-        table.dataTable.dashboard-dt tbody tr:nth-child(even) {
-            background: #141b24 !important;
+        table.dataTable.dashboard-dt tbody tr:nth-child(even),
+        table.dataTable.dashboard-dt tbody tr:nth-child(even) > td {
+            background-color: #141b24 !important;
         }
 
-        table.dataTable.dashboard-dt tbody tr:hover {
-            background: rgba(56, 189, 248, 0.12) !important;
+        table.dataTable.dashboard-dt tbody tr:hover,
+        table.dataTable.dashboard-dt tbody tr:hover > td {
+            background-color: rgba(56, 189, 248, 0.12) !important;
         }
 
         /* Alert row striping */
@@ -532,22 +535,30 @@
             background: rgba(6, 182, 212, 0.24) !important;
         }
 
-        /* Light Theme Table Striping */
+        /* Light Theme Table Striping - Vit och ren ljusblå (#f0f7ff) utan grått */
+        [data-theme="light"] table.dataTable.dashboard-dt {
+            --dt-row-stripe: 240, 247, 255 !important;
+            --dt-row-hover: 224, 242, 254 !important;
+        }
+
         [data-theme="light"] table.dataTable.dashboard-dt thead th {
             background: #ffffff !important;
             box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
         }
 
-        [data-theme="light"] table.dataTable.dashboard-dt tbody tr:nth-child(odd) {
-            background: #ffffff !important;
+        [data-theme="light"] table.dataTable.dashboard-dt tbody tr:nth-child(odd),
+        [data-theme="light"] table.dataTable.dashboard-dt tbody tr:nth-child(odd) > td {
+            background-color: #ffffff !important;
         }
 
-        [data-theme="light"] table.dataTable.dashboard-dt tbody tr:nth-child(even) {
-            background: #eef2f6 !important;
+        [data-theme="light"] table.dataTable.dashboard-dt tbody tr:nth-child(even),
+        [data-theme="light"] table.dataTable.dashboard-dt tbody tr:nth-child(even) > td {
+            background-color: #f0f7ff !important;
         }
 
-        [data-theme="light"] table.dataTable.dashboard-dt tbody tr:hover {
-            background: #e2e8f0 !important;
+        [data-theme="light"] table.dataTable.dashboard-dt tbody tr:hover,
+        [data-theme="light"] table.dataTable.dashboard-dt tbody tr:hover > td {
+            background-color: #e0f2fe !important;
         }
 
         [data-theme="light"] table.dataTable.dashboard-dt tbody tr.alert-row:nth-child(odd) {
@@ -612,12 +623,13 @@
         table.dataTable.dashboard-dt th.col-proto,
         table.dataTable.dashboard-dt td.col-proto,
         table.dataTable.dashboard-dt td.proto-cell {
-            width: 72px !important;
-            min-width: 72px !important;
-            max-width: 72px !important;
+            width: 78px !important;
+            min-width: 78px !important;
+            max-width: 85px !important;
             text-align: center !important;
             padding: 8px 4px !important;
             vertical-align: top !important;
+            white-space: nowrap !important;
         }
 
         table.dataTable.dashboard-dt th.col-rf,
@@ -960,10 +972,15 @@
     </style>
 
     <script>
-        // Apply theme immediately to prevent flickering
+        // Apply theme and font size immediately to prevent flickering
         (function () {
             const theme = localStorage.getItem('pagermonitor-theme') || 'dark';
             document.documentElement.setAttribute('data-theme', theme);
+
+            const savedMsgSize = localStorage.getItem('pagermonitor_msg_size');
+            if (savedMsgSize) {
+                document.documentElement.style.setProperty('--msg-size', `${savedMsgSize}rem`);
+            }
 
             const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
             if (isCollapsed) {
@@ -1588,19 +1605,29 @@
 
         // Flödespaus vid mus-hover
         function setupHoverPause() {
-            const tableElement = document.getElementById('alarmsTable');
-            if (!tableElement) return;
+            const container = document.querySelector('.table-container') || document.getElementById('alarmsTable');
+            if (!container) return;
 
-            tableElement.addEventListener('mouseenter', () => {
+            container.addEventListener('mouseenter', () => {
                 isHoverPaused = true;
                 updateHoverPauseUI();
             });
 
-            tableElement.addEventListener('mouseleave', () => {
+            container.addEventListener('mouseleave', () => {
                 isHoverPaused = false;
                 updateHoverPauseUI();
                 if (!isLivePaused) {
                     flushPausedMessages();
+                }
+            });
+
+            window.addEventListener('blur', () => {
+                if (isHoverPaused) {
+                    isHoverPaused = false;
+                    updateHoverPauseUI();
+                    if (!isLivePaused) {
+                        flushPausedMessages();
+                    }
                 }
             });
         }
@@ -1639,7 +1666,7 @@
             }
             if (dataTable && rowsToAdd.length > 0) {
                 dataTable.rows.add(rowsToAdd);
-                dataTable.order([[1, 'desc']]).draw(false);
+                dataTable.order([[0, 'desc']]).draw();
                 scheduleDropdownRefresh();
                 refreshMinimaps();
             }
@@ -1826,7 +1853,7 @@
                                     });
                                     if (dataTable && newNodes.length > 0) {
                                         dataTable.rows.add(newNodes);
-                                        dataTable.order([[1, 'desc']]);
+                                        dataTable.order([[0, 'desc']]);
                                         refreshMinimaps();
                                     }
                                 }
@@ -3146,6 +3173,16 @@
             let emptyKeys = [];
             let kvItems = [];
 
+            function appendOrPushText(text) {
+                if (!text) return;
+                const lastItem = kvItems[kvItems.length - 1];
+                if (lastItem && lastItem.fullText && !lastItem.key) {
+                    lastItem.val += '\n' + text;
+                } else {
+                    kvItems.push({ key: '', val: text, fullText: true, wide: false });
+                }
+            }
+
             if (protoName === 'POCSAG') {
                 const pLines = bodyText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
                 for (const line of pLines) {
@@ -3168,7 +3205,7 @@
                         if (pLines.length === 1 && line.length <= 15) {
                             kvItems.push({ key: 'PAYLOAD', val: line, fullText: false, wide: false });
                         } else {
-                            kvItems.push({ key: '', val: line, fullText: true, wide: false });
+                            appendOrPushText(line);
                         }
                     }
                 }
@@ -3194,18 +3231,33 @@
                         continue;
                     }
                     const segments = line.split(/\s*\|\s*/);
-                    for (const seg of segments) {
-                        const s = seg.trim();
+                    if (segments.length === 1) {
+                        const s = segments[0].trim();
                         if (!s) continue;
                         const cM = s.match(/^([A-Za-zåäöÅÄÖ0-9_\s/()\-]+?):\s*(.+)$/);
-                        if (cM) {
+                        if (cM && cM[1].length <= 30) {
                             const k = cM[1].trim();
                             const v = cM[2].trim();
                             const isWide = /Paketstatistik|Hörda markstationer|Tillgängliga|Rutt|Route|Berörda/i.test(k);
                             const isFull = v.length >= 80;
                             kvItems.push({ key: k.toUpperCase(), val: v, fullText: isFull, wide: isWide });
                         } else {
-                            kvItems.push({ key: '', val: s, fullText: true, wide: false });
+                            appendOrPushText(s);
+                        }
+                    } else {
+                        for (const seg of segments) {
+                            const s = seg.trim();
+                            if (!s) continue;
+                            const cM = s.match(/^([A-Za-zåäöÅÄÖ0-9_\s/()\-]+?):\s*(.+)$/);
+                            if (cM && cM[1].length <= 30) {
+                                const k = cM[1].trim();
+                                const v = cM[2].trim();
+                                const isWide = /Paketstatistik|Hörda markstationer|Tillgängliga|Rutt|Route|Berörda/i.test(k);
+                                const isFull = v.length >= 80;
+                                kvItems.push({ key: k.toUpperCase(), val: v, fullText: isFull, wide: isWide });
+                            } else {
+                                appendOrPushText(s);
+                            }
                         }
                     }
                 }
@@ -3322,6 +3374,7 @@
                 }
                 if (settings.message_font_size) {
                     document.documentElement.style.setProperty('--msg-size', `${settings.message_font_size}rem`);
+                    localStorage.setItem('pagermonitor_msg_size', settings.message_font_size);
                 }
             } catch (e) {
                 console.error('Failed to load settings:', e);
@@ -3567,6 +3620,12 @@
             dataTable = $('#alarmsTable').DataTable({
                 stateSave: true,
                 stateDuration: 60 * 60 * 24 * 365, // Persist table settings (page length, sort order, search) for 1 year
+                stateLoadParams: function (settings, data) {
+                    // Om sparat tillstånd i localStorage hade sortering på kolumn 1 (protokoll), återställ till kolumn 0 (tidpunkt)
+                    if (data && data.order && data.order.length > 0 && data.order[0][0] === 1) {
+                        data.order = [[0, 'desc']];
+                    }
+                },
                 order: [[0, 'desc']], // Default: TID / # (Timestamp) descending
                 pageLength: 50,
                 lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
@@ -3777,7 +3836,7 @@
 
                         if (dataTable) {
                             dataTable.row.add(newRow);
-                            dataTable.order([[1, 'desc']]).draw(false);
+                            dataTable.order([[0, 'desc']]).draw(false);
                         }
                         scheduleDropdownRefresh();
                         refreshMinimaps();
