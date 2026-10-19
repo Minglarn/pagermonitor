@@ -115,15 +115,17 @@
                                 <table class="glass-table" style="border-spacing: 0 4px; width: 100%;">
                                     <thead>
                                         <tr>
-                                            <th style="width: 35%;">Alert Word</th>
-                                            <th style="width: 25%;">Color</th>
-                                            <th style="width: 25%;">Status</th>
-                                            <th style="width: 15%; text-align: center;">Action</th>
+                                            <th style="width: 26%;">Alert Word</th>
+                                            <th style="width: 14%;">Color</th>
+                                            <th style="width: 14%;">Status</th>
+                                            <th style="width: 20%; text-align: center;">Hits / Day</th>
+                                            <th style="width: 14%; text-align: center;">Total Hits</th>
+                                            <th style="width: 12%; text-align: center;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="alertsTableBody">
                                         <tr>
-                                            <td colspan="4" style="text-align:center;">Loading alert words...</td>
+                                            <td colspan="6" style="text-align:center;">Loading alert words...</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -182,7 +184,7 @@
             tbody.innerHTML = '';
 
             if (!currentAlerts || currentAlerts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-secondary);">No alert words configured yet.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color: var(--text-secondary);">No alert words configured yet.</td></tr>';
                 return;
             }
 
@@ -191,6 +193,11 @@
                 const statusBadge = alert.is_active !== false 
                     ? '<span class="badge success">Active</span>' 
                     : '<span class="badge danger">Inactive</span>';
+
+                const hitsToday = alert.hits_today !== undefined ? alert.hits_today : 0;
+                const hitsTotal = alert.hits_total !== undefined ? alert.hits_total : 0;
+                const avgVal = alert.avg_per_day !== undefined ? alert.avg_per_day : 0;
+                const avgFormatted = (typeof avgVal === 'number') ? (avgVal % 1 === 0 ? avgVal : avgVal.toFixed(1)) : avgVal;
 
                 tbody.innerHTML += `
                     <tr>
@@ -206,6 +213,21 @@
                             </div>
                         </td>
                         <td>${statusBadge}</td>
+                        <td style="text-align: center;">
+                            <div style="display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;">
+                                <span class="badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; font-weight: 700; font-family: monospace; font-size: 0.85rem; padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(56, 189, 248, 0.25);">
+                                    ${hitsToday}
+                                </span>
+                                <span style="font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap;">
+                                    (snitt ${avgFormatted}/dag)
+                                </span>
+                            </div>
+                        </td>
+                        <td style="text-align: center;">
+                            <span class="badge" style="background: rgba(148, 163, 184, 0.15); color: var(--text-primary); font-weight: 700; font-family: monospace; font-size: 0.85rem; padding: 2px 8px; border-radius: 4px; border: 1px solid rgba(148, 163, 184, 0.25);">
+                                ${hitsTotal}
+                            </span>
+                        </td>
                         <td class="actions-cell">
                             <div class="actions-wrapper">
                                 <button class="delete-btn" onclick="deleteAlertWord(${alert.id})" title="Delete alert word">
@@ -220,7 +242,7 @@
 
         async function loadWords() {
             try {
-                const res = await fetch('/api/alerts');
+                const res = await fetch('/api/alerts?include_stats=1');
                 currentAlerts = await res.json();
                 const words = currentAlerts.map(a => a.word).join(', ');
                 document.getElementById('wordsArea').value = words;

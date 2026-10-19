@@ -1,13 +1,44 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.18.16`
-- **Date**: 2026-10-18
+- **CalVer**: `2026.10.19.2`
+- **Date**: 2026-10-19
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000010. Radikal Prestandaoptimering av ALARMS-fliken: Indexerad Larmstatus (is_alert) och B-Tree Uppslagning (v2026.10.19.2)
+- **Prestandaproblem och Analys**:
+  - Vid analys och simulering med verklig databasvolym (36 032 rader, 17 072 larm, 175 larmord) identifierades orsaken till långa laddningstider i `/alarms`.
+  - Tidigare anropade `get_messages(alerts_only=True)` en anpassad Python UDF (`WORD_MATCH` och `UPPER_UNICODE`) över hela tabellen vid varje sidladdning. Det innebar över 6,3 miljoner regex-/textkontroller per fråga, vilket tog sekunder till tiotals sekunder i drift.
+- **Implementerad Indexering och Databasoptimering ([database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+  - Lagt till kolumnen `is_alert INTEGER DEFAULT 0` i tabellen `messages`.
+  - Lagt till sammansatt B-Tree-index: `CREATE INDEX IF NOT EXISTS idx_messages_is_alert_id ON messages(is_alert, id DESC)`.
+  - Automatisk engångsmigrering i `init_db()` som sätter `is_alert = 1` på alla befintliga larmmeddelanden.
+  - `save_message()` sätter automatiskt `is_alert = 1` vid sparning av inkommande meddelanden om något larmord matchar.
+  - `save_alert_word()` markerar automatiskt matchande meddelanden med `is_alert = 1` i bakgrunden när ett nytt larmord registreras.
+  - `get_messages(alerts_only=True)` kör nu direkt indexerad uppslagning `WHERE m.is_alert = 1 ORDER BY m.id DESC LIMIT ?`.
+  - SQL-exekveringstiden reducerades från ca 3 000 ms till **0,53 ms** (över 5 500 gånger snabbare), och faktiskt API-anrop `/api/messages?alerts_only=1` svarar på ca **12 ms**.
+- **Optimerat `/api/alerts` och Parallella Frontend-anrop ([app.py](file:///d:/antigravity/pager-monitor/app.py), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - `GET /api/alerts` beräknar endast statistik (`hits_today`, `avg_per_day`) när `?include_stats=1` skickas med (används i Rules & Triggers). Standardanrop från alarms-vyn returnerar ordlistan direkt utan aggregering.
+  - I `larm.html` parallelliserades `fetchSettings()`, `fetchAlertWords()` och `fetchMessages()` med `Promise.all()`, vilket minimerar nätverkslatens vid sidstart.
+- **Tester**:
+  - Samtliga 182 enhetstester passerar felfritt.
+
+### 000009. Statistik för Larmord i Rules & Triggers: Hits / Dag och Total Hits (v2026.10.19.1)
+- **Nya kolumner i Configured Alert Words**:
+  - Lagt till två nya kolumner direkt efter kolumnen `STATUS` i tabellen "Configured Alert Words" i [templates/rules.html](file:///d:/antigravity/pager-monitor/templates/rules.html) och [templates/alerts.html](file:///d:/antigravity/pager-monitor/templates/alerts.html):
+    1. `HITS / DAY`: Visar antal träffar idag under innevarande dygn (`hits_today`) i ett distinkt cyanblått piller (`#38bdf8`), samt genomsnittligt antal träffar per dag `(snitt X.X/dag)` beräknat från första träffdatum.
+    2. `TOTAL HITS`: Visar totalt ackumulerat antal träffar hittills (`hits_total`) i en neutral sifferbadge med monospace-typsnitt.
+  - Tabellens kolumnstruktur och bredder har balanserats för optimal läsbarhet: `ALERT WORD` (26%), `COLOR` (14%), `STATUS` (14%), `HITS / DAY` (20%), `TOTAL HITS` (14%), `ACTION` (12%).
+- **Backend-optimering i database.py och app.py**:
+  - Utökat `get_alert_words(include_stats=False)` i [database.py](file:///d:/antigravity/pager-monitor/database.py). När anropet sker utan parametrar körs den enkla och blixtsnabba uppslagningen utan prestandapåverkan för realtidsavkodarna.
+  - När `include_stats=True` skickas med (vid `GET /api/alerts` i [app.py](file:///d:/antigravity/pager-monitor/app.py)) aggregeras träffar mot meddelandetabellen via en optimerad SQL-fråga med `CASE WHEN DATE(m.timestamp) = DATE('now', 'localtime')`, `COUNT(m.id)` och `MIN(DATE(m.timestamp))` för beräkning av snitt per dag.
+  - Unicode-säker matchning stödjer även svenska gemener och versaler (Å, Ä, Ö).
+- **Tester**:
+  - Skapat testsviten [tests/test_rules_alert_hits.py](file:///d:/antigravity/pager-monitor/tests/test_rules_alert_hits.py) som verifierar att statistiken beräknas korrekt i databasen, returneras via API:et och renderas i HTML-mallen. Samtliga 145 tester i projektet passerar felfritt.
 
 ### 000008. Buggfix: decodeMimeWordsInText i Alarms (larm.html) (v2026.10.18.16)
 - **Buggfix och deklaration av `decodeMimeWordsInText`**:

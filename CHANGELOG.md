@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.19.2] - Prestandaoptimering av ALARMS: Indexerad Larmstatus (is_alert) och Blixtsnabb B-Tree Uppslagning
+- **Indexerad Larmstatus och Databasoptimering ([database.py](file:///d:/antigravity/pager-monitor/database.py))**:
+  - Åtgärdat prestandaproblem i `/alarms` där full table scan med Python UDF (`WORD_MATCH`, `UPPER_UNICODE`) tidigare tog flera sekunder på stora databaser (36 000+ meddelanden, 175 larmord).
+  - Infört kolumnen `is_alert INTEGER DEFAULT 0` i tabellen `messages` med automatisk migrering av befintliga meddelanden i `init_db()`.
+  - Skapat sammansatt index `idx_messages_is_alert_id ON messages(is_alert, id DESC)`.
+  - Optimerat `get_messages(alerts_only=True)` till ren B-Tree index-sökning `WHERE m.is_alert = 1 ORDER BY m.id DESC LIMIT ?`. Svarstiden sänktes från ~3 000 ms till 0,5 ms i databasen och API-anrop svarar på ca 12 ms.
+  - Uppdaterat `save_message()` och `save_alert_word()` att hålla `is_alert` flaggan synkroniserad i realtid.
+- **API och Frontend-optimering ([app.py](file:///d:/antigravity/pager-monitor/app.py), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - `GET /api/alerts`: Beräknar endast larmordsstatistik (`hits_today`, `avg_per_day`) vid `?include_stats=1` (Rules & Triggers).
+  - I `larm.html` parallelliserades `fetchSettings()`, `fetchAlertWords()` och `fetchMessages()` via `Promise.all()`.
+- **Tester**:
+  - Samtliga 182 enhetstester passerar felfritt.
+
+## [2026.10.19.1] - Statistik för Larmord i Rules & Triggers: Hits / Dag och Total Hits
+- **Nya kolumner i Configured Alert Words ([templates/rules.html](file:///d:/antigravity/pager-monitor/templates/rules.html), [templates/alerts.html](file:///d:/antigravity/pager-monitor/templates/alerts.html))**:
+  - Lagt till två nya kolumner efter `STATUS`: `HITS / DAY` och `TOTAL HITS`.
+  - Kolumn 4 (`HITS / DAY`): Visar antal träffar idag under innevarande dygn (`hits_today`) i ett distinkt cyanblått piller (`#38bdf8`), samt genomsnittligt antal träffar per dag `(snitt X.X/dag)` beräknat från första träffdatum.
+  - Kolumn 5 (`TOTAL HITS`): Visar totalt antal ackumulerade träffar hittills (`hits_total`) i en neutral sifferbadge med monospace-typsnitt.
+  - Balanserade kolumnbredder för tabellens 6 kolumner: `Alert Word` (26%), `Color` (14%), `Status` (14%), `Hits / Day` (20%), `Total Hits` (14%), `Action` (12%).
+- **Backend-optimering i database.py och app.py ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - `get_alert_words(include_stats=False)`: Standardanrop behåller blixtsnabb uppslagning för att inte belasta realtidsmottagarna.
+  - `get_alert_words(include_stats=True)`: Anropas vid `GET /api/alerts` och aggregerar `hits_today`, `hits_total` samt beräknar `avg_per_day` via en optimerad SQL-fråga med Unicode- och skiftlägesoberoende matchning.
+- **Tester ([tests/test_rules_alert_hits.py](file:///d:/antigravity/pager-monitor/tests/test_rules_alert_hits.py))**:
+  - Nya enhetstester för larmordsstatistik och tabellrendering. Samtliga 145 tester passerar.
+
 ## [2026.10.18.16] - Buggfix: decodeMimeWordsInText i Alarms (larm.html)
 - **Buggfix i Alarms-vyn ([templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
   - Implementerat och deklarerat den saknade funktionen `decodeMimeWordsInText(str)` i `larm.html`.

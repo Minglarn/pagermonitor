@@ -332,7 +332,9 @@
             vertical-align: top !important;
         }
 
+        table.dataTable.larm-dt th.col-actions,
         table.dataTable.larm-dt th.col-act,
+        table.dataTable.larm-dt td.col-actions,
         table.dataTable.larm-dt td.col-act,
         table.dataTable.larm-dt td.actions-cell {
             width: 38px !important;
@@ -644,7 +646,7 @@
                                 <th class="col-rf">RF / KANAL</th>
                                 <th class="col-source">ENHET / ALIAS</th>
                                 <th class="col-msg">MEDDELANDE / TELEMETRI</th>
-                                <th class="col-act" data-orderable="false" title="Actions" aria-label="Actions"><i class="fas fa-ellipsis-v"></i></th>
+                                <th class="col-act col-actions" data-orderable="false" title="Actions" aria-label="Actions"><i class="fas fa-ellipsis-v"></i></th>
                             </tr>
                         </thead>
                         <tbody id="alarmsBody">
@@ -2302,8 +2304,15 @@
             const loading = document.getElementById('loading');
             const searchInput = document.getElementById('searchInput');
 
-            await fetchSettings();
-            await fetchAlertWords();
+            // Starta alla tre nätverksanrop parallellt direkt för maximal laddningsprestanda
+            const settingsPromise = fetchSettings();
+            const alertWordsPromise = fetchAlertWords();
+            const alarmsPromise = fetch('/api/messages?alerts_only=1&limit=500').then(res => {
+                if (!res.ok) throw new Error('Network error');
+                return res.json();
+            });
+
+            await Promise.all([settingsPromise, alertWordsPromise]);
 
             // Filter out TETRA base stations when hideBasestations is active
             $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
@@ -2460,11 +2469,9 @@
 
             // Fetch initial alarms (latest 500 from database)
             try {
-                const response = await fetch('/api/messages?alerts_only=1&limit=500');
-                if (!response.ok) throw new Error('Network error');
-                allAlarms = await response.json();
+                allAlarms = await alarmsPromise;
 
-                if (allAlarms.length > 0) {
+                if (allAlarms && allAlarms.length > 0) {
                     const rowNodes = allAlarms.map(a => createAlarmRowNode(a));
                     dataTable.rows.add(rowNodes).draw();
                 }

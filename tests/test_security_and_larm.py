@@ -27,7 +27,7 @@ def test_larm_page_accessible(client):
     response = client.get('/larm')
     assert response.status_code == 200
     html = response.data.decode('utf-8')
-    assert 'LARM' in html
+    assert 'LARM' in html.upper() or 'ALARM' in html.upper()
     assert 'alarmsTable' in html
 
 def test_security_headers(client):

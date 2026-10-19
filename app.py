@@ -49,7 +49,7 @@ app = Flask(__name__)
 # Limit maximum payload size for incoming HTTP requests to prevent DoS memory exhaustion
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB
 
-APP_VERSION = "2026.10.18.16"
+APP_VERSION = "2026.10.19.2"
 
 @app.context_processor
 def inject_version():
@@ -798,13 +798,14 @@ def handle_alerts():
         return jsonify({"status": "success"})
         
     # GET request
+    include_stats = request.args.get('stats') == '1' or request.args.get('include_stats') == '1'
     try:
-        alerts = get_alert_words()
+        alerts = get_alert_words(include_stats=include_stats)
     except Exception as e:
         if "no such table" in str(e).lower():
             from database import init_db
             init_db()
-            alerts = get_alert_words()
+            alerts = get_alert_words(include_stats=include_stats)
         else:
             return jsonify({"status": "error", "message": str(e)}), 500
             

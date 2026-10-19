@@ -3,10 +3,9 @@ import os
 import re
 import time
 import logging
-from datetime import datetime
+from datetime import datetime, date
 
 logger = logging.getLogger(__name__)
-from datetime import datetime
 
 DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'messages.db')
 
@@ -143,7 +142,8 @@ def init_db():
         ('is_protected', 'INTEGER DEFAULT 0'),
         ('repeat_count', 'INTEGER DEFAULT 1'),
         ('last_timestamp', 'TEXT DEFAULT ""'),
-        ('metadata', 'TEXT DEFAULT ""')
+        ('metadata', 'TEXT DEFAULT ""'),
+        ('is_alert', 'INTEGER DEFAULT 0')
     ]:
         try:
             c.execute(f'ALTER TABLE messages ADD COLUMN {col} {type_info}')
@@ -156,6 +156,21 @@ def init_db():
     c.execute('CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_messages_is_duplicate ON messages(is_duplicate)')
     c.execute('CREATE INDEX IF NOT EXISTS idx_messages_is_protected ON messages(is_protected)')
+    c.execute('CREATE INDEX IF NOT EXISTS idx_messages_is_alert_id ON messages(is_alert, id DESC)')
+
+    # Blixtsnabb engångsmigrering för att indexera alla historiska larm i kolumnen is_alert
+    try:
+        c.execute('SELECT COUNT(*) FROM messages WHERE is_alert = 1')
+        alert_row = c.fetchone()
+        if not alert_row or alert_row[0] == 0:
+            c.execute("UPDATE messages SET is_alert = 1 WHERE (metadata LIKE '%\"is_alert\": true%' OR metadata LIKE '%\"is_alert\":true%')")
+            # Kontrollera även aktiva larmord och sätt is_alert = 1
+            c.execute("SELECT word FROM alert_words WHERE is_active = 1")
+            aw_words = [r[0].strip() for r in c.fetchall() if r[0] and r[0].strip()]
+            for aw in aw_words:
+                c.execute("UPDATE messages SET is_alert = 1 WHERE (is_alert IS NULL OR is_alert = 0) AND (message LIKE ? OR message LIKE ?)", (f"%{aw}%", f"%{aw.lower()}%"))
+    except Exception as e:
+        logger.debug(f"Migrering av is_alert i messages: {e}")
 
     # Create settings table
     c.execute('''
@@ -310,7 +325,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-def save_message(address, message, alias='', function_code=0, bitrate='', frequency='', is_duplicate=False, is_protected=False, repeat_count=1, last_timestamp=None, metadata=None):
+def save_message(address, message, alias='', function_code=0, bitrate='', frequency='', is_duplicate=False, is_protected=False, repeat_count=1, last_timestamp=None, metadata=None, is_alert=None):
     if message:
         message = str(message).replace('\U0001f4ac ', '').replace('\U0001f4ac', '')
     if is_duplicate:
@@ -319,6 +334,12 @@ def save_message(address, message, alias='', function_code=0, bitrate='', freque
         dup_handling = settings.get('duplicate_handling', 'merge')
         if not save_dups or dup_handling == 'discard':
             return None, None
+
+    if is_alert is None:
+        if metadata and isinstance(metadata, dict) and metadata.get('is_alert'):
+            is_alert = True
+        else:
+            is_alert = bool(check_alert_words(message, extra_fields=[address, alias]))
 
     conn = get_connection()
     c = conn.cursor()
@@ -334,14 +355,20 @@ def save_message(address, message, alias='', function_code=0, bitrate='', freque
             pass
     try:
         c.execute('''
-            INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected, repeat_count, last_timestamp, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (timestamp, address, message, alias, function_code, bitrate, frequency, 1 if is_duplicate else 0, 1 if is_protected else 0, repeat_count, last_timestamp, meta_json))
+            INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected, repeat_count, last_timestamp, metadata, is_alert)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (timestamp, address, message, alias, function_code, bitrate, frequency, 1 if is_duplicate else 0, 1 if is_protected else 0, repeat_count, last_timestamp, meta_json, 1 if is_alert else 0))
     except sqlite3.OperationalError:
-        c.execute('''
-            INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected, repeat_count, last_timestamp)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (timestamp, address, message, alias, function_code, bitrate, frequency, 1 if is_duplicate else 0, 1 if is_protected else 0, repeat_count, last_timestamp))
+        try:
+            c.execute('''
+                INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected, repeat_count, last_timestamp, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (timestamp, address, message, alias, function_code, bitrate, frequency, 1 if is_duplicate else 0, 1 if is_protected else 0, repeat_count, last_timestamp, meta_json))
+        except sqlite3.OperationalError:
+            c.execute('''
+                INSERT INTO messages (timestamp, address, message, alias, function_code, bitrate, frequency, is_duplicate, is_protected, repeat_count, last_timestamp)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (timestamp, address, message, alias, function_code, bitrate, frequency, 1 if is_duplicate else 0, 1 if is_protected else 0, repeat_count, last_timestamp))
     row_id = c.lastrowid
     conn.commit()
     conn.close()
@@ -444,25 +471,14 @@ def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, 
         where_clauses.append('(m.is_duplicate IS NULL OR m.is_duplicate = 0)')
         
     if alerts_only:
-        c.execute('SELECT word FROM alert_words WHERE is_active = 1')
-        active_words = [r[0].strip() for r in c.fetchall() if r[0] and r[0].strip()]
-        if not active_words:
+        c.execute('SELECT COUNT(*) FROM alert_words WHERE is_active = 1')
+        active_count = c.fetchone()[0]
+        if active_count == 0:
             conn.close()
             return []
 
-        # Supersnabb LIKE pre-filtrering i SQLite som eliminerar 99.9% av rader (Unicode-säker för Å, Ä, Ö)
-        like_parts = ['UPPER_UNICODE(m.message) LIKE ?' for _ in active_words]
-        where_clauses.append(f"({' OR '.join(like_parts)})")
-        for w in active_words:
-            params.append(f'%{w.upper()}%')
-
-        where_clauses.append('''
-            EXISTS (
-                SELECT 1 FROM alert_words aw
-                WHERE aw.is_active = 1
-                AND WORD_MATCH(aw.word, m.message) = 1
-            )
-        ''')
+        # Blixtsnabb indexerad uppslagning via B-Tree indexet idx_messages_is_alert_id (< 1 ms istället för full table scan!)
+        where_clauses.append('(m.is_alert = 1)')
 
     if protocol:
         p_up = str(protocol).strip().upper()
@@ -611,9 +627,9 @@ def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, 
 
     return messages
 
-def get_alert_words():
-    """Retrieve all alert words."""
-    conn = sqlite3.connect(DB_PATH)
+def get_alert_words(include_stats=False):
+    """Retrieve all alert words. If include_stats is True, also returns hits_today, hits_total, avg_per_day."""
+    conn = get_connection()
     c = conn.cursor()
     # Ensure table exists in case container wasn't restarted after update
     c.execute('''
@@ -624,17 +640,66 @@ def get_alert_words():
             is_active INTEGER DEFAULT 1
         )
     ''')
-    c.execute('SELECT id, word, color, is_active FROM alert_words')
+    
+    if not include_stats:
+        c.execute('SELECT id, word, color, is_active FROM alert_words ORDER BY id ASC')
+        rows = c.fetchall()
+        conn.close()
+        
+        alerts = []
+        for id_val, word, color, is_active in rows:
+            alerts.append({
+                'id': id_val,
+                'word': word,
+                'color': color,
+                'is_active': bool(is_active)
+            })
+        return alerts
+
+    # Hämtar alert words med statistik: hits_today, hits_total och första datum för beräkning av snitt per dag
+    query = '''
+        SELECT 
+            aw.id,
+            aw.word,
+            aw.color,
+            aw.is_active,
+            COUNT(CASE WHEN DATE(m.timestamp) = DATE('now', 'localtime') THEN 1 END) as hits_today,
+            COUNT(m.id) as hits_total,
+            MIN(DATE(m.timestamp)) as first_hit_date
+        FROM alert_words aw
+        LEFT JOIN messages m ON (
+            m.message LIKE '%' || aw.word || '%' OR
+            m.message LIKE '%' || LOWER(aw.word) || '%'
+        )
+        GROUP BY aw.id
+        ORDER BY aw.id ASC
+    '''
+    c.execute(query)
     rows = c.fetchall()
     conn.close()
-    
+
+    today = date.today()
     alerts = []
-    for id_val, word, color, is_active in rows:
+    for id_val, word, color, is_active, hits_today, hits_total, first_hit_date in rows:
+        avg_per_day = 0.0
+        if hits_total and hits_total > 0 and first_hit_date:
+            try:
+                first_date = datetime.strptime(str(first_hit_date)[:10], '%Y-%m-%d').date()
+                days = (today - first_date).days + 1
+                if days < 1:
+                    days = 1
+                avg_per_day = round(hits_total / days, 1)
+            except Exception:
+                avg_per_day = float(hits_total)
+
         alerts.append({
             'id': id_val,
             'word': word,
             'color': color,
-            'is_active': bool(is_active)
+            'is_active': bool(is_active),
+            'hits_today': hits_today or 0,
+            'hits_total': hits_total or 0,
+            'avg_per_day': avg_per_day
         })
     return alerts
 
@@ -692,6 +757,17 @@ def save_alert_word(word, color, is_active=True):
     ''')
     c.execute('INSERT OR REPLACE INTO alert_words (word, color, is_active) VALUES (?, ?, ?)',
               (word, color, 1 if is_active else 0))
+    if is_active and word:
+        w_clean = str(word).strip()
+        try:
+            c.execute('''
+                UPDATE messages
+                SET is_alert = 1
+                WHERE (is_alert IS NULL OR is_alert = 0)
+                  AND (message LIKE ? OR message LIKE ?)
+            ''', (f"%{w_clean}%", f"%{w_clean.lower()}%"))
+        except Exception:
+            pass
     conn.commit()
     conn.close()
 
