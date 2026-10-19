@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.19.4] - Inmarsat Classic Aero / ACARS (SatDump & JAERO) Mottagare och Valbar Port 6559
+- **Inmarsat AERO Mottagarmodul ([aero_receiver.py](file:///d:/antigravity/pager-monitor/aero_receiver.py))**:
+  - Implementerat fullständig backend-mottagare `AeroReceiver` för Inmarsat Classic Aero (L-band, H/H+/I/L-kanaler).
+  - Stöd för både UDP-lyssning (`0.0.0.0:6559`), inkommande TCP-server och utgående TCP-klientanslutning mot SatDump `inmarsat_aero JSON_OUT` och JAERO.
+  - Valbar portkonfiguration (standard `6559`) och värdadress via inställningar, precis som i Inmarsat STD-C (6558).
+  - GES-mappning (`lookup_ges_name`) för markstationer (Burum, Southbury, Santa Paula, Goonhilly, Fucino etc.).
+  - FMS- och ADS-C-positionsavkodning med extraktion av latitud/longitud för direkt Leaflet-kartvisning.
+  - Berikning och textformatering via [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py) för CPDLC (Oceanic Clearances, flygledningsdialoger) och flygbolagsigenkänning.
+  - Larmordskontroll med indexerad `is_alert = 1` och automatisk publicering via SSE och MQTT.
+  - Syntetisk testinjektion (`/api/aero/test`) för både CPDLC och FMS/ADS-C positioner.
+- **Inställningspanel för Inmarsat AERO ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html))**:
+  - Ny flik `Inmarsat AERO / ACARS` med telemetrikort, statusindikator (`Lyssnar 0.0.0.0:6559`), paket- och ACARS-räknare.
+  - Konfigurationsfält för aktivering, värddator, valbar port (6559) och filter för tomma synkramar.
+  - Testknappar: "Testa CPDLC / Oceanic" och "Testa FMS / ADS-C Position".
+- **Dashboard & Alarms Frontend ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Dedikerad protokollbadge `AERO` med cyan satellitaccent (`#0891b2`) och 4px vänstermarkering.
+  - Formatering av bitrate/modulation (`AERO-P-Channel` -> `P-Channel`).
+  - Protokollfiltrering i menyer och chips.
+  - Stöd för Leaflet-minikarta vid positionsrapporter.
+- **Enhetstester ([tests/test_aero.py](file:///d:/antigravity/pager-monitor/tests/test_aero.py))**:
+  - Omfattande testsvit med 9 enhetstester för markstationsuppslag, frekvensformatering, koordinatsextraktion, SatDump JSON-parsning, CPDLC-parsning, API-status, testinjektion och inställningsuppdatering.
+  - Samtliga 192 tester i projektet passerar felfritt.
+
 ## [2026.10.19.3] - Interaktiv Sortering för Configured Alert Words: Alert Word, STATUS, Hits / Day och Total Hits
 - **Klickbara och Sorterbara Kolumnrubriker ([templates/rules.html](file:///d:/antigravity/pager-monitor/templates/rules.html), [templates/alerts.html](file:///d:/antigravity/pager-monitor/templates/alerts.html))**:
   - Implementerat interaktiv sortering på `Alert Word`, `Status`, `Hits / Day` (Antal hits) och `Total Hits`.

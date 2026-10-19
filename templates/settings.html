@@ -110,6 +110,9 @@
                         <button class="tab-trigger" onclick="switchTab('satc')">
                             <i class="fas fa-satellite-dish" style="margin-right: 6px;"></i> Inmarsat STD-C / EGC
                         </button>
+                        <button class="tab-trigger" onclick="switchTab('aero')">
+                            <i class="fas fa-plane" style="margin-right: 6px;"></i> Inmarsat AERO / ACARS
+                        </button>
                         <button class="tab-trigger" onclick="switchTab('hfdl')">
                             <i class="fas fa-plane-departure" style="margin-right: 6px;"></i> HFDL / Kortvåg
                         </button>
@@ -896,6 +899,112 @@
                         </div>
                     </div>
 
+                    <!-- TAB: INMARSAT AERO / ACARS -->
+                    <div id="tab-aero" class="tab-content">
+                        <div class="settings-card" style="padding: 1.5rem; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; margin-bottom: 1.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+                                <div>
+                                    <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">Inmarsat Classic Aero / ACARS (SatDump / JAERO)</h3>
+                                    <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
+                                        Ta emot avkodade flygmeddelanden (ACARS, CPDLC, ADS-C och FMS-positioner) från SatDump inmarsat_aero eller JAERO via UDP eller TCP (JSON_OUT).
+                                    </p>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <button type="button" class="secondary-btn" onclick="sendTestAeroAlert(false)" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; font-size: 0.82rem;">
+                                        <i class="fas fa-paper-plane"></i> Testa CPDLC / Oceanic
+                                    </button>
+                                    <button type="button" class="secondary-btn" onclick="sendTestAeroAlert(true)" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; font-size: 0.82rem; border-color: rgba(8, 145, 178, 0.4); color: #0891b2;">
+                                        <i class="fas fa-plane"></i> Testa FMS / ADS-C Position
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Aero Telemetry & Status Badges -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Status</div>
+                                    <div id="aeroStatusBadge" style="display: inline-block; padding: 0.3rem 0.75rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem; background: rgba(148, 163, 184, 0.15); color: #cbd5e1;">Laddar...</div>
+                                    <div id="aeroStatusText" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; word-break: break-all;">-</div>
+                                </div>
+
+                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Mottagna Paket</div>
+                                    <div id="aeroPacketsCount" style="font-size: 1.6rem; font-weight: 800; color: #0891b2;">0</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Råa JSON-paket</div>
+                                </div>
+
+                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Avkodade ACARS</div>
+                                    <div id="aeroMessagesCount" style="font-size: 1.6rem; font-weight: 800; color: #10b981;">0</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">CPDLC / FMS / Telemetri</div>
+                                </div>
+
+                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Senaste Flyg / Station</div>
+                                    <div id="aeroLastFlight" style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); word-break: break-all;">-</div>
+                                    <div id="aeroLastTime" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Ingen aktivitet ännu</div>
+                                </div>
+                            </div>
+
+                            <!-- Aero Configuration Form -->
+                            <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
+                                    <div>
+                                        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">Aktivera Inmarsat AERO / SatDump-mottagare</div>
+                                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">
+                                            Öppnar UDP- och TCP-lyssnare i bakgrunden för inkommande JSON-strömmar från SatDump (<code>inmarsat_aero JSON_OUT</code>) eller JAERO.
+                                        </div>
+                                    </div>
+                                    <label class="switch">
+                                        <input type="checkbox" id="aero_enabled" onchange="autoSaveAeroSettings()">
+                                        <span class="slider round"></span>
+                                    </label>
+                                </div>
+
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
+                                    <div>
+                                        <label style="display: block; font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.4rem;">
+                                            Värddator / IP-adress
+                                        </label>
+                                        <input type="text" id="aero_host" class="form-input" value="0.0.0.0" placeholder="t.ex. 0.0.0.0, 127.0.0.1 eller 192.168.1.xxx"
+                                            style="width: 100%; padding: 0.55rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text-primary);"
+                                            onchange="autoSaveAeroSettings()">
+                                        <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+                                            Ange IP-adress eller värdnamn till SatDump-värden/containern, eller <code>0.0.0.0</code> för att lyssna på alla nätverksgränssnitt.
+                                        </small>
+                                    </div>
+
+                                    <div>
+                                        <label style="display: block; font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.4rem;">
+                                            Port (Både UDP och TCP)
+                                        </label>
+                                        <input type="number" id="aero_port" class="form-input" value="6559" min="1" max="65535"
+                                            style="width: 100%; padding: 0.55rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text-primary);"
+                                            onchange="autoSaveAeroSettings()">
+                                        <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+                                            Port dit SatDump skickar inmarsat_aero JSON_OUT eller JAERO strömmar (valbar, standard <code>6559</code>).
+                                        </small>
+                                    </div>
+
+                                    <div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                                            <label style="font-weight: 600; font-size: 0.88rem; color: var(--text-primary);">
+                                                Filtrera tomma synk-/signaleringsramar
+                                            </label>
+                                            <label class="switch">
+                                                <input type="checkbox" id="aero_only_messages" checked onchange="autoSaveAeroSettings()">
+                                                <span class="slider round"></span>
+                                            </label>
+                                        </div>
+                                        <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+                                            Ignorera råa P/R/T-kanals synkpaket och släpp endast igenom faktiska ACARS-meddelanden, CPDLC, flygledningsdialoger och positionsrapporter.
+                                        </small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- TAB 7: HFDL KORTVÅG -->
                     <div id="tab-hfdl" class="tab-content">
                         <div class="settings-card" style="padding: 1.5rem; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; margin-bottom: 1.5rem;">
@@ -1239,6 +1348,7 @@
         let vdl2PollInterval = null;
         let sondePollInterval = null;
         let satcPollInterval = null;
+        let aeroPollInterval = null;
         let hfdlPollInterval = null;
         let acarsPollInterval = null;
 
@@ -1270,6 +1380,11 @@
                 if (!satcPollInterval) {
                     satcPollInterval = setInterval(loadSatcStatus, 3000);
                 }
+            } else if (tabId === 'aero') {
+                loadAeroStatus();
+                if (!aeroPollInterval) {
+                    aeroPollInterval = setInterval(loadAeroStatus, 3000);
+                }
             } else if (tabId === 'hfdl') {
                 loadHfdlStatus();
                 if (!hfdlPollInterval) {
@@ -1293,6 +1408,10 @@
             if (tabId !== 'satc' && satcPollInterval) {
                 clearInterval(satcPollInterval);
                 satcPollInterval = null;
+            }
+            if (tabId !== 'aero' && aeroPollInterval) {
+                clearInterval(aeroPollInterval);
+                aeroPollInterval = null;
             }
             if (tabId !== 'hfdl' && hfdlPollInterval) {
                 clearInterval(hfdlPollInterval);
@@ -1707,6 +1826,15 @@
                     const satcFiltEl = document.getElementById('satc_only_messages');
                     if (satcFiltEl) satcFiltEl.checked = (data.satc_only_messages !== 'false');
 
+                    const aeroEnEl = document.getElementById('aero_enabled');
+                    if (aeroEnEl) aeroEnEl.checked = (data.aero_enabled !== 'false');
+                    const aeroHostEl = document.getElementById('aero_host');
+                    if (aeroHostEl && data.aero_host) aeroHostEl.value = data.aero_host;
+                    const aeroPortEl = document.getElementById('aero_port');
+                    if (aeroPortEl && data.aero_port) aeroPortEl.value = data.aero_port;
+                    const aeroFiltEl = document.getElementById('aero_only_messages');
+                    if (aeroFiltEl) aeroFiltEl.checked = (data.aero_only_messages !== 'false');
+
                     const hfdlEnEl = document.getElementById('hfdl_enabled');
                     if (hfdlEnEl) hfdlEnEl.checked = (data.hfdl_enabled === 'true');
                     const hfdlHostEl = document.getElementById('hfdl_host');
@@ -1962,6 +2090,90 @@
             } catch (err) {
                 console.error('Error sending test SatC message:', err);
                 showStatus('Kunde inte skicka test-Inmarsat.', 'error');
+            }
+        }
+
+        function loadAeroStatus() {
+            fetch('/api/aero/status')
+                .then(r => r.json())
+                .then(data => {
+                    const badge = document.getElementById('aeroStatusBadge');
+                    const text = document.getElementById('aeroStatusText');
+                    const packets = document.getElementById('aeroPacketsCount');
+                    const messages = document.getElementById('aeroMessagesCount');
+                    const flight = document.getElementById('aeroLastFlight');
+                    const time = document.getElementById('aeroLastTime');
+
+                    if (badge) {
+                        if (data.status === 'running') {
+                            badge.style.background = 'rgba(8, 145, 178, 0.2)';
+                            badge.style.color = '#0891b2';
+                            badge.innerText = `Lyssnar (${data.host || '0.0.0.0'}:${data.port})`;
+                        } else if (data.status === 'disabled') {
+                            badge.style.background = 'rgba(148, 163, 184, 0.15)';
+                            badge.style.color = '#94a3b8';
+                            badge.innerText = 'Inaktiverad';
+                        } else {
+                            badge.style.background = 'rgba(239, 68, 68, 0.2)';
+                            badge.style.color = '#f87171';
+                            badge.innerText = 'Fel / Stoppad';
+                        }
+                    }
+                    if (text) text.innerText = data.error_message ? `Fel: ${data.error_message}` : `UDP & TCP ${data.host || '0.0.0.0'}:${data.port}`;
+                    if (packets) packets.innerText = (data.packets_received || 0).toLocaleString();
+                    if (messages) messages.innerText = (data.messages_decoded || 0).toLocaleString();
+                    if (flight) {
+                        if (data.last_flight || data.last_heard) {
+                            flight.innerText = data.last_flight ? `${data.last_flight} (${data.last_heard})` : (data.last_heard || '-');
+                        } else {
+                            flight.innerText = '-';
+                        }
+                    }
+                    if (time) {
+                        if (data.last_message_time && data.last_message_time !== 'Ingen aktivitet ännu') {
+                            let tStr = `Senaste: ${data.last_message_time}`;
+                            if (data.last_ges) {
+                                tStr += ` | GES: ${data.last_ges}`;
+                            }
+                            time.innerText = tStr;
+                        } else {
+                            time.innerText = 'Ingen aktivitet ännu';
+                        }
+                    }
+                })
+                .catch(err => console.error('Could not fetch AERO status:', err));
+        }
+
+        function autoSaveAeroSettings() {
+            const hostEl = document.getElementById('aero_host');
+            const payload = {
+                aero_enabled: document.getElementById('aero_enabled').checked ? 'true' : 'false',
+                aero_host: (hostEl ? hostEl.value.trim() : '') || '0.0.0.0',
+                aero_port: document.getElementById('aero_port').value.trim() || '6559',
+                aero_only_messages: document.getElementById('aero_only_messages').checked ? 'true' : 'false'
+            };
+            saveSettings(payload).then(() => {
+                setTimeout(loadAeroStatus, 600);
+            });
+        }
+
+        async function sendTestAeroAlert(isPos = false) {
+            try {
+                const res = await fetch('/api/aero/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ pos: isPos })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    showStatus(data.message || 'Syntetiskt Inmarsat AERO-testmeddelande skickat!', 'success');
+                    loadAeroStatus();
+                } else {
+                    showStatus('Fel vid sändning av test-AERO: ' + (data.message || 'Okänt fel'), 'error');
+                }
+            } catch (err) {
+                console.error('Error sending test AERO message:', err);
+                showStatus('Kunde inte skicka test-AERO.', 'error');
             }
         }
 

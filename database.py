@@ -30,7 +30,7 @@ def extract_body_for_alert_matching(text):
 
     # Klipp bort syntetiska huvuden t.ex. [Inmarsat STD-C / ...] ... \n
     s = re.sub(
-        r'^\[(?:Inmarsat|EGC|STD-C|SafetyNET|FleetNET|SAR|Upprop|Kanalallokering|Bulletin Board|Signalling Channel|Kontrollpaket)[^\]\n]*\][^\n]*\r?\n?',
+        r'^\[(?:Inmarsat|Aero|AERO|EGC|STD-C|SafetyNET|FleetNET|SAR|Upprop|Kanalallokering|Bulletin Board|Signalling Channel|Kontrollpaket)[^\]\n]*\][^\n]*\r?\n?',
         '',
         s,
         flags=re.IGNORECASE
@@ -102,6 +102,10 @@ def get_default_settings():
         'satc_host': '0.0.0.0',
         'satc_port': '6558',
         'satc_only_messages': 'true',
+        'aero_enabled': 'true',
+        'aero_host': '0.0.0.0',
+        'aero_port': '6559',
+        'aero_only_messages': 'true',
         'hfdl_enabled': 'false',
         'hfdl_host': '127.0.0.1',
         'hfdl_port': '15556',
@@ -484,10 +488,12 @@ def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, 
         p_up = str(protocol).strip().upper()
         if p_up in ('SATC', 'INMARSAT'):
             where_clauses.append("(m.bitrate LIKE '%SATC%' OR m.bitrate LIKE '%INMARSAT%' OR m.address LIKE 'SATC%' OR m.address LIKE 'LES:%')")
+        elif p_up in ('AERO', 'INMARSAT-AERO', 'AERO-ACARS'):
+            where_clauses.append("(m.bitrate LIKE '%AERO%')")
         elif p_up in ('VDL2', 'VDL'):
             where_clauses.append("(m.bitrate LIKE '%VDL%')")
         elif p_up in ('ACARS', 'VHF-ACARS', 'VHF_ACARS'):
-            where_clauses.append("(m.bitrate LIKE '%ACARS%' AND m.bitrate NOT LIKE '%VDL%')")
+            where_clauses.append("(m.bitrate LIKE '%ACARS%' AND m.bitrate NOT LIKE '%VDL%' AND m.bitrate NOT LIKE '%AERO%')")
         elif p_up == 'HFDL':
             where_clauses.append("(m.bitrate LIKE '%HFDL%')")
         elif p_up == 'SONDE':
@@ -563,6 +569,8 @@ def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, 
                 msg['protocol'] = 'RDS-TMC'
             elif 'VDL' in b_val:
                 msg['protocol'] = 'VDL2'
+            elif 'AERO' in b_val:
+                msg['protocol'] = 'AERO'
             elif 'ACARS' in b_val or 'VHF-ACARS' in b_val:
                 msg['protocol'] = 'ACARS'
             elif 'SONDE' in b_val:
@@ -609,7 +617,7 @@ def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, 
             proto_counts[p] = proto_counts.get(p, 0) + 1
 
         existing_ids = {m['id'] for m in messages}
-        important_protos = ['SATC', 'HFDL', 'ACARS', 'SONDE', 'POCSAG', 'VDL2']
+        important_protos = ['SATC', 'AERO', 'HFDL', 'ACARS', 'SONDE', 'POCSAG', 'VDL2']
         for p_name in important_protos:
             if proto_counts.get(p_name, 0) < 20:
                 extra = get_recent_messages(

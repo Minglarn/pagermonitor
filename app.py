@@ -30,6 +30,7 @@ from sdr_processor import start_sdr_thread, restart_sdr, on_new_message, get_sdr
 from vdl2_receiver import init_vdl2, restart_vdl2, get_vdl2_status, send_test_vdl2_message
 from sonde_receiver import init_sonde, restart_sonde, get_sonde_status, get_active_sondes_api, send_test_sonde_message
 from satc_receiver import init_satc, restart_satc, get_satc_status, send_test_satc_message
+from aero_receiver import init_aero, restart_aero, get_aero_status, send_test_aero_message
 from hfdl_receiver import init_hfdl, restart_hfdl, get_hfdl_status, send_test_hfdl_message
 from acars_receiver import init_acars, restart_acars, get_acars_status, send_test_acars_message
 from log_streamer import setup_log_capture, log_manager
@@ -49,7 +50,7 @@ app = Flask(__name__)
 # Limit maximum payload size for incoming HTTP requests to prevent DoS memory exhaustion
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB
 
-APP_VERSION = "2026.10.19.3"
+APP_VERSION = "2026.10.19.4"
 
 @app.context_processor
 def inject_version():
@@ -126,7 +127,7 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.19.3"
+APP_VERSION = "2026.10.19.4"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 app.config['TEMPLATES_AUTO_RELOAD'] = True
@@ -218,7 +219,8 @@ def stats_range():
 PROTO_CASE_SQL = '''
     CASE 
         WHEN bitrate LIKE '%VDL%' THEN 'VDL2'
-        WHEN (bitrate LIKE '%ACARS%' AND bitrate NOT LIKE '%VDL%') THEN 'ACARS'
+        WHEN (bitrate LIKE '%AERO%' OR bitrate LIKE '%AERO-ACARS%') THEN 'AERO'
+        WHEN (bitrate LIKE '%ACARS%' AND bitrate NOT LIKE '%VDL%' AND bitrate NOT LIKE '%AERO%') THEN 'ACARS'
         WHEN (bitrate LIKE '%SATC%' OR bitrate LIKE '%INMARSAT%' OR address LIKE 'LES:%') THEN 'SATC'
         WHEN bitrate LIKE '%HFDL%' THEN 'HFDL'
         WHEN bitrate LIKE '%SONDE%' THEN 'SONDE'
@@ -566,6 +568,23 @@ def satc_test():
         logger.error(f"Error sending test SATC message: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
+@app.route('/api/aero/status')
+def aero_status():
+    """Returnerar aktuell lyssnarstatus för Inmarsat AERO-mottagaren."""
+    return jsonify(get_aero_status())
+
+@app.route('/api/aero/test', methods=['POST'])
+def aero_test():
+    """Skickar ett syntetiskt Inmarsat AERO ACARS-testmeddelande till databas och realtidsflöde."""
+    try:
+        data = request.get_json(silent=True) or {}
+        is_pos = bool(data.get('pos', False))
+        res = send_test_aero_message(is_pos_report=is_pos)
+        return jsonify(res)
+    except Exception as e:
+        logger.error(f"Error sending test AERO message: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/api/hfdl/status')
 def hfdl_status():
     """Returnerar aktuell lyssnarstatus och telemetri för HFDL-mottagaren."""
@@ -620,6 +639,7 @@ def handle_settings():
             'vdl2_enabled', 'vdl2_host', 'vdl2_port', 'vdl2_filter_empty', 'vdl2_filter_links',
             'sonde_enabled', 'sonde_udp_port', 'sonde_db_interval',
             'satc_enabled', 'satc_host', 'satc_port', 'satc_only_messages',
+            'aero_enabled', 'aero_host', 'aero_port', 'aero_only_messages',
             'hfdl_enabled', 'hfdl_host', 'hfdl_port', 'hfdl_only_messages',
             'acars_enabled', 'acars_host', 'acars_port'
         ]
@@ -633,12 +653,14 @@ def handle_settings():
         vdl2_keys = {'vdl2_enabled', 'vdl2_host', 'vdl2_port', 'vdl2_filter_empty', 'vdl2_filter_links'}
         sonde_keys = {'sonde_enabled', 'sonde_udp_port', 'sonde_db_interval'}
         satc_keys = {'satc_enabled', 'satc_host', 'satc_port', 'satc_only_messages'}
+        aero_keys = {'aero_enabled', 'aero_host', 'aero_port', 'aero_only_messages'}
         hfdl_keys = {'hfdl_enabled', 'hfdl_host', 'hfdl_port', 'hfdl_only_messages'}
         acars_keys = {'acars_enabled', 'acars_host', 'acars_port'}
         sdr_restart_needed = False
         vdl2_restart_needed = False
         sonde_restart_needed = False
         satc_restart_needed = False
+        aero_restart_needed = False
         hfdl_restart_needed = False
         acars_restart_needed = False
         for key in allowed_keys:
@@ -652,6 +674,8 @@ def handle_settings():
                     sonde_restart_needed = True
                 if key in satc_keys:
                     satc_restart_needed = True
+                if key in aero_keys:
+                    aero_restart_needed = True
                 if key in hfdl_keys:
                     hfdl_restart_needed = True
                 if key in acars_keys:
@@ -665,6 +689,8 @@ def handle_settings():
             restart_sonde()
         if satc_restart_needed:
             restart_satc()
+        if aero_restart_needed:
+            restart_aero()
         if hfdl_restart_needed:
             restart_hfdl()
         if acars_restart_needed:
@@ -847,6 +873,7 @@ on_new_message(notify_clients)
 init_vdl2(notify_clients)
 init_sonde(notify_clients)
 init_satc(notify_clients)
+init_aero(notify_clients)
 init_hfdl(notify_clients)
 init_acars(notify_clients)
 

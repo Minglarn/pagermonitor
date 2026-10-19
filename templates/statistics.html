@@ -1011,6 +1011,7 @@
             'POCSAG': { border: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)' },
             'VDL2':   { border: '#06b6d4', bg: 'rgba(6, 182, 212, 0.15)' },
             'ACARS':  { border: '#a855f7', bg: 'rgba(168, 85, 247, 0.15)' },
+            'AERO':   { border: '#0891b2', bg: 'rgba(8, 145, 178, 0.15)' },
             'SATC':   { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.15)' },
             'HFDL':   { border: '#ec4899', bg: 'rgba(236, 72, 153, 0.15)' },
             'SONDE':  { border: '#10b981', bg: 'rgba(16, 185, 129, 0.15)' },
@@ -1315,6 +1316,9 @@
             } else if (rawProto === 'ACARS' || rawBitrate.toUpperCase().includes('VHF-ACARS') || rawBitrate.toUpperCase() === 'ACARS' || (m && m.source_type === 'ACARS')) {
                 protoName = 'ACARS';
                 protoClass = 'proto-acars';
+            } else if (rawProto.includes('AERO') || rawBitrate.toUpperCase().includes('AERO') || msgUpper.includes('INMARSAT AERO') || (m && m.source_type === 'AERO')) {
+                protoName = 'AERO';
+                protoClass = 'proto-aero';
             } else if (rawProto.includes('VDL') || rawBitrate.toUpperCase().includes('VDL') || msgUpper.includes('VDL2')) {
                 protoName = 'VDL2';
                 protoClass = 'proto-vdl2';

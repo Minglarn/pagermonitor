@@ -978,6 +978,7 @@
         /* 1. Färgad protokoll-indikator på första cellen i varje rad */
         table.dataTable.dashboard-dt tbody tr.proto-vdl2 > td:first-child,
         table.dataTable.dashboard-dt tbody tr.proto-acars > td:first-child  { border-left: 4px solid #0284c7 !important; }
+        table.dataTable.dashboard-dt tbody tr.proto-aero > td:first-child   { border-left: 4px solid #0891b2 !important; }
         table.dataTable.dashboard-dt tbody tr.proto-hfdl > td:first-child   { border-left: 4px solid #d97706 !important; }
         table.dataTable.dashboard-dt tbody tr.proto-satc > td:first-child   { border-left: 4px solid #4f46e5 !important; }
         table.dataTable.dashboard-dt tbody tr.proto-pocsag > td:first-child { border-left: 4px solid #16a34a !important; }
@@ -1001,6 +1002,7 @@
           letter-spacing: 0.4px !important;
         }
         .badge.badge-vdl2, .badge.badge-acars { background: #e0f2fe !important; color: #0369a1 !important; border: 1px solid #7dd3fc !important; }
+        .badge.badge-aero   { background: #cffafe !important; color: #0891b2 !important; border: 1px solid #67e8f9 !important; }
         .badge.badge-hfdl   { background: #fef3c7 !important; color: #b45309 !important; border: 1px solid #fcd34d !important; }
         .badge.badge-satc   { background: #e0e7ff !important; color: #4338ca !important; border: 1px solid #a5b4fc !important; }
         .badge.badge-pocsag { background: #dcfce7 !important; color: #15803d !important; border: 1px solid #86efac !important; }
@@ -2228,6 +2230,8 @@
                 return 'RDS';
             } else if (rawProto === 'ACARS' || rawBitrate.toUpperCase().includes('VHF-ACARS') || rawBitrate.toUpperCase() === 'ACARS' || (alarm && alarm.source_type === 'ACARS')) {
                 return 'ACARS';
+            } else if (rawProto.includes('AERO') || rawBitrate.toUpperCase().includes('AERO') || msgUpper.includes('INMARSAT AERO') || (alarm && alarm.source_type === 'AERO')) {
+                return 'AERO';
             } else if (rawProto.includes('VDL') || rawBitrate.toUpperCase().includes('VDL') || msgUpper.includes('VDL2')) {
                 return 'VDL2';
             } else if (rawProto.includes('SONDE') || rawBitrate.toUpperCase().includes('SONDE') || msgUpper.includes('VÄDERBALLONG') || msgUpper.includes('RADIOSOND')) {
@@ -2556,9 +2560,10 @@
             const isVdl2Enabled = (appSettings.vdl2_enabled !== 'false');
             const isAcarsEnabled = (appSettings.acars_enabled !== 'false');
             const isSatcEnabled = (appSettings.satc_enabled !== 'false');
-            const isAeroEnabled = (isVdl2Enabled || isAcarsEnabled);
+            const isInmarsatAeroEnabled = (appSettings.aero_enabled !== 'false');
+            const isAeroEnabled = (isVdl2Enabled || isAcarsEnabled || isInmarsatAeroEnabled);
 
-            // Show or hide VDL2/ACARS dropdown wrappers based on Settings
+            // Show or hide VDL2/ACARS/AERO dropdown wrappers based on Settings
             const vdl2Wrappers = document.querySelectorAll('.vdl2-only-filter');
             vdl2Wrappers.forEach(el => {
                 el.style.display = isAeroEnabled ? 'inline-flex' : 'none';
@@ -2576,6 +2581,9 @@
             }
             if (!isSatcEnabled) {
                 if (activeFilters.protocols.has('SATC')) activeFilters.protocols.delete('SATC');
+            }
+            if (!isInmarsatAeroEnabled) {
+                if (activeFilters.protocols.has('AERO')) activeFilters.protocols.delete('AERO');
             }
 
             // 1. Protocol options
@@ -2596,11 +2604,12 @@
                 const enabledProtocols = ['POCSAG'];
                 if (isAcarsEnabled || protoCounts['ACARS']) enabledProtocols.push('ACARS');
                 if (isVdl2Enabled) enabledProtocols.push('VDL2');
+                if (isInmarsatAeroEnabled || protoCounts['AERO']) enabledProtocols.push('AERO');
                 if (isHfdlEnabled || protoCounts['HFDL']) enabledProtocols.push('HFDL');
                 if (isSatcEnabled || protoCounts['SATC']) enabledProtocols.push('SATC');
                 if (isSondeEnabled || protoCounts['SONDE']) enabledProtocols.push('SONDE');
 
-                const preferredOrder = ['POCSAG', 'ACARS', 'VDL2', 'HFDL', 'SATC', 'SONDE', 'TETRA', 'RDS', 'AFSK'];
+                const preferredOrder = ['POCSAG', 'ACARS', 'VDL2', 'AERO', 'HFDL', 'SATC', 'SONDE', 'TETRA', 'RDS', 'AFSK'];
                 let activeProtos = [];
                 preferredOrder.forEach(p => {
                     if (enabledProtocols.includes(p) || protoCounts[p]) {
@@ -2615,6 +2624,9 @@
                 }
                 if (!isVdl2Enabled) {
                     activeProtos = activeProtos.filter(p => p !== 'VDL2');
+                }
+                if (!isInmarsatAeroEnabled && !protoCounts['AERO']) {
+                    activeProtos = activeProtos.filter(p => p !== 'AERO');
                 }
                 if (!isSatcEnabled) {
                     activeProtos = activeProtos.filter(p => p !== 'SATC');
@@ -3204,6 +3216,9 @@
             } else if (rawProto === 'ACARS' || rawBitrate.toUpperCase().includes('VHF-ACARS') || rawBitrate.toUpperCase() === 'ACARS' || (alarm && alarm.source_type === 'ACARS')) {
                 protoName = 'ACARS';
                 protoClass = 'proto-acars';
+            } else if (rawProto.includes('AERO') || rawBitrate.toUpperCase().includes('AERO') || msgUpper.includes('INMARSAT AERO') || (alarm && alarm.source_type === 'AERO')) {
+                protoName = 'AERO';
+                protoClass = 'proto-aero';
             } else if (rawProto.includes('VDL') || rawBitrate.toUpperCase().includes('VDL') || msgUpper.includes('VDL2')) {
                 protoName = 'VDL2';
                 protoClass = 'proto-vdl2';
@@ -3248,6 +3263,8 @@
                     else if (bStr.toUpperCase() === 'SONDE') formattedBitrate = '';
                     else if (bStr.toUpperCase().startsWith('HFDL-')) formattedBitrate = bStr.substring(5);
                     else if (bStr.toUpperCase() === 'HFDL') formattedBitrate = '';
+                    else if (bStr.toUpperCase().startsWith('AERO-')) formattedBitrate = bStr.substring(5);
+                    else if (bStr.toUpperCase() === 'AERO') formattedBitrate = '';
                     else if (bStr.toUpperCase().startsWith('SATC-')) formattedBitrate = bStr.substring(5);
                     else if (bStr.toUpperCase() === 'SATC') formattedBitrate = '';
                     else if (/^POCSAG\s*\d+$/i.test(bStr)) formattedBitrate = bStr.replace(/^POCSAG\s*/i, '') + 'bps';
@@ -3286,7 +3303,7 @@
             if (alarm.address) {
                 if (!flightVal) {
                     const mFl = alarm.address.match(/^([A-Z0-9]{2,8})\b/i);
-                    if (mFl && !['VDL2','HFDL','ACARS','SATC','SONDE','TETRA','GS'].includes(mFl[1].toUpperCase())) {
+                    if (mFl && !['VDL2','HFDL','ACARS','AERO','SATC','SONDE','TETRA','GS'].includes(mFl[1].toUpperCase())) {
                         flightVal = mFl[1].toUpperCase();
                     }
                 }
@@ -3607,6 +3624,7 @@
                 else if (protoName === 'HFDL') extractedTitle = 'HFDL DATALÄNK';
                 else if (protoName === 'VDL2') extractedTitle = 'VDL2 FLYGMEDDELANDE';
                 else if (protoName === 'ACARS') extractedTitle = 'VHF ACARS MEDDELANDE';
+                else if (protoName === 'AERO') extractedTitle = 'INMARSAT AERO';
                 else if (protoName === 'SATC') extractedTitle = 'INMARSAT STD-C';
                 else if (protoName === 'SONDE') extractedTitle = 'RADIOSOND TELEMETRI';
                 else if (protoName === 'TETRA') extractedTitle = 'TETRA MEDDELANDE';
