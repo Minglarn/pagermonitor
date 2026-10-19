@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.19.3] - Interaktiv Sortering för Configured Alert Words: Alert Word, STATUS, Hits / Day och Total Hits
+- **Klickbara och Sorterbara Kolumnrubriker ([templates/rules.html](file:///d:/antigravity/pager-monitor/templates/rules.html), [templates/alerts.html](file:///d:/antigravity/pager-monitor/templates/alerts.html))**:
+  - Implementerat interaktiv sortering på `Alert Word`, `Status`, `Hits / Day` (Antal hits) och `Total Hits`.
+  - **Alert Word**: Sorterar A-Z respektive Z-A med fullt stöd för svenska tecken (Å, Ä, Ö).
+  - **Status**: Sorterar på aktiv/inaktiv status.
+  - **Hits / Day**: Sorterar numeriskt på dagens träffar (fallande som förval vid första klick, stigande vid andra klick) med sekundär sortering på dagsgenomsnitt och totala träffar.
+  - **Total Hits**: Sorterar numeriskt på totalt ackumulerade träffar (fallande som förval vid första klick, stigande vid andra klick).
+- **Visuella Sorteringsindikatorer & CSS**:
+  - Subtila, eleganta sorteringsikoner (`fa-sort`) med hover-effekt för ej aktiva kolumner.
+  - Aktiv kolumn markeras med distinkt cyanblå färg (`#38bdf8`) och riktningsindikator (`fa-sort-up` eller `fa-sort-down`).
+  - Sorteringsval persisteras i `localStorage` över sidladdningar och redigeringar.
+- **Tester ([tests/test_rules_alert_hits.py](file:///d:/antigravity/pager-monitor/tests/test_rules_alert_hits.py))**:
+  - Samtliga 183 enhetstester passerar felfritt.
+
 ## [2026.10.19.2] - Prestandaoptimering av ALARMS: Indexerad Larmstatus (is_alert) och Blixtsnabb B-Tree Uppslagning
 - **Indexerad Larmstatus och Databasoptimering ([database.py](file:///d:/antigravity/pager-monitor/database.py))**:
   - Åtgärdat prestandaproblem i `/alarms` där full table scan med Python UDF (`WORD_MATCH`, `UPPER_UNICODE`) tidigare tog flera sekunder på stora databaser (36 000+ meddelanden, 175 larmord).

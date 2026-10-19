@@ -54,5 +54,17 @@ class TestRulesAlertHits(unittest.TestCase):
         self.assertIn('Total Hits', html)
         self.assertIn('colspan="6"', html)
 
+    def test_rules_and_alerts_html_contain_sortable_columns(self):
+        for route in ['/rules', '/alerts']:
+            res = self.app.get(route)
+            self.assertEqual(res.status_code, 200)
+            html = res.data.decode('utf-8')
+            self.assertIn('th-sort-word', html)
+            self.assertIn('th-sort-status', html)
+            self.assertIn('th-sort-hits_day', html)
+            self.assertIn('th-sort-hits_total', html)
+            self.assertIn('toggleAlertsSort', html)
+            self.assertIn('sortable-th', html)
+
 if __name__ == '__main__':
     unittest.main()

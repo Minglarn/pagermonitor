@@ -1,13 +1,28 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.19.2`
+- **CalVer**: `2026.10.19.3`
 - **Date**: 2026-10-19
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000011. Interaktiv Sortering i Configured Alert Words: Alert Word, STATUS, Hits / Day och Total Hits (v2026.10.19.3)
+- **Klickbara och Sorterbara Kolumner ([templates/rules.html](file:///d:/antigravity/pager-monitor/templates/rules.html), [templates/alerts.html](file:///d:/antigravity/pager-monitor/templates/alerts.html))**:
+  - Kolumnrubrikerna `Alert Word`, `Status`, `Hits / Day` (Antal hits) och `Total Hits` är nu interaktiva och sorterbara.
+  - **Alert Word**: Sorterar alfabetiskt (A-Z respektive Z-A) med svenskt Unicode-stöd för Å, Ä och Ö via `localeCompare`.
+  - **Status**: Sorterar på aktiv status (Active först, alternativt Inactive först) med sekundär sortering på larmordets namn.
+  - **Hits / Day**: Sorterar numeriskt på dagens träffar (`hits_today`) med förval som fallande (flest träffar idag överst) vid första klick, och stigande vid andra klick. Sekundär sortering på dagsgenomsnitt (`avg_per_day`) och totala träffar (`hits_total`).
+  - **Total Hits**: Sorterar numeriskt på ackumulerade träffar (`hits_total`) med förval som fallande (högst antal träffar överst) vid första klick, och stigande vid andra klick.
+- **Modern Visuell Design & Indikatorer**:
+  - Icke-aktiva sorterbara kolumner visar en diskret sorteringsikon (`fa-sort`) med dämpad opacitet som lyfts vid hover.
+  - Aktivt sorterad kolumn framhävs med distinkt cyanblå färg (`#38bdf8`) och tydlig riktningspil (`fa-sort-up` för stigande, `fa-sort-down` för fallande).
+  - Hover-effekt på klickbara rubriker med mjuk övergång.
+  - Vald sorteringsordning sparas i webbläsarens `localStorage` och består mellan sidomladdningar och redigeringar.
+- **Tester ([tests/test_rules_alert_hits.py](file:///d:/antigravity/pager-monitor/tests/test_rules_alert_hits.py))**:
+  - Utökat testsviten med verifiering av sorterbara kolumner och funktioner. Samtliga 183 enhetstester passerar felfritt.
 
 ### 000010. Radikal Prestandaoptimering av ALARMS-fliken: Indexerad Larmstatus (is_alert) och B-Tree Uppslagning (v2026.10.19.2)
 - **Prestandaproblem och Analys**:

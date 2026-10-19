@@ -30,6 +30,49 @@
             localStorage.setItem('sidebar-collapsed', sidebar.classList.contains('collapsed'));
         }
     </script>
+    <style>
+        .sortable-th {
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .sortable-th:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: #38bdf8;
+        }
+
+        .sortable-th.sorted {
+            color: #38bdf8;
+        }
+
+        .sortable-th .th-content {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .sortable-th .th-content.th-center {
+            justify-content: center;
+            width: 100%;
+        }
+
+        .sortable-th .sort-icon {
+            font-size: 0.75rem;
+            opacity: 0.35;
+            transition: opacity 0.15s ease, color 0.15s ease, transform 0.15s ease;
+        }
+
+        .sortable-th:hover .sort-icon {
+            opacity: 0.85;
+        }
+
+        .sortable-th.sorted .sort-icon.active {
+            opacity: 1;
+            color: #38bdf8;
+            font-size: 0.85rem;
+        }
+    </style>
 </head>
 
 <body>
@@ -167,11 +210,31 @@
                                     <table class="glass-table" style="border-spacing: 0 4px; width: 100%;">
                                         <thead>
                                             <tr>
-                                                <th style="width: 26%;">Alert Word</th>
+                                                <th id="th-sort-word" class="sortable-th" onclick="toggleAlertsSort('word')" style="width: 26%;" title="Sortera på Alert Word">
+                                                    <span class="th-content">
+                                                        Alert Word
+                                                        <i id="icon-sort-word" class="fas fa-sort sort-icon"></i>
+                                                    </span>
+                                                </th>
                                                 <th style="width: 14%;">Color</th>
-                                                <th style="width: 14%;">Status</th>
-                                                <th style="width: 20%; text-align: center;">Hits / Day</th>
-                                                <th style="width: 14%; text-align: center;">Total Hits</th>
+                                                <th id="th-sort-status" class="sortable-th" onclick="toggleAlertsSort('status')" style="width: 14%;" title="Sortera på Status">
+                                                    <span class="th-content">
+                                                        Status
+                                                        <i id="icon-sort-status" class="fas fa-sort sort-icon"></i>
+                                                    </span>
+                                                </th>
+                                                <th id="th-sort-hits_day" class="sortable-th" onclick="toggleAlertsSort('hits_day')" style="width: 20%; text-align: center;" title="Sortera på Antal hits / dag">
+                                                    <span class="th-content th-center">
+                                                        Hits / Day
+                                                        <i id="icon-sort-hits_day" class="fas fa-sort sort-icon"></i>
+                                                    </span>
+                                                </th>
+                                                <th id="th-sort-hits_total" class="sortable-th" onclick="toggleAlertsSort('hits_total')" style="width: 14%; text-align: center;" title="Sortera på Total hits">
+                                                    <span class="th-content th-center">
+                                                        Total Hits
+                                                        <i id="icon-sort-hits_total" class="fas fa-sort sort-icon"></i>
+                                                    </span>
+                                                </th>
                                                 <th style="width: 12%; text-align: center;">Action</th>
                                             </tr>
                                         </thead>
@@ -342,6 +405,95 @@
 
         // --- Alert Words Logic ---
         let currentAlerts = [];
+        let sortColumn = localStorage.getItem('pagermonitor-alerts-sort-col') || null;
+        let sortDirection = localStorage.getItem('pagermonitor-alerts-sort-dir') || 'asc';
+
+        function toggleAlertsSort(column) {
+            if (sortColumn === column) {
+                sortDirection = (sortDirection === 'asc') ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                // Standard default för numeriska kolumner är fallande (högst först)
+                if (column === 'hits_day' || column === 'hits_total') {
+                    sortDirection = 'desc';
+                } else {
+                    sortDirection = 'asc';
+                }
+            }
+            try {
+                localStorage.setItem('pagermonitor-alerts-sort-col', sortColumn);
+                localStorage.setItem('pagermonitor-alerts-sort-dir', sortDirection);
+            } catch (e) {}
+            renderAlertsTable();
+        }
+
+        function updateSortHeaders() {
+            const cols = ['word', 'status', 'hits_day', 'hits_total'];
+            cols.forEach(col => {
+                const th = document.getElementById(`th-sort-${col}`);
+                const icon = document.getElementById(`icon-sort-${col}`);
+                if (!th || !icon) return;
+
+                if (sortColumn === col) {
+                    th.classList.add('sorted');
+                    th.setAttribute('aria-sort', sortDirection === 'asc' ? 'ascending' : 'descending');
+                    icon.className = sortDirection === 'asc' ? 'fas fa-sort-up sort-icon active' : 'fas fa-sort-down sort-icon active';
+                } else {
+                    th.classList.remove('sorted');
+                    th.removeAttribute('aria-sort');
+                    icon.className = 'fas fa-sort sort-icon';
+                }
+            });
+        }
+
+        function getSortedAlerts() {
+            if (!currentAlerts || currentAlerts.length === 0) return [];
+            if (!sortColumn) return [...currentAlerts];
+
+            const copy = [...currentAlerts];
+            copy.sort((a, b) => {
+                let res = 0;
+                if (sortColumn === 'word') {
+                    const wA = (a.word || '').toString();
+                    const wB = (b.word || '').toString();
+                    res = wA.localeCompare(wB, 'sv', { sensitivity: 'base', numeric: true });
+                } else if (sortColumn === 'status') {
+                    const sA = (a.is_active !== false) ? 1 : 0;
+                    const sB = (b.is_active !== false) ? 1 : 0;
+                    res = sA - sB;
+                    if (res === 0) {
+                        res = (a.word || '').localeCompare(b.word || '', 'sv', { sensitivity: 'base' });
+                    }
+                } else if (sortColumn === 'hits_day') {
+                    const hA = Number(a.hits_today) || 0;
+                    const hB = Number(b.hits_today) || 0;
+                    res = hA - hB;
+                    if (res === 0) {
+                        const avgA = Number(a.avg_per_day) || 0;
+                        const avgB = Number(b.avg_per_day) || 0;
+                        res = avgA - avgB;
+                    }
+                    if (res === 0) {
+                        res = (Number(a.hits_total) || 0) - (Number(b.hits_total) || 0);
+                    }
+                    if (res === 0) {
+                        res = (a.word || '').localeCompare(b.word || '', 'sv', { sensitivity: 'base' });
+                    }
+                } else if (sortColumn === 'hits_total') {
+                    const tA = Number(a.hits_total) || 0;
+                    const tB = Number(b.hits_total) || 0;
+                    res = tA - tB;
+                    if (res === 0) {
+                        res = (Number(a.hits_today) || 0) - (Number(b.hits_today) || 0);
+                    }
+                    if (res === 0) {
+                        res = (a.word || '').localeCompare(b.word || '', 'sv', { sensitivity: 'base' });
+                    }
+                }
+                return sortDirection === 'desc' ? -res : res;
+            });
+            return copy;
+        }
 
         function escapeHtml(text) {
             if (!text) return '';
@@ -351,6 +503,8 @@
         }
 
         function renderAlertsTable() {
+            updateSortHeaders();
+
             const countBadge = document.getElementById('alertCountBadge');
             if (countBadge) {
                 countBadge.innerText = `${currentAlerts ? currentAlerts.length : 0} words`;
@@ -365,7 +519,9 @@
                 return;
             }
 
-            currentAlerts.forEach(alert => {
+            const sortedList = getSortedAlerts();
+
+            sortedList.forEach(alert => {
                 const color = alert.color || '#ef4444';
                 const statusBadge = alert.is_active !== false 
                     ? '<span class="badge success">Active</span>' 
