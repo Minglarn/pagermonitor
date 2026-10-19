@@ -29,6 +29,12 @@ except ImportError:
     def lookup_label(l): return ""
     def parse_acars_payload(text, label=None): return None
 
+try:
+    from libacars_bridge import is_libacars_available, decode_acars_apps
+except ImportError:
+    def is_libacars_available(): return False
+    def decode_acars_apps(label, text, msg_dir=0): return None
+
 logger = logging.getLogger(__name__)
 
 
@@ -112,6 +118,20 @@ def parse_acars_message(raw_data):
         alias = tail
     else:
         alias = "VHF ACARS"
+
+    # libacars förbehandling om paketet saknar libacars-träd
+    has_libacars = ('libacars' in data) or ('libacars' in raw_data) or ('arinc622' in data)
+    if not has_libacars and raw_text and label:
+        try:
+            la_res = decode_acars_apps(label, raw_text)
+            if la_res:
+                data['libacars'] = la_res
+                if 'libacars' not in raw_data:
+                    raw_data['libacars'] = la_res
+                if isinstance(la_res, dict) and 'arinc622' in la_res and 'arinc622' not in data:
+                    data['arinc622'] = la_res['arinc622']
+        except Exception as e:
+            logger.debug(f"[ACARS] Fel vid libacars-avkodning: {e}")
 
     # Tolka meddelandetext via human parser
     parsed_human = ""
@@ -356,6 +376,7 @@ class ACARSReceiver:
             s = dict(self.stats)
             s['enabled'] = self.enabled
             s['running'] = self.running
+            s['libacars_available'] = is_libacars_available()
             return s
 
     def _worker_loop(self, session_id):

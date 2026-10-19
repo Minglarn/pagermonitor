@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y \
     libsndfile1-dev \
     libliquid-dev \
     nlohmann-json3-dev \
+    libxml2-dev \
+    zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Build librtlsdr
@@ -19,6 +21,13 @@ WORKDIR /build/librtlsdr
 RUN git clone https://github.com/steve-m/librtlsdr.git . \
     && mkdir build && cd build \
     && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DINSTALL_UDEV_RULES=ON .. \
+    && make -j$(nproc) && make install
+
+# Build libacars
+WORKDIR /build/libacars
+RUN git clone https://github.com/szpajder/libacars.git . \
+    && mkdir build && cd build \
+    && cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_LIBDIR=lib .. \
     && make -j$(nproc) && make install
 
 # Build multimon-ng with extended POCSAG buffer (4096 bytes / 8192 chars)
@@ -46,6 +55,8 @@ RUN apt-get update && apt-get install -y \
     libusb-1.0-0 \
     libsndfile1 \
     libliquid1 \
+    libxml2 \
+    zlib1g \
     tzdata \
     && rm -rf /var/lib/apt/lists/*
 
@@ -58,6 +69,7 @@ COPY --from=builder /usr/local/bin/rtl_sdr /usr/local/bin/
 COPY --from=builder /usr/local/bin/multimon-ng /usr/local/bin/
 COPY --from=builder /usr/local/bin/redsea /usr/local/bin/
 COPY --from=builder /usr/local/lib/librtlsdr* /usr/local/lib/
+COPY --from=builder /usr/local/lib/libacars* /usr/local/lib/
 
 # Ensure ldconfig is run
 RUN ldconfig

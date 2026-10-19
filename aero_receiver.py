@@ -29,6 +29,12 @@ except ImportError:
     def lookup_label(l): return ""
     def parse_acars_payload(text, label=None): return None
 
+try:
+    from libacars_bridge import is_libacars_available, decode_acars_apps
+except ImportError:
+    def is_libacars_available(): return False
+    def decode_acars_apps(label, text, msg_dir=0): return None
+
 logger = logging.getLogger(__name__)
 
 # Kända Ground Earth Stations (GES) för Inmarsat Classic Aero (decimal & oktal mappning)
@@ -246,6 +252,30 @@ def parse_aero_frame(raw_data):
     else:
         alias = "Inmarsat Aero"
 
+    # libacars förbehandling:
+    # 1. Om inkommande JSON redan har ett libacars-block (dumpvdl2), gör ingenting extra.
+    # 2. Om inkommande JSON saknar libacars-blocket (från SatDump på port 6559), skicka label och message
+    #    genom libacars-2.so via decode_acars_apps(), generera JSON-trädet och lägg in det under nyckeln libacars.
+    has_libacars = ('libacars' in data) or ('libacars' in raw_data) or ('arinc622' in data)
+    if not has_libacars and raw_text:
+        probe_label = label
+        if not probe_label:
+            m_lbl = re.search(r'^/[A-Z0-9]{7}\.([A-Z0-9]{2})', raw_text)
+            if m_lbl:
+                probe_label = m_lbl.group(1)
+            else:
+                probe_label = "H1"
+        try:
+            la_res = decode_acars_apps(probe_label, raw_text)
+            if la_res:
+                data['libacars'] = la_res
+                if 'libacars' not in raw_data:
+                    raw_data['libacars'] = la_res
+                if isinstance(la_res, dict) and 'arinc622' in la_res and 'arinc622' not in data:
+                    data['arinc622'] = la_res['arinc622']
+        except Exception as e:
+            logger.debug(f"[AERO] Fel vid libacars-avkodning: {e}")
+
     # Tolka meddelandetext via vår befintliga acars_human_parser
     parsed_human = ""
     if raw_text:
@@ -269,6 +299,9 @@ def parse_aero_frame(raw_data):
     lat, lon = extract_aero_coordinates(parsed_human)
     if lat is None or lon is None:
         lat, lon = extract_aero_coordinates(raw_text)
+    if (lat is None or lon is None) and data.get('lat') is not None and data.get('lon') is not None:
+        lat = data['lat']
+        lon = data['lon']
 
     # Kontrollera om strukturerad payload har lat/lon
     decoded_fields = data.get('decoded_fields') or parse_acars_payload(raw_text, label=label)
@@ -305,9 +338,10 @@ def parse_aero_frame(raw_data):
         'ack': ack or None,
         'lat': lat,
         'lon': lon,
-        'alt_ft': decoded_fields.get('altitude_ft') if decoded_fields else None,
-        'eta': decoded_fields.get('eta') if decoded_fields else None,
+        'alt_ft': data.get('alt_ft') if data.get('alt_ft') is not None else (decoded_fields.get('altitude_ft') if decoded_fields else None),
+        'eta': data.get('eta') if data.get('eta') is not None else (decoded_fields.get('eta') if decoded_fields else None),
         'decoded_fields': decoded_fields,
+        'libacars': data.get('libacars'),
         'airline': airline_name or None,
         'sdr_name': 'Inmarsat AERO'
     }
@@ -450,6 +484,7 @@ class AeroReceiver:
             s['port'] = self.port
             s['enabled'] = self.enabled
             s['only_messages'] = self.only_messages
+            s['libacars_available'] = is_libacars_available()
             return s
 
     def _udp_listen_loop(self):

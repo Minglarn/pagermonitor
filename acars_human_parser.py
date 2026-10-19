@@ -637,14 +637,19 @@ def build_acars_metadata_header(avlc: dict = None, acars: dict = None, vdl2_fram
 
 def format_libacars_data(acars_dict: dict = None, xid_dict: dict = None, vdl2_frame: dict = None) -> str:
     """
-    Extraherar strukturerad data som libacars i dumpvdl2 redan har avkodat
-    (t.ex. ARINC-622 ADS-C, ATS, CPDLC, FPN och VDL2 XID).
+    Extraherar strukturerad data som libacars i dumpvdl2 eller libacars_bridge redan har avkodat
+    (t.ex. ARINC-622 ADS-C, ATS, CPDLC, MIAM och VDL2 XID).
+    Berikar även acars_dict/metadata direkt med koordinater (lat, lon, alt_ft).
     """
     parts = []
 
-    # 1. ARINC-622 struktur
+    # 1. ARINC-622 och applikationslager från libacars
     if isinstance(acars_dict, dict):
+        la_obj = acars_dict.get('libacars')
         arinc = acars_dict.get('arinc622')
+        if not arinc and isinstance(la_obj, dict):
+            arinc = la_obj.get('arinc622') or la_obj
+
         if isinstance(arinc, dict):
             # ADS-C rapport
             adsc = arinc.get('adsc')
@@ -655,27 +660,68 @@ def format_libacars_data(acars_dict: dict = None, xid_dict: dict = None, vdl2_fr
                     lon = brep.get('lon') or brep.get('longitude')
                     alt = brep.get('alt') or brep.get('altitude')
                     if lat is not None and lon is not None:
-                        pos_str = f"Position: {float(lat):.4f}, {float(lon):.4f}"
-                        alt_str = f"Höjd: {int(float(alt))} ft" if alt else ""
-                        ads_lines = ["ADS-C Positionsrapport"]
-                        w_items = []
-                        if alt_str:
-                            w_items.append(alt_str)
-                        
-                        # Väderdata i earth_ref
-                        earth = adsc.get('earth_ref', {})
-                        if isinstance(earth, dict):
-                            wd = earth.get('wind_dir')
-                            ws = earth.get('wind_spd')
-                            temp = earth.get('temp')
-                            if temp is not None:
-                                w_items.append(f"Temperatur: {temp} C")
-                            if wd is not None and ws is not None:
-                                w_items.append(f"Vind: {wd} deg ({ws} kt)")
-                        if w_items:
-                            ads_lines.append("   ".join(w_items))
-                        ads_lines.append(pos_str)
-                        parts.append("\n".join(ads_lines))
+                        try:
+                            f_lat = float(lat)
+                            f_lon = float(lon)
+                            pos_str = f"Position: {f_lat:.4f}, {f_lon:.4f}"
+                            alt_str = f"Höjd: {int(float(alt))} ft" if alt is not None else ""
+                            ads_lines = ["ADS-C Positionsrapport"]
+                            w_items = []
+                            if alt_str:
+                                w_items.append(alt_str)
+                            
+                            # Väderdata i earth_ref
+                            earth = adsc.get('earth_ref', {})
+                            if isinstance(earth, dict):
+                                wd = earth.get('wind_dir')
+                                ws = earth.get('wind_spd')
+                                temp = earth.get('temp')
+                                if temp is not None:
+                                    w_items.append(f"Temperatur: {temp} C")
+                                if wd is not None and ws is not None:
+                                    w_items.append(f"Vind: {wd} deg ({ws} kt)")
+                            if w_items:
+                                ads_lines.append("   ".join(w_items))
+                            ads_lines.append(pos_str)
+                            parts.append("\n".join(ads_lines))
+
+                            # Berika metadata direkt om möjligt
+                            if 'lat' not in acars_dict or acars_dict['lat'] is None:
+                                acars_dict['lat'] = round(f_lat, 4)
+                            if 'lon' not in acars_dict or acars_dict['lon'] is None:
+                                acars_dict['lon'] = round(f_lon, 4)
+                            if alt is not None and ('alt_ft' not in acars_dict or acars_dict['alt_ft'] is None):
+                                acars_dict['alt_ft'] = int(float(alt))
+                        except (ValueError, TypeError):
+                            pass
+
+            # CPDLC Flygledningsmeddelande
+            cpdlc = arinc.get('cpdlc') or (la_obj.get('cpdlc') if isinstance(la_obj, dict) else None)
+            if isinstance(cpdlc, dict):
+                cpdlc_lines = ["CPDLC Flygledningsmeddelande"]
+                extracted_texts = []
+                for subkey in ('atc_uplink_msg', 'atc_downlink_msg', 'msg'):
+                    sub = cpdlc.get(subkey)
+                    if isinstance(sub, dict):
+                        for k in ('text', 'descr', 'content', 'msg'):
+                            if sub.get(k):
+                                extracted_texts.append(str(sub[k]).strip())
+                    elif isinstance(sub, list):
+                        for item in sub:
+                            if isinstance(item, dict):
+                                for k in ('text', 'descr', 'content', 'msg'):
+                                    if item.get(k):
+                                        extracted_texts.append(str(item[k]).strip())
+                            elif isinstance(item, str):
+                                extracted_texts.append(item.strip())
+                for k in ('text', 'msg', 'data'):
+                    if cpdlc.get(k) and str(cpdlc[k]).strip() not in extracted_texts:
+                        extracted_texts.append(str(cpdlc[k]).strip())
+                if extracted_texts:
+                    cpdlc_lines.extend(extracted_texts)
+                    parts.append("\n".join(cpdlc_lines))
+                else:
+                    parts.append("CPDLC Flygledningsmeddelande")
 
             # ATS meddelanden
             ats = arinc.get('ats')

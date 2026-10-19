@@ -2,6 +2,27 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.19.5] - libacars Kompilering i Docker och Ctypes-brygga för SatDump Inmarsat AERO
+- **libacars i Docker ([Dockerfile](file:///d:/antigravity/pager-monitor/Dockerfile))**:
+  - Tillagt bygg- och kompilationssteg för `libacars` från `https://github.com/szpajder/libacars.git` i multi-stage builder (`cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_LIBDIR=lib .. && make -j$(nproc) && make install`).
+  - Byggberoenden: `libxml2-dev` och `zlib1g-dev`.
+  - Runtime-steg: installerat `libxml2` och `zlib1g`, kopierat `libacars*` till `/usr/local/lib/` och kört `ldconfig`.
+- **Ctypes-brygga ([libacars_bridge.py](file:///d:/antigravity/pager-monitor/libacars_bridge.py))**:
+  - Etablerat högpresterande C-brygga via `ctypes` direkt mot `libacars-2.so`.
+  - Metoder: `is_libacars_available()`, `decode_acars_apps(label, text, msg_dir)` med protokollträdsavkodning (`la_acars_decode_apps`) och JSON-formatering (`la_proto_tree_format_json`), samt automatisk minnesfrigöring (`la_vstring_destroy`, `la_proto_tree_destroy`).
+  - Stöd för graceful degradation (ren Python på Windows/miljöer utan C-bibliotek) och `set_mock_decoder` för full testbarhet.
+- **Inmarsat AERO & SatDump Integration ([aero_receiver.py](file:///d:/antigravity/pager-monitor/aero_receiver.py), [acars_receiver.py](file:///d:/antigravity/pager-monitor/acars_receiver.py))**:
+  - Kärnlogik för inkommande paket:
+    1. Om inkommande JSON redan har ett `libacars`-block (från dumpvdl2), görs ingenting extra (inget dubbelarbete).
+    2. Om inkommande JSON saknar `libacars`-blocket (från SatDump på port 6559), skickas label och message genom `libacars-2.so` via `decode_acars_apps()`, genererar JSON-trädet och sparar det under nyckeln `libacars` i meddelandeobjektet.
+    3. Befintlig `format_libacars_data()` och [acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py) tar vid för presentation, larm och kartplottning.
+  - Exponerat `libacars_available` i mottagarnas statusrapportering.
+- **Human Parser & Telemetri ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - `format_libacars_data()` utökad för att konsumera `libacars`-rotobjekt och `arinc622`, formatera CPDLC och extrahera ADS-C latitud/longitud/höjd direkt in i metadata.
+- **Tester ([tests/test_libacars_bridge.py](file:///d:/antigravity/pager-monitor/tests/test_libacars_bridge.py))**:
+  - 7 nya enhetstester för ctypes-bryggan, felhantering, mockavkodning, SatDump ARINC 622 hex-injektion, undvikande av dubbelarbete och statusrapportering.
+  - Samtliga 199 enhetstester i hela testsviten passerar felfritt.
+
 ## [2026.10.19.4] - Inmarsat Classic Aero / ACARS (SatDump & JAERO) Mottagare och Valbar Port 6559
 - **Inmarsat AERO Mottagarmodul ([aero_receiver.py](file:///d:/antigravity/pager-monitor/aero_receiver.py))**:
   - Implementerat fullständig backend-mottagare `AeroReceiver` för Inmarsat Classic Aero (L-band, H/H+/I/L-kanaler).
