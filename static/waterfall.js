@@ -633,6 +633,7 @@ window.WaterfallManager = (function () {
         clearAllFilters: clearAllFilters,
         hasActiveFilter: hasActiveFilter,
         getActiveFilters: getActiveFilters,
+        getChannels: function () { return channels; },
         isRowMatchingFilter: isRowMatchingFilter,
         getChannelKeyForMessage: getChannelKeyForMessage,
         renderChannelRows: renderChannelRows,

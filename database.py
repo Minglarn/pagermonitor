@@ -639,6 +639,324 @@ def get_recent_messages(limit=None, before_id=None, since_id=None, search=None, 
 
     return messages
 
+
+def _build_protocol_sql_fragment(proto_str):
+    """Bygger SQL-villkor för ett protokollnamn."""
+    p_up = str(proto_str).strip().upper()
+    if p_up in ('SATC', 'INMARSAT'):
+        return "(m.bitrate LIKE '%SATC%' OR m.bitrate LIKE '%INMARSAT%' OR m.address LIKE 'SATC%' OR m.address LIKE 'LES:%')"
+    elif p_up in ('AERO', 'INMARSAT-AERO', 'AERO-ACARS'):
+        return "(m.bitrate LIKE '%AERO%')"
+    elif p_up in ('VDL2', 'VDL'):
+        return "(m.bitrate LIKE '%VDL%')"
+    elif p_up in ('ACARS', 'VHF-ACARS', 'VHF_ACARS'):
+        return "(m.bitrate LIKE '%ACARS%' AND m.bitrate NOT LIKE '%VDL%' AND m.bitrate NOT LIKE '%AERO%')"
+    elif p_up == 'HFDL':
+        return "(m.bitrate LIKE '%HFDL%')"
+    elif p_up == 'SONDE':
+        return "(m.bitrate LIKE '%SONDE%')"
+    elif p_up == 'TETRA':
+        return "(m.bitrate LIKE '%TETRA%' OR m.address LIKE 'RAKEL-%' OR m.address LIKE 'TETRA-%')"
+    elif p_up in ('RDS', 'TMC', 'RDS-TMC'):
+        return "(m.bitrate LIKE '%RDS%' OR m.bitrate LIKE '%TMC%' OR m.address LIKE 'E4:%' OR m.address LIKE 'TMC-%')"
+    elif p_up in ('AFSK', 'UFSK'):
+        return "(m.bitrate LIKE '%AFSK%' OR m.bitrate LIKE '%UFSK%' OR m.address = 'AFSK')"
+    elif p_up == 'POCSAG':
+        return "((m.bitrate LIKE '%POCSAG%' OR (m.bitrate GLOB '[0-9]*' AND m.bitrate != '') OR m.address GLOB '[0-9]*') AND (m.bitrate NOT LIKE '%HFDL%' AND m.bitrate NOT LIKE '%VDL%' AND m.bitrate NOT LIKE '%AERO%' AND m.bitrate NOT LIKE '%ACARS%' AND m.bitrate NOT LIKE '%SONDE%' AND m.bitrate NOT LIKE '%TETRA%' AND m.bitrate NOT LIKE '%RDS%' AND m.bitrate NOT LIKE '%SATC%' AND m.bitrate NOT LIKE '%AFSK%'))"
+    return None
+
+
+def format_message_dict(row, col_names):
+    """Konverterar en databasrad från messages/aliases till en standardiserad dict."""
+    alias_idx = col_names.index('alias') if 'alias' in col_names else -1
+    curr_alias_idx = col_names.index('current_alias') if 'current_alias' in col_names else -1
+    saved_alias = row[alias_idx] if alias_idx != -1 else ''
+    curr_alias = row[curr_alias_idx] if curr_alias_idx != -1 else None
+
+    msg = {
+        'id': row[col_names.index('id')],
+        'timestamp': row[col_names.index('timestamp')],
+        'address': row[col_names.index('address')],
+        'message': row[col_names.index('message')],
+        'alias': curr_alias if curr_alias is not None else saved_alias
+    }
+    if 'function_code' in col_names:
+        msg['function_code'] = row[col_names.index('function_code')]
+    if 'bitrate' in col_names:
+        msg['bitrate'] = row[col_names.index('bitrate')]
+        b_val = str(msg['bitrate'] or '').strip()
+        if 'TETRA' in b_val or str(msg['address']).startswith('RAKEL-') or str(msg['address']).startswith('TETRA-'):
+            msg['protocol'] = 'TETRA'
+        elif 'RDS' in b_val or 'TMC' in b_val or str(msg['address']).startswith('E4:') or str(msg['address']).startswith('TMC-'):
+            msg['protocol'] = 'RDS-TMC'
+        elif 'VDL' in b_val:
+            msg['protocol'] = 'VDL2'
+        elif 'AERO' in b_val:
+            msg['protocol'] = 'AERO'
+        elif 'ACARS' in b_val or 'VHF-ACARS' in b_val:
+            msg['protocol'] = 'ACARS'
+        elif 'SONDE' in b_val:
+            msg['protocol'] = 'SONDE'
+        elif 'HFDL' in b_val:
+            msg['protocol'] = 'HFDL'
+        elif 'SATC' in b_val or 'INMARSAT' in b_val or str(msg['address']).startswith('SATC') or str(msg['address']).startswith('LES:'):
+            msg['protocol'] = 'SATC'
+        elif 'AFSK' in b_val or 'UFSK' in b_val or msg['address'] == 'AFSK':
+            msg['protocol'] = 'AFSK'
+        elif 'POCSAG' in b_val or b_val.isdigit() or str(msg['address']).isdigit():
+            msg['protocol'] = 'POCSAG'
+        else:
+            msg['protocol'] = 'POCSAG'
+    else:
+        msg['protocol'] = 'POCSAG'
+
+    if 'frequency' in col_names:
+        msg['frequency'] = row[col_names.index('frequency')]
+    if 'is_duplicate' in col_names:
+        msg['is_duplicate'] = bool(row[col_names.index('is_duplicate')])
+    if 'is_protected' in col_names:
+        msg['is_protected'] = bool(row[col_names.index('is_protected')])
+    if 'is_alert' in col_names:
+        msg['is_alert'] = bool(row[col_names.index('is_alert')])
+    if 'repeat_count' in col_names:
+        msg['repeat_count'] = row[col_names.index('repeat_count')] or 1
+    else:
+        msg['repeat_count'] = 1
+    if 'last_timestamp' in col_names:
+        msg['last_timestamp'] = row[col_names.index('last_timestamp')] or ''
+    else:
+        msg['last_timestamp'] = ''
+    if 'metadata' in col_names and row[col_names.index('metadata')]:
+        try:
+            import json
+            m_obj = json.loads(row[col_names.index('metadata')])
+            if isinstance(m_obj, dict):
+                for k, v in m_obj.items():
+                    if k not in msg and v is not None:
+                        msg[k] = v
+        except Exception:
+            pass
+
+    return msg
+
+
+def get_datatable_messages(
+    draw=1,
+    start=0,
+    length=50,
+    search_value='',
+    filter_protocol=None,
+    filter_frequency=None,
+    filter_label=None,
+    filter_airport=None,
+    filter_capcode=None,
+    hide_basestations=False,
+    alerts_only=False,
+    exclude_duplicates=False,
+    order_column=0,
+    order_dir='desc'
+):
+    """
+    Hämtar en paginerad och filtrerad datamängd för Server-Side Processing (SSP) i DataTables.
+    Returnerar en dict med { draw, recordsTotal, recordsFiltered, data }.
+    """
+    conn = get_connection()
+    c = conn.cursor()
+
+    # Kolla om is_hidden kolumnen finns i aliases
+    c.execute('PRAGMA table_info(aliases)')
+    columns = [col[1] for col in c.fetchall()]
+    has_hidden = 'is_hidden' in columns
+
+    base_where = []
+    base_params = []
+
+    if has_hidden:
+        base_where.append('(a.is_hidden IS NULL OR a.is_hidden = 0)')
+
+    if exclude_duplicates:
+        base_where.append('(m.is_duplicate IS NULL OR m.is_duplicate = 0)')
+
+    if alerts_only:
+        base_where.append('(m.is_alert = 1)')
+
+    # Beräkna recordsTotal (totalt antal larm/meddelanden med basvillkor)
+    total_sql = "SELECT COUNT(*) FROM messages m LEFT JOIN aliases a ON m.address = a.address"
+    if base_where:
+        total_sql += " WHERE " + " AND ".join(base_where)
+    c.execute(total_sql, tuple(base_params))
+    records_total = c.fetchone()[0]
+
+    # Bygg WHERE-villkor för aktiva filter och sökning
+    where_clauses = list(base_where)
+    params = list(base_params)
+    has_active_filter = False
+
+    # 1. Protokollfilter (stöder kommaseparerad lista, t.ex. 'POCSAG,VDL2')
+    if filter_protocol:
+        if isinstance(filter_protocol, str):
+            p_list = [p.strip() for p in filter_protocol.split(',') if p.strip()]
+        else:
+            p_list = list(filter_protocol)
+        
+        p_frags = []
+        for p in p_list:
+            frag = _build_protocol_sql_fragment(p)
+            if frag:
+                p_frags.append(frag)
+        if p_frags:
+            where_clauses.append('(' + ' OR '.join(p_frags) + ')')
+            has_active_filter = True
+
+    # 2. Frekvensfilter (stöder kommaseparerad lista)
+    if filter_frequency:
+        if isinstance(filter_frequency, str):
+            f_list = [f.strip() for f in filter_frequency.split(',') if f.strip()]
+        else:
+            f_list = list(filter_frequency)
+
+        f_clauses = []
+        for f in f_list:
+            f_clauses.append('(m.frequency = ? OR m.frequency LIKE ?)')
+            params.extend([f, f'%{f}%'])
+        if f_clauses:
+            where_clauses.append('(' + ' OR '.join(f_clauses) + ')')
+            has_active_filter = True
+
+    # 3. Label-filter (stöder kommaseparerad lista samt __PILOT_FREETEXT__)
+    if filter_label:
+        if isinstance(filter_label, str):
+            l_list = [l.strip() for l in filter_label.split(',') if l.strip()]
+        else:
+            l_list = list(filter_label)
+
+        l_clauses = []
+        for l in l_list:
+            if l == '__PILOT_FREETEXT__':
+                l_clauses.append("(m.message LIKE '%Pilotmeddelande%')")
+            else:
+                l_clauses.append("(m.metadata LIKE ? OR m.message LIKE ? OR m.message LIKE ?)")
+                params.extend([f'%"label": "{l}"%', f'[{l}]%', f'[{l}:%'])
+        if l_clauses:
+            where_clauses.append('(' + ' OR '.join(l_clauses) + ')')
+            has_active_filter = True
+
+    # 4. Flygplats / Destination (stöder kommaseparerad lista)
+    if filter_airport:
+        if isinstance(filter_airport, str):
+            a_list = [a.strip() for a in filter_airport.split(',') if a.strip()]
+        else:
+            a_list = list(filter_airport)
+
+        ap_clauses = []
+        for ap in a_list:
+            ap_clauses.append("(m.message LIKE ? OR m.metadata LIKE ? OR m.metadata LIKE ?)")
+            params.extend([f'%{ap}%', f'%"station": "%{ap}%"%', f'%"dst_airport": "%{ap}%"%'])
+        if ap_clauses:
+            where_clauses.append('(' + ' OR '.join(ap_clauses) + ')')
+            has_active_filter = True
+
+    # 5. Capcode / Adress / Alias
+    if filter_capcode:
+        cap = str(filter_capcode).strip()
+        if cap:
+            where_clauses.append("(m.address LIKE ? OR m.alias LIKE ? OR a.alias LIKE ?)")
+            term = f'%{cap}%'
+            params.extend([term, term, term])
+            has_active_filter = True
+
+    # 6. Dölj TETRA-basstationer
+    if hide_basestations:
+        where_clauses.append("""NOT (
+            m.bitrate LIKE '%TETRA-NET%' OR 
+            m.address LIKE 'RAKEL-%' OR 
+            m.address LIKE 'TETRA-%' OR 
+            COALESCE(a.alias, m.alias, '') LIKE '%Basstation%' OR 
+            COALESCE(a.alias, m.alias, '') LIKE '%Basestation%' OR 
+            m.message LIKE '%Aktiv TETRA Basstation%' OR 
+            m.message LIKE '%Aktiv Basstation%'
+        )""")
+        has_active_filter = True
+
+    # 7. Global DataTables fritextsökning
+    if search_value:
+        sv = str(search_value).strip()
+        if sv:
+            st = f'%{sv}%'
+            where_clauses.append("""(
+                m.message LIKE ? OR 
+                m.address LIKE ? OR 
+                COALESCE(a.alias, m.alias, '') LIKE ? OR 
+                m.frequency LIKE ? OR 
+                m.bitrate LIKE ? OR 
+                m.timestamp LIKE ?
+            )""")
+            params.extend([st, st, st, st, st, st])
+            has_active_filter = True
+
+    # Beräkna recordsFiltered
+    if not has_active_filter:
+        records_filtered = records_total
+    else:
+        filtered_sql = "SELECT COUNT(*) FROM messages m LEFT JOIN aliases a ON m.address = a.address"
+        if where_clauses:
+            filtered_sql += " WHERE " + " AND ".join(where_clauses)
+        c.execute(filtered_sql, tuple(params))
+        records_filtered = c.fetchone()[0]
+
+    # Sortering
+    order_map = {
+        0: 'm.id',
+        1: 'm.bitrate',
+        2: 'm.frequency',
+        3: 'COALESCE(a.alias, m.alias, m.address)',
+        4: 'm.message'
+    }
+    try:
+        col_idx = int(order_column)
+    except (ValueError, TypeError):
+        col_idx = 0
+    order_field = order_map.get(col_idx, 'm.id')
+    order_direction = 'ASC' if str(order_dir).strip().lower() == 'asc' else 'DESC'
+
+    # Paginering
+    try:
+        limit_val = int(length) if length is not None else 50
+    except (ValueError, TypeError):
+        limit_val = 50
+    try:
+        offset_val = int(start) if start is not None else 0
+    except (ValueError, TypeError):
+        offset_val = 0
+
+    if limit_val < 0 or limit_val > 5000:
+        limit_val = 5000
+
+    data_sql = f"""
+        SELECT m.*, a.alias as current_alias 
+        FROM messages m 
+        LEFT JOIN aliases a ON m.address = a.address
+    """
+    if where_clauses:
+        data_sql += " WHERE " + " AND ".join(where_clauses)
+    data_sql += f" ORDER BY {order_field} {order_direction} LIMIT ? OFFSET ?"
+    data_params = list(params) + [limit_val, offset_val]
+
+    c.execute(data_sql, tuple(data_params))
+    rows = c.fetchall()
+    col_names = [description[0] for description in c.description]
+    conn.close()
+
+    messages = [format_message_dict(row, col_names) for row in rows]
+
+    return {
+        "draw": int(draw or 1),
+        "recordsTotal": records_total,
+        "recordsFiltered": records_filtered,
+        "data": messages
+    }
+
+
 def get_alert_words(include_stats=False):
     """Retrieve all alert words. If include_stats is True, also returns hits_today, hits_total, avg_per_day."""
     conn = get_connection()

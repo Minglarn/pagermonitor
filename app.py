@@ -50,7 +50,7 @@ app = Flask(__name__)
 # Limit maximum payload size for incoming HTTP requests to prevent DoS memory exhaustion
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB
 
-APP_VERSION = "2026.10.20.7"
+APP_VERSION = "2026.10.20.8"
 
 @app.context_processor
 def inject_version():
@@ -500,6 +500,58 @@ def get_messages():
     should_balance = (ensure_protocols and not protocol and not before_id and not since_id and not search_query and not alerts_only)
     messages = get_recent_messages(limit, before_id, since_id=since_id, search=search_query, alerts_only=alerts_only, exclude_duplicates=exclude_duplicates, protocol=protocol, ensure_active_protocols=should_balance)
     return jsonify(messages)
+
+@app.route('/api/alarms/datatable')
+@app.route('/api/messages/datatable')
+def api_datatable_messages():
+    """
+    DataTables Server-Side Processing (SSP) endpoint.
+    Hanterar paginering (start/length), global fritextsökning, snabbfilter och sortering.
+    """
+    draw = request.args.get('draw', default=1, type=int)
+    start = request.args.get('start', default=0, type=int)
+    length = request.args.get('length', default=50, type=int)
+
+    # Global sökning (DataTables skickar search[value])
+    search_value = request.args.get('search[value]', default=request.args.get('search', ''))
+
+    # Snabbfilter
+    filter_protocol = request.args.get('filter_protocol', default=request.args.get('protocol', None))
+    filter_frequency = request.args.get('filter_frequency', default=request.args.get('frequency', None))
+    filter_label = request.args.get('filter_label', default=request.args.get('label', None))
+    filter_airport = request.args.get('filter_airport', default=request.args.get('airport', None))
+    filter_capcode = request.args.get('filter_capcode', default=request.args.get('filter_alias', request.args.get('capcode', None)))
+
+    hide_basestations = request.args.get('hide_basestations', default='0').lower() in ('1', 'true')
+    alerts_only = request.args.get('alerts_only', default='0').lower() in ('1', 'true')
+
+    # Sortering
+    order_column = request.args.get('order[0][column]', default=0, type=int)
+    order_dir = request.args.get('order[0][dir]', default='desc')
+
+    # Dubbletthantering enligt inställningar
+    settings = database.get_settings()
+    dup_handling = settings.get('duplicate_handling', 'merge')
+    include_dups = request.args.get('include_duplicates', '0').lower() in ('1', 'true')
+    exclude_duplicates = (dup_handling == 'hide') and not include_dups
+
+    result = database.get_datatable_messages(
+        draw=draw,
+        start=start,
+        length=length,
+        search_value=search_value,
+        filter_protocol=filter_protocol,
+        filter_frequency=filter_frequency,
+        filter_label=filter_label,
+        filter_airport=filter_airport,
+        filter_capcode=filter_capcode,
+        hide_basestations=hide_basestations,
+        alerts_only=alerts_only,
+        exclude_duplicates=exclude_duplicates,
+        order_column=order_column,
+        order_dir=order_dir
+    )
+    return jsonify(result)
 
 @app.route('/api/messages/clear', methods=['POST'])
 def clear_all_messages():

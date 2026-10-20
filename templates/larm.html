@@ -2425,6 +2425,8 @@
             // Initialize DataTables
             dataTable = $('#alarmsTable').DataTable({
                 destroy: true,
+                serverSide: true,
+                processing: true,
                 autoWidth: false,
                 stateSave: true,
                 stateDuration: 60 * 60 * 24 * 365, // Persist table settings (page length, sort order, search) for 1 year
@@ -2465,30 +2467,59 @@
                 },
                 order: [[0, 'desc']], // Sort by timestamp descending
                 pageLength: 50,
-                lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
+                lengthMenu: [[25, 50, 100, 200], [25, 50, 100, 200]],
                 language: {
                     search: "",
-                    searchPlaceholder: "Quick filter...",
-                    lengthMenu: "Show _MENU_ alarms",
-                    info: "Showing _START_ to _END_ of _TOTAL_ alarms",
-                    infoEmpty: "No alarms found",
-                    infoFiltered: "(filtered from _MAX_ total)",
-                    zeroRecords: "No matching alarms found",
+                    searchPlaceholder: "Snabbfilter...",
+                    lengthMenu: "Visa _MENU_ larm",
+                    info: "Visar _START_ till _END_ av _TOTAL_ larm",
+                    infoEmpty: "Inga larm hittades",
+                    infoFiltered: "(filtrerat från totalt _MAX_)",
+                    zeroRecords: "Inga matchande larm hittades",
+                    processing: "Laddar...",
                     paginate: {
-                        first: "First",
-                        last: "Last",
-                        next: "Next",
-                        previous: "Prev"
+                        first: "Första",
+                        last: "Sista",
+                        next: "Nästa",
+                        previous: "Föregående"
                     }
                 },
-                columnDefs: [
-                    { targets: 0, className: 'col-ts ts-cell', type: 'ts-epoch' },
-                    { targets: 1, className: 'col-proto proto-cell' },
-                    { targets: 2, className: 'col-rf rf-cell' },
-                    { targets: 3, className: 'col-source source-cell' },
-                    { targets: 4, className: 'col-msg msg-cell message-cell' },
-                    { targets: 5, className: 'col-act actions-cell', orderable: false, searchable: false }
-                ]
+                ajax: {
+                    url: '/api/alarms/datatable',
+                    type: 'GET',
+                    data: function (d) {
+                        d.alerts_only = '1';
+                    },
+                    dataSrc: function (json) {
+                        allAlarms = json.data || [];
+                        const loadEl = document.getElementById('loading');
+                        if (loadEl) loadEl.style.display = 'none';
+                        return json.data;
+                    }
+                },
+                columns: [
+                    { data: 'id', className: 'col-ts ts-cell', orderable: true },
+                    { data: 'protocol', className: 'col-proto proto-cell', orderable: true },
+                    { data: 'frequency', className: 'col-rf rf-cell', orderable: true },
+                    { data: 'address', className: 'col-source source-cell', orderable: true },
+                    { data: 'message', className: 'col-msg msg-cell message-cell', orderable: true },
+                    { data: null, className: 'col-act actions-cell', orderable: false, searchable: false }
+                ],
+                createdRow: function (tr, alarm, dataIndex) {
+                    const dummyTr = createAlarmRowNode(alarm);
+                    tr.className = dummyTr.className;
+                    for (let i = 0; i < dummyTr.attributes.length; i++) {
+                        const attr = dummyTr.attributes[i];
+                        tr.setAttribute(attr.name, attr.value);
+                    }
+                    for (let i = 0; i < tr.cells.length && i < dummyTr.cells.length; i++) {
+                        tr.cells[i].innerHTML = dummyTr.cells[i].innerHTML;
+                        tr.cells[i].className = dummyTr.cells[i].className;
+                        if (dummyTr.cells[i].hasAttribute('data-order')) {
+                            tr.cells[i].setAttribute('data-order', dummyTr.cells[i].getAttribute('data-order'));
+                        }
+                    }
+                }
             });
 
             // Restore search input from saved state if available
@@ -2526,21 +2557,6 @@
             searchInput.addEventListener('input', function () {
                 dataTable.search(this.value).draw();
             });
-
-            // Fetch initial alarms (latest 500 from database)
-            try {
-                allAlarms = await alarmsPromise;
-
-                if (allAlarms && allAlarms.length > 0) {
-                    const rowNodes = allAlarms.map(a => createAlarmRowNode(a));
-                    dataTable.rows.add(rowNodes).draw();
-                }
-
-                loading.style.display = 'none';
-            } catch (error) {
-                console.error('Error fetching alarms:', error);
-                loading.innerText = 'Failed to load alarms.';
-            }
 
             // Real-time updates via Server-Sent Events (SSE)
             const satIcon = document.getElementById('satellite-icon');
@@ -2645,11 +2661,10 @@
                         allAlarms.unshift(data);
                         if (allAlarms.length > 1000) allAlarms.pop();
 
-                        const newRow = createAlarmRowNode(data);
-                        newRow.classList.add('new-alarm-pulse');
-
                         if (dataTable) {
-                            dataTable.row.add(newRow).draw(false);
+                            if (dataTable.page() === 0) {
+                                dataTable.ajax.reload(null, false);
+                            }
                         }
                     }
                 }

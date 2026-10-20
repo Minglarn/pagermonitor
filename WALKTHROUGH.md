@@ -1,13 +1,41 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.20.7`
+- **CalVer**: `2026.10.20.8`
 - **Date**: 2026-10-20
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000021. Server-Side Processing (SSP) för DataTables (#alarmsTable) (v2026.10.20.8)
+- **Kärnkrav & Bakgrund**:
+  - För att möjliggöra snabb filtrering och paginering genom tiotusentals och hundratusentals rader i databasen utan att webbläsaren kraschar eller blir trög vid inläsning, konverterades huvudtabellen `#alarmsTable` på både dashboard (`index.html`) och larm-sidan (`larm.html`) till äkta Server-Side Processing (SSP).
+- **Backend: DataTables API-endpoint ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - **Endpoint-registrering**:
+    - `@app.route('/api/alarms/datatable')` och `@app.route('/api/messages/datatable')` tar emot DataTables GET-parametrar:
+      - `draw` (sekvensnummer som speglas i svaret)
+      - `start` (SQL OFFSET)
+      - `length` (SQL LIMIT)
+      - `search[value]` (global fritextsökning)
+      - `order[0][column]` och `order[0][dir]` (kolumnsortering)
+      - Anpassade snabbfilter: `filter_protocol`, `filter_frequency`, `filter_label`, `filter_airport`, `filter_capcode`, `hide_basestations`, `alerts_only`.
+  - **SQL-optimering i `database.py`**:
+    - Bygger parametriserade SQL `WHERE`-klausuler för alla aktiva filter och söktermer.
+    - Protokollfilter stöder multi-val (t.ex. `POCSAG,VDL2,ACARS,AERO,SATC,HFDL,SONDE,TETRA,RDS,AFSK`).
+    - Frekvensfilter, label-filter (inklusive `__PILOT_FREETEXT__`), flygplatsfilter och adress/alias matchas effektivt mot indexerade fält och metadata.
+    - Räknar `recordsTotal` och `recordsFiltered` separat så att DataTables pagineringsinformation visar exakt antal matchande händelser.
+    - Returnerar DataTables-kompatibel JSON: `{ draw, recordsTotal, recordsFiltered, data }`.
+- **Frontend: DataTables SSP-konfiguration ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - Aktiverat `serverSide: true` och `processing: true`.
+  - Konfigurerat `ajax`-funktion som vid varje sidbyte och filterändring samlar ihop aktiva filter (`activeFilters.protocols`, `frequencies`, `labels`, `airports`, `capcode`, RF-kanaler från Activity Ribbon) och skickar dem till servern.
+  - Använder DataTables `createdRow` och `createAlarmRowNode(alarm)` för att behålla 100% av den befintliga rika renderingen (badges, minikartor via Leaflet, kopiera/lås/radera-knappar, rådatavisning och telemetry-flexboxar).
+  - Avlägsnat den tunga initiala inläsningen av 1000 rader. Tabellen laddar nu endast de 50 aktuella raderna via blixtsnabb SQL `LIMIT 50 OFFSET 0`.
+  - Anpassat realtidsflödet (SSE) så att nya inkommande händelser på första sidan mjukt uppdaterar tabellvyn med `dataTable.ajax.reload(null, false)` utan att återställa scroll eller störa användaren.
+- **Kvalitetssäkring & Verifiering ([tests/test_datatable_ssp.py](file:///d:/antigravity/pager-monitor/tests/test_datatable_ssp.py))**:
+  - Skapat testsvit för paginering, protokollfiltrering, fritextsökning, larmordsfiltrering och sortering.
+  - Samtliga 222 enhetstester i hela testsviten passerar med 100% godkänt.
 
 ### 000020. Prestandaoptimering av Statistik samt Logisk och Visuell Städning av Settings (v2026.10.20.7)
 - **Kärnkrav & Bakgrund**:

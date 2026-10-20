@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.20.8] - Server-Side Processing (SSP) för DataTables (#alarmsTable)
+- **Backend: DataTables SSP API-endpoint ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Implementerat `GET /api/alarms/datatable` och `GET /api/messages/datatable` för äkta server-side paginering och filtrering.
+  - Stöd för DataTables standardparametrar: `draw`, `start` (SQL OFFSET), `length` (SQL LIMIT), `search[value]` (global fritextsökning), samt `order[0][column]` och `order[0][dir]` (sortering).
+  - Skapat `database.get_datatable_messages(...)` med optimerade SQL WHERE-villkor för:
+    - Protokollfilter (`filter_protocol`), stöder multi-val som `POCSAG,VDL2,ACARS,AERO,SATC,HFDL,SONDE,TETRA,RDS,AFSK`.
+    - Frekvensfilter (`filter_frequency`) för enstaka och multipla frekvenser.
+    - ACARS Label-filter (`filter_label`), inklusive pilotmeddelanden (`__PILOT_FREETEXT__`).
+    - Flygplatsfilter (`filter_airport`) för rutter och flygplatskoder (t.ex. `ESSA`).
+    - Adress/Alias/CapCode-filter (`filter_capcode`).
+    - Dölj TETRA-basstationsloggar (`hide_basestations=1`).
+    - Larm-läge (`alerts_only=1`).
+    - Dubbletthantering enligt inställningar (`exclude_duplicates`).
+  - Returnerar standardiserat JSON-format: `{ draw, recordsTotal, recordsFiltered, data }`.
+- **Frontend: Konvertering av #alarmsTable till SSP ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/waterfall.js](file:///d:/antigravity/pager-monitor/static/waterfall.js))**:
+  - Konfigurerat `serverSide: true` och `processing: true` i DataTables på både dashboard och larm-sidan.
+  - Integrerat dynamisk parameteravläsning i `ajax.data` som skickar aktiva snabbfilter (`activeFilters.protocols`, `frequencies`, `labels`, `airports`, `capcode`) och RF-kanalsval från Activity Ribbon till servern.
+  - Bevarat 100% av befintlig rik cellrendering och funktioner (badges, Leaflet-minikartor, kopiera/lås/radera-knappar, rådata-expandering) via `createdRow` och `createAlarmRowNode`.
+  - Anpassat realtidsflödet (SSE) så att nya meddelanden på första sidan uppdaterar tabellen mjukt i bakgrunden med `dataTable.ajax.reload(null, false)` utan att tappa scroll eller aktiv sida.
+- **Kvalitetssäkring & Tester ([tests/test_datatable_ssp.py](file:///d:/antigravity/pager-monitor/tests/test_datatable_ssp.py))**:
+  - Skapat enhetstester som verifierar paginering (offset/limit utan överlappning), protokollfiltrering, fritextsökning, larmordsfiltrering och sortering.
+  - Samtliga 222 tester i testsviten passerar felfritt (100%). Strikt förbud mot emojis efterlevt på hela webbplatsen.
+
 ## [2026.10.20.7] - Prestandaoptimering av Statistik samt Logisk och Visuell Städning av Settings
 - **Prestandaoptimering av Statistik & Analys ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
   - Implementerat 15-minuters aggregering (`interval=15`, 96 tidsintervall/dygn) för diagrammet "Aktivitet per Frekvens över Tid".

@@ -2123,23 +2123,16 @@
 
         function flushPausedMessages() {
             if (pausedQueue.length === 0) return;
-            const rowsToAdd = [];
             while (pausedQueue.length > 0) {
                 const item = pausedQueue.shift();
                 if (!allAlarms.some(a => a.id === item.id)) {
                     allAlarms.unshift(item);
                     if (allAlarms.length > 1000) allAlarms.pop();
-
-                    const newRow = createAlarmRowNode(item);
-                    newRow.classList.add('new-msg-pulse');
-                    rowsToAdd.push(newRow);
                 }
             }
-            if (dataTable && rowsToAdd.length > 0) {
-                dataTable.rows.add(rowsToAdd);
-                dataTable.order([[0, 'desc']]).draw();
+            if (dataTable) {
+                dataTable.ajax.reload(null, false);
                 scheduleDropdownRefresh();
-                refreshMinimaps();
             }
             const badge = document.getElementById('livePauseBadge');
             const bannerCount = document.getElementById('pausedBannerCount');
@@ -4142,6 +4135,7 @@
 
             // Filter out TETRA base stations when hideBasestations is active
             $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                if (settings.oFeatures && settings.oFeatures.bServerSide) return true;
                 if (!hideBasestations) return true;
                 const rowNode = settings.aoData[dataIndex]?.nTr;
                 if (rowNode && rowNode.classList.contains('basestation-row')) {
@@ -4152,6 +4146,7 @@
 
             // Multi-channel RF Activity filter
             $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                if (settings.oFeatures && settings.oFeatures.bServerSide) return true;
                 if (settings.nTable && settings.nTable.id !== 'alarmsTable') return true;
                 if (!window.WaterfallManager || !window.WaterfallManager.hasActiveFilter()) return true;
                 const rowNode = settings.aoData[dataIndex] ? settings.aoData[dataIndex].nTr : null;
@@ -4161,6 +4156,7 @@
 
             // Real-time Monitor Active Filters (Multi-Select: Protocols, Frequencies, Labels, Airports, Capcode)
             $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+                if (settings.oFeatures && settings.oFeatures.bServerSide) return true;
                 if (settings.nTable && settings.nTable.id !== 'alarmsTable') return true;
 
                 const hasFilter = (
@@ -4286,6 +4282,8 @@
             // Initialize DataTables
             dataTable = $('#alarmsTable').DataTable({
                 destroy: true,
+                serverSide: true,
+                processing: true,
                 autoWidth: false,
                 stateSave: true,
                 stateDuration: 60 * 60 * 24 * 365, // Persist table settings (page length, sort order, search) for 1 year
@@ -4329,7 +4327,7 @@
                 },
                 order: [[0, 'desc']], // Default: TID / # (Timestamp) descending
                 pageLength: 50,
-                lengthMenu: [[25, 50, 100, -1], [25, 50, 100, "All"]],
+                lengthMenu: [[25, 50, 100, 200], [25, 50, 100, 200]],
                 language: {
                     search: "",
                     searchPlaceholder: "Snabbfilter...",
@@ -4338,6 +4336,7 @@
                     infoEmpty: "Inga händelser hittades",
                     infoFiltered: "(filtrerat från totalt _MAX_)",
                     zeroRecords: "Inga matchande händelser",
+                    processing: "Laddar...",
                     paginate: {
                         first: "Första",
                         last: "Sista",
@@ -4345,14 +4344,77 @@
                         previous: "Föregående"
                     }
                 },
-                columnDefs: [
-                    { targets: 0, className: 'col-ts ts-cell', type: 'ts-epoch' },
-                    { targets: 1, className: 'col-proto proto-cell' },
-                    { targets: 2, className: 'col-rf rf-cell' },
-                    { targets: 3, className: 'col-source source-cell' },
-                    { targets: 4, className: 'col-msg msg-cell' },
-                    { targets: 5, className: 'col-act actions-cell', orderable: false, searchable: false }
-                ]
+                ajax: {
+                    url: '/api/alarms/datatable',
+                    type: 'GET',
+                    data: function (d) {
+                        if (activeFilters.protocols && activeFilters.protocols.size > 0) {
+                            d.filter_protocol = Array.from(activeFilters.protocols).join(',');
+                        }
+                        if (activeFilters.frequencies && activeFilters.frequencies.size > 0) {
+                            d.filter_frequency = Array.from(activeFilters.frequencies).join(',');
+                        }
+                        if (activeFilters.labels && activeFilters.labels.size > 0) {
+                            d.filter_label = Array.from(activeFilters.labels).join(',');
+                        }
+                        if (activeFilters.airports && activeFilters.airports.size > 0) {
+                            d.filter_airport = Array.from(activeFilters.airports).join(',');
+                        }
+                        if (activeFilters.capcode) {
+                            d.filter_capcode = activeFilters.capcode;
+                        }
+                        if (hideBasestations) {
+                            d.hide_basestations = '1';
+                        }
+                        if (window.WaterfallManager && window.WaterfallManager.hasActiveFilter && window.WaterfallManager.hasActiveFilter()) {
+                            const wfFilters = window.WaterfallManager.getActiveFilters();
+                            const wfFreqs = [];
+                            if (window.WaterfallManager.getChannels) {
+                                const allChs = window.WaterfallManager.getChannels();
+                                wfFilters.forEach(fid => {
+                                    if (allChs[fid] && allChs[fid].frequency) wfFreqs.push(allChs[fid].frequency);
+                                });
+                            }
+                            if (wfFreqs.length > 0) {
+                                d.filter_frequency = (d.filter_frequency ? d.filter_frequency + ',' : '') + wfFreqs.join(',');
+                            }
+                        }
+                    },
+                    dataSrc: function (json) {
+                        allAlarms = json.data || [];
+                        scheduleDropdownRefresh();
+                        const loadEl = document.getElementById('loading');
+                        if (loadEl) loadEl.style.display = 'none';
+                        return json.data;
+                    }
+                },
+                columns: [
+                    { data: 'id', className: 'col-ts ts-cell', orderable: true },
+                    { data: 'protocol', className: 'col-proto proto-cell', orderable: true },
+                    { data: 'frequency', className: 'col-rf rf-cell', orderable: true },
+                    { data: 'address', className: 'col-source source-cell', orderable: true },
+                    { data: 'message', className: 'col-msg msg-cell', orderable: true },
+                    { data: null, className: 'col-act actions-cell', orderable: false, searchable: false }
+                ],
+                createdRow: function (tr, alarm, dataIndex) {
+                    const dummyTr = createAlarmRowNode(alarm);
+                    tr.className = dummyTr.className;
+                    for (let i = 0; i < dummyTr.attributes.length; i++) {
+                        const attr = dummyTr.attributes[i];
+                        tr.setAttribute(attr.name, attr.value);
+                    }
+                    for (let i = 0; i < tr.cells.length && i < dummyTr.cells.length; i++) {
+                        tr.cells[i].innerHTML = dummyTr.cells[i].innerHTML;
+                        tr.cells[i].className = dummyTr.cells[i].className;
+                        if (dummyTr.cells[i].hasAttribute('data-order')) {
+                            tr.cells[i].setAttribute('data-order', dummyTr.cells[i].getAttribute('data-order'));
+                        }
+                    }
+                    const mapEl = tr.querySelector('.msg-minimap-container');
+                    if (mapEl) {
+                        registerMinimap(mapEl);
+                    }
+                }
             });
 
             // Relocate tableFilterBar into DataTables top layout row
@@ -4415,33 +4477,17 @@
                 renderFilterChips();
             });
 
-            // Fetch initial messages (latest 1000 from database with protocol balancing)
-            try {
-                const response = await fetch('/api/messages?limit=1000');
-                if (!response.ok) throw new Error('Network error');
-                allAlarms = await response.json();
-
-                if (allAlarms.length > 0) {
-                    const rowNodes = allAlarms.map(a => createAlarmRowNode(a));
-                    dataTable.rows.add(rowNodes).draw();
-                    populateFilterDropdowns();
-                    refreshMinimaps();
-                }
-
-                // Initialize Waterfall Manager with initial messages
-                if (window.WaterfallManager) {
-                    window.WaterfallManager.init(allAlarms, () => {
-                        if (dataTable) {
-                            dataTable.draw();
-                        }
-                    });
-                }
-
-                loading.style.display = 'none';
-            } catch (error) {
-                console.error('Error fetching messages:', error);
-                loading.innerText = 'Failed to load messages.';
-            }
+            // Initiera WaterfallManager i bakgrunden med senaste aktivitet
+            fetch('/api/messages?limit=250')
+                .then(r => r.json())
+                .then(msgs => {
+                    if (window.WaterfallManager && Array.isArray(msgs)) {
+                        window.WaterfallManager.init(msgs, () => {
+                            if (dataTable) dataTable.draw();
+                        });
+                    }
+                })
+                .catch(err => console.debug('Waterfall background fetch:', err));
 
             // Real-time SSE updates & message processing
             const satIcon = document.getElementById('satellite-icon');
@@ -4515,15 +4561,12 @@
                         allAlarms.unshift(data);
                         if (allAlarms.length > 1000) allAlarms.pop();
 
-                        const newRow = createAlarmRowNode(data);
-                        newRow.classList.add('new-msg-pulse');
-
                         if (dataTable) {
-                            dataTable.row.add(newRow);
-                            dataTable.order([[0, 'desc']]).draw(false);
+                            if (dataTable.page() === 0) {
+                                dataTable.ajax.reload(null, false);
+                            }
                         }
                         scheduleDropdownRefresh();
-                        refreshMinimaps();
                     }
                 }
             }
