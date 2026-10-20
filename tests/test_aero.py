@@ -239,5 +239,48 @@ class TestAeroReceiver(unittest.TestCase):
         self.assertIn("2026-10-20", p3['message'])
         self.assertIn("06:15:00 UTC", p3['message'])
 
+    def test_parse_aero_raw_data_full_message(self):
+        """Verifiera att knappen Rådata får hela det inkommande råa meddelandet och inte bara textfältet."""
+        raw_frame = {
+            "station": "SatDump",
+            "freq": 1545150000,
+            "channel": "P-Channel",
+            "ges_id": 5,
+            "ges_name": "Burum",
+            "aes_id": "4B192A",
+            "acars": {
+                "flight": "LX1234",
+                "tail": "HB-JBA",
+                "label": "H1",
+                "msgno": "M01A",
+                "block_id": "1",
+                "text": "- #MDWXR/ID00172A,RCH241,JMZN2922C285/MR1,44/MTLTAG,0757,TAF LTAG 0757Z VRB02KT CAVOK T21C A3015 REQUEST PIREP AS MISSON PERMITSFC54",
+                "mode": "2",
+                "ack": "!"
+            }
+        }
+        parsed = parse_aero_frame(raw_frame)
+        self.assertIsNotNone(parsed)
+        # Verifiera att Rådata-sektionen finns i meddelandet
+        self.assertIn("\nRådata: ", parsed['message'])
+        raw_part = parsed['message'].split("\nRådata: ")[1].strip()
+        
+        # Verifiera att Rådata INTE bara är textsnutten
+        self.assertNotEqual(raw_part, raw_frame['acars']['text'])
+        
+        # Verifiera att Rådata är ett komplett giltigt JSON-objekt med alla ursprungliga fält
+        raw_obj = json.loads(raw_part)
+        self.assertEqual(raw_obj.get('channel'), "P-Channel")
+        self.assertEqual(raw_obj.get('freq'), 1545150000)
+        self.assertEqual(raw_obj.get('ges_id'), 5)
+        self.assertEqual(raw_obj.get('aes_id'), "4B192A")
+        self.assertIn('acars', raw_obj)
+        self.assertEqual(raw_obj['acars'].get('msgno'), "M01A")
+
+        # Verifiera att metadata innehåller full raw_json och raw_payload
+        self.assertIn('raw_json', parsed['metadata'])
+        self.assertIn('raw_payload', parsed['metadata'])
+        self.assertEqual(parsed['metadata']['raw_payload'], raw_frame)
+
 if __name__ == '__main__':
     unittest.main()

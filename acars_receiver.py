@@ -188,6 +188,11 @@ def parse_acars_message(raw_data):
             lat = decoded_fields['lat']
             lon = decoded_fields['lon']
 
+    try:
+        raw_json_str = json.dumps(raw_data, ensure_ascii=False)
+    except Exception:
+        raw_json_str = str(raw_data)
+
     metadata = {
         'protocol': 'ACARS',
         'bitrate': 'VHF-ACARS',
@@ -214,13 +219,16 @@ def parse_acars_message(raw_data):
         'eta': decoded_fields.get('eta') if decoded_fields else None,
         'decoded_fields': decoded_fields,
         'airline': airline_name or None,
-        'sdr_name': 'VHF-ACARS'
+        'sdr_name': 'VHF-ACARS',
+        'raw_json': raw_json_str,
+        'raw_payload': raw_data
     }
 
     return {
         'address': address,
         'message': parsed_human,
         'raw_text': raw_text,
+        'raw_json': raw_json_str,
         'alias': alias,
         'flight': flight,
         'reg': tail,

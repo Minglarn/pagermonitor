@@ -1522,8 +1522,34 @@
                     return formattedSegments.join('<span class="msg-sep">|</span>');
                 });
                 summaryHtml = formattedLines.join('<br>');
-                if (rawText) {
-                    rawBoxHtml = `<div class="raw-data-box" style="display: none;">${escapeHtml(rawText)}</div>`;
+
+                // Bestäm vad som visas som rådata: prioritera fullständigt rått JSON-paket från mottagaren
+                let candidateRaw = rawText;
+                const fullRawJson = m.raw_json || (m.metadata && m.metadata.raw_json) || m.raw_payload || (m.metadata && m.metadata.raw_payload);
+                if (fullRawJson) {
+                    candidateRaw = fullRawJson;
+                }
+
+                let displayRaw = candidateRaw;
+                if (candidateRaw) {
+                    if (typeof candidateRaw === 'object' && candidateRaw !== null) {
+                        try {
+                            displayRaw = JSON.stringify(candidateRaw, null, 2);
+                        } catch (e) {
+                            displayRaw = String(candidateRaw);
+                        }
+                    } else if (typeof candidateRaw === 'string' && candidateRaw.trim().startsWith('{')) {
+                        try {
+                            const parsedObj = JSON.parse(candidateRaw);
+                            displayRaw = JSON.stringify(parsedObj, null, 2);
+                        } catch (e) {
+                            displayRaw = candidateRaw;
+                        }
+                    }
+                }
+
+                if (displayRaw) {
+                    rawBoxHtml = `<div class="raw-data-box" style="display: none;">${escapeHtml(displayRaw)}</div>`;
                     rawToggleBadge = `<span class="badge badge-raw-toggle" onclick="toggleRawData(this)" title="Visa eller dölj rådata">&lt;/&gt; Rådata</span>`;
                 }
             }

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.20.2] - Fullständig Rådata och Pretty-Printad JSON bakom Rådata-knappen
+- **Fullständigt Råmeddelande bakom Rådata-knappen ([aero_receiver.py](file:///d:/antigravity/pager-monitor/aero_receiver.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_receiver.py](file:///d:/antigravity/pager-monitor/acars_receiver.py))**:
+  - Åtgärdat att knappen `</> Rådata` tidigare endast visade textsträngen i meddelandet istället för det kompletta inkommande paketet.
+  - För Inmarsat AERO: hela det inkommande råa datapaketet från SatDump/JAERO serialiseras och kapslas i `\nRådata: {raw_json_str}` samt sparas i `metadata['raw_json']` och `metadata['raw_payload']`. Om en enskild parser-regel tidigare lade till en avklippt textsträng ersätts den nu med hela råpaketet.
+  - För VDL2 och VHF ACARS: sparat komplett inkommande dataram under `raw_json` och `raw_payload` i `metadata` för full teknisk spårbarhet.
+- **Formaterad och Indragen JSON i Webbgränssnittet ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Prioriterar alltid fullständig rå-JSON från `alarm.raw_json` eller `alarm.metadata.raw_json` framför enbart meddelandetext.
+  - Pretty-printar automatiskt JSON-innehåll med 2 blankstegs indentering (`JSON.stringify(..., null, 2)`), så att användaren kan inspektera alla parametrar (frekvens, kanal, signal/SNR, GES-ID, AES/ICAO, flight, tail, label, ack, block_id och nyttolast) i en prydlig och läsbar vy.
+  - Om ett meddelande saknar explicit `\nRådata:`-avgränsare i texten men har `raw_json` i metadata, aktiveras knappen `</> Rådata` automatiskt så att data aldrig går förlorad.
+- **Tester ([tests/test_aero.py](file:///d:/antigravity/pager-monitor/tests/test_aero.py))**:
+  - Nytt enhetstest `test_parse_aero_raw_data_full_message` som verifierar att knappen och fältet för Rådata bevarar hela den inkommande JSON-strukturen från SatDump med alla fält och inte bara meddelandetexten.
+  - Samtliga 203 enhetstester i hela testsviten passerar utan anmärkning (100%).
+
 ## [2026.10.20.1] - Utökad Avkodning för Inmarsat AERO: MDWXR Flygplatsväder (TAF), N66000-koordinater, PACEPOSREQ, REQPOS och UTC-Tidssynk
 - **Militära & Operativa Vädermeddelanden ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
   - Ny parser-regel `rule_mdwxr_weather_and_dispatch` för `#MDWXR` och `#WXR` meddelanden (Military Dispatch Weather Report).

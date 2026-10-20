@@ -2976,6 +2976,13 @@
                 }
             }
 
+            if (rawText && typeof rawText === 'string' && rawText.trim().startsWith('{')) {
+                try {
+                    const parsedJson = JSON.parse(rawText);
+                    rawText = JSON.stringify(parsedJson, null, 2);
+                } catch (e) {}
+            }
+
             // Separera ut eventuella HFDL-stationslistor (Hörd GS: ... / Lyssnar GS: ...)
             const allLines = parsedSummary.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
             const mainLines = [];
@@ -3606,11 +3613,36 @@
                 `;
             }
 
+            // Bestäm vad som visas som rådata: prioritera fullständigt rått JSON-paket från mottagaren
+            let candidateRaw = rawText;
+            const fullRawJson = alarm.raw_json || (alarm.metadata && alarm.metadata.raw_json) || alarm.raw_payload || (alarm.metadata && alarm.metadata.raw_payload);
+            if (fullRawJson) {
+                candidateRaw = fullRawJson;
+            }
+
+            let displayRaw = candidateRaw;
+            if (candidateRaw) {
+                if (typeof candidateRaw === 'object' && candidateRaw !== null) {
+                    try {
+                        displayRaw = JSON.stringify(candidateRaw, null, 2);
+                    } catch (e) {
+                        displayRaw = String(candidateRaw);
+                    }
+                } else if (typeof candidateRaw === 'string' && candidateRaw.trim().startsWith('{')) {
+                    try {
+                        const parsedObj = JSON.parse(candidateRaw);
+                        displayRaw = JSON.stringify(parsedObj, null, 2);
+                    } catch (e) {
+                        displayRaw = candidateRaw;
+                    }
+                }
+            }
+
             let rawActionBtn = '';
             let rawBoxHtml = '';
-            if (rawText) {
+            if (displayRaw) {
                 rawActionBtn = `<button type="button" class="btn-tech btn-raw" onclick="toggleRawData(this)" title="Visa eller dölj rådata">&lt;/&gt; Rådata</button>`;
-                rawBoxHtml = `<div class="raw-data-box" style="display: none;">${escapeHtml(rawText)}</div>`;
+                rawBoxHtml = `<div class="raw-data-box" style="display: none;">${escapeHtml(displayRaw)}</div>`;
             }
 
             // Rubrikextraktion

@@ -370,6 +370,22 @@ def parse_aero_frame(raw_data):
 
     b_rate = f"AERO-{channel}" if channel else 'AERO-ACARS'
 
+    try:
+        raw_json_str = json.dumps(raw_data, ensure_ascii=False)
+    except Exception:
+        raw_json_str = str(raw_data)
+
+    # Bygg fullständigt meddelande med hela det råa meddelandet i Rådata-sektionen.
+    # Om parsed_human redan innehåller en kort text-baserad Rådata-sektion, ersätt den med hela rå-JSON.
+    if '\nRådata:' in parsed_human:
+        main_summary = parsed_human.split('\nRådata:')[0].strip()
+        full_message = f"{main_summary}\nRådata: {raw_json_str}"
+    elif '| Rådata:' in parsed_human:
+        main_summary = parsed_human.split('| Rådata:')[0].strip()
+        full_message = f"{main_summary}\nRådata: {raw_json_str}"
+    else:
+        full_message = f"{parsed_human}\nRådata: {raw_json_str}"
+
     metadata = {
         'protocol': 'AERO',
         'bitrate': b_rate,
@@ -402,13 +418,16 @@ def parse_aero_frame(raw_data):
         'libacars': data.get('libacars'),
         'dst_airport': data.get('dst_airport'),
         'airline': airline_name or None,
-        'sdr_name': 'Inmarsat AERO'
+        'sdr_name': 'Inmarsat AERO',
+        'raw_json': raw_json_str,
+        'raw_payload': raw_data
     }
 
     return {
         'address': address,
-        'message': parsed_human,
+        'message': full_message,
         'raw_text': raw_text,
+        'raw_json': raw_json_str,
         'alias': alias,
         'flight': flight,
         'reg': tail,

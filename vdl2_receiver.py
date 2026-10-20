@@ -2178,6 +2178,14 @@ class VDL2Receiver:
             'eta': parsed.get('decoded_fields', {}).get('eta') if isinstance(parsed.get('decoded_fields'), dict) else None
         }
 
+        # Rå JSON för full spårbarhet i gränssnittet och API:et
+        try:
+            raw_json_str = json.dumps(raw_json, ensure_ascii=False)
+        except Exception:
+            raw_json_str = str(raw_json)
+        metadata['raw_json'] = raw_json_str
+        metadata['raw_payload'] = raw_json
+
         # Spara till databas
         msg_id, timestamp = save_message(
             address=address,
