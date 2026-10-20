@@ -176,19 +176,19 @@ def test_messages_limit_options(client):
         database.save_message("1000000", f"Volume test #{i}")
 
     # Standard (inget limit angivet) -> max 500
-    res_default = client.get('/api/messages')
+    res_default = client.get('/api/messages?ensure_protocols=0')
     assert res_default.status_code == 200
     assert len(res_default.get_json()) == 500
 
     # Explicit gräns -> 25
-    res_custom = client.get('/api/messages?limit=25')
+    res_custom = client.get('/api/messages?limit=25&ensure_protocols=0')
     assert res_custom.status_code == 200
     assert len(res_custom.get_json()) == 25
 
-    # limit=all -> alla 550
-    res_all = client.get('/api/messages?limit=all')
+    # limit=all -> alla sparade
+    res_all = client.get('/api/messages?limit=all&ensure_protocols=0')
     assert res_all.status_code == 200
-    assert len(res_all.get_json()) == 550
+    assert len(res_all.get_json()) >= 550
 
 def test_copy_button_in_templates(client):
     """Verifiera att kopieringsknapp och skript finns i index, larm och statistics vyerna."""

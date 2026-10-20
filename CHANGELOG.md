@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.20.1] - Utökad Avkodning för Inmarsat AERO: MDWXR Flygplatsväder (TAF), N66000-koordinater, PACEPOSREQ, REQPOS och UTC-Tidssynk
+- **Militära & Operativa Vädermeddelanden ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Ny parser-regel `rule_mdwxr_weather_and_dispatch` för `#MDWXR` och `#WXR` meddelanden (Military Dispatch Weather Report).
+  - Avkodar TAF/METAR flygplatsväder för baser och flygplatser (t.ex. `LTAG` Incirlik Air Base), inklusive vind (`VRB02KT`), förhållanden (`CAVOK`), temperatur (`T21C`) och lufttryck (`A3015` -> 1021 hPa / 30.15 inHg).
+  - Tolkar operativa instruktioner från driftledning till besättning (t.ex. `REQUEST PIREP AS MISSON PERMITS` -> "Begär pilotrapport (PIREP) så snart uppdraget tillåter").
+  - Extraherar flygplanscallsign (`RCH241` Reach / Air Mobility Command), färdplan (`JMZN2922C285`), destination och tidstämpel.
+- **Kompakta Inmarsat/ARINC Positionskoordinater ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py), [aero_receiver.py](file:///d:/antigravity/pager-monitor/aero_receiver.py))**:
+  - Fullständigt stöd för formatet `Nddmm[m], Wdddmm[m]` (t.ex. `N66000, W020000`).
+  - Beräknar exakta decimala koordinater (`66.0000, -20.0000`), formaterar texten med grader och minuter samt berikar metadata med `lat` och `lon`.
+  - Tänder automatiskt Leaflet-minikartorna i webbgränssnittet för dessa satellitpositioner.
+- **Korta Begäranden & UTC-Tidssynk ([acars_human_parser.py](file:///d:/antigravity/pager-monitor/acars_human_parser.py))**:
+  - Ny parser-regel `rule_acars_short_requests_and_sync` för standardiserade förfrågningar:
+    - `PACEPOSREQ` (Label 2F) -> "Begäran om positionsrapport (AOC Position Request)".
+    - `REQPOS` / `POSREQ` (Label 15) -> "Begäran om positionsrapport (REQPOS)".
+    - Label 52 med Inmarsat GES 13-siffrig tidssynk (`YYMMDDWHHMMSS`, t.ex. `2610202061500`) -> "Tidssynkronisering (UTC): 2026-10-20 (Tis) kl 06:15:00 UTC".
+- **Callsign & Alias-extraktion i Inmarsat AERO ([aero_receiver.py](file:///d:/antigravity/pager-monitor/aero_receiver.py))**:
+  - Extraherar callsign/flight och registrering direkt ur meddelandetexten när SatDump skickar tomma fält i mark-till-luft P-channel.
+  - Kopplar automatiskt callsigns till flygbolag (`RCH241` -> "Air Mobility Command", `DLH` -> "Lufthansa" etc.) och uppdaterar kolumnen ENHET / ALIAS.
+- **Tester ([tests/test_aero.py](file:///d:/antigravity/pager-monitor/tests/test_aero.py))**:
+  - 3 nya enhetstester för MDWXR vädertolkning, N66000 koordinater och Label 52 tidssynk.
+  - Samtliga 202 enhetstester i hela testsviten passerar utan fel.
+
 ## [2026.10.19.5] - libacars Kompilering i Docker och Ctypes-brygga för SatDump Inmarsat AERO
 - **libacars i Docker ([Dockerfile](file:///d:/antigravity/pager-monitor/Dockerfile))**:
   - Tillagt bygg- och kompilationssteg för `libacars` från `https://github.com/szpajder/libacars.git` i multi-stage builder (`cmake -DCMAKE_INSTALL_PREFIX=/usr/local -DCMAKE_INSTALL_LIBDIR=lib .. && make -j$(nproc) && make install`).

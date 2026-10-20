@@ -171,6 +171,24 @@ def extract_aero_coordinates(text):
         except (ValueError, TypeError):
             pass
 
+    # 4. Inmarsat / ARINC format med prefix N/S och E/W: "N66000, W020000" eller "N66000 W020000"
+    m_dm_comp = re.search(r'\b([NS])(\d{2})(\d{2,3})[,\s/]+([EW])(\d{3})(\d{2,3})\b', text, re.IGNORECASE)
+    if m_dm_comp:
+        try:
+            ns, lat_deg, lat_min_raw, ew, lon_deg, lon_min_raw = m_dm_comp.groups()
+            lat_min = int(lat_min_raw) / (10.0 if len(lat_min_raw) == 3 else 1.0)
+            lon_min = int(lon_min_raw) / (10.0 if len(lon_min_raw) == 3 else 1.0)
+            c_lat = int(lat_deg) + (lat_min / 60.0)
+            c_lon = int(lon_deg) + (lon_min / 60.0)
+            if ns.upper() == 'S':
+                c_lat = -c_lat
+            if ew.upper() == 'W':
+                c_lon = -c_lon
+            if -90 <= c_lat <= 90 and -180 <= c_lon <= 180 and not (c_lat == 0 and c_lon == 0):
+                return round(c_lat, 4), round(c_lon, 4)
+        except (ValueError, TypeError):
+            pass
+
     return None, None
 
 def parse_aero_frame(raw_data):
@@ -225,6 +243,32 @@ def parse_aero_frame(raw_data):
         return None
 
     label_desc = lookup_label(label)
+
+    # Extrahera flight eller tail ur raw_text om det saknas i paketstrukturen
+    if not flight and raw_text:
+        # 1. MDWXR militärt/operativt format: #MDWXR/ID00172A,RCH241,...
+        m_md = re.search(r'#(?:MD)?WXR/ID[A-Z0-9]+,([A-Z0-9]{3,8}),', raw_text, re.IGNORECASE)
+        if m_md:
+            flight = m_md.group(1).upper()
+        
+        # 2. FLIGHT / FLT taggar: FLIGHT SK903
+        if not flight:
+            m_flt = re.search(r'\b(?:FLIGHT|FLT)\s+([A-Z0-9]{3,8})\b', raw_text, re.IGNORECASE)
+            if m_flt:
+                flight = m_flt.group(1).upper()
+                
+        # 3. Kända callsign mönster (RCH, RRR, CFC, militära och vanliga civila)
+        if not flight:
+            m_cs = re.search(r'\b(RCH\d{2,4}|RRR\d{2,4}|CFC\d{2,4}|BAF\d{2,4}|GAF\d{2,4}|DLH\d{1,4}|SAS\d{1,4}|BAW\d{1,4}|SWR\d{1,4}|AFR\d{1,4}|KLM\d{1,4}|THY\d{1,4}|UAE\d{1,4}|QTR\d{1,4})\b', raw_text, re.IGNORECASE)
+            if m_cs:
+                flight = m_cs.group(1).upper()
+
+    if not tail and raw_text:
+        # ARINC 620 preamble: /YQXE2YA.CR1.D-AIGV...
+        m_tl = re.search(r'^/[A-Z0-9]{7}\.[A-Z0-9]{2,3}\.([A-Z0-9\-]{4,8})\b', raw_text)
+        if m_tl:
+            tail = m_tl.group(1).upper()
+
     airline_name = lookup_airline(flight) if flight else ""
 
     # Konstruera logisk adress och visningsalias
@@ -249,6 +293,8 @@ def parse_aero_frame(raw_data):
         alias = tail
     elif ges_name:
         alias = f"AERO / {ges_name}"
+    elif aes_str:
+        alias = f"Flygplan [{aes_str}]"
     else:
         alias = "Inmarsat Aero"
 
@@ -294,6 +340,18 @@ def parse_aero_frame(raw_data):
             parsed_human = f"Inmarsat Aero Signaleringspaket: {su_type}"
         else:
             parsed_human = "Inmarsat Aero signal mottagen"
+
+    # Om parsern extraherade flight, airline eller destination i data/metadata
+    if data.get('flight') and not flight:
+        flight = data['flight']
+        if not airline_name:
+            airline_name = data.get('airline') or lookup_airline(flight)
+        if flight and tail:
+            address = f"{flight} ({tail})"
+            alias = f"{airline_name} ({tail})" if airline_name else flight
+        else:
+            address = flight
+            alias = airline_name if airline_name else flight
 
     # Extrahera koordinater från parsed_human eller råtext
     lat, lon = extract_aero_coordinates(parsed_human)
@@ -342,6 +400,7 @@ def parse_aero_frame(raw_data):
         'eta': data.get('eta') if data.get('eta') is not None else (decoded_fields.get('eta') if decoded_fields else None),
         'decoded_fields': decoded_fields,
         'libacars': data.get('libacars'),
+        'dst_airport': data.get('dst_airport'),
         'airline': airline_name or None,
         'sdr_name': 'Inmarsat AERO'
     }

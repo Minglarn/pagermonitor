@@ -1714,6 +1714,164 @@ def rule_label_5u_weather_request(text: str, label: str = None, metadata: dict =
     return None
 
 
+def rule_mdwxr_weather_and_dispatch(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    Avkodar militära och operativa väder- och driftmeddelanden (#MDWXR / #WXR).
+    Exempel: . - #MDWXR/ID00172A,RCH241,JMZN2922C285/MR1,44/MTLTAG,0757,TAF LTAG 0757Z VRB02KT CAVOK T21C A3015 REQUEST PIREP AS MISSON PERMITSFC54
+    """
+    if not text:
+        return None
+    stripped = text.strip()
+    if '#MDWXR' not in stripped and '#WXR' not in stripped and '/MDWXR' not in stripped:
+        return None
+
+    m = re.search(
+        r'#(?:MD)?WXR/ID(?P<msg_id>[A-Z0-9]+),(?P<callsign>[A-Z0-9]+)(?:,(?P<plan_id>[A-Z0-9]+))?(?:/MR[^/,]+,\d+)?(?:/MT(?P<target_ap>[A-Z]{4})(?:,(?P<target_time>\d{4}))?)?,?(?P<payload>.*)',
+        stripped,
+        re.IGNORECASE
+    )
+    if not m:
+        return None
+
+    msg_id = m.group('msg_id').upper()
+    callsign = m.group('callsign').upper()
+    flight_plan = (m.group('plan_id') or '').upper()
+    target_ap = (m.group('target_ap') or '').upper()
+    target_time = m.group('target_time') or ''
+    payload = (m.group('payload') or '').strip()
+    payload_clean = re.sub(r'[A-F0-9]{4}$', '', payload).strip()
+
+    airline = lookup_airline(callsign) if callsign else ''
+    ap_name = format_airport(target_ap) if target_ap else ''
+
+    wx_type = 'Flygplatsväder (TAF)' if 'TAF' in payload_clean.upper() else ('Väderrapport (METAR)' if 'METAR' in payload_clean.upper() else 'Väderrapport')
+
+    lines = [f"{wx_type} & Driftmeddelande"]
+    header_parts = []
+    if target_ap:
+        header_parts.append(f"Flygplats: {ap_name or target_ap}")
+    if target_time and len(target_time) == 4:
+        header_parts.append(f"Tid: {target_time[:2]}:{target_time[2:]} UTC")
+    if header_parts:
+        lines.append("   ".join(header_parts))
+
+    ac_parts = []
+    if callsign:
+        ac_parts.append(f"Flight: {callsign}" + (f" ({airline})" if airline else ""))
+    if flight_plan:
+        ac_parts.append(f"Färdplan: {flight_plan}")
+    if ac_parts:
+        lines.append("   ".join(ac_parts))
+
+    m_wx = re.search(r'((?:TAF|METAR)?\s*[A-Z]{4}\s+\d{4}Z?\s+[^\n]+?)(?:\s+(REQUEST\s+PIREP[^\n]*|\bPIREP\b[^\n]*))?$', payload_clean, re.IGNORECASE)
+    wx_raw_str = payload_clean
+    instruction = ''
+    if m_wx:
+        wx_raw_str = (m_wx.group(1) or '').strip()
+        instruction = (m_wx.group(2) or '').strip()
+
+    if wx_raw_str:
+        lines.append(f"Väder: {wx_raw_str}")
+        details = []
+        m_wind = re.search(r'\b(VRB|\d{3})(\d{2,3})(?:G(\d{2,3}))?KT\b', wx_raw_str)
+        if m_wind:
+            wdir, wspd, wgust = m_wind.groups()
+            gust_str = f" byar {wgust} kt" if wgust else ""
+            if wdir == 'VRB':
+                details.append(f"Vind: Varierande {int(wspd)} kt{gust_str}")
+            else:
+                details.append(f"Vind: {wdir}° / {int(wspd)} kt{gust_str}")
+
+        if 'CAVOK' in wx_raw_str:
+            details.append("Sikt: CAVOK (God sikt, molnfritt)")
+
+        m_temp = re.search(r'\bT(-?\d+)C\b', wx_raw_str)
+        if m_temp:
+            details.append(f"Temperatur: {m_temp.group(1)} C")
+
+        m_alt = re.search(r'\bA(\d{4})\b', wx_raw_str)
+        if m_alt:
+            a_val = m_alt.group(1)
+            inhg = f"{a_val[:2]}.{a_val[2:]}"
+            try:
+                hpa = round(float(inhg) * 33.8639)
+                details.append(f"Lufttryck: {hpa} hPa ({inhg} inHg)")
+            except Exception:
+                pass
+        else:
+            m_qnh = re.search(r'\bQ(\d{4})\b', wx_raw_str)
+            if m_qnh:
+                details.append(f"Lufttryck: {m_qnh.group(1)} hPa")
+
+        if details:
+            lines.append("  - " + "   ".join(details))
+
+    if instruction:
+        instr_se = instruction
+        if 'REQUEST PIREP' in instruction.upper():
+            if 'MISSON PERMITS' in instruction.upper() or 'MISSION PERMITS' in instruction.upper():
+                instr_se = "Begär pilotrapport (PIREP) så snart uppdraget tillåter"
+            else:
+                instr_se = "Begär pilotrapport (PIREP)"
+        lines.append(f"Instruktion: {instr_se}")
+
+    if isinstance(metadata, dict):
+        if callsign and not metadata.get('flight'):
+            metadata['flight'] = callsign
+        if airline and not metadata.get('airline'):
+            metadata['airline'] = airline
+        if target_ap and not metadata.get('dst_airport'):
+            metadata['dst_airport'] = target_ap
+        if target_time and len(target_time) == 4 and not metadata.get('time'):
+            metadata['time'] = f"{target_time[:2]}:{target_time[2:]} UTC"
+
+    return "\n".join(lines)
+
+
+def rule_acars_short_requests_and_sync(text: str, label: str = None, metadata: dict = None) -> str:
+    """
+    Tolkar korta standardförfrågningar och synkroniseringar (PACEPOSREQ, REQPOS, Ground UTC sync etc.).
+    """
+    if not text:
+        return None
+    stripped = text.strip()
+    lbl = (label or '').strip().upper()
+
+    # 1. PACEPOSREQ / AOC Position Request (Label 2F m.fl.)
+    if stripped == 'PACEPOSREQ' or 'PACEPOSREQ' in stripped:
+        return "Begäran om positionsrapport (AOC Position Request)"
+
+    # 2. REQPOS / POSREQ (Label 15, POS, H1 m.fl.)
+    if stripped in ('REQPOS', 'POSREQ', 'REQ POS', 'POS REQ') or stripped.startswith('REQPOS'):
+        return "Begäran om positionsrapport (REQPOS)"
+
+    # 3. Label 52: Ground UTC Request / Time Synchronisation (t.ex. 2610202061500)
+    if lbl == '52' or (len(stripped) in (12, 13, 14) and stripped.isdigit()):
+        if len(stripped) == 13:
+            # Format: YY MM DD W HH MM SS (W = veckodag 1-7)
+            yy, mm, dd, dow, hh, mi, ss = stripped[0:2], stripped[2:4], stripped[4:6], stripped[6], stripped[7:9], stripped[9:11], stripped[11:13]
+            days = {'1': 'Mån', '2': 'Tis', '3': 'Ons', '4': 'Tor', '5': 'Fre', '6': 'Lör', '7': 'Sön'}
+            d_name = days.get(dow, '')
+            day_str = f" ({d_name})" if d_name else ""
+            if isinstance(metadata, dict) and not metadata.get('time'):
+                metadata['time'] = f"{hh}:{mi}:{ss} UTC"
+            return f"Tidssynkronisering (UTC): 20{yy}-{mm}-{dd}{day_str} kl {hh}:{mi}:{ss} UTC"
+        elif len(stripped) == 12:
+            # Format: YY MM DD HH MM SS
+            yy, mm, dd, hh, mi, ss = stripped[0:2], stripped[2:4], stripped[4:6], stripped[6:8], stripped[8:10], stripped[10:12]
+            if isinstance(metadata, dict) and not metadata.get('time'):
+                metadata['time'] = f"{hh}:{mi}:{ss} UTC"
+            return f"Tidssynkronisering (UTC): 20{yy}-{mm}-{dd} kl {hh}:{mi}:{ss} UTC"
+        elif len(stripped) == 14:
+            # Format: YYYY MM DD HH MM SS
+            yyyy, mm, dd, hh, mi, ss = stripped[0:4], stripped[4:6], stripped[6:8], stripped[8:10], stripped[10:12], stripped[12:14]
+            if isinstance(metadata, dict) and not metadata.get('time'):
+                metadata['time'] = f"{hh}:{mi}:{ss} UTC"
+            return f"Tidssynkronisering (UTC): {yyyy}-{mm}-{dd} kl {hh}:{mi}:{ss} UTC"
+
+    return None
+
+
 def rule_label_q0_link_test(text: str, label: str = None, metadata: dict = None) -> str:
     """Label Q0: Länktest (Link Test Ping)."""
     stripped = text.strip()
@@ -3076,15 +3234,62 @@ def rule_label_10_through_22_pos(text: str, label: str = None, metadata: dict = 
     stripped = text.strip()
     lbl = (label or '').upper()
 
-    # Exempel: 191331,37012,1946, 74,N 56.955 E 17.322
+    # 1. Kompakt format Nddmm[m], Wdddmm[m] (t.ex. N66000, W020000 eller N66000 W020000)
+    m_dm_comp = re.search(r'\b([NS])(\d{2})(\d{2,3})[,\s/]+([EW])(\d{3})(\d{2,3})\b', stripped, re.IGNORECASE)
+    if m_dm_comp:
+        try:
+            ns, lat_deg, lat_min_raw, ew, lon_deg, lon_min_raw = m_dm_comp.groups()
+            lat_min = int(lat_min_raw) / (10.0 if len(lat_min_raw) == 3 else 1.0)
+            lon_min = int(lon_min_raw) / (10.0 if len(lon_min_raw) == 3 else 1.0)
+            lat = int(lat_deg) + (lat_min / 60.0)
+            lon = int(lon_deg) + (lon_min / 60.0)
+            if ns.upper() == 'S':
+                lat = -lat
+            if ew.upper() == 'W':
+                lon = -lon
+            f_lat = round(lat, 4)
+            f_lon = round(lon, 4)
+            if isinstance(metadata, dict):
+                metadata['lat'] = f_lat
+                metadata['lon'] = f_lon
+
+            alt_match = re.search(r'\b(?:FL|ALT)?\s*(\d{4,5})\b', stripped)
+            alt_part = ""
+            if alt_match:
+                alt_val = int(alt_match.group(1))
+                if isinstance(metadata, dict) and not metadata.get('alt_ft'):
+                    metadata['alt_ft'] = alt_val
+                fl = round(alt_val / 100)
+                alt_part = f"   Höjd: FL{fl} ({alt_val} ft)"
+
+            return f"Positionsrapport: Position: {f_lat:.4f}, {f_lon:.4f} ({ns.upper()} {lat_deg}°{lat_min:04.1f}', {ew.upper()} {lon_deg}°{lon_min:04.1f}'){alt_part}"
+        except Exception:
+            pass
+
+    # 2. Exempel: 191331,37012,1946, 74,N 56.955 E 17.322
     m_pos = re.search(r'([NS]\s*\d+\.?\d*)\s*([EW]\s*\d+\.?\d*)', stripped, re.IGNORECASE)
     if m_pos and (lbl in ('10', '15', '16', '20', '21', '22', 'POS') or ',' in stripped):
         lat_txt = m_pos.group(1).strip()
         lon_txt = m_pos.group(2).strip()
+
+        # Försök beräkna decimala koordinater
+        m_dec = re.search(r'([NS])\s*(\d+\.?\d*)\s*([EW])\s*(\d+\.?\d*)', stripped, re.IGNORECASE)
+        if m_dec and isinstance(metadata, dict):
+            try:
+                ns, l1, ew, l2 = m_dec.groups()
+                lat_v = float(l1) * (-1 if ns.upper() == 'S' else 1)
+                lon_v = float(l2) * (-1 if ew.upper() == 'W' else 1)
+                metadata['lat'] = round(lat_v, 4)
+                metadata['lon'] = round(lon_v, 4)
+            except Exception:
+                pass
+
         # Försök hitta altitud
         alt_match = re.search(r'\b(\d{4,5})\b', stripped)
         if alt_match:
             alt_val = int(alt_match.group(1))
+            if isinstance(metadata, dict) and not metadata.get('alt_ft'):
+                metadata['alt_ft'] = alt_val
             fl = round(alt_val / 100)
             alt_part = f"   Höjd: FL{fl} ({alt_val} ft)"
         else:
@@ -3194,6 +3399,8 @@ def rule_h1_h2_df_fallback(text: str, label: str = None, metadata: dict = None) 
 # Lista av regler som exekveras i prioritetsordning
 PARSER_RULES = [
     rule_libacars_structured,
+    rule_mdwxr_weather_and_dispatch,
+    rule_acars_short_requests_and_sync,
     rule_fm_flight_report,
     rule_airbus_ecam_warning,
     rule_airbus_fault_report,

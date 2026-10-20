@@ -166,5 +166,78 @@ class TestAeroReceiver(unittest.TestCase):
         self.assertEqual(st.get('aero_port'), '6559')
         self.assertEqual(st.get('aero_enabled'), 'true')
 
+    def test_parse_mdwxr_weather_and_dispatch(self):
+        """Verifiera tolkning av #MDWXR vädermeddelande och callsign-extraktion (Reach / US Air Force)."""
+        raw_frame = {
+            "station": "SatDump",
+            "freq": 1545150000,
+            "channel": "P-Channel",
+            "ges_id": 5,
+            "acars": {
+                "label": "H1",
+                "message": ". - #MDWXR/ID00172A,RCH241,JMZN2922C285/MR1,44/MTLTAG,0757,TAF LTAG 0757Z VRB02KT CAVOK T21C A3015 REQUEST PIREP AS MISSON PERMITSFC54"
+            }
+        }
+        parsed = parse_aero_frame(raw_frame)
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed['flight'], 'RCH241')
+        self.assertEqual(parsed['airline'], 'Air Mobility Command')
+        self.assertEqual(parsed['address'], 'RCH241')
+        self.assertEqual(parsed['alias'], 'Air Mobility Command')
+        self.assertIn("Flygplatsväder (TAF)", parsed['message'])
+        self.assertIn("LTAG", parsed['message'])
+        self.assertIn("07:57 UTC", parsed['message'])
+        self.assertIn("RCH241", parsed['message'])
+        self.assertIn("JMZN2922C285", parsed['message'])
+        self.assertIn("CAVOK", parsed['message'])
+        self.assertIn("21 C", parsed['message'])
+        self.assertIn("Begär pilotrapport (PIREP)", parsed['message'])
+        self.assertEqual(parsed['metadata']['dst_airport'], 'LTAG')
+
+    def test_parse_n66000_w020000_position(self):
+        """Verifiera att kompakta Inmarsat-koordinater (N66000, W020000) beräknas och sätts i lat/lon."""
+        raw_frame = {
+            "station": "SatDump",
+            "freq": 1545150000,
+            "channel": "P-Channel",
+            "ges_id": 5,
+            "acars": {
+                "label": "H1",
+                "message": "N66000, W020000"
+            }
+        }
+        parsed = parse_aero_frame(raw_frame)
+        self.assertIsNotNone(parsed)
+        self.assertIsNotNone(parsed['lat'])
+        self.assertIsNotNone(parsed['lon'])
+        self.assertEqual(parsed['lat'], 66.0)
+        self.assertEqual(parsed['lon'], -20.0)
+        self.assertIn("Position: 66.0000, -20.0000", parsed['message'])
+
+    def test_parse_short_requests_and_time_sync(self):
+        """Verifiera tolkning av PACEPOSREQ, REQPOS och Label 52 UTC-tidssynk."""
+        # 1. PACEPOSREQ (Label 2F)
+        p1 = parse_aero_frame({
+            "station": "SatDump",
+            "acars": {"label": "2F", "message": "PACEPOSREQ"}
+        })
+        self.assertIn("Begäran om positionsrapport (AOC Position Request)", p1['message'])
+
+        # 2. REQPOS (Label 15)
+        p2 = parse_aero_frame({
+            "station": "SatDump",
+            "acars": {"label": "15", "message": "REQPOS"}
+        })
+        self.assertIn("Begäran om positionsrapport (REQPOS)", p2['message'])
+
+        # 3. Label 52 UTC Time Synchronisation (2610202061500 -> 2026-10-20 kl 06:15:00 UTC)
+        p3 = parse_aero_frame({
+            "station": "SatDump",
+            "acars": {"label": "52", "message": "2610202061500"}
+        })
+        self.assertIn("Tidssynkronisering (UTC)", p3['message'])
+        self.assertIn("2026-10-20", p3['message'])
+        self.assertIn("06:15:00 UTC", p3['message'])
+
 if __name__ == '__main__':
     unittest.main()
