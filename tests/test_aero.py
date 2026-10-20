@@ -282,5 +282,16 @@ class TestAeroReceiver(unittest.TestCase):
         self.assertIn('raw_payload', parsed['metadata'])
         self.assertEqual(parsed['metadata']['raw_payload'], raw_frame)
 
+        # STRIKT KRAV: Rådata får INTE innehålla några interna parsade fält
+        self.assertNotIn('libacars', raw_obj)
+        self.assertNotIn('decoded_fields', raw_obj)
+        self.assertNotIn('arinc622', raw_obj)
+        self.assertNotIn('airline', raw_obj)
+        if 'acars' in raw_obj and isinstance(raw_obj['acars'], dict):
+            self.assertNotIn('libacars', raw_obj['acars'])
+            self.assertNotIn('decoded_fields', raw_obj['acars'])
+            self.assertNotIn('arinc622', raw_obj['acars'])
+            self.assertNotIn('airline', raw_obj['acars'])
+
 if __name__ == '__main__':
     unittest.main()

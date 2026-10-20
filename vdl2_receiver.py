@@ -2178,13 +2178,20 @@ class VDL2Receiver:
             'eta': parsed.get('decoded_fields', {}).get('eta') if isinstance(parsed.get('decoded_fields'), dict) else None
         }
 
-        # Rå JSON för full spårbarhet i gränssnittet och API:et
+        # Rå JSON för full spårbarhet i gränssnittet och API:et (utan interna parsade fält)
+        import copy
+        clean_raw = copy.deepcopy(raw_json)
+        acars_obj = clean_raw.get('vdl2', {}).get('avlc', {}).get('acars') if isinstance(clean_raw, dict) and isinstance(clean_raw.get('vdl2'), dict) and isinstance(clean_raw['vdl2'].get('avlc'), dict) else None
+        for target in (clean_raw, acars_obj):
+            if isinstance(target, dict):
+                for k in ('libacars', 'arinc622', 'decoded_fields', 'airline', 'dst_airport', 'parsed_human', 'parsed_summary'):
+                    target.pop(k, None)
         try:
-            raw_json_str = json.dumps(raw_json, ensure_ascii=False)
+            raw_json_str = json.dumps(clean_raw, ensure_ascii=False)
         except Exception:
-            raw_json_str = str(raw_json)
+            raw_json_str = str(clean_raw)
         metadata['raw_json'] = raw_json_str
-        metadata['raw_payload'] = raw_json
+        metadata['raw_payload'] = clean_raw
 
         # Spara till databas
         msg_id, timestamp = save_message(

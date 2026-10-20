@@ -1036,6 +1036,33 @@
             }
         };
 
+        function sanitizeRawData(rawObj) {
+            if (!rawObj || typeof rawObj !== 'object') return rawObj;
+            const clean = Array.isArray(rawObj) ? [...rawObj] : Object.assign({}, rawObj);
+            delete clean.decoded_fields;
+            delete clean.libacars;
+            delete clean.arinc622;
+            delete clean.parsed_human;
+            delete clean.parsed_summary;
+            delete clean.airline;
+            delete clean.dst_airport;
+            delete clean.coord_badge;
+            delete clean.raw_json;
+            delete clean.raw_payload;
+            if (clean.acars && typeof clean.acars === 'object') {
+                clean.acars = Object.assign({}, clean.acars);
+                delete clean.acars.decoded_fields;
+                delete clean.acars.libacars;
+                delete clean.acars.arinc622;
+                delete clean.acars.parsed_human;
+                delete clean.acars.parsed_summary;
+                delete clean.acars.airline;
+                delete clean.acars.dst_airport;
+                delete clean.acars.coord_badge;
+            }
+            return clean;
+        }
+
         window.toggleRawData = function(btn) {
             if (!btn) return;
             const msgCell = btn.closest('.msg-cell');
@@ -1917,14 +1944,16 @@
             if (candidateRaw) {
                 if (typeof candidateRaw === 'object' && candidateRaw !== null) {
                     try {
-                        displayRaw = JSON.stringify(candidateRaw, null, 2);
+                        const cleanObj = sanitizeRawData(candidateRaw);
+                        displayRaw = JSON.stringify(cleanObj, null, 2);
                     } catch (e) {
                         displayRaw = String(candidateRaw);
                     }
                 } else if (typeof candidateRaw === 'string' && candidateRaw.trim().startsWith('{')) {
                     try {
                         const parsedObj = JSON.parse(candidateRaw);
-                        displayRaw = JSON.stringify(parsedObj, null, 2);
+                        const cleanObj = sanitizeRawData(parsedObj);
+                        displayRaw = JSON.stringify(cleanObj, null, 2);
                     } catch (e) {
                         displayRaw = candidateRaw;
                     }

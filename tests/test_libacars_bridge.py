@@ -126,8 +126,9 @@ class TestLibacarsBridge(unittest.TestCase):
         self.assertEqual(calls[0][0], "CR")
         self.assertIn("204993E8E1DAA3600F5B", calls[0][1])
 
-        # Kontrollera att libacars sparades i paketet och i metadata
-        self.assertIn('libacars', raw_satdump_frame['acars'])
+        # Kontrollera att rådatan inte förorenas av libacars, men att metadata har det
+        self.assertNotIn('libacars', raw_satdump_frame['acars'])
+        self.assertNotIn('libacars', parsed['metadata']['raw_payload'].get('acars', {}))
         self.assertEqual(parsed['metadata']['libacars'], mock_tree)
 
         # Kontrollera att koordinater sattes

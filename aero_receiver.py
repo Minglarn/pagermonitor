@@ -5,6 +5,7 @@ import time
 import logging
 import re
 import os
+import copy
 from datetime import datetime
 from database import (
     save_message, get_alias_info, check_alert_words, 
@@ -199,8 +200,16 @@ def parse_aero_frame(raw_data):
     if not isinstance(raw_data, dict):
         return None
 
-    # Stöd för inbäddat {"acars": { ... }} eller direkt objekt
-    data = raw_data.get('acars', raw_data)
+    # Bevara en 100% ren och oförvanskad kopia av inkommande rådata utan våra egna parsade fält
+    clean_raw = copy.deepcopy(raw_data)
+    for target in (clean_raw, clean_raw.get('acars') if isinstance(clean_raw, dict) else None):
+        if isinstance(target, dict):
+            for k in ('libacars', 'arinc622', 'decoded_fields', 'airline', 'dst_airport', 'parsed_human', 'parsed_summary'):
+                target.pop(k, None)
+
+    # Använd en separat arbetskopia för intern bearbetning och berikning så att inkommande raw_data ALDRIG muteras in-place
+    work_payload = copy.deepcopy(raw_data)
+    data = work_payload.get('acars', work_payload)
     if not isinstance(data, dict):
         return None
 
@@ -370,12 +379,19 @@ def parse_aero_frame(raw_data):
 
     b_rate = f"AERO-{channel}" if channel else 'AERO-ACARS'
 
-    try:
-        raw_json_str = json.dumps(raw_data, ensure_ascii=False)
-    except Exception:
-        raw_json_str = str(raw_data)
+    # Skapa en 100% ren kopia av det ursprungliga rådatameddelandet utan våra egna parsade fält
+    clean_raw = copy.deepcopy(raw_data)
+    for target in (clean_raw, clean_raw.get('acars') if isinstance(clean_raw, dict) else None):
+        if isinstance(target, dict):
+            for k in ('libacars', 'arinc622', 'decoded_fields', 'airline', 'dst_airport', 'parsed_human', 'parsed_summary'):
+                target.pop(k, None)
 
-    # Bygg fullständigt meddelande med hela det råa meddelandet i Rådata-sektionen.
+    try:
+        raw_json_str = json.dumps(clean_raw, ensure_ascii=False)
+    except Exception:
+        raw_json_str = str(clean_raw)
+
+    # Bygg fullständigt meddelande med hela det rena råmeddelandet i Rådata-sektionen.
     # Om parsed_human redan innehåller en kort text-baserad Rådata-sektion, ersätt den med hela rå-JSON.
     if '\nRådata:' in parsed_human:
         main_summary = parsed_human.split('\nRådata:')[0].strip()
@@ -420,7 +436,7 @@ def parse_aero_frame(raw_data):
         'airline': airline_name or None,
         'sdr_name': 'Inmarsat AERO',
         'raw_json': raw_json_str,
-        'raw_payload': raw_data
+        'raw_payload': clean_raw
     }
 
     return {

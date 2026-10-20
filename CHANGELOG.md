@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.20.3] - Strikt Isolering av Autentisk Rådata utan Interna Parsade Fält
+- **Autentisk och Ren Rådata ([aero_receiver.py](file:///d:/antigravity/pager-monitor/aero_receiver.py), [acars_receiver.py](file:///d:/antigravity/pager-monitor/acars_receiver.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Garanterat att fältet och knappen "Rådata" uteslutande innehåller det ursprungliga, omodifierade inkommande rådatameddelandet från mottagarna (SatDump, JAERO, dumpvdl2, acarsdec).
+  - Våra interna berikningar och parsade fält (`libacars`, `arinc622`, `decoded_fields`, `airline`, `dst_airport`, `parsed_human`, `parsed_summary`) separeras helt och hållet från rådatan.
+  - Förhindrat in-place mutering av inkommande dict-objekt i mottagarna genom att skapa en djupkopierad ren rådataram (`clean_raw`) innan intern bearbetning sker i ett separat arbetsminne (`work_payload`).
+- **Sanering och Skydd i Webbgränssnittet ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Implementerat klientsidesfunktionen `sanitizeRawData(rawObj)` som automatiskt säkerställer att varken berikade eller parsade understrukturer visas i rådatavyn, även om äldre sparade meddelanden skulle innehålla dem.
+  - Formaterar ren, autentisk rådata som snyggt indragen JSON.
+- **Tester ([tests/test_aero.py](file:///d:/antigravity/pager-monitor/tests/test_aero.py), [tests/test_libacars_bridge.py](file:///d:/antigravity/pager-monitor/tests/test_libacars_bridge.py))**:
+  - Tester uppdaterade och utökade med strikta kontroller (`assertNotIn`) som verifierar att varken rådata eller inkommande paket muteras eller innehåller interna fält som `libacars` och `decoded_fields`.
+  - Samtliga 203 enhetstester i hela testsviten passerar utan anmärkning (100%).
+
 ## [2026.10.20.2] - Fullständig Rådata och Pretty-Printad JSON bakom Rådata-knappen
 - **Fullständigt Råmeddelande bakom Rådata-knappen ([aero_receiver.py](file:///d:/antigravity/pager-monitor/aero_receiver.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py), [acars_receiver.py](file:///d:/antigravity/pager-monitor/acars_receiver.py))**:
   - Åtgärdat att knappen `</> Rådata` tidigare endast visade textsträngen i meddelandet istället för det kompletta inkommande paketet.

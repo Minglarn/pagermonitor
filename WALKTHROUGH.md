@@ -1,13 +1,29 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.20.2`
+- **CalVer**: `2026.10.20.3`
 - **Date**: 2026-10-20
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000016. Strikt Isolering av Autentisk Rådata utan Interna Parsade Fält (v2026.10.20.3)
+- **Kärnkrav & Bakgrund**:
+  - Användarkrav: *"Rå data får inte innehålla vårat parsade fält, endast rådata meddelandet skall visas."*
+  - När knappen `</> Rådata` expanderades fanns det risk att våra interna berikningar och parsade fält (`libacars`, `arinc622`, `decoded_fields`, `airline`, `dst_airport`, `parsed_human`, `parsed_summary`) följde med om inkommande payload muterades under analysprocessen.
+- **Teknisk Lösning i Backend ([aero_receiver.py](file:///d:/antigravity/pager-monitor/aero_receiver.py), [acars_receiver.py](file:///d:/antigravity/pager-monitor/acars_receiver.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
+  - Vid mottagning av ett rått paket (från SatDump, JAERO, dumpvdl2 eller acarsdec) skapas en oberoende djupkopia (`clean_raw = copy.deepcopy(raw_data)`).
+  - En rekursiv saneringsrutin tar bort eventuella interna berikningsfält så att rådatan förblir 100% autentisk och speglar exakt vad som anlände från radiomottagaren.
+  - Den interna avkodningen, positionsberäkningen och metadata-berikningen utförs i ett separat arbetsminne (`work_payload = copy.deepcopy(raw_data)`) så att inkommande orörda rådata aldrig muteras in-place.
+  - Både `raw_json_str`, `metadata['raw_json']`, `metadata['raw_payload']` och `\nRådata:`-sektionen i larmet skapas nu uteslutande från `clean_raw`.
+- **Skydd i Frontend ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Skapat hjälpfunktionen `sanitizeRawData(rawObj)` i webbgränssnittet som säkerställer att inte ens historiska poster eller sparade databaspaket som tidigare kan ha muterats visar interna fält i rådatavyn.
+  - Rådata formateras som ren, indragen JSON med 2 blanksteg.
+- **Kvalitetssäkring & Tester ([tests/test_aero.py](file:///d:/antigravity/pager-monitor/tests/test_aero.py), [tests/test_libacars_bridge.py](file:///d:/antigravity/pager-monitor/tests/test_libacars_bridge.py))**:
+  - Tester uppdaterade och utökade med strikta `assertNotIn`-kontroller för att bekräfta att varken rådata eller indata-objekt innehåller interna fält.
+  - Samtliga 203 enhetstester i hela testsviten passerar felfritt (100%).
 
 ### 000015. Fullständig Rådata och Pretty-Printad JSON bakom Rådata-knappen (v2026.10.20.2)
 - **Kärnkrav & Bakgrund**:

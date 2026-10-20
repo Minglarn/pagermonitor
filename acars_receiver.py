@@ -5,6 +5,7 @@ import time
 import logging
 import re
 import os
+import copy
 from datetime import datetime
 from database import (
     save_message, get_alias_info, check_alert_words, 
@@ -188,10 +189,17 @@ def parse_acars_message(raw_data):
             lat = decoded_fields['lat']
             lon = decoded_fields['lon']
 
+    # Skapa en 100% ren kopia av det ursprungliga rådatameddelandet utan våra egna parsade fält
+    clean_raw = copy.deepcopy(raw_data)
+    for target in (clean_raw, clean_raw.get('acars') if isinstance(clean_raw, dict) else None):
+        if isinstance(target, dict):
+            for k in ('libacars', 'arinc622', 'decoded_fields', 'airline', 'dst_airport', 'parsed_human', 'parsed_summary'):
+                target.pop(k, None)
+
     try:
-        raw_json_str = json.dumps(raw_data, ensure_ascii=False)
+        raw_json_str = json.dumps(clean_raw, ensure_ascii=False)
     except Exception:
-        raw_json_str = str(raw_data)
+        raw_json_str = str(clean_raw)
 
     metadata = {
         'protocol': 'ACARS',
@@ -221,7 +229,7 @@ def parse_acars_message(raw_data):
         'airline': airline_name or None,
         'sdr_name': 'VHF-ACARS',
         'raw_json': raw_json_str,
-        'raw_payload': raw_data
+        'raw_payload': clean_raw
     }
 
     return {
