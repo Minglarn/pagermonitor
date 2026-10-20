@@ -1,13 +1,38 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.20.9`
+- **CalVer**: `2026.10.20.10`
 - **Date**: 2026-10-20
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000023. Bygg om Dropdown-filtren för Server-Side Processing (SSP) (v2026.10.20.10)
+- **Kärnkrav & Bakgrund**:
+  - Efter övergången till Server-Side Processing (SSP) i `#alarmsTable` visade dropdown-filtren (som "Alla protokoll", "Alla frekvenser", "Alla Labels" och "Alla flygplatser") felaktiga siffror och saknade flera protokoll helt (t.ex. SONDE saknades och POCSAG visade 0).
+  - Orsaken var att frontend-skriptet tidigare försökte bygga filtren genom att loopa igenom `allAlarms`, som i SSP endast innehöll de 25-50 rader som var renderade på den aktuella sidan i DOM:en, istället för hela databasen.
+  - Lösning: Koppla loss filter-genereringen helt från DataTables-innehållet och låt backend förse gränssnittet med korrekt och fullständig filterdata via en ny snabb endpoint.
+- **Backend: Filterstatistik-endpoint ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Skapat endpointen `GET /api/alarms/filters` och alias `GET /api/messages/filters`.
+  - Implementerat `database.get_filter_stats(alerts_only=False, force=False)`:
+    - **Protokoll**: Blixtsnabb grupperad SQL-fråga med `CASE ...` som mappar bitrate/adress till `POCSAG`, `VDL2`, `ACARS`, `AERO`, `HFDL`, `SATC`, `SONDE`, `TETRA`, `RDS`, `AFSK` på ~10 ms för hela databasen.
+    - **Frekvenser**: Grupperad SQL-fråga över aktiva frekvenser, sorterad fallande efter antal händelser.
+    - **ACARS/VDL2 Labels & Flygplatser**: Snabb scanning och avkodning av metadata för VDL2, ACARS och AERO som extraherar unika labels (H1, B9, 38 etc.), flygplatser (ESSA, ESDF, ESSL etc.) och pilotmeddelanden.
+    - **In-memory cache**: Resultatet sparas med en 15 sekunders TTL så att upprepade anrop svarar omedelbart (0 ms). Invalideras automatiskt vid databasrensning, prune och borttagning av dubbletter via `invalidate_filter_stats_cache()`.
+    - Returnerar strukturerad JSON:
+      `{ "status": "success", "protocols": { ... }, "frequencies": { ... }, "labels": { ... }, "airports": { ... }, "pilot_messages": ... }`
+- **Frontend: Fristående filterpopulering via AJAX ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Skapat `serverFilterStats` och funktionen `loadFilterData(force = false)` som gör `fetch('/api/alarms/filters')` vid sidstart och sparar ner databasens totaler.
+  - Skrivit om `populateFilterDropdowns()` så att den utgår från `serverFilterStats` istället för `allAlarms`.
+  - Samtliga protokoll och frekvenser visas nu i dropdown-menyerna med sina faktiska databastotaler (t.ex. POCSAG med 74, SONDE med 288, VDL2 med 3743 osv.).
+  - Vid filterklick eller avmarkering uppdateras knapptexten och filterchips, och DataTables gör ett serveranrop för den valda datamängden.
+  - `scheduleDropdownRefresh(delay = 1000)` är debouncad och anropar `loadFilterData()` för att hålla siffrorna uppdaterade vid inkommande larm.
+- **Kvalitetssäkring & Verifiering ([tests/test_datatable_ssp.py](file:///d:/antigravity/pager-monitor/tests/test_datatable_ssp.py))**:
+  - Skapat enhetstester `test_filter_stats_endpoint_basic`, `test_filter_stats_alerts_only` och `test_frontend_filter_data_loader`.
+  - Verifierat i webbläsaren med `browser_subagent` och skärmdumpar att protokoll-dropdownen och frekvens-dropdownen visar korrekta siffror och att filtrering fungerar smidigt.
+  - Samtliga 226 tester i testsviten är 100% godkända. Strikt förbud mot emojis efterlevt på hela webbplatsen.
 
 ### 000022. Återställning till sida 1 vid filterbyte, smart historikhantering och fix för svarta minikartor (v2026.10.20.9)
 - **Kärnkrav & Bakgrund**:

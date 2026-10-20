@@ -3,6 +3,7 @@ import os
 import re
 import time
 import logging
+import json
 from datetime import datetime, date
 
 logger = logging.getLogger(__name__)
@@ -1448,6 +1449,7 @@ def invalidate_database_stats_cache():
     global _stats_cache
     _stats_cache['timestamp'] = 0.0
     _stats_cache['data'] = None
+    invalidate_filter_stats_cache()
 
 def _calculate_database_stats():
     conn = get_connection()
@@ -1567,4 +1569,159 @@ def get_database_stats(force=False):
                 time.sleep(0.15 * (attempt + 1))
                 continue
             raise
+
+
+# In-memory filter stats cache with TTL
+_filter_stats_cache = {}
+
+def invalidate_filter_stats_cache():
+    """Invaliderar filter-statistik-cachen så att nästa anrop räknar om från databasen."""
+    global _filter_stats_cache
+    _filter_stats_cache.clear()
+
+def get_filter_stats(alerts_only=False, force=False):
+    """
+    Hämtar aggregerad statistik för dropdown-filter i hela databasen:
+    - Protokoll och deras totala antal
+    - Frekvenser och deras totala antal
+    - ACARS/VDL2-labels och deras totala antal
+    - Flygplatser och deras totala antal
+    - Pilotmeddelanden
+    Resultatet cachas i minnet med 15 sekunders TTL för blixtsnabb respons.
+    """
+    global _filter_stats_cache
+    cache_key = 'alerts' if alerts_only else 'all'
+    now = time.time()
+    cached = _filter_stats_cache.get(cache_key)
+    if not force and cached and (now - cached['timestamp']) < 15.0:
+        return cached['data']
+
+    conn = get_connection()
+    c = conn.cursor()
+
+    c.execute('PRAGMA table_info(aliases)')
+    columns = [col[1] for col in c.fetchall()]
+    has_hidden = 'is_hidden' in columns
+
+    base_where = []
+    base_params = []
+    if has_hidden:
+        base_where.append('(a.is_hidden IS NULL OR a.is_hidden = 0)')
+    if alerts_only:
+        base_where.append('(m.is_alert = 1)')
+
+    where_sql = (' WHERE ' + ' AND '.join(base_where)) if base_where else ''
+
+    # 1. Protokoll-aggregering
+    proto_sql = f'''
+        SELECT 
+            CASE 
+                WHEN (m.bitrate LIKE '%TETRA%' OR m.address LIKE 'RAKEL-%' OR m.address LIKE 'TETRA-%') THEN 'TETRA'
+                WHEN (m.bitrate LIKE '%RDS%' OR m.bitrate LIKE '%TMC%' OR m.address LIKE 'E4:%' OR m.address LIKE 'TMC-%') THEN 'RDS'
+                WHEN m.bitrate LIKE '%VDL%' THEN 'VDL2'
+                WHEN (m.bitrate LIKE '%AERO%' OR m.bitrate LIKE '%AERO-ACARS%') THEN 'AERO'
+                WHEN (m.bitrate LIKE '%ACARS%' AND m.bitrate NOT LIKE '%VDL%' AND m.bitrate NOT LIKE '%AERO%') THEN 'ACARS'
+                WHEN m.bitrate LIKE '%SONDE%' THEN 'SONDE'
+                WHEN m.bitrate LIKE '%HFDL%' THEN 'HFDL'
+                WHEN (m.bitrate LIKE '%SATC%' OR m.bitrate LIKE '%INMARSAT%' OR m.address LIKE 'SATC%' OR m.address LIKE 'LES:%') THEN 'SATC'
+                WHEN (m.bitrate LIKE '%AFSK%' OR m.bitrate LIKE '%UFSK%' OR m.address = 'AFSK') THEN 'AFSK'
+                WHEN (m.bitrate LIKE '%POCSAG%' OR (m.bitrate GLOB '[0-9]*' AND m.bitrate != '') OR m.address GLOB '[0-9]*') THEN 'POCSAG'
+                ELSE 'POCSAG'
+            END AS proto,
+            COUNT(*) as cnt
+        FROM messages m
+        LEFT JOIN aliases a ON m.address = a.address
+        {where_sql}
+        GROUP BY proto
+    '''
+    c.execute(proto_sql, tuple(base_params))
+    protocols = dict(c.fetchall())
+
+    # 2. Frekvenser (begränsat till topp 100)
+    freq_where = list(base_where)
+    freq_where.append("m.frequency IS NOT NULL AND m.frequency != '' AND m.frequency != 'RESTART' AND m.frequency != 'SYSTEM'")
+    freq_where_sql = ' WHERE ' + ' AND '.join(freq_where)
+
+    freq_sql = f'''
+        SELECT m.frequency, COUNT(*) as cnt
+        FROM messages m
+        LEFT JOIN aliases a ON m.address = a.address
+        {freq_where_sql}
+        GROUP BY m.frequency
+        ORDER BY cnt DESC
+        LIMIT 100
+    '''
+    c.execute(freq_sql, tuple(base_params))
+    frequencies = dict(c.fetchall())
+
+    # 3. VDL2 / ACARS / AERO labels & flygplatser
+    vdl_where = list(base_where)
+    vdl_where.append("(m.bitrate LIKE '%VDL%' OR m.bitrate LIKE '%ACARS%' OR m.bitrate LIKE '%AERO%')")
+    vdl_where_sql = ' WHERE ' + ' AND '.join(vdl_where)
+
+    vdl_sql = f'''
+        SELECT m.message, m.metadata
+        FROM messages m
+        LEFT JOIN aliases a ON m.address = a.address
+        {vdl_where_sql}
+    '''
+    c.execute(vdl_sql, tuple(base_params))
+    rows = c.fetchall()
+    conn.close()
+
+    labels = {}
+    airports = {}
+    pilot_messages = 0
+
+    for msg, meta_str in rows:
+        msg_str = msg or ''
+        meta = {}
+        if meta_str:
+            try:
+                meta = json.loads(meta_str)
+            except Exception:
+                pass
+
+        lbl = meta.get('label')
+        if not lbl and msg_str:
+            m = re.match(r'^\[([A-Z0-9_]{1,4})(?::|\])', msg_str, re.IGNORECASE)
+            if m:
+                lbl = m.group(1).upper()
+        if lbl:
+            lbl_clean = str(lbl).strip().upper()
+            labels[lbl_clean] = labels.get(lbl_clean, 0) + 1
+
+        if 'Pilotmeddelande' in msg_str:
+            pilot_messages += 1
+
+        st = meta.get('dst_airport') or meta.get('station') or ''
+        if not st and msg_str:
+            to_m = re.search(r'\bTo:\s*([^|\]\n]+)', msg_str, re.IGNORECASE)
+            if to_m:
+                st = to_m.group(1).strip()
+            else:
+                rm = re.search(r'(?:Rutt|Route):\s*[A-Z]{4}[^ \n]* \s*([A-Z]{4})', msg_str, re.IGNORECASE)
+                if rm:
+                    st = rm.group(1)
+        if st:
+            m_ap = re.search(r'\b([A-Z]{4})\b', st)
+            if m_ap:
+                code = m_ap.group(1).upper()
+                airports[code] = airports.get(code, 0) + 1
+
+    res = {
+        'status': 'success',
+        'protocols': protocols,
+        'frequencies': frequencies,
+        'labels': labels,
+        'airports': airports,
+        'pilot_messages': pilot_messages
+    }
+
+    _filter_stats_cache[cache_key] = {
+        'timestamp': now,
+        'data': res
+    }
+    return res
+
 

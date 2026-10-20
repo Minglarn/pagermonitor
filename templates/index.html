@@ -2201,6 +2201,34 @@
             capcode: ''
         };
 
+        // Server-Side Processing (SSP) Filterstatistik direkt från hela databasen
+        let serverFilterStats = {
+            protocols: {},
+            frequencies: {},
+            labels: {},
+            airports: {},
+            pilot_messages: 0
+        };
+        let isFilterDataLoading = false;
+
+        async function loadFilterData(force = false) {
+            if (isFilterDataLoading) return;
+            isFilterDataLoading = true;
+            try {
+                const res = await fetch(`/api/alarms/filters${force ? '?force=1' : ''}`);
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                if (data && data.protocols) {
+                    serverFilterStats = data;
+                    populateFilterDropdowns();
+                }
+            } catch (err) {
+                console.warn('Kunde inte läsa in filterstatistik från servern:', err);
+            } finally {
+                isFilterDataLoading = false;
+            }
+        }
+
         const AIRPORT_NAMES = {
             'ESSA': 'Arlanda',
             'ESSB': 'Bromma',
@@ -2759,14 +2787,8 @@
                 if (activeFilters.protocols.has('AERO')) activeFilters.protocols.delete('AERO');
             }
 
-            // 1. Protocol options
-            const protoCounts = {};
-            allAlarms.forEach(a => {
-                const p = getAlarmProtoName(a);
-                if (p && p !== 'SYSTEM') {
-                    protoCounts[p] = (protoCounts[p] || 0) + 1;
-                }
-            });
+            // 1. Protocol options hämtas direkt från serverns databas-statistik
+            const protoCounts = Object.assign({}, serverFilterStats.protocols || {});
 
             const protoMenu = document.getElementById('filterProtoMenu');
             if (protoMenu) {
@@ -2776,7 +2798,7 @@
                 // Basprotokoll som alltid ska finnas i listan om de är aktiverade i systemet
                 const enabledProtocols = ['POCSAG'];
                 if (isAcarsEnabled || protoCounts['ACARS']) enabledProtocols.push('ACARS');
-                if (isVdl2Enabled) enabledProtocols.push('VDL2');
+                if (isVdl2Enabled || protoCounts['VDL2']) enabledProtocols.push('VDL2');
                 if (isInmarsatAeroEnabled || protoCounts['AERO']) enabledProtocols.push('AERO');
                 if (isHfdlEnabled || protoCounts['HFDL']) enabledProtocols.push('HFDL');
                 if (isSatcEnabled || protoCounts['SATC']) enabledProtocols.push('SATC');
@@ -2795,17 +2817,20 @@
                 if (!isAcarsEnabled && !protoCounts['ACARS']) {
                     activeProtos = activeProtos.filter(p => p !== 'ACARS');
                 }
-                if (!isVdl2Enabled) {
+                if (!isVdl2Enabled && !protoCounts['VDL2']) {
                     activeProtos = activeProtos.filter(p => p !== 'VDL2');
                 }
                 if (!isInmarsatAeroEnabled && !protoCounts['AERO']) {
                     activeProtos = activeProtos.filter(p => p !== 'AERO');
                 }
-                if (!isSatcEnabled) {
+                if (!isSatcEnabled && !protoCounts['SATC']) {
                     activeProtos = activeProtos.filter(p => p !== 'SATC');
                 }
                 if (!isHfdlEnabled && !protoCounts['HFDL']) {
                     activeProtos = activeProtos.filter(p => p !== 'HFDL');
+                }
+                if (!isSondeEnabled && !protoCounts['SONDE']) {
+                    activeProtos = activeProtos.filter(p => p !== 'SONDE');
                 }
                 const hasSelected = activeFilters.protocols.size > 0;
                 let html = `
@@ -2829,14 +2854,7 @@
             }
 
             // 2. Frequency options
-            const freqCounts = {};
-            allAlarms.forEach(a => {
-                const f = a.frequency;
-                if (f && f !== 'RESTART' && f !== 'SYSTEM') {
-                    freqCounts[f] = (freqCounts[f] || 0) + 1;
-                }
-            });
-
+            const freqCounts = Object.assign({}, serverFilterStats.frequencies || {});
             const freqMenu = document.getElementById('filterFreqMenu');
             if (freqMenu) {
                 const sortedFreqs = Object.keys(freqCounts).sort((a, b) => freqCounts[b] - freqCounts[a]);
@@ -2863,21 +2881,8 @@
 
             // 3. VDL2: Label options
             if (isVdl2Enabled) {
-                const labelCounts = {};
-                let pilotMsgCount = 0;
-                allAlarms.forEach(a => {
-                    const p = getAlarmProtoName(a);
-                    if (p === 'VDL2') {
-                        const lbl = getAlarmLabelCode(a);
-                        if (lbl) {
-                            labelCounts[lbl] = (labelCounts[lbl] || 0) + 1;
-                        }
-                        const msg = a.message || '';
-                        if (msg.includes('Pilotmeddelande')) {
-                            pilotMsgCount++;
-                        }
-                    }
-                });
+                const labelCounts = Object.assign({}, serverFilterStats.labels || {});
+                const pilotMsgCount = serverFilterStats.pilot_messages || 0;
 
                 const labelMenu = document.getElementById('filterLabelMenu');
                 if (labelMenu) {
@@ -2914,17 +2919,7 @@
                 }
 
                 // 4. VDL2: Airport options
-                const airportCounts = {};
-                allAlarms.forEach(a => {
-                    const p = getAlarmProtoName(a);
-                    if (p === 'VDL2') {
-                        const code = getAlarmAirportCode(a);
-                        if (code) {
-                            airportCounts[code] = (airportCounts[code] || 0) + 1;
-                        }
-                    }
-                });
-
+                const airportCounts = Object.assign({}, serverFilterStats.airports || {});
                 const airportMenu = document.getElementById('filterAirportMenu');
                 if (airportMenu) {
                     const sortedAirports = Object.keys(airportCounts).sort((a, b) => airportCounts[b] - airportCounts[a]);
@@ -2955,11 +2950,11 @@
         }
 
         let dropdownRefreshTimer = null;
-        function scheduleDropdownRefresh() {
+        function scheduleDropdownRefresh(delay = 1000) {
             if (dropdownRefreshTimer) clearTimeout(dropdownRefreshTimer);
             dropdownRefreshTimer = setTimeout(() => {
-                populateFilterDropdowns();
-            }, 800);
+                loadFilterData();
+            }, delay);
         }
 
         function toggleHideBasestations() {
@@ -4313,6 +4308,7 @@
 
             await fetchSettings();
             await fetchAlertWords();
+            await loadFilterData();
 
             // Filter out TETRA base stations when hideBasestations is active
             $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {

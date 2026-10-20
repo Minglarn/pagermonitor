@@ -18,7 +18,7 @@ from database import (
     clone_sdr_instance,
     delete_message, toggle_message_lock, clear_messages, prune_messages,
     get_database_stats, auto_prune_if_enabled, clear_basestation_messages,
-    save_message, delete_duplicates
+    save_message, delete_duplicates, get_filter_stats
 )
 
 try:
@@ -50,7 +50,7 @@ app = Flask(__name__)
 # Limit maximum payload size for incoming HTTP requests to prevent DoS memory exhaustion
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB
 
-APP_VERSION = "2026.10.20.9"
+APP_VERSION = "2026.10.20.10"
 
 @app.context_processor
 def inject_version():
@@ -552,6 +552,17 @@ def api_datatable_messages():
         order_dir=order_dir
     )
     return jsonify(result)
+
+@app.route('/api/alarms/filters')
+@app.route('/api/messages/filters')
+def api_filter_stats():
+    """
+    Hämtar aggregerade filtertotaler (protokoll, frekvenser, labels, flygplatser) för Server-Side Processing (SSP).
+    """
+    alerts_only = request.args.get('alerts_only', '0').lower() in ('1', 'true')
+    force = request.args.get('force', '0').lower() in ('1', 'true')
+    stats = get_filter_stats(alerts_only=alerts_only, force=force)
+    return jsonify(stats)
 
 @app.route('/api/messages/clear', methods=['POST'])
 def clear_all_messages():

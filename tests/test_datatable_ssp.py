@@ -116,3 +116,50 @@ def test_frontend_filter_resets_page_and_notice():
     assert "dataTable.page('first').draw()" in idx_content
     assert "isMessageMatchingActiveFilters" in idx_content
     assert "dataTable.draw(false)" in idx_content
+
+def test_filter_stats_endpoint_basic(client):
+    """Testa att /api/alarms/filters och /api/messages/filters returnerar aggregerad statistik ur databasen."""
+    for ep in ['/api/alarms/filters', '/api/messages/filters']:
+        res = client.get(ep)
+        assert res.status_code == 200
+        data = res.get_json()
+        assert data.get('status') == 'success'
+        assert 'protocols' in data
+        assert isinstance(data['protocols'], dict)
+        assert 'frequencies' in data
+        assert isinstance(data['frequencies'], dict)
+        assert 'labels' in data
+        assert isinstance(data['labels'], dict)
+        assert 'airports' in data
+        assert isinstance(data['airports'], dict)
+        assert 'pilot_messages' in data
+        assert isinstance(data['pilot_messages'], int)
+
+        # Kontrollera att protokoll har korrekta siffror från databasen
+        protocols = data['protocols']
+        for proto_name, count in protocols.items():
+            assert isinstance(count, int)
+            assert count >= 0
+
+def test_filter_stats_alerts_only(client):
+    """Testa att /api/alarms/filters?alerts_only=1 fungerar och returnerar statistik för enbart larm."""
+    res = client.get('/api/alarms/filters?alerts_only=1')
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data.get('status') == 'success'
+    assert 'protocols' in data
+
+def test_frontend_filter_data_loader():
+    """Verifiera att index.html hämtar och populerar filterdata via /api/alarms/filters."""
+    import os
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    path = os.path.join(base_dir, 'templates', 'index.html')
+    with open(path, 'r', encoding='utf-8') as f:
+        content = f.read()
+
+    assert 'loadFilterData' in content
+    assert '/api/alarms/filters' in content
+    assert 'serverFilterStats' in content
+    assert 'scheduleDropdownRefresh' in content
+    assert 'await loadFilterData()' in content
+

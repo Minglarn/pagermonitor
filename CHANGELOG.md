@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.20.10] - Server-Side filterstatistik och fristående dropdown-filter för SSP
+- **Backend: Ny filterstatistik-endpoint ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Skapat `GET /api/alarms/filters` och alias `GET /api/messages/filters` som levererar fullständiga aggregationssiffror för hela databasen.
+  - Implementerat `database.get_filter_stats(alerts_only=False, force=False)` med optimerade SQL-aggregeringsfrågor för:
+    - Protokollstatistik (`protocols`): POCSAG, VDL2, ACARS, AERO, HFDL, SATC, SONDE, TETRA, RDS, AFSK.
+    - Frekvensstatistik (`frequencies`): Unika frekvenser sorterade fallande efter antal.
+    - ACARS/VDL2-labels (`labels`): Samtliga förekommande etiketter och deras totaler.
+    - Flygplatsstatistik (`airports`): 4-ställiga ICAO-koder med flygplatsers förekomst.
+    - Pilotmeddelanden (`pilot_messages`): Totalantal för fritextmeddelanden.
+  - Höghastighets in-memory cache med 15 sekunders TTL och omedelbar invalidering vid databasunderhåll, rensning och borttagning av dubbletter.
+- **Frontend: Fristående filterpopulering via AJAX ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html))**:
+  - Kopplat loss dropdown-filtren från `allAlarms` (som i Server-Side Processing endast innehåller 25-50 rader för aktuell sida).
+  - Skapat `loadFilterData(force = false)` som hämtar databasens totala siffror vid sidladdning via `fetch('/api/alarms/filters')` och sparar i `serverFilterStats`.
+  - Byggt om `populateFilterDropdowns()` så att alla protokoll (inklusive SONDE och POCSAG) alltid visas med sina korrekta totala databassiffror oavsett vilken sida eller filtrering som är aktiv i DataTables.
+  - Integrerat debouncad uppdatering av filterdata via `scheduleDropdownRefresh()` vid inkommande live-larm och tabelluppdateringar.
+- **Kvalitetssäkring & Tester ([tests/test_datatable_ssp.py](file:///d:/antigravity/pager-monitor/tests/test_datatable_ssp.py))**:
+  - Skapat enhetstester för `/api/alarms/filters` och `/api/messages/filters` som verifierar statuskoder, datastrukturer och databassiffror.
+  - Testat `alerts_only=1` och frontend-integration i `index.html`.
+  - Samtliga 226 tester i testsviten passerar felfritt (100%). Strikt förbud mot emojis efterlevt på hela webbplatsen.
+
 ## [2026.10.20.9] - Återställning till sida 1 vid filterbyte, smart historikhantering och fix för svarta minikartor
 - **Filter-dropdowns och snabbsökning nollställer till sida 1 ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
   - Garanterat att när en användare ändrar val i filter-dropdowns (t.ex. väljer "POCSAG", ändrar frekvens, label, flygplats eller fritext) nollställs tabellens paginering alltid till sida 1 via `dataTable.page('first').draw()`.
