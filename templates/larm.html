@@ -636,6 +636,14 @@
                 </button>
             </div>
 
+            <!-- Nya larm i historikläge (sida > 1) -->
+            <div id="newEventsNotice" class="new-events-notice" style="display: none;" onclick="jumpToFirstPage()" title="Klicka för att gå till sida 1 och visa senaste">
+                <span class="new-events-dot"></span>
+                <span id="newEventsCountBadge" class="new-events-badge">1 nytt</span>
+                <span id="newEventsNoticeText">Nytt larm finns</span>
+                <span class="new-events-cta">&bull; Klicka för att gå till sida 1</span>
+            </div>
+
             <main>
                 <div class="glass-panel table-container" style="padding: 0;">
                     <table id="alarmsTable" class="dataTable larm-dt">
@@ -1173,8 +1181,47 @@
             return minimapObserver;
         }
 
+        // Hantering av nya larm i historikläge (sida > 1)
+        let newEventsWhileBrowsingCount = 0;
+
+        function showNewEventsNotice(count) {
+            const el = document.getElementById('newEventsNotice');
+            const badge = document.getElementById('newEventsCountBadge');
+            const txt = document.getElementById('newEventsNoticeText');
+            if (!el) return;
+            if (badge) badge.textContent = `${count} ${count === 1 ? 'nytt' : 'nya'}`;
+            if (txt) txt.textContent = count === 1 ? 'Nytt larm finns' : 'Nya larm finns';
+            el.style.display = 'inline-flex';
+        }
+
+        function hideNewEventsNotice() {
+            const el = document.getElementById('newEventsNotice');
+            if (el) el.style.display = 'none';
+            newEventsWhileBrowsingCount = 0;
+        }
+
+        window.jumpToFirstPage = function() {
+            hideNewEventsNotice();
+            if (dataTable) {
+                dataTable.page('first').draw('page');
+            }
+        };
+
         function registerMinimap(containerEl) {
-            if (!containerEl || containerEl._leaflet_map || minimapInstances.has(containerEl.id)) return;
+            if (!containerEl) return;
+            if (containerEl._leaflet_map && typeof containerEl._leaflet_map.getContainer === 'function') {
+                if (containerEl._leaflet_map.getContainer() === containerEl) {
+                    return;
+                }
+            }
+
+            const oldMap = minimapInstances.get(containerEl.id);
+            if (oldMap) {
+                try { oldMap.remove(); } catch (e) {}
+                minimapInstances.delete(containerEl.id);
+            }
+            containerEl._leaflet_map = null;
+
             const observer = getMinimapObserver();
             if (observer) {
                 observer.observe(containerEl);
@@ -1184,8 +1231,21 @@
         }
 
         function initMinimap(containerEl) {
-            if (!containerEl || containerEl._leaflet_map || minimapInstances.has(containerEl.id)) return;
-            if (typeof L === 'undefined') return;
+            if (!containerEl || typeof L === 'undefined') return;
+
+            if (containerEl._leaflet_map && typeof containerEl._leaflet_map.getContainer === 'function') {
+                if (containerEl._leaflet_map.getContainer() === containerEl) {
+                    return;
+                }
+            }
+
+            const oldMap = minimapInstances.get(containerEl.id);
+            if (oldMap) {
+                try { oldMap.remove(); } catch (e) {}
+                minimapInstances.delete(containerEl.id);
+            }
+            containerEl._leaflet_map = null;
+            containerEl.innerHTML = '';
 
             const lat = parseFloat(containerEl.dataset.lat);
             const lon = parseFloat(containerEl.dataset.lon);
@@ -1236,20 +1296,42 @@
                     openMapModal(containerEl.dataset.msgId, lat, lon);
                 });
 
-                // Hantera dynamisk storleksförändring när radhöjden anpassas
                 if (window.ResizeObserver) {
                     const ro = new ResizeObserver(() => {
-                        if (map) map.invalidateSize();
+                        if (map && map.getContainer() && map.getContainer().offsetParent !== null) {
+                            map.invalidateSize();
+                        }
                     });
                     ro.observe(containerEl);
                 }
 
                 setTimeout(() => {
-                    map.invalidateSize();
+                    if (map && map.getContainer() && map.getContainer().offsetParent !== null) {
+                        map.invalidateSize();
+                    }
                 }, 150);
             } catch (e) {
                 console.error('Fel vid initiering av Leaflet-minikarta:', e);
             }
+        }
+
+        function refreshMinimaps() {
+            for (const [id, map] of minimapInstances.entries()) {
+                const el = document.getElementById(id);
+                if (!el || (typeof map.getContainer === 'function' && map.getContainer() !== el)) {
+                    try { map.remove(); } catch (e) {}
+                    minimapInstances.delete(id);
+                } else {
+                    try {
+                        if (map.invalidateSize && el.offsetParent !== null) {
+                            map.invalidateSize();
+                        }
+                    } catch (e) {}
+                }
+            }
+            document.querySelectorAll('.msg-minimap-container').forEach(el => {
+                registerMinimap(el);
+            });
         }
 
         let largeModalMapInstance = null;
@@ -1386,7 +1468,8 @@
             const searchInput = document.getElementById('searchInput');
             if (dataTable && searchInput) {
                 searchInput.value = proto;
-                dataTable.search(proto).draw();
+                hideNewEventsNotice();
+                dataTable.search(proto).page('first').draw();
             }
         };
 
@@ -1394,7 +1477,8 @@
             const searchInput = document.getElementById('searchInput');
             if (dataTable && searchInput) {
                 searchInput.value = freq;
-                dataTable.search(freq).draw();
+                hideNewEventsNotice();
+                dataTable.search(freq).page('first').draw();
             }
         };
 
@@ -1402,7 +1486,8 @@
             const searchInput = document.getElementById('searchInput');
             if (dataTable && searchInput) {
                 searchInput.value = txt;
-                dataTable.search(txt).draw();
+                hideNewEventsNotice();
+                dataTable.search(txt).page('first').draw();
             }
         };
 
@@ -2519,6 +2604,10 @@
                             tr.cells[i].setAttribute('data-order', dummyTr.cells[i].getAttribute('data-order'));
                         }
                     }
+                    const mapEl = tr.querySelector('.msg-minimap-container');
+                    if (mapEl) {
+                        registerMinimap(mapEl);
+                    }
                 }
             });
 
@@ -2531,6 +2620,14 @@
             // Auto scroll to top on pagination page change
             dataTable.on('page.dt', function () {
                 window.scrollToTop();
+                if (dataTable.page() === 0) {
+                    hideNewEventsNotice();
+                }
+            });
+
+            // Lyssna på DataTables draw för att refresha minikartor
+            dataTable.on('draw.dt', function () {
+                refreshMinimaps();
             });
 
             // Scroll to top button visibility check
@@ -2555,7 +2652,7 @@
 
             // Bind top search input to DataTables search
             searchInput.addEventListener('input', function () {
-                dataTable.search(this.value).draw();
+                dataTable.search(this.value).page('first').draw();
             });
 
             // Real-time updates via Server-Sent Events (SSE)
@@ -2662,8 +2759,13 @@
                         if (allAlarms.length > 1000) allAlarms.pop();
 
                         if (dataTable) {
-                            if (dataTable.page() === 0) {
-                                dataTable.ajax.reload(null, false);
+                            const isFirstPage = (dataTable.page() === 0);
+                            if (isFirstPage) {
+                                dataTable.draw(false);
+                                hideNewEventsNotice();
+                            } else {
+                                newEventsWhileBrowsingCount++;
+                                showNewEventsNotice(newEventsWhileBrowsingCount);
                             }
                         }
                     }
@@ -2699,9 +2801,7 @@
 
                             // Re-render table with updated alias labels
                             if (dataTable) {
-                                dataTable.clear();
-                                const rowNodes = allAlarms.map(a => createAlarmRowNode(a));
-                                dataTable.rows.add(rowNodes).draw();
+                                dataTable.ajax.reload(null, false);
                             }
                             closeAliasModal();
                         } else {

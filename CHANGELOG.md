@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.20.9] - Återställning till sida 1 vid filterbyte, smart historikhantering och fix för svarta minikartor
+- **Filter-dropdowns och snabbsökning nollställer till sida 1 ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+  - Garanterat att när en användare ändrar val i filter-dropdowns (t.ex. väljer "POCSAG", ändrar frekvens, label, flygplats eller fritext) nollställs tabellens paginering alltid till sida 1 via `dataTable.page('first').draw()`.
+  - DataTables Server-Side Processing skickar direkt ett nytt anrop med de aktiva filterparametrarna och `start=0`.
+- **Smart live-flödeshantering vid inkommande larm/händelser (SSE/WebSocket)**:
+  - Skapat hjälpfunktionen `isMessageMatchingActiveFilters(alarm)` som kontrollerar om inkommande larm matchar aktiva filter (protokoll, frekvens, label, flygplats, capcode/alias, basstationsfilter och fritext).
+  - **Sida 1 (`dataTable.page() === 0`)**: Om larmet matchar aktiva filter ritas tabellen om mjukt med `dataTable.draw(false)` utan att byta sida eller störa användarens vy.
+  - **Historikläge (sida 2, 3 osv., `dataTable.page() > 0`)**: Tabellen rörs inte alls så att användaren kan läsa historiken helt i fred utan oväntade sidbyten eller scrollryck.
+  - En flytande notisbanner (`#newEventsNotice`) visas diskret i toppen med pulserande indikator ("X nya händelser finns - Klicka för att gå till sida 1") när nya relevanta meddelanden rullar in. Vid klick eller när användaren själv bläddrar till sida 1 nollställs räknaren och notisen döljs automatiskt.
+- **Buggfix: Svarta Leaflet-minikartor vid omladdning**:
+  - Åtgärdat felet där tidigare visade minikartor blev svarta rektanglar när nya meddelanden rullade in.
+  - Orsaken var att DataTables skrev över cellernas HTML med nya DOM-noder för samma ID, varvid Leaflet-instansen låg kvar i minnet och blockerade initiering av den nya containern.
+  - `registerMinimap`, `initMinimap` och `refreshMinimaps` städar nu bort föräldralösa Leaflet-kartor och binder om kartorna korrekt till de nya aktiva DOM-elementen.
+- **Kvalitetssäkring & Tester ([tests/test_datatable_ssp.py](file:///d:/antigravity/pager-monitor/tests/test_datatable_ssp.py))**:
+  - Utökat testsviten med tester för `newEventsNotice`, `jumpToFirstPage`, filter-återställning till sida 1 och minimap-reducering.
+  - Samtliga 223 tester i testsviten passerar felfritt (100%). Strikt förbud mot emojis efterlevt på hela webbplatsen.
+
 ## [2026.10.20.8] - Server-Side Processing (SSP) för DataTables (#alarmsTable)
 - **Backend: DataTables SSP API-endpoint ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
   - Implementerat `GET /api/alarms/datatable` och `GET /api/messages/datatable` för äkta server-side paginering och filtrering.

@@ -1659,6 +1659,14 @@
     <!-- Floating System Toast Container -->
     <div id="toastContainer" class="toast-container"></div>
 
+    <!-- Nya händelser i historikläge (sida > 1) -->
+    <div id="newEventsNotice" class="new-events-notice" style="display: none;" onclick="jumpToFirstPage()" title="Klicka för att gå till sida 1 och visa senaste">
+        <span class="new-events-dot"></span>
+        <span id="newEventsCountBadge" class="new-events-badge">1 ny</span>
+        <span id="newEventsNoticeText">Ny händelse finns</span>
+        <span class="new-events-cta">&bull; Klicka för att gå till sida 1</span>
+    </div>
+
     <!-- Flödet Pausat - Toast-indikator i mitten högst upp -->
     <div id="hoverPausePill" class="hover-pause-pill toast-center-top" style="display: none;">
         <span class="hover-pause-dot"></span>
@@ -1844,7 +1852,22 @@
         }
 
         function registerMinimap(containerEl) {
-            if (!containerEl || containerEl._leaflet_map || minimapInstances.has(containerEl.id)) return;
+            if (!containerEl) return;
+            // Om behållaren redan har en aktiv karta bunden till exakt detta DOM-element, gör inget
+            if (containerEl._leaflet_map && typeof containerEl._leaflet_map.getContainer === 'function') {
+                if (containerEl._leaflet_map.getContainer() === containerEl) {
+                    return;
+                }
+            }
+
+            // Om det fanns en tidigare Leaflet-instans för samma id men på ett äldre DOM-element:
+            const oldMap = minimapInstances.get(containerEl.id);
+            if (oldMap) {
+                try { oldMap.remove(); } catch (e) {}
+                minimapInstances.delete(containerEl.id);
+            }
+            containerEl._leaflet_map = null;
+
             const observer = getMinimapObserver();
             if (observer) {
                 observer.observe(containerEl);
@@ -1854,8 +1877,23 @@
         }
 
         function initMinimap(containerEl) {
-            if (!containerEl || containerEl._leaflet_map || minimapInstances.has(containerEl.id)) return;
-            if (typeof L === 'undefined') return;
+            if (!containerEl || typeof L === 'undefined') return;
+
+            // Kontrollera om denna nod redan har en aktiv karta
+            if (containerEl._leaflet_map && typeof containerEl._leaflet_map.getContainer === 'function') {
+                if (containerEl._leaflet_map.getContainer() === containerEl) {
+                    return;
+                }
+            }
+
+            // Rensa eventuell föräldralös karta för detta id från registret
+            const oldMap = minimapInstances.get(containerEl.id);
+            if (oldMap) {
+                try { oldMap.remove(); } catch (e) {}
+                minimapInstances.delete(containerEl.id);
+            }
+            containerEl._leaflet_map = null;
+            containerEl.innerHTML = '';
 
             const lat = parseFloat(containerEl.dataset.lat);
             const lon = parseFloat(containerEl.dataset.lon);
@@ -1914,13 +1952,17 @@
                 // Hantera dynamisk storleksförändring när radhöjden anpassas
                 if (window.ResizeObserver) {
                     const ro = new ResizeObserver(() => {
-                        if (map) map.invalidateSize();
+                        if (map && map.getContainer() && map.getContainer().offsetParent !== null) {
+                            map.invalidateSize();
+                        }
                     });
                     ro.observe(containerEl);
                 }
 
                 setTimeout(() => {
-                    map.invalidateSize();
+                    if (map && map.getContainer() && map.getContainer().offsetParent !== null) {
+                        map.invalidateSize();
+                    }
                 }, 150);
             } catch (e) {
                 console.error('Fel vid initiering av Leaflet-minikarta:', e);
@@ -2062,11 +2104,18 @@
         }
 
         function refreshMinimaps() {
-            // Städa bort kartor för noder som raderats ur DOM
+            // Städa bort kartor för noder som raderats ur DOM eller ersatts
             for (const [id, map] of minimapInstances.entries()) {
-                if (!document.getElementById(id)) {
+                const el = document.getElementById(id);
+                if (!el || (typeof map.getContainer === 'function' && map.getContainer() !== el)) {
                     try { map.remove(); } catch (e) {}
                     minimapInstances.delete(id);
+                } else {
+                    try {
+                        if (map.invalidateSize && el.offsetParent !== null) {
+                            map.invalidateSize();
+                        }
+                    } catch (e) {}
                 }
             }
             document.querySelectorAll('.msg-minimap-container').forEach(el => {
@@ -2270,6 +2319,148 @@
             return '';
         }
 
+        // Hantering av nya larm och händelser i historikläge (sida > 1)
+        let newEventsWhileBrowsingCount = 0;
+
+        function showNewEventsNotice(count) {
+            const el = document.getElementById('newEventsNotice');
+            const badge = document.getElementById('newEventsCountBadge');
+            const txt = document.getElementById('newEventsNoticeText');
+            if (!el) return;
+            if (badge) badge.textContent = `${count} ${count === 1 ? 'ny' : 'nya'}`;
+            if (txt) txt.textContent = count === 1 ? 'Ny händelse finns' : 'Nya händelser finns';
+            el.style.display = 'inline-flex';
+        }
+
+        function hideNewEventsNotice() {
+            const el = document.getElementById('newEventsNotice');
+            if (el) el.style.display = 'none';
+            newEventsWhileBrowsingCount = 0;
+        }
+
+        window.jumpToFirstPage = function() {
+            hideNewEventsNotice();
+            if (dataTable) {
+                dataTable.page('first').draw('page');
+            }
+        };
+
+        function isMessageMatchingActiveFilters(alarm) {
+            if (!alarm) return false;
+
+            // 1. Dölj duplikat om konfigurerat
+            if (alarm.is_duplicate && appSettings.duplicate_handling === 'hide') {
+                return false;
+            }
+
+            // 2. Basstationer
+            const isBasestation = (
+                (alarm.bitrate && String(alarm.bitrate).includes('TETRA-NET')) ||
+                (alarm.address && (String(alarm.address).startsWith('RAKEL-') || String(alarm.address).startsWith('TETRA-'))) ||
+                (alarm.alias && (String(alarm.alias).includes('Basstation') || String(alarm.alias).includes('Basestation'))) ||
+                (alarm.message && (String(alarm.message).includes('Aktiv TETRA Basstation') || String(alarm.message).includes('Aktiv Basstation på') || String(alarm.message).includes('Aktiv Basstation')))
+            );
+            if (hideBasestations && isBasestation) {
+                return false;
+            }
+
+            // 3. Protokoll (OR mellan valda protokoll)
+            if (activeFilters.protocols && activeFilters.protocols.size > 0) {
+                const p = getAlarmProtoName(alarm).toUpperCase();
+                let match = false;
+                for (const proto of activeFilters.protocols) {
+                    if (p === proto.toUpperCase()) {
+                        match = true;
+                        break;
+                    }
+                }
+                if (!match) return false;
+            }
+
+            // 4. Frekvenser (OR mellan valda frekvenser)
+            if (activeFilters.frequencies && activeFilters.frequencies.size > 0) {
+                const f = (alarm.frequency || '').trim();
+                let match = false;
+                for (const freq of activeFilters.frequencies) {
+                    if (f === freq) {
+                        match = true;
+                        break;
+                    }
+                }
+                if (!match) return false;
+            }
+
+            // 5. Labels (OR mellan valda labels)
+            if (activeFilters.labels && activeFilters.labels.size > 0) {
+                const lbl = getAlarmLabelCode(alarm).toUpperCase();
+                const hasPilot = (alarm.message && alarm.message.includes('Pilotmeddelande'));
+                let match = false;
+                for (const targetLbl of activeFilters.labels) {
+                    if (targetLbl === '__PILOT_FREETEXT__' && hasPilot) {
+                        match = true;
+                        break;
+                    }
+                    if (lbl && lbl === targetLbl.toUpperCase()) {
+                        match = true;
+                        break;
+                    }
+                }
+                if (!match) return false;
+            }
+
+            // 6. Flygplatser (OR mellan valda flygplatser)
+            if (activeFilters.airports && activeFilters.airports.size > 0) {
+                const apCode = getAlarmAirportCode(alarm).toUpperCase();
+                const apStr = ((alarm.dst_airport || '') + ' ' + (alarm.station || '')).toUpperCase();
+                let match = false;
+                for (const targetAp of activeFilters.airports) {
+                    const t = targetAp.toUpperCase();
+                    if (apCode === t || apStr.includes(t)) {
+                        match = true;
+                        break;
+                    }
+                }
+                if (!match) return false;
+            }
+
+            // 7. Capcode / Airline
+            if (activeFilters.capcode) {
+                const target = activeFilters.capcode.toUpperCase();
+                const addr = (alarm.address || '').toUpperCase();
+                const alias = (alarm.alias || '').toUpperCase();
+                if (!addr.includes(target) && !alias.includes(target)) {
+                    return false;
+                }
+            }
+
+            // 8. Fritextsökning
+            const searchVal = (dataTable ? dataTable.search() : '') || (document.getElementById('searchInput')?.value || '');
+            if (searchVal && searchVal.trim()) {
+                const s = searchVal.trim().toLowerCase();
+                const msg = (alarm.message || '').toLowerCase();
+                const addr = (alarm.address || '').toLowerCase();
+                const alias = (alarm.alias || '').toLowerCase();
+                const freq = (alarm.frequency || '').toLowerCase();
+                const proto = (alarm.protocol || '').toLowerCase();
+                if (!msg.includes(s) && !addr.includes(s) && !alias.includes(s) && !freq.includes(s) && !proto.includes(s)) {
+                    return false;
+                }
+            }
+
+            // 9. Waterfall aktivt filter (om något)
+            if (window.WaterfallManager && window.WaterfallManager.hasActiveFilter && window.WaterfallManager.hasActiveFilter()) {
+                const wfFilters = window.WaterfallManager.getActiveFilters();
+                if (wfFilters && wfFilters.size > 0) {
+                    const chKey = window.WaterfallManager.getChannelKeyForMessage ? window.WaterfallManager.getChannelKeyForMessage(alarm) : null;
+                    if (chKey && !wfFilters.has(chKey)) {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        }
+
         window.toggleFilterDropdown = function(menuId, event) {
             if (event) event.stopPropagation();
             const targetMenu = document.getElementById(menuId);
@@ -2299,35 +2490,23 @@
             const willBeChecked = (isChecked !== undefined) ? isChecked : !activeFilters[category].has(val);
             if (willBeChecked) {
                 activeFilters[category].add(val);
-                // Om användaren filtrerar på ett protokoll som saknar rader i allAlarms, hämta dem från API
+                // Om användaren filtrerar på ett protokoll, hämta bakgrundsrader för eventuell statistik
                 if (category === 'protocols') {
-                    const hasRows = allAlarms.some(a => getAlarmProtoName(a).toUpperCase() === val.toUpperCase());
-                    if (!hasRows) {
-                        try {
-                            const res = await fetch(`/api/messages?protocol=${encodeURIComponent(val)}&limit=200`);
-                            if (res.ok) {
-                                const extra = await res.json();
-                                if (extra && extra.length > 0) {
-                                    const existingIds = new Set(allAlarms.map(a => a.id));
-                                    const newNodes = [];
-                                    extra.forEach(item => {
-                                        if (!existingIds.has(item.id)) {
-                                            allAlarms.push(item);
-                                            existingIds.add(item.id);
-                                            newNodes.push(createAlarmRowNode(item));
-                                        }
-                                    });
-                                    if (dataTable && newNodes.length > 0) {
-                                        dataTable.rows.add(newNodes);
-                                        dataTable.order([[0, 'desc']]);
-                                        refreshMinimaps();
+                    try {
+                        const res = await fetch(`/api/messages?protocol=${encodeURIComponent(val)}&limit=200`);
+                        if (res.ok) {
+                            const extra = await res.json();
+                            if (extra && extra.length > 0) {
+                                const existingIds = new Set(allAlarms.map(a => a.id));
+                                extra.forEach(item => {
+                                    if (!existingIds.has(item.id)) {
+                                        allAlarms.push(item);
+                                        existingIds.add(item.id);
                                     }
-                                }
+                                });
                             }
-                        } catch (err) {
-                            console.debug('Kunde inte ladda extra protokollrader:', err);
                         }
-                    }
+                    } catch (err) {}
                 }
             } else {
                 activeFilters[category].delete(val);
@@ -2378,10 +2557,10 @@
             const curVal = dataTable ? dataTable.search() : '';
             if (curVal.toUpperCase() === term.toUpperCase()) {
                 if (sInput) sInput.value = '';
-                if (dataTable) dataTable.search('').draw();
+                if (dataTable) dataTable.search('').page('first').draw();
             } else {
                 if (sInput) sInput.value = term;
-                if (dataTable) dataTable.search(term).draw();
+                if (dataTable) dataTable.search(term).page('first').draw();
             }
             renderFilterChips();
         };
@@ -2415,8 +2594,9 @@
             updateFilterDropdownButtons();
             renderFilterChips();
             populateFilterDropdowns();
+            hideNewEventsNotice();
             if (dataTable) {
-                dataTable.draw();
+                dataTable.page('first').draw();
             }
         }
 
@@ -2786,8 +2966,9 @@
             hideBasestations = !hideBasestations;
             localStorage.setItem('hide_tetra_basestations', hideBasestations ? 'true' : 'false');
             updateBasestationBtnUI();
+            hideNewEventsNotice();
             if (dataTable) {
-                dataTable.draw();
+                dataTable.page('first').draw();
             }
         }
 
@@ -4441,6 +4622,9 @@
             // Auto scroll to top on pagination page change
             dataTable.on('page.dt', function () {
                 window.scrollToTop();
+                if (dataTable.page() === 0) {
+                    hideNewEventsNotice();
+                }
             });
 
             // Lyssna på DataTables draw för att refresha och lazy-inita minikartor
@@ -4473,7 +4657,7 @@
 
             // Bind top search input to DataTables search
             searchInput.addEventListener('input', function () {
-                dataTable.search(this.value).draw();
+                dataTable.search(this.value).page('first').draw();
                 renderFilterChips();
             });
 
@@ -4483,7 +4667,7 @@
                 .then(msgs => {
                     if (window.WaterfallManager && Array.isArray(msgs)) {
                         window.WaterfallManager.init(msgs, () => {
-                            if (dataTable) dataTable.draw();
+                            if (dataTable) dataTable.page('first').draw();
                         });
                     }
                 })
@@ -4562,8 +4746,21 @@
                         if (allAlarms.length > 1000) allAlarms.pop();
 
                         if (dataTable) {
-                            if (dataTable.page() === 0) {
-                                dataTable.ajax.reload(null, false);
+                            const isFirstPage = (dataTable.page() === 0);
+                            const matches = isMessageMatchingActiveFilters(data);
+
+                            if (isFirstPage) {
+                                if (matches) {
+                                    dataTable.draw(false);
+                                }
+                                hideNewEventsNotice();
+                            } else {
+                                // Användaren har bläddrat bakåt (sida 2, 3 osv.):
+                                // Gör INGENTING med tabellen! Låt dem läsa historiken i fred.
+                                if (matches) {
+                                    newEventsWhileBrowsingCount++;
+                                    showNewEventsNotice(newEventsWhileBrowsingCount);
+                                }
                             }
                         }
                         scheduleDropdownRefresh();
@@ -4672,9 +4869,7 @@
 
                             // Re-render table with updated alias labels
                             if (dataTable) {
-                                dataTable.clear();
-                                const rowNodes = allAlarms.map(a => createAlarmRowNode(a));
-                                dataTable.rows.add(rowNodes).draw();
+                                dataTable.ajax.reload(null, false);
                             }
                             closeAliasModal();
                         } else {

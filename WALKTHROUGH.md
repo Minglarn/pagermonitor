@@ -1,13 +1,36 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.20.8`
+- **CalVer**: `2026.10.20.9`
 - **Date**: 2026-10-20
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000022. Återställning till sida 1 vid filterbyte, smart historikhantering och fix för svarta minikartor (v2026.10.20.9)
+- **Kärnkrav & Bakgrund**:
+  1. När en användare ändrar val i filter-dropdowns (t.ex. väljer "POCSAG") eller söker, ska tabellens paginering alltid nollställas till sida 1 och göra ett nytt serveranrop.
+  2. När nya larm/händelser rullar in i realtid via SSE/WebSocket:
+     - Om användaren står på sida 1 OCH händelsen matchar aktiva filter: Uppdatera tabellen mjukt med `dataTable.draw(false)` utan att byta sida eller störa vyn.
+     - Om användaren har bläddrat bakåt (sida 2, 3 osv.): Rör INTE tabellen! Låt användaren läsa historiken helt i fred, och visa istället en diskret flytande notis ("X nya händelser finns - Klicka för att gå till sida 1").
+  3. Buggfix: Tidigare visade minikartor (Leaflet) blev svarta rektanglar när nya meddelanden rullade in och tabellen ritades om.
+- **Teknisk Implementering**:
+  - **Filterändring & Nollställning ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html))**:
+    - `applyAllFilters()`, `filterByQuickSearch()`, `filterByProtocol()`, `filterByFrequency()`, `filterByLabel()`, `filterByAirport()`, `filterByCapcode()`, `toggleHideBasestations()` samt `searchInput` anropar nu konsekvent `dataTable.page('first').draw()`.
+    - DataTables Server-Side Processing skickar omgående ett nytt serveranrop med de aktiva filterparametrarna och `start=0`.
+  - **Smart Live-flödeshantering ([templates/index.html](file:///d:/antigravity/pager-monitor/templates/index.html), [templates/larm.html](file:///d:/antigravity/pager-monitor/templates/larm.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+    - Implementerat `isMessageMatchingActiveFilters(alarm)` som kontrollerar inkommande larm mot aktiva filter (protokoll, frekvens, label, flygplats, capcode/alias, basstationsfilter och fritext).
+    - Om `dataTable.page() === 0` och meddelandet matchar aktiva filter anropas `dataTable.draw(false)` vilket ritar om tabellen mjukt utan sidbyte.
+    - Om `dataTable.page() > 0` rörs tabellen inte alls. Istället visas det flytande elementet `#newEventsNotice` i toppen med pulserande statuspunkt och antal nya händelser.
+    - Vid klick på notisen körs `jumpToFirstPage()` som gör `dataTable.page('first').draw('page')` och nollställer räknaren. Om användaren själv bläddrar till sida 1 nollställs och döljs notisen via händelselyssnaren `dataTable.on('page.dt')`.
+  - **Buggfix för Svarta Minikartor**:
+    - Analys: När DataTables Server-Side Processing ritar om raderna ersätts cellernas HTML med nya DOM-element med samma ID. Tidigare avbröt `registerMinimap` och `initMinimap` direkt om `minimapInstances.has(containerEl.id)` var sant, vilket lämnade den nya DOM-containern helt tom (svart ruta).
+    - Åtgärd: I `registerMinimap` och `initMinimap` kontrolleras nu om `existingMap.getContainer() === containerEl`. Om containern har ersatts städas den föräldralösa instansen bort med `remove()`, och den nya containern initieras korrekt. I `refreshMinimaps()` och `dataTable.on('draw.dt')` städas alla föräldralösa instanser bort och alla synliga minikartor i DOM registreras om och får `invalidateSize()`.
+- **Kvalitetssäkring & Verifiering ([tests/test_datatable_ssp.py](file:///d:/antigravity/pager-monitor/tests/test_datatable_ssp.py))**:
+  - Skapat automatiska tester som verifierar att `newEventsNotice`, `jumpToFirstPage`, `showNewEventsNotice`, `hideNewEventsNotice` och `refreshMinimaps` finns i gränssnitten, att `dataTable.page('first').draw()` anropas vid filter, och att inga otillåtna emojis förekommer.
+  - Samtliga 223 tester i testsviten är 100% godkända.
 
 ### 000021. Server-Side Processing (SSP) för DataTables (#alarmsTable) (v2026.10.20.8)
 - **Kärnkrav & Bakgrund**:

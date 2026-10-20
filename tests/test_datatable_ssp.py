@@ -92,3 +92,27 @@ def test_datatable_sorting(client):
     if len(d_desc['data']) >= 2 and len(d_asc['data']) >= 2:
         assert d_desc['data'][0]['id'] > d_desc['data'][-1]['id']
         assert d_asc['data'][0]['id'] < d_asc['data'][-1]['id']
+
+def test_frontend_filter_resets_page_and_notice():
+    """Verifiera att filterändringar nollställer paginering till sida 1 och att notis för nya larm hanteras."""
+    import os
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+
+    for tpl in ['index.html', 'larm.html']:
+        path = os.path.join(base_dir, 'templates', tpl)
+        with open(path, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        # Verifiera notis-elementet för historikläge
+        assert 'id="newEventsNotice"' in content, f"Saknar newEventsNotice i {tpl}"
+        assert 'jumpToFirstPage()' in content, f"Saknar jumpToFirstPage i {tpl}"
+        assert 'showNewEventsNotice' in content, f"Saknar showNewEventsNotice i {tpl}"
+        assert 'hideNewEventsNotice' in content, f"Saknar hideNewEventsNotice i {tpl}"
+        assert 'refreshMinimaps' in content, f"Saknar refreshMinimaps i {tpl}"
+
+    with open(os.path.join(base_dir, 'templates', 'index.html'), 'r', encoding='utf-8') as f:
+        idx_content = f.read()
+
+    assert "dataTable.page('first').draw()" in idx_content
+    assert "isMessageMatchingActiveFilters" in idx_content
+    assert "dataTable.draw(false)" in idx_content
