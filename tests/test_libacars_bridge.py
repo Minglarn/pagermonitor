@@ -201,5 +201,27 @@ class TestLibacarsBridge(unittest.TestCase):
         ac_status = acars_rx.get_status()
         self.assertIn('libacars_available', ac_status)
 
+    def test_clean_fans_payload_with_routing_header(self):
+        """Verifiera att clean_fans_payload extraherar ren hex ur SatDump FANS-1/A-meddelande."""
+        from libacars_bridge import clean_fans_payload, decode_acars_apps
+        
+        # 1. SatDump routing header med .AT1.
+        raw = "- #MD/AA PIKCPYA.AT1.00219A221D559DCF0C62C9A738322A004E88\r\n"
+        cleaned = clean_fans_payload(raw)
+        self.assertEqual(cleaned, "00219A221D559DCF0C62C9A738322A004E88")
+
+        # 2. Meddelande utan header returneras intakt
+        plain = "NO ROUTING HEADER HERE"
+        self.assertEqual(clean_fans_payload(plain), plain)
+
+        # 3. decode_acars_apps skickar tvättad payload till avkodaren
+        received_text = []
+        set_mock_decoder(lambda lbl, txt, msg_dir: received_text.append(txt) or {"dummy": True})
+        res = decode_acars_apps("H1", raw)
+        self.assertIsNotNone(res)
+        self.assertEqual(len(received_text), 1)
+        self.assertEqual(received_text[0], "00219A221D559DCF0C62C9A738322A004E88")
+
 if __name__ == '__main__':
     unittest.main()
+

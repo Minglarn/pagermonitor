@@ -10,9 +10,22 @@ import ctypes.util
 import json
 import logging
 import os
+import re
 import sys
 
 logger = logging.getLogger(__name__)
+
+def clean_fans_payload(message: str) -> str:
+    """Rensar bort ACARS-routing-headers för att ge libacars ren hex-data."""
+    if not message or not isinstance(message, str):
+        return message
+
+    trimmed = message.strip()
+    match = re.search(r'^.*?(?:[A-Z0-9/]+)?\.AT\d+\.([0-9A-Fa-f]+)$', trimmed, re.IGNORECASE)
+    if match:
+        return match.group(1).upper()
+
+    return message
 
 # ctypes definitioner för libacars interna datatyper
 class LaVString(ctypes.Structure):
@@ -115,14 +128,17 @@ def decode_acars_apps(label: str, text: str, msg_dir: int = LA_MSG_DIR_UNKNOWN) 
       dict med det avkodade JSON-trädet från libacars, eller None om meddelandet inte
       kunde avkodas av libacars eller om biblioteket saknas.
     """
+    if not label or not text:
+        return None
+
+    if label in ('H1', '_F', 'CR') or '.AT' in text:
+        text = clean_fans_payload(text)
+
     if _mock_decoder is not None:
         return _mock_decoder(label, text, msg_dir)
 
     lib = _load_libacars()
     if not lib:
-        return None
-
-    if not label or not text:
         return None
 
     try:

@@ -50,7 +50,7 @@ app = Flask(__name__)
 # Limit maximum payload size for incoming HTTP requests to prevent DoS memory exhaustion
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB
 
-APP_VERSION = "2026.10.20.3"
+APP_VERSION = "2026.10.20.4"
 
 @app.context_processor
 def inject_version():
@@ -127,14 +127,9 @@ def start_prune_scheduler():
 # Start the background maintenance scheduler
 start_prune_scheduler()
 
-APP_VERSION = "2026.10.20.1"
 logger.info(f"PagerMonitor v{APP_VERSION} (CalVer) initialized.")
 
 app.config['TEMPLATES_AUTO_RELOAD'] = True
-
-@app.context_processor
-def inject_globals():
-    return dict(app_version=APP_VERSION)
 
 @app.after_request
 def add_no_cache_headers(response):

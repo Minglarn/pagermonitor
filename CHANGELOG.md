@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.20.4] - Pre-processing av FANS-1/A Routing-Headers för libacars och Rättning av CalVer i Sidopanel
+- **Pre-processing av FANS-1/A Routing-Headers ([libacars_bridge.py](file:///d:/antigravity/pager-monitor/libacars_bridge.py))**:
+  - Implementerat hjälpfunktionen `clean_fans_payload(message: str) -> str` som identifierar och rensar bort ACARS-routing-headers (såsom SatDumps `- #MD/AA PIKCPYA.AT1.`) före anrop till `libacars`.
+  - Isolerar och extraherar den rena hexadecimala ASN.1-nyttolasten som `libacars` kräver för att avkoda CPDLC/ADS-C.
+  - Injekterat tvättlogiken i `decode_acars_apps` för relevanta labels (`H1`, `_F`, `CR`) samt meddelanden innehållande `.AT`.
+  - Returnerar ursprungsmeddelandet oförändrat om ingen routing-header detekteras.
+- **Rättning av CalVer-visning i Sidopanel ([app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Åtgärdat en duplicerad tilldelning av `APP_VERSION` och överflödig context processor som skrev över aktuell version med en äldre hårdkodad sträng.
+  - Sidopanelen (`.sidebar-version`) och footern på samtliga sidor speglar nu korrekt aktiv CalVer-version globalt.
+- **Tester ([tests/test_libacars_bridge.py](file:///d:/antigravity/pager-monitor/tests/test_libacars_bridge.py))**:
+  - Nytt enhetstest `test_clean_fans_payload_with_routing_header` som verifierar att SatDumps routing-prefix tvättas och att ren hex-data levereras till avkodaren.
+  - Samtliga 204 enhetstester i hela testsviten passerar felfritt (100%).
+
 ## [2026.10.20.3] - Strikt Isolering av Autentisk Rådata utan Interna Parsade Fält
 - **Autentisk och Ren Rådata ([aero_receiver.py](file:///d:/antigravity/pager-monitor/aero_receiver.py), [acars_receiver.py](file:///d:/antigravity/pager-monitor/acars_receiver.py), [vdl2_receiver.py](file:///d:/antigravity/pager-monitor/vdl2_receiver.py))**:
   - Garanterat att fältet och knappen "Rådata" uteslutande innehåller det ursprungliga, omodifierade inkommande rådatameddelandet från mottagarna (SatDump, JAERO, dumpvdl2, acarsdec).

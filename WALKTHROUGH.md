@@ -1,13 +1,31 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.20.3`
+- **CalVer**: `2026.10.20.4`
 - **Date**: 2026-10-20
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000017. Pre-processing av FANS-1/A Routing-Headers för libacars och Rättning av CalVer i Sidopanel (v2026.10.20.4)
+- **Kärnkrav & Bakgrund**:
+  - Inkommande FANS-1/A (CPDLC/ADS-C)-meddelanden från satellitmottagare som SatDump föregås ofta av ACARS routing-headers (t.ex. `- #MD/AA PIKCPYA.AT1.00219A...`).
+  - C-biblioteket `libacars` kräver en ren hexadecimal nyttolast för att framgångsrikt bygga ASN.1-protokollträdet, vilket gjorde att dessa meddelanden tidigare inte avkodades.
+  - Samtidigt rapporterades att CalVer-versionsnumret i webbapplikationens sidopanel inte uppdaterades.
+- **Teknisk Lösning i Backend ([libacars_bridge.py](file:///d:/antigravity/pager-monitor/libacars_bridge.py))**:
+  - Implementerat tvättfunktionen `clean_fans_payload(message: str) -> str`:
+    - Identifierar om meddelandet innehåller en routing-header (`- #MD/AA` eller slutar med identifierare som `.AT1.`, `.AT2.` etc.).
+    - Rensar bort routing-prefixet och extraherar uteslutande den återstående hexadecimala nyttolasten.
+    - Returnerar ursprungsmeddelandet oförändrat om ingen routing-header matchas.
+  - Injekterat tvättlogiken i `decode_acars_apps` för relevanta labels (`H1`, `_F`, `CR`) samt meddelanden med `.AT`-taggar precis före libacars-avkodningen.
+- **Rättning av CalVer i Sidopanelen ([app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+  - Identifierat och eliminerat en duplicerad `APP_VERSION`-tilldelning och en överflödig context processor som skrev över den centrala versionen med en äldre hårdkodad sträng.
+  - Samtliga sidor (`/`, `/alarms`, `/settings`, `/statistics`, `/rules`, `/aliases`, `/alerts`, `/settings/sdr/<id>`) renderar nu korrekt `v2026.10.20.4` i `.sidebar-version`.
+- **Kvalitetssäkring & Enhetstester ([tests/test_libacars_bridge.py](file:///d:/antigravity/pager-monitor/tests/test_libacars_bridge.py))**:
+  - Nytt enhetstest `test_clean_fans_payload_with_routing_header` verifierar tvätt av SatDumps routing-headers och att ren hex matas till avkodaren.
+  - Samtliga 204 enhetstester i hela testsviten passerar felfritt (100%).
 
 ### 000016. Strikt Isolering av Autentisk Rådata utan Interna Parsade Fält (v2026.10.20.3)
 - **Kärnkrav & Bakgrund**:
