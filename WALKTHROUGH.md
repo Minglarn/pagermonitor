@@ -1,13 +1,78 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.20.5`
+- **CalVer**: `2026.10.20.7`
 - **Date**: 2026-10-20
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000020. Prestandaoptimering av Statistik samt Logisk och Visuell Städning av Settings (v2026.10.20.7)
+- **Kärnkrav & Bakgrund**:
+  - Statistik & Analys upplevdes långsam vid generering av aktivitetsdiagram. Användaren föreslog aggregering per 15 minuter.
+  - Inställningsvyn (Settings) hade efter flikomläggningen felaktigt grupperade sektioner i "Appearance & Display", dubbla rubriker (både en global sidrubrik och sektionsrubriker) samt obegränsad bredd på widescreen-skärmar.
+- **Prestandaoptimering av Statistik & Analys ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - **Indexering**: Etablerat permanenta sammansatta och enkla index i `init_db()`:
+    - `idx_messages_timestamp_desc` på `(timestamp DESC)`
+    - `idx_messages_date` på `(date(timestamp))`
+    - `idx_messages_date_freq` på `(date(timestamp), frequency)`
+    - `idx_messages_date_proto` på `(date(timestamp), protocol)`
+  - **15-Minuters Tidsaggregering**:
+    - Utökat `/api/stats/range-activity` med parametern `interval` (`15` eller `60`).
+    - Skapat 96 tidsluckor per dygn (`strftime('%H:%M', ...)` där minuter avrundas till `00`, `15`, `30`, `45`).
+    - Tidsintervallfrågor använder nu direkta ISO-jämförelser (`timestamp >= ? AND timestamp <= ?`) vilket utnyttjar index maximalt och reducerar frågetiden från sekunder till under 50 ms.
+  - **CTE-optimering av Larmträffar**:
+    - Optimerat `/api/stats/alert-hits` med Common Table Expressions som parar ihop sparade larmord mot meddelanden via optimerade LIKE-villkor.
+  - **Frontend-optimering**:
+    - Parallelliserat hämtning av diagramdata med `Promise.all` och frikopplat laddningen av datatabeller så att visuella grafer renderas direkt.
+    - Lagt till ett interaktivt reglage i diagrammets rubrikfält för att växla mellan 15-minuters och 1-timmes upplösning.
+- **Logisk och Visuell Städning av Settings ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - **Renodling av "Appearance & Display"**:
+    - Avlägsnat radiobrusfilter, känslighetsreglage, dubbletthantering, TETRA och RDS från Appearance.
+    - Fliken innehåller nu enbart två balanserade kolumner: "Interface & Typography" (färgtema, teckensnitt och teckenstorlek) till vänster och "Real-time Preview" till höger.
+  - **Flyttat Signalfiltrering & Dubbletthantering till "Database & Storage"**:
+    - Samlat radiobrusfilter (`garbage_filter`), känslighetsreglage (`garbage_sensitivity_slider`), dubbletthanteringsstrategi (`duplicate_handling`) och tidsfönster (`duplicate_window`) i fliken Database & Storage tillsammans med automatiska och manuella rensningsfunktioner.
+  - **Ny flik "TETRA & RDS" under AVKODARE & PROTOKOLL**:
+    - Skapat en dedikerad flik för:
+      1. TETRA / Rakel Basstationsloggning & Bärvågsbevakning (med snabbknapp för att rensa loggar, skanningsläge Dedikerad trafiklyssning / Explorer, fördröjning per basstation samt förbigång av MNC=1 / krypterad Rakel).
+      2. RDS / FM Realtidspuls (Heartbeat) med loggintervall, bortfallsgräns och testknapp för syntetiskt RDS-TMC larm.
+  - **Eliminering av Dubbla Rubriker**:
+    - Raderat den globala "Settings"-rubriken helt och hållet.
+    - Raderat redundanta interna `<h3>`-rubriker i `tab-vhf`, `tab-inmarsat`, `tab-hfdl` och `tab-sonde`.
+    - Översta rubriken i det högra fältet styrs dynamiskt via `switchTab(tabId)` och `SETTINGS_TAB_META` så att den alltid speglar aktiv flik.
+    - Den gröna autosave-indikatorn ("All changes saved") och flikspecifika åtgärdsknappar (`+ Add Receiver`, `Refresh Stats`) ligger i jämnhöjd med fliktiteln via flexbox (`justify-content: space-between`).
+  - **Begränsad Bredd i Högerfältet (1100px)**:
+    - Lagt till `max-width: 1100px; width: 100%; margin: 0;` på `.settings-content-body` och `.settings-header-bar` i `static/style.css`.
+    - Innehållet är vänsterställt och förhindras att sträckas ut överdrivet på breda skärmar.
+- **Kvalitetssäkring & Tester ([tests/test_stats_api.py](file:///d:/antigravity/pager-monitor/tests/test_stats_api.py), [tests/test_settings_sidebar.py](file:///d:/antigravity/pager-monitor/tests/test_settings_sidebar.py))**:
+  - Skapat tester för 15-minuters aggregering och validering av tidsintervall.
+  - Skapat tester som verifierar renodlingen av Appearance & Display, placeringen av filter i Database & Storage, att TETRA & RDS fliken är intakt, och att inga dubbla rubriker förekommer.
+  - Samtliga 216 tester i hela testsviten passerar felfritt (100%). Strikt efterlevnad av emoji-förbudet på hela webbplatsen.
+
+### 000019. Omstrukturering av Settings till Vertikal Sidomeny och 2-kolumnsdesign (v2026.10.20.6)
+- **Kärnkrav & Bakgrund**:
+  - Användarkrav: *"Den nuvarande horisontella raden med 9 flikar på inställningssidan är ologisk och oöverskådlig. Bygg om layouten för Settings till en modern 2-kolumnsdesign med en vänsterställd sidomeny och ett huvudflöde till höger."*
+  - Tidigare låg 9 separata flikar i en horisontell rad som blev svåröverskådlig på alla skärmstorlekar.
+- **Struktur för Sidomenyn ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Implementerat en vertikal sidomeny (`.settings-sidebar`) med fast bredd på 250px och diskret bakgrund (`#f8fafc` i ljust läge / diskret dark i OLED/mörkt läge) samt högerkant (`border-right`).
+  - Grupperat menyvalen i tre tydliga kategorier:
+    - **SYSTEM**: `Appearance & Display`, `Database & Storage`
+    - **HÅRDVARA**: `SDR Receivers` (aktiv som standard)
+    - **AVKODARE & PROTOKOLL**: `VHF Flygdata (VDL2 & ACARS)`, `Inmarsat (SAT-C & AERO)`, `HFDL (Kortvåg)`, `Radiosonder`
+  - Aktiva menyval markeras med tydlig bakgrund (`#e0f2fe`), accentfärg och fetare text (`font-weight: 700`).
+- **Refaktorering och Sammanslagning av Flikinnehåll**:
+  - Slagit ihop "VDL2 / Flygdata" och "VHF ACARS" till den nya gemensamma fliken `VHF Flygdata (VDL2 & ACARS)` med separata undersektioner (`settings-section-card`).
+  - Slagit ihop "Inmarsat STD-C" och "Inmarsat AERO" till den nya gemensamma fliken `Inmarsat (SAT-C & AERO)` med sektioner för SafetyNET/SAR och Classic Aero.
+  - Kort-designen för "Connected SDR Receivers" är bevarad intakt i den nya högra huvudytan.
+  - `switchTab(tabId)` anpassad med alias-översättning och samordnad bakgrundspolling för sammanslagna avkodare.
+- **Kvalitetssäkring & Tester ([tests/test_settings_sidebar.py](file:///d:/antigravity/pager-monitor/tests/test_settings_sidebar.py))**:
+  - Nya enhetstester som kontrollerar:
+    1. 2-kolumns layouten med sidomeny, rubriker och flikar.
+    2. Att `tab-vhf` och `tab-inmarsat` innehåller alla fält, mätvärden och reglage.
+    3. Strikt efterlevnad av emoji-förbudet på hela webbplatsen.
+  - Samtliga 213 enhetstester i hela testsviten passerar felfritt (100%).
 
 ### 000018. Separering av Message och Raw Data i MQTT-publicering (v2026.10.20.5)
 - **Kärnkrav & Bakgrund**:

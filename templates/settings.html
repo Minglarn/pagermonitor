@@ -78,68 +78,88 @@
         <div class="main-content">
             <main style="padding: 0.5rem 0;">
                 <div class="glass-panel settings-container">
-                    <!-- Header with Auto-save indicator -->
-                    <div class="settings-header-bar">
-                        <div>
-                            <h2>Settings</h2>
-                            <p>Configure SDR receivers, display appearance, message filtering, and database storage</p>
-                        </div>
-                        <div id="autoSaveBadge" class="autosave-badge synced">
-                            <i class="fas fa-check-circle"></i>
-                            <span id="autoSaveText">All changes saved</span>
-                        </div>
-                    </div>
-
-                    <!-- Navigation Tabs -->
-                    <div class="settings-tabs">
-                        <button class="tab-trigger active" onclick="switchTab('radio')">
-                            <i class="fas fa-broadcast-tower" style="margin-right: 6px;"></i> SDR Receivers
-                        </button>
-                        <button class="tab-trigger" onclick="switchTab('display')">
-                            <i class="fas fa-palette" style="margin-right: 6px;"></i> Appearance & Display
-                        </button>
-                        <button class="tab-trigger" onclick="switchTab('maintenance')">
-                            <i class="fas fa-database" style="margin-right: 6px;"></i> Database & Storage
-                        </button>
-                        <button class="tab-trigger" onclick="switchTab('vdl2')">
-                            <i class="fas fa-plane" style="margin-right: 6px;"></i> VDL2 / Flygdata
-                        </button>
-                        <button class="tab-trigger" onclick="switchTab('sonde')">
-                            <i class="fas fa-satellite" style="margin-right: 6px;"></i> Radiosonder
-                        </button>
-                        <button class="tab-trigger" onclick="switchTab('satc')">
-                            <i class="fas fa-satellite-dish" style="margin-right: 6px;"></i> Inmarsat STD-C / EGC
-                        </button>
-                        <button class="tab-trigger" onclick="switchTab('aero')">
-                            <i class="fas fa-plane" style="margin-right: 6px;"></i> Inmarsat AERO / ACARS
-                        </button>
-                        <button class="tab-trigger" onclick="switchTab('hfdl')">
-                            <i class="fas fa-plane-departure" style="margin-right: 6px;"></i> HFDL / Kortvåg
-                        </button>
-                        <button class="tab-trigger" onclick="switchTab('acars')">
-                            <i class="fas fa-plane-arrival" style="margin-right: 6px;"></i> VHF ACARS
-                        </button>
-                    </div>
-
-                    <!-- TAB 1: SDR RECEIVERS -->
-                    <div id="tab-radio" class="tab-content active">
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 0.5rem;">
-                            <div>
-                                <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">Connected SDR Receivers</h3>
-                                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
-                                    Manage RTL-SDR dongles, frequencies, hardware parameters, and decoding processes.
-                                </p>
-                            </div>
-                            <button type="button" class="primary-btn" onclick="openAddSdrModal()" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.55rem 1.1rem;">
-                                <i class="fas fa-plus"></i> Add Receiver
+                    <!-- 1. STRUKTUR FÖR SIDOMENYN (VÄNSTERKOLUMN ca 250px) -->
+                    <aside class="settings-sidebar">
+                        <!-- SYSTEM -->
+                        <div class="settings-nav-group">
+                            <div class="settings-nav-heading">SYSTEM</div>
+                            <button type="button" class="tab-trigger settings-nav-item" onclick="switchTab('display')">
+                                <i class="fas fa-palette"></i>
+                                <span>Appearance & Display</span>
+                            </button>
+                            <button type="button" class="tab-trigger settings-nav-item" onclick="switchTab('maintenance')">
+                                <i class="fas fa-database"></i>
+                                <span>Database & Storage</span>
                             </button>
                         </div>
 
+                        <!-- HÅRDVARA -->
+                        <div class="settings-nav-group">
+                            <div class="settings-nav-heading">HÅRDVARA</div>
+                            <button type="button" class="tab-trigger settings-nav-item active" onclick="switchTab('radio')">
+                                <i class="fas fa-broadcast-tower"></i>
+                                <span>SDR Receivers</span>
+                            </button>
+                        </div>
+
+                        <!-- AVKODARE & PROTOKOLL -->
+                        <div class="settings-nav-group">
+                            <div class="settings-nav-heading">AVKODARE & PROTOKOLL</div>
+                            <button type="button" class="tab-trigger settings-nav-item" onclick="switchTab('vhf')">
+                                <i class="fas fa-plane"></i>
+                                <span>VHF Flygdata (VDL2 & ACARS)</span>
+                            </button>
+                            <button type="button" class="tab-trigger settings-nav-item" onclick="switchTab('inmarsat')">
+                                <i class="fas fa-satellite-dish"></i>
+                                <span>Inmarsat (SAT-C & AERO)</span>
+                            </button>
+                            <button type="button" class="tab-trigger settings-nav-item" onclick="switchTab('hfdl')">
+                                <i class="fas fa-plane-departure"></i>
+                                <span>HFDL (Kortvåg)</span>
+                            </button>
+                            <button type="button" class="tab-trigger settings-nav-item" onclick="switchTab('sonde')">
+                                <i class="fas fa-satellite"></i>
+                                <span>Radiosonder</span>
+                            </button>
+                            <button type="button" class="tab-trigger settings-nav-item" onclick="switchTab('tetra-rds')">
+                                <i class="fas fa-broadcast-tower"></i>
+                                <span>TETRA & RDS</span>
+                            </button>
+                        </div>
+                    </aside>
+
+                    <!-- HUVUDFLÖDE TILL HÖGER -->
+                    <section class="settings-main-flow">
+                        <!-- Header with Auto-save indicator & Dynamic Tab Title (No double headers!) -->
+                        <div class="settings-header-bar">
+                            <div style="flex: 1; min-width: 250px;">
+                                <h2 id="settingsTabTitle">Connected SDR Receivers</h2>
+                                <p id="settingsTabSubtitle">Manage RTL-SDR dongles, frequencies, hardware parameters, and decoding processes.</p>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                                <button type="button" id="btnTopAddSdr" class="primary-btn" onclick="openAddSdrModal()" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.45rem 1rem; font-size: 0.85rem;">
+                                    <i class="fas fa-plus"></i> Add Receiver
+                                </button>
+                                <button type="button" id="btnTopRefreshStats" class="secondary-btn" onclick="loadDatabaseStats(true)" style="display: none; align-items: center; gap: 0.5rem; padding: 0.45rem 1rem; font-size: 0.85rem; margin: 0;">
+                                    <i class="fas fa-sync-alt"></i> Refresh Stats
+                                </button>
+                                <div id="autoSaveBadge" class="autosave-badge synced">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span id="autoSaveText">All changes saved</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Innehållsyta för flikarna (max-width 1100px) -->
+                        <div class="settings-content-body">
+                            <!-- TAB 1: SDR RECEIVERS -->
+                    <div id="tab-radio" class="tab-content active">
                         <div id="sdrList" class="sdr-grid">
                             <!-- SDR Cards injected dynamically -->
                         </div>
                     </div>
 
+                    <!-- TAB 2: APPEARANCE & LIVE PREVIEW -->
                     <!-- TAB 2: APPEARANCE & LIVE PREVIEW -->
                     <div id="tab-display" class="tab-content">
                         <div class="settings-split-layout">
@@ -198,159 +218,6 @@
                                         </div>
                                     </div>
                                 </div>
-
-                                <!-- Card 2: Filter & Duplicate Handling -->
-                                <div class="settings-subpanel">
-                                    <h4 style="margin: 0 0 0.85rem 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
-                                        <i class="fas fa-filter" style="color: var(--accent);"></i> Signal Filtering & Duplicate Handling
-                                    </h4>
-
-                                    <!-- Garbage Filter -->
-                                    <div class="form-group checkbox-group" style="margin-bottom: 0.5rem;">
-                                        <label style="font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
-                                            <input type="checkbox" id="garbage_filter" checked>
-                                            Enable garbage filter for radio noise
-                                        </label>
-                                    </div>
-
-                                    <div id="filterSensitivityGroup">
-                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
-                                            <label for="garbage_sensitivity_slider" style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
-                                                Filter Sensitivity: <strong id="sensitivity_val" style="color: var(--text-primary);">50</strong>%
-                                            </label>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 0.6rem;">
-                                            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Mild</span>
-                                            <input type="range" id="garbage_sensitivity_slider" min="10" max="90" step="5" value="50" style="flex: 1;">
-                                            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Aggressive</span>
-                                        </div>
-                                        <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.4; margin: 0.4rem 0 0 0;">
-                                            Calculates message readability based on characters and symbols to filter out RF noise.
-                                        </p>
-                                    </div>
-
-                                    <!-- Subtle Divider -->
-                                    <div style="border-top: 1px solid var(--panel-border); margin: 0.85rem 0;"></div>
-
-                                    <!-- Duplicate Handling -->
-                                    <div>
-                                        <div style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; color: var(--text-primary); margin-bottom: 0.25rem;">
-                                            <i class="fas fa-copy" style="color: var(--accent); font-size: 0.8rem;"></i>
-                                            Duplicate Handling & Pager Repeats
-                                        </div>
-                                        <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.35; margin: 0 0 0.65rem 0;">
-                                            Controls how the system handles recurring or identical transmissions from the same CapCode.
-                                        </p>
-
-                                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                                            <div style="flex: 1.2; min-width: 180px;">
-                                                <label for="duplicate_handling" style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">
-                                                    Duplicate Action
-                                                </label>
-                                                <select id="duplicate_handling" class="form-input">
-                                                    <option value="mark">Mark as separate row with badge (Default)</option>
-                                                    <option value="merge">Group into same event (Increment 2x, 3x badge) (Recommended)</option>
-                                                    <option value="hide">Hide in tables (Save to database)</option>
-                                                    <option value="discard">Discard completely (Do not save or send)</option>
-                                                </select>
-                                            </div>
-
-                                            <div style="flex: 0.8; min-width: 130px;">
-                                                <label for="duplicate_window" style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">
-                                                    Time Window (seconds)
-                                                </label>
-                                                <input type="number" id="duplicate_window" class="form-input" min="5" max="3600" step="5" value="120">
-                                            </div>
-                                        </div>
-
-                                        <p style="color: var(--text-secondary); font-size: 0.72rem; line-height: 1.35; margin: 0.5rem 0 0 0;">
-                                            Identical transmissions from the same CapCode within the specified time window are handled according to the selected action.
-                                        </p>
-                                    </div>
-
-                                    <!-- Subtle Divider -->
-                                    <div style="border-top: 1px solid var(--panel-border); margin: 0.85rem 0;"></div>
-
-                                    <!-- TETRA Base Station Logging -->
-                                    <div>
-                                        <div style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; color: var(--text-primary); margin-bottom: 0.25rem;">
-                                            <i class="fas fa-broadcast-tower" style="color: var(--accent); font-size: 0.8rem;"></i>
-                                            TETRA / Rakel Basstationsloggning
-                                        </div>
-                                        <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.35; margin: 0 0 0.65rem 0;">
-                                            Styr huruvida bärvågslåsningar och basstationssynk skall sparas som separata rader i larmtabellen under frekvenssvep.
-                                        </p>
-                                        <div class="form-group checkbox-group" style="margin-bottom: 0.5rem;">
-                                            <label style="font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
-                                                <input type="checkbox" id="log_tetra_basestations">
-                                                Logga TETRA-basstationer i larmflödet
-                                            </label>
-                                        </div>
-                                        <div style="margin-top: 0.5rem;">
-                                            <button type="button" class="btn" onclick="clearBasestationLogs()" style="background: rgba(239, 68, 68, 0.12); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); font-size: 0.78rem; padding: 0.35rem 0.75rem; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
-                                                <i class="fas fa-trash-alt"></i> Rensa tidigare basstationsloggar ur databasen
-                                            </button>
-                                        </div>
-
-                                        <div style="margin-top: 0.85rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
-                                            <div style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; color: var(--text-primary); margin-bottom: 0.25rem;">
-                                                <i class="fas fa-satellite-dish" style="color: var(--accent); font-size: 0.8rem;"></i>
-                                                TETRA Skanningsläge & Bärvågsbevakning
-                                            </div>
-                                            <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.35; margin: 0 0 0.5rem 0;">
-                                                Styr hur skannern agerar när den låst på en basstation under frekvenssvep.
-                                            </p>
-                                            <div class="form-group" style="margin-bottom: 0.5rem;">
-                                                <label for="tetra_scan_mode" style="font-size: 0.8rem; font-weight: 600;">Driftläge</label>
-                                                <select id="tetra_scan_mode" class="form-control" style="font-size: 0.8rem; padding: 0.35rem 0.5rem;">
-                                                    <option value="monitor">Dedikerad Trafiklyssning (Stanna kvar så länge styrsignal/synk finns)</option>
-                                                    <option value="explorer">Explorer / Kartläggning (Svep vidare efter fördröjningstid)</option>
-                                                </select>
-                                            </div>
-                                            <div class="form-group" id="tetraDwellGroup" style="margin-bottom: 0.5rem; display: none;">
-                                                <label for="tetra_dwell_time" style="font-size: 0.8rem; font-weight: 600;">Fördröjning per basstation (sekunder)</label>
-                                                <input type="number" id="tetra_dwell_time" class="form-control" min="15" max="600" value="60" style="font-size: 0.8rem; padding: 0.35rem 0.5rem; max-width: 140px;">
-                                            </div>
-                                            <div class="form-group checkbox-group" style="margin-top: 0.65rem; margin-bottom: 0.5rem;">
-                                                <label style="font-size: 0.85rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
-                                                    <input type="checkbox" id="tetra_skip_encrypted">
-                                                    Gå vidare om MNC=1 (Hoppa över krypterad Rakel, sök civila/öppna nät)
-                                                </label>
-                                                <p style="color: var(--text-secondary); font-size: 0.72rem; line-height: 1.35; margin: 0.2rem 0 0 1.6rem;">
-                                                    Om en basstation sänder MNC=1 (MSB Rakel) avbryter skannern omedelbart och söker vidare efter civila och öppna nätverk.
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <!-- Subtle Divider -->
-                                    <div style="border-top: 1px solid var(--panel-border); margin: 0.85rem 0;"></div>
-
-                                    <!-- RDS Heartbeat Settings -->
-                                    <div>
-                                        <div style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; color: var(--text-primary); margin-bottom: 0.25rem;">
-                                            <i class="fas fa-heartbeat" style="color: var(--accent); font-size: 0.8rem;"></i>
-                                            RDS / FM Realtidspuls (Heartbeat)
-                                        </div>
-                                        <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.35; margin: 0 0 0.65rem 0;">
-                                            Periodisk loggning av stationssynk och blocktakt i bakgrunden även när inga TMC- eller textmeddelanden tas emot.
-                                        </p>
-                                        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                                            <div style="flex: 1; min-width: 140px;">
-                                                <label for="rds_heartbeat_interval" style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">
-                                                    Loggintervall (sekunder)
-                                                </label>
-                                                <input type="number" id="rds_heartbeat_interval" class="form-input" min="2" max="120" step="1" value="10">
-                                            </div>
-                                            <div style="flex: 1; min-width: 140px;">
-                                                <label for="rds_heartbeat_timeout" style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">
-                                                    Bortfallsgräns (sekunder)
-                                                </label>
-                                                <input type="number" id="rds_heartbeat_timeout" class="form-input" min="1" max="60" step="1" value="5">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
 
                             <!-- Live Preview Column -->
@@ -385,18 +252,6 @@
                     <!-- TAB 3: DATABASE & MAINTENANCE -->
                     <div id="tab-maintenance" class="tab-content">
                         <div class="maintenance-group">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
-                                <div>
-                                    <h3 style="margin: 0; color: var(--text-primary); font-size: 1.15rem;">Database Overview & Health Metrics</h3>
-                                    <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0.25rem 0 0 0;">
-                                        Real-time storage status, integrity verification, and automated retention.
-                                    </p>
-                                </div>
-                                <button type="button" id="btnRefreshStats" class="secondary-btn" onclick="loadDatabaseStats(true)" style="font-size: 0.85rem; padding: 0.45rem 1rem; margin: 0;">
-                                    <i id="iconRefreshStats" class="fas fa-sync-alt" style="margin-right: 6px;"></i> Refresh Stats
-                                </button>
-                            </div>
-
                             <!-- Full Width KPI Cards Grid -->
                             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
                                 <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--panel-border);">
@@ -471,6 +326,77 @@
                                     <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 0.25rem;">Within time window</div>
                                 </div>
                             </div>
+
+                            <!-- Signal Filtering & Duplicate Handling Section -->
+                            <div class="settings-section-card" style="margin-bottom: 1.5rem;">
+                                <h4 style="margin: 0 0 0.85rem 0; font-size: 1.05rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                                    <i class="fas fa-filter" style="color: var(--accent);"></i> Signal Filtering & Duplicate Handling
+                                </h4>
+
+                                <!-- Garbage Filter -->
+                                <div class="form-group checkbox-group" style="margin-bottom: 0.5rem;">
+                                    <label style="font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+                                        <input type="checkbox" id="garbage_filter" checked>
+                                        Enable garbage filter for radio noise
+                                    </label>
+                                </div>
+
+                                <div id="filterSensitivityGroup">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+                                        <label for="garbage_sensitivity_slider" style="font-size: 0.8rem; color: var(--text-secondary); margin: 0;">
+                                            Filter Sensitivity: <strong id="sensitivity_val" style="color: var(--text-primary);">50</strong>%
+                                        </label>
+                                    </div>
+                                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Mild</span>
+                                        <input type="range" id="garbage_sensitivity_slider" min="10" max="90" step="5" value="50" style="flex: 1;">
+                                        <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 600;">Aggressive</span>
+                                    </div>
+                                    <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.4; margin: 0.4rem 0 0 0;">
+                                        Calculates message readability based on characters and symbols to filter out RF noise.
+                                    </p>
+                                </div>
+
+                                <!-- Subtle Divider -->
+                                <div style="border-top: 1px solid var(--panel-border); margin: 0.85rem 0;"></div>
+
+                                <!-- Duplicate Handling -->
+                                <div>
+                                    <div style="font-size: 0.85rem; font-weight: 600; display: flex; align-items: center; gap: 0.45rem; color: var(--text-primary); margin-bottom: 0.25rem;">
+                                        <i class="fas fa-copy" style="color: var(--accent); font-size: 0.8rem;"></i>
+                                        Duplicate Handling & Pager Repeats
+                                    </div>
+                                    <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.35; margin: 0 0 0.65rem 0;">
+                                        Controls how the system handles recurring or identical transmissions from the same CapCode.
+                                    </p>
+
+                                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                                        <div style="flex: 1.2; min-width: 180px;">
+                                            <label for="duplicate_handling" style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">
+                                                Duplicate Action
+                                            </label>
+                                            <select id="duplicate_handling" class="form-input">
+                                                <option value="mark">Mark as separate row with badge (Default)</option>
+                                                <option value="merge">Group into same event (Increment 2x, 3x badge) (Recommended)</option>
+                                                <option value="hide">Hide in tables (Save to database)</option>
+                                                <option value="discard">Discard completely (Do not save or send)</option>
+                                            </select>
+                                        </div>
+
+                                        <div style="flex: 0.8; min-width: 130px;">
+                                            <label for="duplicate_window" style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); display: block; margin-bottom: 0.25rem;">
+                                                Time Window (seconds)
+                                            </label>
+                                            <input type="number" id="duplicate_window" class="form-input" min="5" max="3600" step="5" value="120">
+                                        </div>
+                                    </div>
+
+                                    <p style="color: var(--text-secondary); font-size: 0.72rem; line-height: 1.35; margin: 0.5rem 0 0 0;">
+                                        Identical transmissions from the same CapCode within the specified time window are handled according to the selected action.
+                                    </p>
+                                </div>
+                            </div>
+
 
                             <!-- Two Column Action Cards -->
                             <div class="database-actions-grid">
@@ -587,52 +513,53 @@
                         </div>
                     </div>
 
-                    <!-- TAB 4: VDL2 / FLYGDATA -->
-                    <div id="tab-vdl2" class="tab-content">
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
-                            <div>
-                                <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">VDL Mode 2 / Flygdata (dumpvdl2)</h3>
-                                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
-                                    Ta emot avkodade ACARS, CPDLC och flygtrafikmeddelanden från din dumpvdl2/acars_router-instans via TCP-nätverksström.
-                                </p>
+                    <!-- TAB: VHF FLYGDATA (VDL2 & ACARS) -->
+                    <div id="tab-vhf" class="tab-content">
+                        <!-- Sektion 1: VDL Mode 2 / Flygdata (dumpvdl2) -->
+                        <div class="settings-section-card">
+                            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
+                                <div>
+                                    <h4 style="margin: 0; font-size: 1.05rem; color: var(--text-primary);">VDL Mode 2 / Flygdata (dumpvdl2)</h4>
+                                    <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
+                                        Ta emot avkodade ACARS, CPDLC och flygtrafikmeddelanden från din dumpvdl2/acars_router-instans via TCP-nätverksström.
+                                    </p>
+                                </div>
+                                <div style="display: flex; gap: 0.75rem; align-items: center;">
+                                    <button type="button" class="secondary-btn" onclick="sendTestVdl2Alert()"
+                                        style="border-color: #38bdf8; color: #38bdf8; padding: 0.55rem 1.1rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fas fa-paper-plane"></i> Skicka Test-ACARS
+                                    </button>
+                                </div>
                             </div>
-                            <div style="display: flex; gap: 0.75rem; align-items: center;">
-                                <button type="button" class="secondary-btn" onclick="sendTestVdl2Alert()"
-                                    style="border-color: #38bdf8; color: #38bdf8; padding: 0.55rem 1.1rem; display: inline-flex; align-items: center; gap: 0.5rem;">
-                                    <i class="fas fa-paper-plane"></i> Skicka Test-ACARS
-                                </button>
-                            </div>
-                        </div>
 
-                        <!-- Status Cards Grid -->
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Anslutningsstatus</div>
-                                <div id="vdl2StatusBadge" style="display: inline-block; padding: 0.3rem 0.75rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem; background: rgba(148, 163, 184, 0.15); color: #cbd5e1;">Laddar...</div>
-                                <div id="vdl2StatusText" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; word-break: break-all;">-</div>
+                            <!-- Status Cards Grid för VDL2 -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                                <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Anslutningsstatus</div>
+                                    <div id="vdl2StatusBadge" style="display: inline-block; padding: 0.3rem 0.75rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem; background: rgba(148, 163, 184, 0.15); color: #cbd5e1;">Laddar...</div>
+                                    <div id="vdl2StatusText" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; word-break: break-all;">-</div>
+                                </div>
+                                <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Mottagna Nätverkspaket</div>
+                                    <div id="vdl2PacketsCount" style="font-size: 1.6rem; font-weight: 800; color: #38bdf8;">0</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Totalt från TCP-uttag</div>
+                                </div>
+                                <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Avkodade Textmeddelanden</div>
+                                    <div id="vdl2MessagesCount" style="font-size: 1.6rem; font-weight: 800; color: #10b981;">0</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">ACARS / CPDLC sparade</div>
+                                </div>
+                                <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                    <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Senaste Flygplan</div>
+                                    <div id="vdl2LastFlight" style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary);">-</div>
+                                    <div id="vdl2LastTime" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Ingen aktivitet ännu</div>
+                                </div>
                             </div>
-                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Mottagna Nätverkspaket</div>
-                                <div id="vdl2PacketsCount" style="font-size: 1.6rem; font-weight: 800; color: #38bdf8;">0</div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Totalt från TCP-uttag</div>
-                            </div>
-                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Avkodade Textmeddelanden</div>
-                                <div id="vdl2MessagesCount" style="font-size: 1.6rem; font-weight: 800; color: #10b981;">0</div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">ACARS / CPDLC sparade</div>
-                            </div>
-                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Senaste Flygplan</div>
-                                <div id="vdl2LastFlight" style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary);">-</div>
-                                <div id="vdl2LastTime" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Ingen aktivitet ännu</div>
-                            </div>
-                        </div>
 
-                        <!-- Settings Form -->
-                        <div class="glass-panel" style="padding: 1.5rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
-                            <h4 style="margin: 0 0 1.25rem 0; color: var(--text-primary); font-size: 1.05rem;">
+                            <!-- Settings Form -->
+                            <h5 style="margin: 0 0 1.25rem 0; color: var(--text-primary); font-size: 0.95rem;">
                                 <i class="fas fa-network-wired" style="color: #38bdf8; margin-right: 8px;"></i> Nätverkskonfiguration för VDL2
-                            </h4>
+                            </h5>
 
                             <div style="display: flex; flex-direction: column; gap: 1.25rem;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
@@ -687,7 +614,7 @@
                                     </label>
                                 </div>
 
-                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                                <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--panel-border);">
                                     <div>
                                         <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">Dölj ACARS Länktest (Label Q0)</div>
                                         <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">
@@ -701,65 +628,65 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- TAB 5: RADIOSONDER / VÄDERBALLONGER -->
-                    <div id="tab-sonde" class="tab-content">
-                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem;">
-                            <div>
-                                <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">Radiosonder / Väderballonger (radiosonde_auto_rx)</h3>
-                                <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
-                                    Ta emot och spåra telemetri från radiosonder (RS41, DFM, m.fl.) i realtid via UDP-port 55673 (PAYLOAD_SUMMARY).
-                                </p>
+                        <!-- Sektion 2: VHF ACARS (acarsdec / acars_router) -->
+                        <div class="settings-section-card">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+                                <div>
+                                    <h4 style="margin: 0; font-size: 1.05rem; color: var(--text-primary);">VHF ACARS (acarsdec / acars_router)</h4>
+                                    <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
+                                        Ta emot lokal och regional flygdata, ACARS-meddelanden och telemetri över VHF från din acarsdec/acars_router-instans via TCP (port 15550).
+                                    </p>
+                                </div>
+                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                    <button type="button" class="secondary-btn" onclick="sendTestAcarsAlert()" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; font-size: 0.82rem;">
+                                        <i class="fas fa-paper-plane"></i> Test ACARS
+                                    </button>
+                                </div>
                             </div>
-                            <div style="display: flex; gap: 0.75rem; align-items: center;">
-                                <button type="button" class="secondary-btn" onclick="sendTestSondeAlert()"
-                                    style="border-color: #c084fc; color: #c084fc; padding: 0.55rem 1.1rem; display: inline-flex; align-items: center; gap: 0.5rem;">
-                                    <i class="fas fa-paper-plane"></i> Skicka Test-Sond
-                                </button>
-                            </div>
-                        </div>
 
-                        <!-- Status Cards Grid -->
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Lyssnarstatus</div>
-                                <div id="sondeStatusBadge" style="display: inline-block; padding: 0.3rem 0.75rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem; background: rgba(148, 163, 184, 0.15); color: #cbd5e1;">Laddar...</div>
-                                <div id="sondeStatusText" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; word-break: break-all;">-</div>
-                            </div>
-                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Mottagna UDP-paket</div>
-                                <div id="sondePacketsCount" style="font-size: 1.6rem; font-weight: 800; color: #c084fc;">0</div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Totalt från radiosonde_auto_rx</div>
-                            </div>
-                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Aktiva Ballonger</div>
-                                <div id="sondeActiveCount" style="font-size: 1.6rem; font-weight: 800; color: #10b981;">0</div>
-                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">I luften just nu</div>
-                            </div>
-                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
-                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Senaste Sond & Maxhöjd</div>
-                                <div id="sondeLastSonde" style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary);">-</div>
-                                <div id="sondeLastTime" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Ingen aktivitet ännu</div>
-                            </div>
-                        </div>
+                            <!-- ACARS Telemetry & Status Badges -->
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Status</div>
+                                    <div id="acarsStatusBadge" style="display: inline-block; padding: 0.3rem 0.75rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem; background: rgba(148, 163, 184, 0.15); color: #cbd5e1;">Laddar...</div>
+                                    <div id="acarsStatusText" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; word-break: break-all;">-</div>
+                                </div>
 
-                        <!-- Settings Form -->
-                        <div class="glass-panel" style="padding: 1.5rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
-                            <h4 style="margin: 0 0 1.25rem 0; color: var(--text-primary); font-size: 1.05rem;">
-                                <i class="fas fa-network-wired" style="color: #c084fc; margin-right: 8px;"></i> UDP-konfiguration för radiosonde_auto_rx
-                            </h4>
+                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Mottagna Paket</div>
+                                    <div id="acarsPacketsCount" style="font-size: 1.6rem; font-weight: 800; color: #818cf8;">0</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Råa JSON-paket</div>
+                                </div>
+
+                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Avkodade Meddelanden</div>
+                                    <div id="acarsMessagesCount" style="font-size: 1.6rem; font-weight: 800; color: #10b981;">0</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">VHF ACARS-meddelanden</div>
+                                </div>
+
+                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
+                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Senaste Aktivitet</div>
+                                    <div id="acarsLastFlight" style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); word-break: break-all;">-</div>
+                                    <div id="acarsLastTime" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Ingen aktivitet ännu</div>
+                                </div>
+                            </div>
+
+                            <!-- ACARS Configuration Form -->
+                            <h5 style="margin: 0 0 1.25rem 0; color: var(--text-primary); font-size: 0.95rem;">
+                                <i class="fas fa-network-wired" style="color: #818cf8; margin-right: 8px;"></i> Nätverkskonfiguration för VHF ACARS
+                            </h5>
 
                             <div style="display: flex; flex-direction: column; gap: 1.25rem;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
                                     <div>
-                                        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">Aktivera Radiosondmottagare</div>
+                                        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">Aktivera VHF ACARS-mottagare</div>
                                         <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">
-                                            Öppnar en lokal UDP-socket som tar emot strömmande telemetri från radiosonde_auto_rx.
+                                            Ansluter som TCP-klient till acars_router för inkommande JSON-strömmar från acarsdec.
                                         </div>
                                     </div>
                                     <label class="switch">
-                                        <input type="checkbox" id="sonde_enabled" onchange="autoSaveSondeSettings()">
+                                        <input type="checkbox" id="acars_enabled" checked onchange="autoSaveAcarsSettings()">
                                         <span class="slider round"></span>
                                     </label>
                                 </div>
@@ -767,25 +694,25 @@
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
                                     <div>
                                         <label style="display: block; font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.4rem;">
-                                            UDP Lyssnarport
+                                            Värddator / IP-adress
                                         </label>
-                                        <input type="number" id="sonde_udp_port" class="form-input" value="55673" min="1" max="65535"
+                                        <input type="text" id="acars_host" class="form-input" value="192.168.1.242" placeholder="t.ex. 192.168.1.242"
                                             style="width: 100%; padding: 0.55rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text-primary);"
-                                            onchange="autoSaveSondeSettings()">
+                                            onchange="autoSaveAcarsSettings()">
                                         <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
-                                            Port dit <code>radiosonde_auto_rx</code> skickar sina <code>PAYLOAD_SUMMARY</code> UDP-paket (standard <code>55673</code>).
+                                            IP-adress eller värdnamn till maskinen där <code>acars_router</code> körs (t.ex. iridium).
                                         </small>
                                     </div>
 
                                     <div>
                                         <label style="display: block; font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.4rem;">
-                                            Databasintervall (sekunder)
+                                            TCP-port
                                         </label>
-                                        <input type="number" id="sonde_db_interval" class="form-input" value="5" min="1" max="60"
+                                        <input type="number" id="acars_port" class="form-input" value="15550" placeholder="15550"
                                             style="width: 100%; padding: 0.55rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text-primary);"
-                                            onchange="autoSaveSondeSettings()">
+                                            onchange="autoSaveAcarsSettings()">
                                         <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
-                                            Hur ofta den aktiva raden i databasen uppdateras (standard 5s) för att undvika överbelastning av SQLite.
+                                            TCP-port för acarsdec JSON-output (standard <code>15550</code>).
                                         </small>
                                     </div>
                                 </div>
@@ -793,12 +720,13 @@
                         </div>
                     </div>
 
-                    <!-- TAB 6: INMARSAT STD-C / EGC -->
-                    <div id="tab-satc" class="tab-content">
-                        <div class="settings-card" style="padding: 1.5rem; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; margin-bottom: 1.5rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+                    <!-- TAB: INMARSAT (SAT-C & AERO) -->
+                    <div id="tab-inmarsat" class="tab-content">
+                        <!-- Sektion 1: Inmarsat STD-C / EGC / SafetyNET (SatDump) -->
+                        <div class="settings-section-card">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: gap; gap: 1rem; margin-bottom: 1.25rem;">
                                 <div>
-                                    <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">Inmarsat STD-C / EGC / SafetyNET (SatDump)</h3>
+                                    <h4 style="margin: 0; font-size: 1.05rem; color: var(--text-primary);">Inmarsat STD-C / EGC / SafetyNET (SatDump)</h4>
                                     <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
                                         Ta emot avkodade SafetyNET, NAVAREA, vädervarningar och SAR-meddelanden från din SatDump-instans via UDP eller TCP (JSON_OUT).
                                     </p>
@@ -841,6 +769,10 @@
                             </div>
 
                             <!-- SatC Configuration Form -->
+                            <h5 style="margin: 0 0 1.25rem 0; color: var(--text-primary); font-size: 0.95rem;">
+                                <i class="fas fa-satellite" style="color: #2dd4bf; margin-right: 8px;"></i> Nätverkskonfiguration för STD-C (SatDump)
+                            </h5>
+
                             <div style="display: flex; flex-direction: column; gap: 1.25rem;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
                                     <div>
@@ -897,14 +829,12 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- TAB: INMARSAT AERO / ACARS -->
-                    <div id="tab-aero" class="tab-content">
-                        <div class="settings-card" style="padding: 1.5rem; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; margin-bottom: 1.5rem;">
+                        <!-- Sektion 2: Inmarsat Classic Aero / ACARS (SatDump / JAERO) -->
+                        <div class="settings-section-card">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
                                 <div>
-                                    <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">Inmarsat Classic Aero / ACARS (SatDump / JAERO)</h3>
+                                    <h4 style="margin: 0; font-size: 1.05rem; color: var(--text-primary);">Inmarsat Classic Aero / ACARS (SatDump / JAERO)</h4>
                                     <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
                                         Ta emot avkodade flygmeddelanden (ACARS, CPDLC, ADS-C och FMS-positioner) från SatDump inmarsat_aero eller JAERO via UDP eller TCP (JSON_OUT).
                                     </p>
@@ -947,6 +877,10 @@
                             </div>
 
                             <!-- Aero Configuration Form -->
+                            <h5 style="margin: 0 0 1.25rem 0; color: var(--text-primary); font-size: 0.95rem;">
+                                <i class="fas fa-plane" style="color: #0891b2; margin-right: 8px;"></i> Nätverkskonfiguration för Classic Aero (SatDump / JAERO)
+                            </h5>
+
                             <div style="display: flex; flex-direction: column; gap: 1.25rem;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
                                     <div>
@@ -1005,27 +939,19 @@
                         </div>
                     </div>
 
-                    <!-- TAB 7: HFDL KORTVÅG -->
+                    <!-- TAB: HFDL (KORTVÅG) -->
                     <div id="tab-hfdl" class="tab-content">
                         <div class="settings-card" style="padding: 1.5rem; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; margin-bottom: 1.5rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
-                                <div>
-                                    <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">HFDL (High Frequency Data Link / dumphfdl)</h3>
-                                    <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
-                                        Ta emot global flygdata, hörbarhetsrapporter, positioner och ACARS över kortvåg från din dumphfdl-instans via TCP-klient eller UDP.
-                                    </p>
-                                </div>
-                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                    <button type="button" class="secondary-btn" onclick="sendTestHfdlAlert('frequency_data')" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; font-size: 0.82rem;">
-                                        <i class="fas fa-paper-plane"></i> Test Hörbarhet
-                                    </button>
-                                    <button type="button" class="secondary-btn" onclick="sendTestHfdlAlert('performance_data')" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; font-size: 0.82rem;">
-                                        <i class="fas fa-chart-line"></i> Test Prestanda
-                                    </button>
-                                    <button type="button" class="secondary-btn" onclick="sendTestHfdlAlert('acars')" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; font-size: 0.82rem;">
-                                        <i class="fas fa-envelope"></i> Test ACARS
-                                    </button>
-                                </div>
+                            <div style="display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem;">
+                                <button type="button" class="secondary-btn" onclick="sendTestHfdlAlert('frequency_data')" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; font-size: 0.82rem;">
+                                    <i class="fas fa-paper-plane"></i> Test Hörbarhet
+                                </button>
+                                <button type="button" class="secondary-btn" onclick="sendTestHfdlAlert('performance_data')" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; font-size: 0.82rem;">
+                                    <i class="fas fa-chart-line"></i> Test Prestanda
+                                </button>
+                                <button type="button" class="secondary-btn" onclick="sendTestHfdlAlert('acars')" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; font-size: 0.82rem;">
+                                    <i class="fas fa-envelope"></i> Test ACARS
+                                </button>
                             </div>
 
                             <!-- HFDL Telemetry & Status Badges -->
@@ -1114,61 +1040,55 @@
                         </div>
                     </div>
 
-                    <!-- TAB 8: VHF ACARS -->
-                    <div id="tab-acars" class="tab-content">
-                        <div class="settings-card" style="padding: 1.5rem; background: var(--panel-bg); border: 1px solid var(--panel-border); border-radius: 12px; margin-bottom: 1.5rem;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
-                                <div>
-                                    <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-primary);">VHF ACARS (acarsdec / acars_router)</h3>
-                                    <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-secondary);">
-                                        Ta emot lokal och regional flygdata, ACARS-meddelanden och telemetri över VHF från din acarsdec/acars_router-instans via TCP (port 15550).
-                                    </p>
-                                </div>
-                                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                                    <button type="button" class="secondary-btn" onclick="sendTestAcarsAlert()" style="display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.45rem 0.9rem; font-size: 0.82rem;">
-                                        <i class="fas fa-paper-plane"></i> Test ACARS
-                                    </button>
-                                </div>
+                    <!-- TAB: RADIOSONDER -->
+                    <div id="tab-sonde" class="tab-content">
+                        <div style="display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.25rem;">
+                            <button type="button" class="secondary-btn" onclick="sendTestSondeAlert()"
+                                style="border-color: #c084fc; color: #c084fc; padding: 0.55rem 1.1rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                                <i class="fas fa-paper-plane"></i> Skicka Test-Sond
+                            </button>
+                        </div>
+
+                        <!-- Status Cards Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Lyssnarstatus</div>
+                                <div id="sondeStatusBadge" style="display: inline-block; padding: 0.3rem 0.75rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem; background: rgba(148, 163, 184, 0.15); color: #cbd5e1;">Laddar...</div>
+                                <div id="sondeStatusText" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; word-break: break-all;">-</div>
                             </div>
-
-                            <!-- ACARS Telemetry & Status Badges -->
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
-                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Status</div>
-                                    <div id="acarsStatusBadge" style="display: inline-block; padding: 0.3rem 0.75rem; border-radius: 6px; font-weight: 700; font-size: 0.9rem; background: rgba(148, 163, 184, 0.15); color: #cbd5e1;">Laddar...</div>
-                                    <div id="acarsStatusText" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem; word-break: break-all;">-</div>
-                                </div>
-
-                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
-                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Mottagna Paket</div>
-                                    <div id="acarsPacketsCount" style="font-size: 1.6rem; font-weight: 800; color: #818cf8;">0</div>
-                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Råa JSON-paket</div>
-                                </div>
-
-                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
-                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Avkodade Meddelanden</div>
-                                    <div id="acarsMessagesCount" style="font-size: 1.6rem; font-weight: 800; color: #10b981;">0</div>
-                                    <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">VHF ACARS-meddelanden</div>
-                                </div>
-
-                                <div style="background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 10px; padding: 1rem;">
-                                    <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); font-weight: 600; letter-spacing: 0.05em; margin-bottom: 0.5rem;">Senaste Aktivitet</div>
-                                    <div id="acarsLastFlight" style="font-size: 1.1rem; font-weight: 700; color: var(--text-primary); word-break: break-all;">-</div>
-                                    <div id="acarsLastTime" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Ingen aktivitet ännu</div>
-                                </div>
+                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Mottagna UDP-paket</div>
+                                <div id="sondePacketsCount" style="font-size: 1.6rem; font-weight: 800; color: #c084fc;">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Totalt från radiosonde_auto_rx</div>
                             </div>
+                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Aktiva Ballonger</div>
+                                <div id="sondeActiveCount" style="font-size: 1.6rem; font-weight: 800; color: #10b981;">0</div>
+                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">I luften just nu</div>
+                            </div>
+                            <div class="glass-panel" style="padding: 1.25rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                                <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.4rem;">Senaste Sond & Maxhöjd</div>
+                                <div id="sondeLastSonde" style="font-size: 1.3rem; font-weight: 700; color: var(--text-primary);">-</div>
+                                <div id="sondeLastTime" style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">Ingen aktivitet ännu</div>
+                            </div>
+                        </div>
 
-                            <!-- ACARS Configuration Form -->
+                        <!-- Settings Form -->
+                        <div class="glass-panel" style="padding: 1.5rem; border-radius: 12px; border: 1px solid var(--panel-border); background: rgba(255,255,255,0.02);">
+                            <h4 style="margin: 0 0 1.25rem 0; color: var(--text-primary); font-size: 1.05rem;">
+                                <i class="fas fa-network-wired" style="color: #c084fc; margin-right: 8px;"></i> UDP-konfiguration för radiosonde_auto_rx
+                            </h4>
+
                             <div style="display: flex; flex-direction: column; gap: 1.25rem;">
                                 <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
                                     <div>
-                                        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">Aktivera VHF ACARS-mottagare</div>
+                                        <div style="font-weight: 600; font-size: 0.95rem; color: var(--text-primary);">Aktivera Radiosondmottagare</div>
                                         <div style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem;">
-                                            Ansluter som TCP-klient till acars_router för inkommande JSON-strömmar från acarsdec.
+                                            Öppnar en lokal UDP-socket som tar emot strömmande telemetri från radiosonde_auto_rx.
                                         </div>
                                     </div>
                                     <label class="switch">
-                                        <input type="checkbox" id="acars_enabled" checked onchange="autoSaveAcarsSettings()">
+                                        <input type="checkbox" id="sonde_enabled" onchange="autoSaveSondeSettings()">
                                         <span class="slider round"></span>
                                     </label>
                                 </div>
@@ -1176,25 +1096,25 @@
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--panel-border);">
                                     <div>
                                         <label style="display: block; font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.4rem;">
-                                            Värddator / IP-adress
+                                            UDP Lyssnarport
                                         </label>
-                                        <input type="text" id="acars_host" class="form-input" value="192.168.1.242" placeholder="t.ex. 192.168.1.242"
+                                        <input type="number" id="sonde_udp_port" class="form-input" value="55673" min="1" max="65535"
                                             style="width: 100%; padding: 0.55rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text-primary);"
-                                            onchange="autoSaveAcarsSettings()">
+                                            onchange="autoSaveSondeSettings()">
                                         <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
-                                            IP-adress eller värdnamn till maskinen där <code>acars_router</code> körs (t.ex. iridium).
+                                            Port dit <code>radiosonde_auto_rx</code> skickar sina <code>PAYLOAD_SUMMARY</code> UDP-paket (standard <code>55673</code>).
                                         </small>
                                     </div>
 
                                     <div>
                                         <label style="display: block; font-weight: 600; font-size: 0.88rem; color: var(--text-primary); margin-bottom: 0.4rem;">
-                                            TCP-port
+                                            Databasintervall (sekunder)
                                         </label>
-                                        <input type="number" id="acars_port" class="form-input" value="15550" placeholder="15550"
+                                        <input type="number" id="sonde_db_interval" class="form-input" value="5" min="1" max="60"
                                             style="width: 100%; padding: 0.55rem; background: var(--input-bg); border: 1px solid var(--panel-border); border-radius: 8px; color: var(--text-primary);"
-                                            onchange="autoSaveAcarsSettings()">
+                                            onchange="autoSaveSondeSettings()">
                                         <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
-                                            TCP-port för acarsdec JSON-output (standard <code>15550</code>).
+                                            Hur ofta den aktiva raden i databasen uppdateras (standard 5s) för att undvika överbelastning av SQLite.
                                         </small>
                                     </div>
                                 </div>
@@ -1202,7 +1122,114 @@
                         </div>
                     </div>
 
-                    <div id="statusMessage" class="status-message"></div>
+                    <!-- TAB: TETRA & RDS -->
+                    <div id="tab-tetra-rds" class="tab-content">
+                        <!-- Sektion 1: TETRA / Rakel Basstationsloggning & Bärvågsbevakning -->
+                        <div class="settings-section-card">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+                                <div>
+                                    <h4 style="margin: 0; font-size: 1.05rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fas fa-broadcast-tower" style="color: var(--accent);"></i> TETRA / Rakel Basstationsloggning
+                                    </h4>
+                                    <p style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.4; margin: 0.3rem 0 0 0;">
+                                        Styr huruvida bärvågslåsningar och basstationssynk skall sparas som separata rader i larmtabellen under frekvenssvep.
+                                    </p>
+                                </div>
+                                <button type="button" class="secondary-btn" onclick="clearBasestationLogs()"
+                                    style="border-color: rgba(239, 68, 68, 0.4); color: #ef4444; padding: 0.45rem 0.9rem; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 0.45rem;">
+                                    <i class="fas fa-trash-alt"></i> Rensa Basstationsloggar
+                                </button>
+                            </div>
+
+                            <div class="form-group checkbox-group" style="margin-bottom: 1.25rem;">
+                                <label style="font-size: 0.9rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+                                    <input type="checkbox" id="log_tetra_basestations">
+                                    Logga TETRA-basstationer i larmflödet
+                                </label>
+                            </div>
+
+                            <div style="border-top: 1px solid var(--panel-border); padding-top: 1.25rem;">
+                                <h5 style="margin: 0 0 0.5rem 0; font-size: 0.95rem; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 0.45rem;">
+                                    <i class="fas fa-satellite-dish" style="color: var(--accent);"></i> TETRA Skanningsläge & Bärvågsbevakning
+                                </h5>
+                                <p style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.4; margin: 0 0 1rem 0;">
+                                    Styr hur skannern agerar när den låst på en basstation under frekvenssvep.
+                                </p>
+
+                                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; margin-bottom: 1rem;">
+                                    <div>
+                                        <label for="tetra_scan_mode" style="display: block; font-weight: 600; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 0.4rem;">
+                                            Driftläge
+                                        </label>
+                                        <select id="tetra_scan_mode" class="form-input" style="width: 100%;">
+                                            <option value="monitor">Dedikerad Trafiklyssning (Stanna kvar så länge styrsignal/synk finns)</option>
+                                            <option value="explorer">Explorer / Kartläggning (Svep vidare efter fördröjningstid)</option>
+                                        </select>
+                                    </div>
+
+                                    <div id="tetraDwellGroup" style="display: none;">
+                                        <label for="tetra_dwell_time" style="display: block; font-weight: 600; font-size: 0.85rem; color: var(--text-primary); margin-bottom: 0.4rem;">
+                                            Fördröjning per basstation (sekunder)
+                                        </label>
+                                        <input type="number" id="tetra_dwell_time" class="form-input" min="15" max="600" value="60" style="width: 100%;">
+                                    </div>
+                                </div>
+
+                                <div class="form-group checkbox-group" style="margin-top: 0.75rem;">
+                                    <label style="font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; color: var(--text-primary);">
+                                        <input type="checkbox" id="tetra_skip_encrypted">
+                                        Gå vidare om MNC=1 (Hoppa över krypterad Rakel, sök civila/öppna nät)
+                                    </label>
+                                    <p style="color: var(--text-secondary); font-size: 0.75rem; line-height: 1.35; margin: 0.25rem 0 0 1.6rem;">
+                                        Om en basstation sänder MNC=1 (MSB Rakel) avbryter skannern omedelbart och söker vidare efter civila och öppna nätverk.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sektion 2: RDS / FM Realtidspuls (Heartbeat) -->
+                        <div class="settings-section-card">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+                                <div>
+                                    <h4 style="margin: 0; font-size: 1.05rem; color: var(--text-primary); display: flex; align-items: center; gap: 0.5rem;">
+                                        <i class="fas fa-heartbeat" style="color: var(--accent);"></i> RDS / FM Realtidspuls (Heartbeat)
+                                    </h4>
+                                    <p style="color: var(--text-secondary); font-size: 0.8rem; line-height: 1.4; margin: 0.3rem 0 0 0;">
+                                        Periodisk loggning av stationssynk och blocktakt i bakgrunden även när inga TMC- eller textmeddelanden tas emot.
+                                    </p>
+                                </div>
+                                <button type="button" class="secondary-btn" onclick="sendTestTmcAlert()"
+                                    style="border-color: var(--accent); color: var(--accent); padding: 0.45rem 0.9rem; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 0.45rem;">
+                                    <i class="fas fa-paper-plane"></i> Skicka Testlarm RDS-TMC
+                                </button>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem;">
+                                <div>
+                                    <label for="rds_heartbeat_interval" style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); display: block; margin-bottom: 0.35rem;">
+                                        Loggintervall (sekunder)
+                                    </label>
+                                    <input type="number" id="rds_heartbeat_interval" class="form-input" min="2" max="120" step="1" value="10" style="width: 100%;">
+                                    <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+                                        Tidsintervall mellan återkommande hälsokontroller av FM-mottagningen.
+                                    </small>
+                                </div>
+                                <div>
+                                    <label for="rds_heartbeat_timeout" style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); display: block; margin-bottom: 0.35rem;">
+                                        Bortfallsgräns (sekunder)
+                                    </label>
+                                    <input type="number" id="rds_heartbeat_timeout" class="form-input" min="1" max="60" step="1" value="5" style="width: 100%;">
+                                    <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.35rem;">
+                                        Maximal tidsrymd utan giltiga block innan länkstatus sätts till bruten.
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="statusMessage" class="status-message"></div>
+            </section>
                 </div>
             </main>
         </div>
@@ -1352,74 +1379,122 @@
         let hfdlPollInterval = null;
         let acarsPollInterval = null;
 
+        const SETTINGS_TAB_META = {
+            'radio': {
+                title: 'Connected SDR Receivers',
+                subtitle: 'Manage RTL-SDR dongles, frequencies, hardware parameters, and decoding processes.'
+            },
+            'display': {
+                title: 'Appearance & Display',
+                subtitle: 'Customize color themes, typography, message font sizes, and live message preview.'
+            },
+            'maintenance': {
+                title: 'Database & Storage',
+                subtitle: 'Database statistics, signal filtering, duplicate message handling, and pruning.'
+            },
+            'vhf': {
+                title: 'VHF Flygdata (VDL2 & ACARS)',
+                subtitle: 'Ta emot, övervaka och konfigurera VHF-flygtrafik via digitala VDL Mode 2 och traditionella ACARS-strömmar.'
+            },
+            'inmarsat': {
+                title: 'Inmarsat (SAT-C & AERO)',
+                subtitle: 'Ta emot satellitburen maritim och flygkommunikation via SatDump och JAERO (SafetyNET & Classic Aero).'
+            },
+            'hfdl': {
+                title: 'HFDL (Kortvåg)',
+                subtitle: 'Ta emot global flygdata, hörbarhetsrapporter och ACARS över kortvåg från din dumphfdl-instans.'
+            },
+            'sonde': {
+                title: 'Radiosonder',
+                subtitle: 'Ta emot och spåra telemetri från radiosonder (RS41, DFM m.fl.) i realtid via radiosonde_auto_rx.'
+            },
+            'tetra-rds': {
+                title: 'TETRA & RDS',
+                subtitle: 'Konfiguration för TETRA/Rakel basstationsloggning, bärvågsbevakning och RDS/FM-realtidspuls.'
+            }
+        };
+
         function switchTab(tabId) {
+            // Map legacy aliases
+            if (tabId === 'vdl2' || tabId === 'acars') tabId = 'vhf';
+            if (tabId === 'satc' || tabId === 'aero') tabId = 'inmarsat';
+
             document.querySelectorAll('.tab-trigger').forEach(btn => btn.classList.remove('active'));
-            const activeBtn = document.querySelector(`.tab-trigger[onclick="switchTab('${tabId}')"]`);
+            const activeBtn = document.querySelector(`.tab-trigger[onclick*="'${tabId}'"]`);
             if (activeBtn) activeBtn.classList.add('active');
 
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             const activeContent = document.getElementById(`tab-${tabId}`);
             if (activeContent) activeContent.classList.add('active');
 
+            // Dynamically update the header bar in the right main container
+            const meta = SETTINGS_TAB_META[tabId];
+            if (meta) {
+                const titleEl = document.getElementById('settingsTabTitle');
+                const subEl = document.getElementById('settingsTabSubtitle');
+                if (titleEl) titleEl.innerText = meta.title;
+                if (subEl) subEl.innerText = meta.subtitle;
+            }
+
+            // Top action buttons matching the active tab
+            const btnAddSdr = document.getElementById('btnTopAddSdr');
+            if (btnAddSdr) {
+                btnAddSdr.style.display = (tabId === 'radio') ? 'inline-flex' : 'none';
+            }
+            const btnRefreshStats = document.getElementById('btnTopRefreshStats');
+            if (btnRefreshStats) {
+                btnRefreshStats.style.display = (tabId === 'maintenance') ? 'inline-flex' : 'none';
+            }
+
             if (tabId === 'radio') {
                 loadSDRs();
             } else if (tabId === 'maintenance') {
                 loadDatabaseStats();
-            } else if (tabId === 'vdl2') {
+            } else if (tabId === 'vhf') {
                 loadVdl2Status();
+                loadAcarsStatus();
                 if (!vdl2PollInterval) {
                     vdl2PollInterval = setInterval(loadVdl2Status, 3000);
+                }
+                if (!acarsPollInterval) {
+                    acarsPollInterval = setInterval(loadAcarsStatus, 3000);
+                }
+            } else if (tabId === 'inmarsat') {
+                loadSatcStatus();
+                loadAeroStatus();
+                if (!satcPollInterval) {
+                    satcPollInterval = setInterval(loadSatcStatus, 3000);
+                }
+                if (!aeroPollInterval) {
+                    aeroPollInterval = setInterval(loadAeroStatus, 3000);
                 }
             } else if (tabId === 'sonde') {
                 loadSondeStatus();
                 if (!sondePollInterval) {
                     sondePollInterval = setInterval(loadSondeStatus, 3000);
                 }
-            } else if (tabId === 'satc') {
-                loadSatcStatus();
-                if (!satcPollInterval) {
-                    satcPollInterval = setInterval(loadSatcStatus, 3000);
-                }
-            } else if (tabId === 'aero') {
-                loadAeroStatus();
-                if (!aeroPollInterval) {
-                    aeroPollInterval = setInterval(loadAeroStatus, 3000);
-                }
             } else if (tabId === 'hfdl') {
                 loadHfdlStatus();
                 if (!hfdlPollInterval) {
                     hfdlPollInterval = setInterval(loadHfdlStatus, 3000);
                 }
-            } else if (tabId === 'acars') {
-                loadAcarsStatus();
-                if (!acarsPollInterval) {
-                    acarsPollInterval = setInterval(loadAcarsStatus, 3000);
-                }
             }
 
-            if (tabId !== 'vdl2' && vdl2PollInterval) {
-                clearInterval(vdl2PollInterval);
-                vdl2PollInterval = null;
+            if (tabId !== 'vhf') {
+                if (vdl2PollInterval) { clearInterval(vdl2PollInterval); vdl2PollInterval = null; }
+                if (acarsPollInterval) { clearInterval(acarsPollInterval); acarsPollInterval = null; }
+            }
+            if (tabId !== 'inmarsat') {
+                if (satcPollInterval) { clearInterval(satcPollInterval); satcPollInterval = null; }
+                if (aeroPollInterval) { clearInterval(aeroPollInterval); aeroPollInterval = null; }
             }
             if (tabId !== 'sonde' && sondePollInterval) {
                 clearInterval(sondePollInterval);
                 sondePollInterval = null;
             }
-            if (tabId !== 'satc' && satcPollInterval) {
-                clearInterval(satcPollInterval);
-                satcPollInterval = null;
-            }
-            if (tabId !== 'aero' && aeroPollInterval) {
-                clearInterval(aeroPollInterval);
-                aeroPollInterval = null;
-            }
             if (tabId !== 'hfdl' && hfdlPollInterval) {
                 clearInterval(hfdlPollInterval);
                 hfdlPollInterval = null;
-            }
-            if (tabId !== 'acars' && acarsPollInterval) {
-                clearInterval(acarsPollInterval);
-                acarsPollInterval = null;
             }
         }
 

@@ -2912,9 +2912,24 @@ tr.repeat-pulse {
         margin: auto !important;
     }
 
-    /* Settings & Tabs */
+    /* Settings & 2-Column Sidebar */
     .settings-container {
-        padding: 0.85rem !important;
+        padding: 0 !important;
+        flex-direction: column !important;
+    }
+
+    .settings-sidebar {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        border-right: none !important;
+        border-bottom: 1px solid var(--panel-border) !important;
+        padding: 1rem !important;
+        gap: 1rem !important;
+    }
+
+    .settings-main-flow {
+        padding: 1.25rem 0.85rem !important;
     }
 
     .settings-tabs {
@@ -3397,13 +3412,133 @@ tr.repeat-pulse {
     animation: extreme-pulse 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Modern Settings Page Styles */
+/* Modern Settings Page Styles - 2-Column Vertical Sidebar Layout */
 .settings-container {
     max-width: 1440px;
     width: 100%;
     margin: 0 auto;
-    padding: 1.25rem 1.5rem;
+    padding: 0;
     box-sizing: border-box;
+    display: flex;
+    min-height: 800px;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+}
+
+.settings-sidebar {
+    width: 250px;
+    min-width: 250px;
+    max-width: 250px;
+    background: rgba(255, 255, 255, 0.02);
+    border-right: 1px solid var(--panel-border);
+    padding: 1.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    box-sizing: border-box;
+    flex-shrink: 0;
+}
+
+[data-theme="light"] .settings-sidebar {
+    background: #f8fafc;
+}
+
+.settings-nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.settings-nav-heading {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    padding: 0.25rem 0.6rem;
+    user-select: none;
+}
+
+.settings-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 0.88rem;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    box-sizing: border-box;
+}
+
+.settings-nav-item i {
+    font-size: 0.95rem;
+    width: 18px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.settings-nav-item:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--text-primary);
+}
+
+[data-theme="light"] .settings-nav-item:hover {
+    background: #f1f5f9;
+    color: var(--text-primary);
+}
+
+.settings-nav-item.active {
+    background: rgba(56, 189, 248, 0.12);
+    color: var(--accent);
+    border-color: rgba(56, 189, 248, 0.3);
+    font-weight: 700;
+    box-shadow: 0 0 12px rgba(56, 189, 248, 0.1);
+}
+
+[data-theme="light"] .settings-nav-item.active {
+    background: #e0f2fe;
+    color: #0369a1;
+    border-color: #bae6fd;
+    font-weight: 700;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.settings-main-flow {
+    flex: 1;
+    min-width: 0;
+    padding: 1.5rem 2rem;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-content-body {
+    flex: 1;
+    max-width: 1100px;
+    width: 100%;
+    margin: 0;
+}
+
+.settings-section-card {
+    padding: 1.5rem;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    transition: border-color 0.2s ease;
+}
+
+.settings-section-card:last-child {
+    margin-bottom: 0.5rem;
 }
 
 .settings-header-bar {
@@ -3412,9 +3547,13 @@ tr.repeat-pulse {
     align-items: center;
     flex-wrap: wrap;
     gap: 1rem;
-    margin-bottom: 1rem;
-    padding-bottom: 0.85rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1rem;
     border-bottom: 1px solid var(--panel-border);
+    max-width: 1100px;
+    width: 100%;
+    margin-left: 0;
+    margin-right: 0;
 }
 
 .settings-header-bar h2 {

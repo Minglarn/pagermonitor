@@ -2,6 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.20.7] - Prestandaoptimering av Statistik samt Logisk och Visuell Städning av Settings
+- **Prestandaoptimering av Statistik & Analys ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py), [templates/statistics.html](file:///d:/antigravity/pager-monitor/templates/statistics.html))**:
+  - Implementerat 15-minuters aggregering (`interval=15`, 96 tidsintervall/dygn) för diagrammet "Aktivitet per Frekvens över Tid".
+  - Skapat permanenta databasindex (`idx_messages_timestamp_desc`, `idx_messages_date`, `idx_messages_date_freq`, `idx_messages_date_proto`) som snabbat upp historik- och aggregationsfrågor från sekunder till under 50 ms.
+  - Optimerat `/api/stats/alert-hits` med SQL Common Table Expressions (CTE) för direkt join mot sparade larmord utan tabellscanning.
+  - Parallelliserat diagraminläsning med `Promise.all` och avkopplat tabellrendering i frontend så att diagrammen ritas ut omedelbart.
+  - Lagt till ett interaktivt intervallreglage i diagramhuvudet (15 minuter / 1 timme).
+- **Logisk och Visuell Städning av Settings ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - **Renodling av "Appearance & Display"**: Fliken innehåller nu uteslutande "Interface & Typography" (färgtema, teckensnitt, teckenstorlek) samt "Real-time Preview". Radiobrusfilter och avkodningsreglage har rensats bort.
+  - **Flyttat Signalfiltrering & Dubbletthantering till "Database & Storage"**: Sektionen med radiobrusfilter (`garbage_filter`), känslighetsreglage, dubbletthanteringsstrategi (`duplicate_handling`) och tidsfönster (`duplicate_window`) har flyttats till fliken för databas och lagring.
+  - **Ny flik "TETRA & RDS" under AVKODARE & PROTOKOLL**: Skapat en renodlad flik för TETRA/Rakel basstationsloggning, skanningsläge (Dedikerad trafiklyssning / Explorer), fördröjningstid, filtrering av krypterad Rakel (MNC=1), samt RDS/FM-realtidspuls och testsignalering.
+  - **Eliminering av Dubbla Rubriker**: Raderat den gamla globala rubriken ("Settings - Configure SDR receivers...") samt redundanta interna flikrubriker i VHF, Inmarsat, HFDL och Radiosonder.
+  - **Dynamisk Header-bar**: Översta rubriken i högerfältet visar alltid aktuell fliks namn och ingress, i jämnhöjd med den gröna "All changes saved"-indikatorn och flikspecifika åtgärdsknappar (`+ Add Receiver`, `Refresh Stats`).
+  - **Maxbredd 1100px**: Begränsat bredden för `.settings-content-body` och `.settings-header-bar` till `1100px` (`margin: 0`, vänsterställt) för att förhindra att paneler dras ut och skapa en balanserad vy på breda skärmar.
+- **Kvalitetssäkring & Tester ([tests/test_stats_api.py](file:///d:/antigravity/pager-monitor/tests/test_stats_api.py), [tests/test_settings_sidebar.py](file:///d:/antigravity/pager-monitor/tests/test_settings_sidebar.py))**:
+  - Tester för 15-minuters aggregering och intervallvalidering.
+  - Tester som verifierar renodlingen av Appearance & Display, placeringen av filter i Database & Storage, närvaron av TETRA & RDS samt avsaknad av dubbla rubriker.
+  - Samtliga 216 tester i testsviten passerar felfritt (100%). Strikt förbud mot emojis efterlevt på hela webbplatsen.
+
+## [2026.10.20.6] - Omstrukturering av Settings till Vertikal Sidomeny och 2-kolumnsdesign
+- **Vertikal Sidomeny i Settings ([templates/settings.html](file:///d:/antigravity/pager-monitor/templates/settings.html), [static/style.css](file:///d:/antigravity/pager-monitor/static/style.css))**:
+  - Ersatt den horisontella raden med 9 flikar med en modern, vertikal vänstersidomeny (250px) och ett responsivt 2-kolumnsflöde (`display: flex`).
+  - Grupperat menyvalen i tre tydliga kategorier:
+    - **SYSTEM**: `Appearance & Display`, `Database & Storage`
+    - **HÅRDVARA**: `SDR Receivers` (aktiv som standard)
+    - **AVKODARE & PROTOKOLL**: `VHF Flygdata (VDL2 & ACARS)`, `Inmarsat (SAT-C & AERO)`, `HFDL (Kortvåg)`, `Radiosonder`
+  - Sidomenyn har diskret bakgrund (`#f8fafc` i ljust tema, semi-transparent mörk i dark theme) med distinkt `border-right`.
+  - Aktiva flikar markeras med ljusblå bakgrund (`#e0f2fe`), accentfärg och fetstil (`font-weight: 700`).
+- **Refaktorering och Sammanslagning av Flikinnehåll**:
+  - Slagit ihop "VDL2 / Flygdata" och "VHF ACARS" till en gemensam flik: `VHF Flygdata (VDL2 & ACARS)` med sektioner för vardera protokoll.
+  - Slagit ihop "Inmarsat STD-C" och "Inmarsat AERO" till en gemensam flik: `Inmarsat (SAT-C & AERO)` med sektioner för vardera satellittjänst.
+  - Befintlig kort-design för "Connected SDR Receivers" är bevarad och renderas i det högra huvudflödet.
+  - Uppdaterat `switchTab(tabId)` med alias-stöd för bakåtkompatibilitet och koordinerad status-polling för sammanslagna flikar.
+- **Kvalitetssäkring & Tester ([tests/test_settings_sidebar.py](file:///d:/antigravity/pager-monitor/tests/test_settings_sidebar.py))**:
+  - Ny testsvit som verifierar sidomenyns struktur, kategorier, sammanslagna flikar, SDR-standardläge och strikt förbud mot emojis.
+  - Samtliga 213 enhetstester i hela testsviten passerar felfritt (100%).
+
 ## [2026.10.20.5] - Separering av Message och Raw Data i MQTT-publicering
 - **Separering av Rådata i MQTT-meddelanden ([mqtt_client.py](file:///d:/antigravity/pager-monitor/mqtt_client.py))**:
   - Åtgärdat att fältet `message` i utgående MQTT-paket tidigare innehöll hela den långa `\nRådata:`-strängen och förorenades av rå JSON/text.

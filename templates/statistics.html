@@ -700,10 +700,16 @@
                 <section class="glass-panel" style="margin-top: 1.5rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 0.75rem;">
                         <h2 id="activityChartTitle" style="margin: 0;">Activity Distribution</h2>
-                        <div class="preset-buttons" style="margin: 0; display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                            <button type="button" class="preset-btn active" id="btnViewTotal" onclick="setActivityView('total')">Total</button>
-                            <button type="button" class="preset-btn" id="btnViewProtocol" onclick="setActivityView('protocol')">Per Protocol</button>
-                            <button type="button" class="preset-btn" id="btnViewFrequency" onclick="setActivityView('frequency')">Per Frequency</button>
+                        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+                            <div class="preset-buttons" id="intervalButtons" style="margin: 0; display: flex; gap: 0.35rem;">
+                                <button type="button" class="preset-btn active" id="btnInterval15" onclick="setActivityInterval(15)">15 min</button>
+                                <button type="button" class="preset-btn" id="btnInterval60" onclick="setActivityInterval(60)">1 timme</button>
+                            </div>
+                            <div class="preset-buttons" style="margin: 0; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                                <button type="button" class="preset-btn active" id="btnViewTotal" onclick="setActivityView('total')">Total</button>
+                                <button type="button" class="preset-btn" id="btnViewProtocol" onclick="setActivityView('protocol')">Per Protocol</button>
+                                <button type="button" class="preset-btn" id="btnViewFrequency" onclick="setActivityView('frequency')">Per Frequency</button>
+                            </div>
                         </div>
                     </div>
                     <div style="height: 340px;">
@@ -794,6 +800,7 @@
         let activityChart = null;
         let currentActivityData = null;
         let currentActivityView = 'total';
+        let currentActivityInterval = 15;
 
         // Render global charts
         async function renderGlobalCharts(startParam, endParam) {
@@ -802,15 +809,34 @@
                 const startVal = (typeof startParam === 'string' && startParam) ? startParam : (document.getElementById('startDate')?.value || '');
                 const endVal = (typeof endParam === 'string' && endParam) ? endParam : (document.getElementById('endDate')?.value || startVal);
 
-                // 1. Messages per Day (30d)
-                const perDay = await fetchJSON('/api/stats/count-per-day');
+                const dateQuery = (startVal && endVal) ? `?start=${encodeURIComponent(startVal)}&end=${encodeURIComponent(endVal)}` : '';
+                const periodLabel = (startVal && endVal) ? (startVal === endVal ? ` (${startVal})` : ` (${startVal} - ${endVal})`) : '';
+
+                const alertTitleElem = document.getElementById('alertHitsTitle');
+                if (alertTitleElem) alertTitleElem.innerText = `Alert Word Hits${periodLabel}`;
+
+                const freqTitleElem = document.getElementById('freqHitsTitle');
+                if (freqTitleElem) freqTitleElem.innerText = `Activity per Frequency${periodLabel}`;
+
+                // Parallell hämtning av alla diagramdata för maximal prestanda
+                const needCountPerDay = !countPerDayChartInstance;
+                const promises = [
+                    fetchJSON(`/api/stats/alert-hits${dateQuery}`),
+                    fetchJSON(`/api/stats/freq-hits${dateQuery}`)
+                ];
+                if (needCountPerDay) {
+                    promises.push(fetchJSON('/api/stats/count-per-day'));
+                }
+
+                const results = await Promise.all(promises);
+                const alertHits = results[0];
+                const freqHits = results[1];
+                const perDay = needCountPerDay ? results[2] : null;
+
+                // 1. Messages per Day (30d) om inte redan renderat
                 if (perDay && perDay.length > 0) {
                     const dayLabels = perDay.map(d => d.day);
                     const dayCounts = perDay.map(d => d.count);
-                    if (countPerDayChartInstance) {
-                        countPerDayChartInstance.destroy();
-                        countPerDayChartInstance = null;
-                    }
                     const countCanvas = document.getElementById('countPerDayChart');
                     if (countCanvas) {
                         countPerDayChartInstance = new Chart(countCanvas, {
@@ -849,23 +875,12 @@
                 }
 
                 // 2. Alert hits
-                const dateQuery = (startVal && endVal) ? `?start=${encodeURIComponent(startVal)}&end=${encodeURIComponent(endVal)}` : '';
-                const periodLabel = (startVal && endVal) ? (startVal === endVal ? ` (${startVal})` : ` (${startVal} - ${endVal})`) : '';
-
-                const alertTitleElem = document.getElementById('alertHitsTitle');
-                if (alertTitleElem) alertTitleElem.innerText = `Alert Word Hits${periodLabel}`;
-
-                const freqTitleElem = document.getElementById('freqHitsTitle');
-                if (freqTitleElem) freqTitleElem.innerText = `Activity per Frequency${periodLabel}`;
-
                 const alertContainer = document.getElementById('alertHitsContainer');
-                const alertHits = await fetchJSON(`/api/stats/alert-hits${dateQuery}`);
                 if (alertHitsChartInstance) {
                     alertHitsChartInstance.destroy();
                     alertHitsChartInstance = null;
                 }
 
-                // Filtrera bort larmord med 0 träffar
                 const activeAlerts = (alertHits || []).filter(a => a.hits > 0);
 
                 if (activeAlerts.length === 0) {
@@ -944,7 +959,6 @@
 
                 // 3. Frequency hits
                 const freqContainer = document.getElementById('freqHitsContainer');
-                const freqHits = await fetchJSON(`/api/stats/freq-hits${dateQuery}`);
                 if (freqHitsChartInstance) {
                     freqHitsChartInstance.destroy();
                     freqHitsChartInstance = null;
@@ -1040,6 +1054,33 @@
             renderActivityChart();
         }
 
+        window.setActivityInterval = async function(interval) {
+            currentActivityInterval = parseInt(interval, 10) || 15;
+            const btn15 = document.getElementById('btnInterval15');
+            const btn60 = document.getElementById('btnInterval60');
+            if (btn15) btn15.classList.toggle('active', currentActivityInterval === 15);
+            if (btn60) btn60.classList.toggle('active', currentActivityInterval === 60);
+
+            const sVal = document.getElementById('startDate')?.value || '';
+            const eVal = document.getElementById('endDate')?.value || sVal;
+            if (sVal) {
+                await fetchActivityData(sVal, eVal);
+            }
+        };
+
+        async function fetchActivityData(startDate, endDate) {
+            const isSingleDay = (startDate === endDate);
+            const intervalButtons = document.getElementById('intervalButtons');
+            if (intervalButtons) {
+                intervalButtons.style.display = isSingleDay ? 'flex' : 'none';
+            }
+
+            const intervalParam = isSingleDay ? `&interval=${currentActivityInterval}` : '';
+            const activityRes = await fetchJSON(`/api/stats/range-activity?start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}${intervalParam}`);
+            currentActivityData = activityRes;
+            renderActivityChart();
+        }
+
         function renderActivityChart() {
             if (!currentActivityData) return;
             const theme = getChartThemeColors();
@@ -1064,7 +1105,8 @@
                     chartCounts = (currentActivityData.data || []).map(d => d.count);
                 }
                 const lineColor = theme.isLight ? '#0284c7' : '#38bdf8';
-                const fillColor = mode === 'hours'
+                const isLineMode = (mode === 'hours' || mode === '15min');
+                const fillColor = isLineMode
                     ? (theme.isLight ? 'rgba(2, 132, 199, 0.15)' : 'rgba(56, 189, 248, 0.15)')
                     : (theme.isLight ? 'rgba(2, 132, 199, 0.75)' : 'rgba(56, 189, 248, 0.6)');
 
@@ -1074,9 +1116,10 @@
                     borderColor: lineColor,
                     backgroundColor: fillColor,
                     fill: true,
-                    tension: 0.35,
-                    borderRadius: mode === 'hours' ? 0 : 4,
-                    pointRadius: mode === 'hours' ? 4 : 0,
+                    tension: 0.25,
+                    borderRadius: isLineMode ? 0 : 4,
+                    pointRadius: mode === 'hours' ? 4 : (mode === '15min' ? 1 : 0),
+                    pointHoverRadius: 5,
                     pointBackgroundColor: lineColor
                 });
             } else if (currentActivityView === 'protocol') {
@@ -1085,6 +1128,7 @@
                     const arr = byProto[p];
                     return Array.isArray(arr) && arr.some(v => v > 0);
                 });
+                const isLineMode = (mode === 'hours' || mode === '15min');
                 protoNames.forEach(proto => {
                     const cInfo = PROTO_COLORS[proto] || {
                         border: theme.textColor,
@@ -1094,11 +1138,12 @@
                         label: proto,
                         data: byProto[proto],
                         borderColor: cInfo.border,
-                        backgroundColor: mode === 'hours' ? cInfo.bg : cInfo.border,
+                        backgroundColor: isLineMode ? cInfo.bg : cInfo.border,
                         fill: false,
-                        tension: 0.35,
-                        borderRadius: mode === 'hours' ? 0 : 4,
-                        pointRadius: mode === 'hours' ? 3 : 0,
+                        tension: 0.25,
+                        borderRadius: isLineMode ? 0 : 4,
+                        pointRadius: mode === 'hours' ? 3 : (mode === '15min' ? 1 : 0),
+                        pointHoverRadius: 4,
                         pointBackgroundColor: cInfo.border,
                         borderWidth: 2
                     });
@@ -1111,6 +1156,7 @@
                     .sort((a, b) => b.total - a.total)
                     .slice(0, 10);
 
+                const isLineMode = (mode === 'hours' || mode === '15min');
                 sortedFreqs.forEach((item, idx) => {
                     const color = FREQ_PALETTE[idx % FREQ_PALETTE.length];
                     datasets.push({
@@ -1119,9 +1165,10 @@
                         borderColor: color,
                         backgroundColor: color,
                         fill: false,
-                        tension: 0.35,
-                        borderRadius: mode === 'hours' ? 0 : 4,
-                        pointRadius: mode === 'hours' ? 3 : 0,
+                        tension: 0.25,
+                        borderRadius: isLineMode ? 0 : 4,
+                        pointRadius: mode === 'hours' ? 3 : (mode === '15min' ? 1 : 0),
+                        pointHoverRadius: 4,
                         pointBackgroundColor: color,
                         borderWidth: 2
                     });
@@ -1134,9 +1181,10 @@
             }
 
             const showLegend = currentActivityView !== 'total';
+            const isLineType = (mode === 'hours' || mode === '15min' || currentActivityView !== 'total');
 
             activityChart = new Chart(document.getElementById('countPerHourChart'), {
-                type: mode === 'hours' ? 'line' : (currentActivityView === 'total' ? 'bar' : 'line'),
+                type: isLineType ? 'line' : 'bar',
                 data: {
                     labels: chartLabels,
                     datasets: datasets
@@ -1164,7 +1212,10 @@
                         },
                         x: {
                             grid: { display: false },
-                            ticks: { color: theme.textSecondary }
+                            ticks: {
+                                color: theme.textSecondary,
+                                maxTicksLimit: mode === '15min' ? 24 : undefined
+                            }
                         }
                     }
                 }
@@ -1598,42 +1649,47 @@
             const chartTitle = document.getElementById('activityChartTitle');
             const countBadge = document.getElementById('filteredCountBadge');
 
-            loading.style.display = 'block';
+            if (loading) loading.style.display = 'block';
 
             if (startDate === endDate) {
                 tableTitle.innerText = `Messages for ${startDate} (Single Day)`;
-                chartTitle.innerText = `Hourly Distribution (${startDate})`;
+                chartTitle.innerText = `Activity Distribution (${startDate})`;
             } else {
                 tableTitle.innerText = `Messages (${startDate} to ${endDate})`;
                 chartTitle.innerText = `Activity Distribution (${startDate} to ${endDate})`;
             }
 
             try {
-                // Uppdatera även frekvens- och larmordsdiagram för den valda perioden!
-                await renderGlobalCharts(startDate, endDate);
+                // 1. Rendera alla diagram blixtsnabbt och parallellt
+                const chartsPromise = Promise.all([
+                    renderGlobalCharts(startDate, endDate),
+                    fetchActivityData(startDate, endDate)
+                ]);
 
-                // Fetch messages for the range
-                const msgs = await fetchJSON(`/api/stats/range?start=${startDate}&end=${endDate}`);
-                loading.style.display = 'none';
-                countBadge.innerText = `${msgs.length} messages`;
+                // 2. Ladda tabellens meddelanden asynkront utan att blockera diagrammen
+                fetchJSON(`/api/stats/range?start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}`)
+                    .then(msgs => {
+                        if (loading) loading.style.display = 'none';
+                        if (countBadge) countBadge.innerText = `${(msgs || []).length} messages`;
 
-                if (statDataTable) {
-                    statDataTable.clear();
-                    if (msgs.length > 0) {
-                        const rowNodes = msgs.map(m => createStatRowNode(m));
-                        statDataTable.rows.add(rowNodes).draw();
-                    } else {
-                        statDataTable.draw();
-                    }
-                }
+                        if (statDataTable) {
+                            statDataTable.clear();
+                            if (msgs && msgs.length > 0) {
+                                const rowNodes = msgs.map(m => createStatRowNode(m));
+                                statDataTable.rows.add(rowNodes).draw();
+                            } else {
+                                statDataTable.draw();
+                            }
+                        }
+                    })
+                    .catch(err => {
+                        console.error('Error loading table range data:', err);
+                        if (loading) loading.innerText = 'Failed to fetch table data.';
+                    });
 
-                // Fetch activity distribution (total, per protocol, per frequency)
-                const activityRes = await fetchJSON(`/api/stats/range-activity?start=${startDate}&end=${endDate}`);
-                currentActivityData = activityRes;
-                renderActivityChart();
+                await chartsPromise;
             } catch (err) {
-                console.error('Error loading range data:', err);
-                loading.innerText = 'Failed to fetch data.';
+                console.error('Error loading range charts:', err);
             }
         }
 

@@ -50,7 +50,7 @@ app = Flask(__name__)
 # Limit maximum payload size for incoming HTTP requests to prevent DoS memory exhaustion
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB
 
-APP_VERSION = "2026.10.20.5"
+APP_VERSION = "2026.10.20.7"
 
 @app.context_processor
 def inject_version():
@@ -198,13 +198,16 @@ def stats_range():
     if not start_date:
         return jsonify([])
     
+    start_ts = f"{start_date}T00:00:00" if 'T' not in start_date else start_date
+    end_ts = f"{end_date}T23:59:59.999999" if 'T' not in end_date else end_date
+
     conn = sqlite3.connect(database.DB_PATH)
     c = conn.cursor()
     c.execute('''
         SELECT * FROM messages 
-        WHERE DATE(timestamp) >= DATE(?) AND DATE(timestamp) <= DATE(?)
+        WHERE timestamp >= ? AND timestamp <= ?
         ORDER BY timestamp DESC
-    ''', (start_date, end_date))
+    ''', (start_ts, end_ts))
     rows = c.fetchall()
     col_names = [desc[0] for desc in c.description]
     conn.close()
@@ -229,65 +232,125 @@ PROTO_CASE_SQL = '''
 def stats_range_activity():
     start_date = request.args.get('start')
     end_date = request.args.get('end', start_date)
+    interval = request.args.get('interval', default='').lower()
     if not start_date:
         return jsonify({"mode": "hours", "data": [], "by_protocol": {}, "by_frequency": {}})
     
     conn = sqlite3.connect(database.DB_PATH)
     c = conn.cursor()
     if start_date == end_date:
-        # 24-timmars distribution för enskild dag
-        c.execute('''
-            SELECT STRFTIME('%H', timestamp) AS label, COUNT(*) AS cnt 
-            FROM messages 
-            WHERE DATE(timestamp) = DATE(?)
-            GROUP BY label ORDER BY label
-        ''', (start_date,))
-        rows = c.fetchall()
-        total_data = [{"label": int(r[0]), "count": r[1]} for r in rows]
+        start_ts = f"{start_date}T00:00:00"
+        end_ts = f"{start_date}T23:59:59.999999"
 
-        # Per protokoll
-        c.execute(f'''
-            SELECT STRFTIME('%H', timestamp) AS hr, {PROTO_CASE_SQL} AS proto, COUNT(*) AS cnt
-            FROM messages
-            WHERE DATE(timestamp) = DATE(?)
-            GROUP BY hr, proto ORDER BY hr
-        ''', (start_date,))
-        by_proto = {}
-        for hr_str, proto, cnt in c.fetchall():
-            hr = int(hr_str)
-            if proto not in by_proto:
-                by_proto[proto] = [0] * 24
-            by_proto[proto][hr] = cnt
+        if interval in ('15', '15m', '15min'):
+            # 15-minuters aggregering för enskild dag (96 hinkar)
+            bucket_sql = "PRINTF('%02d:%02d', CAST(STRFTIME('%H', timestamp) AS INT), (CAST(STRFTIME('%M', timestamp) AS INT) / 15) * 15)"
+            all_labels = [f"{h:02d}:{m:02d}" for h in range(24) for m in (0, 15, 30, 45)]
+            label_index_map = {lbl: idx for idx, lbl in enumerate(all_labels)}
 
-        # Per frekvens
-        c.execute('''
-            SELECT STRFTIME('%H', timestamp) AS hr, frequency, COUNT(*) AS cnt
-            FROM messages
-            WHERE DATE(timestamp) = DATE(?) AND frequency IS NOT NULL AND frequency != ''
-            GROUP BY hr, frequency ORDER BY hr
-        ''', (start_date,))
-        by_freq = {}
-        for hr_str, freq, cnt in c.fetchall():
-            hr = int(hr_str)
-            if freq not in by_freq:
-                by_freq[freq] = [0] * 24
-            by_freq[freq][hr] = cnt
+            c.execute(f'''
+                SELECT {bucket_sql} AS bucket, COUNT(*) AS cnt 
+                FROM messages 
+                WHERE timestamp >= ? AND timestamp <= ?
+                GROUP BY bucket ORDER BY bucket
+            ''', (start_ts, end_ts))
+            rows = c.fetchall()
+            bucket_counts = {r[0]: r[1] for r in rows}
+            total_data = [{"label": lbl, "count": bucket_counts.get(lbl, 0)} for lbl in all_labels]
 
-        conn.close()
-        return jsonify({
-            "mode": "hours",
-            "data": total_data,
-            "by_protocol": by_proto,
-            "by_frequency": by_freq
-        })
+            # Per protokoll
+            c.execute(f'''
+                SELECT {bucket_sql} AS bucket, {PROTO_CASE_SQL} AS proto, COUNT(*) AS cnt
+                FROM messages
+                WHERE timestamp >= ? AND timestamp <= ?
+                GROUP BY bucket, proto ORDER BY bucket
+            ''', (start_ts, end_ts))
+            by_proto = {}
+            for bucket, proto, cnt in c.fetchall():
+                if proto not in by_proto:
+                    by_proto[proto] = [0] * 96
+                idx = label_index_map.get(bucket)
+                if idx is not None:
+                    by_proto[proto][idx] = cnt
+
+            # Per frekvens
+            c.execute(f'''
+                SELECT {bucket_sql} AS bucket, frequency, COUNT(*) AS cnt
+                FROM messages
+                WHERE timestamp >= ? AND timestamp <= ? AND frequency IS NOT NULL AND frequency != ''
+                GROUP BY bucket, frequency ORDER BY bucket
+            ''', (start_ts, end_ts))
+            by_freq = {}
+            for bucket, freq, cnt in c.fetchall():
+                if freq not in by_freq:
+                    by_freq[freq] = [0] * 96
+                idx = label_index_map.get(bucket)
+                if idx is not None:
+                    by_freq[freq][idx] = cnt
+
+            conn.close()
+            return jsonify({
+                "mode": "15min",
+                "data": total_data,
+                "by_protocol": by_proto,
+                "by_frequency": by_freq
+            })
+        else:
+            # 24-timmars distribution för enskild dag
+            c.execute('''
+                SELECT STRFTIME('%H', timestamp) AS label, COUNT(*) AS cnt 
+                FROM messages 
+                WHERE timestamp >= ? AND timestamp <= ?
+                GROUP BY label ORDER BY label
+            ''', (start_ts, end_ts))
+            rows = c.fetchall()
+            total_data = [{"label": int(r[0]), "count": r[1]} for r in rows]
+
+            # Per protokoll
+            c.execute(f'''
+                SELECT STRFTIME('%H', timestamp) AS hr, {PROTO_CASE_SQL} AS proto, COUNT(*) AS cnt
+                FROM messages
+                WHERE timestamp >= ? AND timestamp <= ?
+                GROUP BY hr, proto ORDER BY hr
+            ''', (start_ts, end_ts))
+            by_proto = {}
+            for hr_str, proto, cnt in c.fetchall():
+                hr = int(hr_str)
+                if proto not in by_proto:
+                    by_proto[proto] = [0] * 24
+                by_proto[proto][hr] = cnt
+
+            # Per frekvens
+            c.execute('''
+                SELECT STRFTIME('%H', timestamp) AS hr, frequency, COUNT(*) AS cnt
+                FROM messages
+                WHERE timestamp >= ? AND timestamp <= ? AND frequency IS NOT NULL AND frequency != ''
+                GROUP BY hr, frequency ORDER BY hr
+            ''', (start_ts, end_ts))
+            by_freq = {}
+            for hr_str, freq, cnt in c.fetchall():
+                hr = int(hr_str)
+                if freq not in by_freq:
+                    by_freq[freq] = [0] * 24
+                by_freq[freq][hr] = cnt
+
+            conn.close()
+            return jsonify({
+                "mode": "hours",
+                "data": total_data,
+                "by_protocol": by_proto,
+                "by_frequency": by_freq
+            })
     else:
         # Dag-för-dag distribution för datumintervall
+        start_ts = f"{start_date}T00:00:00"
+        end_ts = f"{end_date}T23:59:59.999999"
         c.execute('''
             SELECT DATE(timestamp) AS label, COUNT(*) AS cnt 
             FROM messages 
-            WHERE DATE(timestamp) >= DATE(?) AND DATE(timestamp) <= DATE(?)
+            WHERE timestamp >= ? AND timestamp <= ?
             GROUP BY label ORDER BY label
-        ''', (start_date, end_date))
+        ''', (start_ts, end_ts))
         rows = c.fetchall()
         total_data = [{"label": r[0], "count": r[1]} for r in rows]
         day_labels = [r[0] for r in rows]
@@ -296,9 +359,9 @@ def stats_range_activity():
         c.execute(f'''
             SELECT DATE(timestamp) AS dt, {PROTO_CASE_SQL} AS proto, COUNT(*) AS cnt
             FROM messages
-            WHERE DATE(timestamp) >= DATE(?) AND DATE(timestamp) <= DATE(?)
+            WHERE timestamp >= ? AND timestamp <= ?
             GROUP BY dt, proto ORDER BY dt
-        ''', (start_date, end_date))
+        ''', (start_ts, end_ts))
         by_proto = {}
         for dt, proto, cnt in c.fetchall():
             if proto not in by_proto:
@@ -310,9 +373,9 @@ def stats_range_activity():
         c.execute('''
             SELECT DATE(timestamp) AS dt, frequency, COUNT(*) AS cnt
             FROM messages
-            WHERE DATE(timestamp) >= DATE(?) AND DATE(timestamp) <= DATE(?) AND frequency IS NOT NULL AND frequency != ''
+            WHERE timestamp >= ? AND timestamp <= ? AND frequency IS NOT NULL AND frequency != ''
             GROUP BY dt, frequency ORDER BY dt
-        ''', (start_date, end_date))
+        ''', (start_ts, end_ts))
         by_freq = {}
         for dt, freq, cnt in c.fetchall():
             if freq not in by_freq:
@@ -342,7 +405,9 @@ def stats_count_per_day():
 def stats_count_per_hour(date):
     conn = sqlite3.connect(database.DB_PATH)
     c = conn.cursor()
-    c.execute("SELECT STRFTIME('%H', timestamp) AS hour, COUNT(*) AS cnt FROM messages WHERE DATE(timestamp)=? GROUP BY hour ORDER BY hour", (date,))
+    start_ts = f"{date}T00:00:00"
+    end_ts = f"{date}T23:59:59.999999"
+    c.execute("SELECT STRFTIME('%H', timestamp) AS hour, COUNT(*) AS cnt FROM messages WHERE timestamp >= ? AND timestamp <= ? GROUP BY hour ORDER BY hour", (start_ts, end_ts))
     rows = c.fetchall()
     conn.close()
     return jsonify([{"hour": int(r[0]), "count": r[1]} for r in rows])
@@ -354,14 +419,20 @@ def stats_alert_hits():
     conn = sqlite3.connect(database.DB_PATH)
     c = conn.cursor()
     if start_date and end_date:
+        start_ts = f"{start_date}T00:00:00"
+        end_ts = f"{end_date}T23:59:59.999999"
         c.execute('''
-            SELECT aw.word, COUNT(m.id) AS hits
+            WITH period_msgs AS (
+                SELECT message FROM messages 
+                WHERE timestamp >= ? AND timestamp <= ?
+            )
+            SELECT aw.word, COUNT(pm.message) AS hits
             FROM alert_words aw
-            LEFT JOIN messages m ON (m.message LIKE '%'||aw.word||'%' AND DATE(m.timestamp) >= DATE(?) AND DATE(m.timestamp) <= DATE(?))
+            LEFT JOIN period_msgs pm ON pm.message LIKE '%'||aw.word||'%'
             WHERE aw.is_active=1
             GROUP BY aw.word
             ORDER BY hits DESC
-        ''', (start_date, end_date))
+        ''', (start_ts, end_ts))
     else:
         c.execute('''
             SELECT aw.word, COUNT(m.id) AS hits
@@ -382,13 +453,15 @@ def stats_freq_hits():
     conn = sqlite3.connect(database.DB_PATH)
     c = conn.cursor()
     if start_date and end_date:
+        start_ts = f"{start_date}T00:00:00"
+        end_ts = f"{end_date}T23:59:59.999999"
         c.execute('''
             SELECT frequency, COUNT(*) AS hits 
             FROM messages 
-            WHERE DATE(timestamp) >= DATE(?) AND DATE(timestamp) <= DATE(?) AND frequency IS NOT NULL AND frequency != ''
+            WHERE timestamp >= ? AND timestamp <= ? AND frequency IS NOT NULL AND frequency != ''
             GROUP BY frequency 
             ORDER BY hits DESC
-        ''', (start_date, end_date))
+        ''', (start_ts, end_ts))
     else:
         c.execute('''
             SELECT frequency, COUNT(*) AS hits 

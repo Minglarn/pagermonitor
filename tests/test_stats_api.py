@@ -130,6 +130,20 @@ def test_stats_range_activity(client):
     assert data['mode'] == 'hours'
     assert 'data' in data
 
+def test_stats_range_activity_15min(client):
+    from datetime import datetime
+    today = datetime.now().strftime('%Y-%m-%d')
+    resp = client.get(f'/api/stats/range-activity?start={today}&end={today}&interval=15')
+    assert resp.status_code == 200
+    data = resp.get_json()
+    assert data['mode'] == '15min'
+    assert 'data' in data
+    assert len(data['data']) == 96
+    assert data['data'][0]['label'] == '00:00'
+    assert data['data'][-1]['label'] == '23:45'
+    assert 'by_protocol' in data
+    assert 'by_frequency' in data
+
 def test_delete_duplicates_endpoint(client):
     from database import save_message, delete_duplicates
     # Save a normal and a duplicate message
