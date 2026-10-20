@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.20.5] - Separering av Message och Raw Data i MQTT-publicering
+- **Separering av Rådata i MQTT-meddelanden ([mqtt_client.py](file:///d:/antigravity/pager-monitor/mqtt_client.py))**:
+  - Åtgärdat att fältet `message` i utgående MQTT-paket tidigare innehöll hela den långa `\nRådata:`-strängen och förorenades av rå JSON/text.
+  - Implementerat funktionen `split_message_and_raw` som avskiljer brödtext/sammanfattning från rådatan vid avgränsare (`\nRådata:`, `\r\nRådata:`, `| Rådata:`).
+  - `payload['message']` i MQTT innehåller nu uteslutande den rena, läsbara och kompakta meddelandetexten.
+  - Rådatan publiceras i ett eget dedikerat fält `payload['raw_data']` (som parsat JSON-objekt om tillämpligt, eller ren råtext).
+  - Implementerat sanering (`_sanitize_raw_dict`) som säkerställer att inga interna berikningsfält följer med i `raw_data`.
+- **Tester ([tests/test_mqtt.py](file:///d:/antigravity/pager-monitor/tests/test_mqtt.py))**:
+  - Ny dedikerad testmodul med 6 enhetstester som verifierar ren `message`, separerad `raw_data` och bortfiltrering av interna fält.
+  - Samtliga 210 enhetstester i hela testsviten passerar utan anmärkning (100%).
+
 ## [2026.10.20.4] - Pre-processing av FANS-1/A Routing-Headers för libacars och Rättning av CalVer i Sidopanel
 - **Pre-processing av FANS-1/A Routing-Headers ([libacars_bridge.py](file:///d:/antigravity/pager-monitor/libacars_bridge.py))**:
   - Implementerat hjälpfunktionen `clean_fans_payload(message: str) -> str` som identifierar och rensar bort ACARS-routing-headers (såsom SatDumps `- #MD/AA PIKCPYA.AT1.`) före anrop till `libacars`.

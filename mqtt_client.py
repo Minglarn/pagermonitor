@@ -87,20 +87,87 @@ def init_mqtt():
         if not mqtt_client:
             mqtt_client = None
 
+def split_message_and_raw(msg_str: str):
+    """
+    Separerar ett meddelande i ren text/sammanfattning och rådata om det
+    innehåller en rådata-avgränsare (t.ex. '\\nRådata:', '\\r\\nRådata:', '| Rådata:', '\\nRaw:').
+    
+    Returnerar (clean_message, raw_data_str).
+    """
+    if not msg_str or not isinstance(msg_str, str):
+        return msg_str, None
+
+    for delim in ('\r\nRådata:', '\nRådata:', '| Rådata:', '\r\nRaw:', '\nRaw:'):
+        if delim in msg_str:
+            parts = msg_str.split(delim, 1)
+            return parts[0].strip(), parts[1].strip()
+
+    return msg_str, None
+
+def _sanitize_raw_dict(obj):
+    """Rensar bort interna beriknings- och tolkningsfält från rådata-objekt."""
+    if not isinstance(obj, dict):
+        return obj
+    clean = dict(obj)
+    internal_keys = (
+        'decoded_fields', 'libacars', 'arinc622', 'parsed_human', 
+        'parsed_summary', 'airline', 'dst_airport', 'coord_badge',
+        'raw_json', 'raw_payload'
+    )
+    for k in internal_keys:
+        clean.pop(k, None)
+    if 'acars' in clean and isinstance(clean['acars'], dict):
+        clean['acars'] = dict(clean['acars'])
+        for k in internal_keys:
+            clean['acars'].pop(k, None)
+    return clean
+
 def publish_message(address, message, timestamp, alias='', metadata=None):
     global mqtt_client
     if not mqtt_client:
         return
 
+    clean_message, raw_data_extracted = split_message_and_raw(message)
+
     payload = {
         'timestamp': timestamp,
         'address': address,
-        'message': message,
+        'message': clean_message,
         'alias': alias
     }
     
     if metadata:
-        payload.update(metadata)
+        meta_copy = dict(metadata)
+        payload.update(meta_copy)
+    
+    # Säkerställ att payload['message'] ALLTID är det rena meddelandet utan rådata
+    payload['message'] = clean_message
+
+    # Separera rådata till ett eget fält 'raw_data' i MQTT-meddelandet
+    if raw_data_extracted:
+        if (raw_data_extracted.startswith('{') and raw_data_extracted.endswith('}')) or \
+           (raw_data_extracted.startswith('[') and raw_data_extracted.endswith(']')):
+            try:
+                raw_obj = json.loads(raw_data_extracted)
+                payload['raw_data'] = _sanitize_raw_dict(raw_obj)
+            except Exception:
+                payload['raw_data'] = raw_data_extracted
+        else:
+            payload['raw_data'] = raw_data_extracted
+    elif 'raw_payload' in payload and payload.get('raw_data') is None:
+        payload['raw_data'] = _sanitize_raw_dict(payload['raw_payload'])
+    elif 'raw_json' in payload and payload.get('raw_data') is None:
+        raw_json_val = payload['raw_json']
+        if isinstance(raw_json_val, str) and (raw_json_val.startswith('{') or raw_json_val.startswith('[')):
+            try:
+                raw_obj = json.loads(raw_json_val)
+                payload['raw_data'] = _sanitize_raw_dict(raw_obj)
+            except Exception:
+                payload['raw_data'] = raw_json_val
+        else:
+            payload['raw_data'] = raw_json_val
+    elif 'raw_text' in payload and payload.get('raw_data') is None:
+        payload['raw_data'] = payload['raw_text']
     
     try:
         # Get QoS from env or default to 0 (more reliable than 1 if broker is flaky)

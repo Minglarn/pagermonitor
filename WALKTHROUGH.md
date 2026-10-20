@@ -1,13 +1,29 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.20.4`
+- **CalVer**: `2026.10.20.5`
 - **Date**: 2026-10-20
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000018. Separering av Message och Raw Data i MQTT-publicering (v2026.10.20.5)
+- **Kärnkrav & Bakgrund**:
+  - Användarkrav: *"I våra MQTT meddelanden så skickar vi med RÅDATA i message, message blir väldigt lång och rådata borde inte finnas med i message. Separerar du dem åt i MQTT meddelandet är du snäll."*
+  - Eftersom larmmeddelanden tidigare bar med sig `\nRådata: <json/text>` för att mata webbläsarens `</> Rådata`-badge, blev fältet `message` i de publicerade MQTT-paketen tusentals tecken långt och förorenat med råkodad data.
+- **Teknisk Lösning i Backend ([mqtt_client.py](file:///d:/antigravity/pager-monitor/mqtt_client.py))**:
+  - Implementerat `split_message_and_raw(msg_str)` som identifierar och delar upp meddelandesträngen vid kända avgränsare (`\nRådata:`, `\r\nRådata:`, `| Rådata:`, `\nRaw:`).
+  - `payload['message']` i MQTT-paketet garanteras alltid vara den rena, korta och läsbara brödtexten/sammanfattningen.
+  - Rådatan placeras i ett eget dedikerat fält `payload['raw_data']` (avserialiserat till ett rent JSON-objekt om datan är JSON, annars som rå textsträng).
+  - Implementerat `_sanitize_raw_dict` som säkerställer att inga interna tolknings- eller berikningsfält (`libacars`, `decoded_fields` etc.) följer med i `raw_data`.
+- **Kvalitetssäkring & Tester ([tests/test_mqtt.py](file:///d:/antigravity/pager-monitor/tests/test_mqtt.py))**:
+  - Ny dedikerad testmodul `test_mqtt.py` som verifierar att:
+    1. `message` är ren och fri från rådata.
+    2. Rådatan publiceras separat i `raw_data`.
+    3. Interna berikningsfält saneras bort från `raw_data`.
+  - Samtliga 210 enhetstester i hela testsviten passerar felfritt (100%).
 
 ### 000017. Pre-processing av FANS-1/A Routing-Headers för libacars och Rättning av CalVer i Sidopanel (v2026.10.20.4)
 - **Kärnkrav & Bakgrund**:
