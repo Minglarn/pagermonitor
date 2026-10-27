@@ -26,6 +26,12 @@ try:
 except ImportError:
     def init_mqtt():
         pass
+
+try:
+    from udp_forwarder import init_udp_forwarder
+except ImportError:
+    def init_udp_forwarder():
+        pass
 from sdr_processor import start_sdr_thread, restart_sdr, on_new_message, get_sdr_runtime_status
 from vdl2_receiver import init_vdl2, restart_vdl2, get_vdl2_status, send_test_vdl2_message
 from sonde_receiver import init_sonde, restart_sonde, get_sonde_status, get_active_sondes_api, send_test_sonde_message
@@ -50,7 +56,7 @@ app = Flask(__name__)
 # Limit maximum payload size for incoming HTTP requests to prevent DoS memory exhaustion
 app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024  # 2 MB
 
-APP_VERSION = "2026.10.20.10"
+APP_VERSION = "2026.10.27.1"
 
 @app.context_processor
 def inject_version():
@@ -1098,6 +1104,7 @@ if __name__ == '__main__':
     # Initialize components
     init_db()
     init_mqtt()
+    init_udp_forwarder()
     
     # Start the SDR processing background thread
     start_sdr_thread()

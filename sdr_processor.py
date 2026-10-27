@@ -10,6 +10,11 @@ from datetime import datetime
 from queue import Empty
 from database import save_message, get_alias_info, check_alert_words, get_sdr_instances, get_settings, increment_message_repeat
 from mqtt_client import publish_message
+try:
+    from udp_forwarder import forward_pocsag
+except ImportError:
+    def forward_pocsag(payload):
+        pass
 
 logger = logging.getLogger(__name__)
 
@@ -662,6 +667,9 @@ def monitor_instance(instance_id, p1, p2, stop_event, config):
                         'last_timestamp': timestamp
                     }
                     msg_data.update(metadata)
+                    if 'line' in locals() and line:
+                        msg_data['raw'] = line
+                    forward_pocsag(msg_data)
                     for cb in list(new_message_callbacks):
                         try: cb(msg_data)
                         except Exception as e:

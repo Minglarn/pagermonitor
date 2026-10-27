@@ -24,5 +24,9 @@ services:
       - ACARS_HOST=${ACARS_HOST:-192.168.1.242}
       - ACARS_PORT=${ACARS_PORT:-15550}
       - ACARS_ENABLED=${ACARS_ENABLED:-true}
+      # UDP JSON vidarebefordran för POCSAG
+      - UDP_FORWARD_ENABLED=${UDP_FORWARD_ENABLED:-false}
+      - UDP_FORWARD_HOST=${UDP_FORWARD_HOST:-}
+      - UDP_FORWARD_PORT=${UDP_FORWARD_PORT:-}
     ports:
       - "7090:5000"

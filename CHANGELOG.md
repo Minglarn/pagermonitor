@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026.10.27.1] - UDP JSON Forwarder för POCSAG
+- **UDP Forwarder för POCSAG ([udp_forwarder.py](file:///d:/antigravity/pager-monitor/udp_forwarder.py))**:
+  - Implementerat modul för att vidarebefordra avkodade POCSAG-meddelanden som fullständig JSON över UDP till en specificerad värd.
+  - Strikt protokollfilter som endast släpper igenom POCSAG-meddelanden och exkluderar övriga protokoll (VDL2, ACARS, AERO, HFDL, SONDE, TETRA).
+  - Trådsäker UDP-socket med automatisk sanering av JSON och UTF-8-stöd för svenska tecken.
+- **Integration i SDR-processorn ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+  - Kopplat in `forward_pocsag` vid framgångsrik avkodning av POCSAG i multimon-ng-strömmen.
+  - Skickar komplett meddelande-JSON med `id`, `address`, `message`, `alias`, `function`, `bitrate`, `frequency`, `is_alert`, `alert_word`, `alert_color`, `sdr_name`, `is_duplicate` och rå-rad i `raw`.
+- **Miljökonfiguration ([docker-compose.yml](file:///d:/antigravity/pager-monitor/docker-compose.yml), [.env.example](file:///d:/antigravity/pager-monitor/.env.example))**:
+  - Konfiguration styrs via miljövariablerna `UDP_FORWARD_ENABLED`, `UDP_FORWARD_HOST` och `UDP_FORWARD_PORT`.
+  - Inkluderat variablerna i Docker Compose och `.env.example`.
+- **Kvalitetssäkring ([tests/test_udp_forwarder.py](file:///d:/antigravity/pager-monitor/tests/test_udp_forwarder.py))**:
+  - 9 nya enhetstester för socket-sändning, format, filtrering och miljövariabler.
+  - Samtliga 235 tester godkända. Strikt förbud mot emojis efterlevt på hela webbplatsen.
+
 ## [2026.10.20.10] - Server-Side filterstatistik och fristående dropdown-filter för SSP
 - **Backend: Ny filterstatistik-endpoint ([database.py](file:///d:/antigravity/pager-monitor/database.py), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
   - Skapat `GET /api/alarms/filters` och alias `GET /api/messages/filters` som levererar fullständiga aggregationssiffror för hela databasen.

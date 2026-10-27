@@ -1,13 +1,41 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.20.10`
-- **Date**: 2026-10-20
+- **CalVer**: `2026.10.27.1`
+- **Date**: 2026-10-27
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000024. UDP JSON Forwarder för POCSAG (v2026.10.27.1)
+- **Kärnkrav & Bakgrund**:
+  - Möjliggöra realtidsutsändning av fullständig JSON för avkodade POCSAG-meddelanden via UDP till en extern värd (host).
+  - De övriga protokollen (som VDL2, ACARS, AERO, HFDL, SONDE, TETRA) utesluts i detta skede och hanteras separat framöver enligt användarens krav.
+  - All konfiguration sker uteslutande via miljövariabler i `docker-compose.yml` och `.env` utan behov av extra databasinställningar.
+- **Teknisk Implementering**:
+  - **Fristående vidarebefordringsmodul ([udp_forwarder.py](file:///d:/antigravity/pager-monitor/udp_forwarder.py))**:
+    - Implementerat `init_udp_forwarder()`, `forward_pocsag(payload)` och `get_status()`.
+    - Läser in miljövariablerna:
+      - `UDP_FORWARD_HOST`: IP-adress eller värdnamn för destinationsmottagaren.
+      - `UDP_FORWARD_PORT`: UDP-portnummer (heltal).
+      - `UDP_FORWARD_ENABLED`: Boolean (`true`/`false`). Aktiveras automatiskt om både host och giltig port anges och flaggan inte uttryckligen är satt till false.
+    - Strikt filtrering: Verifierar att meddelandet har `protocol == 'POCSAG'` eller `bitrate` innehållande POCSAG. Alla andra protokoll ignoreras omedelbart utan extra overhead.
+    - Sanering och JSON-serialisering med `json.dumps(..., ensure_ascii=False)` och UTF-8-kodning för att stödja svenska tecken (Å, Ä, Ö).
+    - Trådsäker och icke-blockerande UDP-socket (`socket.SOCK_DGRAM`) med felhantering som aldrig avbryter eller kraschar bakgrundstrådar.
+  - **Integrering i SDR-processorn ([sdr_processor.py](file:///d:/antigravity/pager-monitor/sdr_processor.py))**:
+    - Importerat `forward_pocsag` från [udp_forwarder.py](file:///d:/antigravity/pager-monitor/udp_forwarder.py).
+    - Anropas direkt vid framgångsrik avkodning av POCSAG-meddelanden med det kompletta JSON-objektet (innehållande `id`, `timestamp`, `address`, `message`, `alias`, `protocol`, `bitrate`, `function`, `frequency`, `is_alert`, `alert_word`, `alert_color`, `sdr_name`, `is_duplicate`, `repeat_count` samt rå multimon-ng rad i `raw`).
+  - **Livscykel och initiering ([app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+    - `init_udp_forwarder()` anropas vid serverstart tillsammans med `init_db()` och `init_mqtt()`.
+    - Uppdaterat `APP_VERSION` till `2026.10.27.1`.
+  - **Container- och Miljökonfiguration ([docker-compose.yml](file:///d:/antigravity/pager-monitor/docker-compose.yml), [.env.example](file:///d:/antigravity/pager-monitor/.env.example))**:
+    - Lagt till `UDP_FORWARD_ENABLED`, `UDP_FORWARD_HOST` och `UDP_FORWARD_PORT` i containerns `environment`-sektion.
+    - Dokumenterat variablerna i `.env.example`.
+- **Kvalitetssäkring & Verifiering ([tests/test_udp_forwarder.py](file:///d:/antigravity/pager-monitor/tests/test_udp_forwarder.py))**:
+    - Skapat 9 heltäckande enhetstester för miljövariabelinitiering, automatisk aktivering, ogiltiga portar, protokollfiltrering (verifierar att VDL2, ACARS, AFSK och TETRA inte skickas), JSON-struktur samt faktiskt nätverksdatagram till en lokal UDP-socket.
+    - Samtliga 235 tester i testsviten är 100% godkända. Strikt förbud mot emojis efterlevt på hela webbplatsen.
 
 ### 000023. Bygg om Dropdown-filtren för Server-Side Processing (SSP) (v2026.10.20.10)
 - **Kärnkrav & Bakgrund**:
