@@ -201,6 +201,56 @@ class TestUdpForwarder(unittest.TestCase):
         self.assertFalse(forward_pocsag({}))
         self.assertFalse(forward_pocsag("not-a-dict"))
 
+    def test_forward_pocsag_to_multiple_hosts_and_ports(self):
+        sock1 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock1.bind(('127.0.0.1', 0))
+        sock1.settimeout(2.0)
+        _, port1 = sock1.getsockname()
+
+        sock2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock2.bind(('127.0.0.1', 0))
+        sock2.settimeout(2.0)
+        _, port2 = sock2.getsockname()
+
+        try:
+            # First target uses inline :port1, second target uses default UDP_FORWARD_PORT=port2
+            os.environ['UDP_FORWARD_HOST'] = f'127.0.0.1:{port1}, 127.0.0.1'
+            os.environ['UDP_FORWARD_PORT'] = str(port2)
+            os.environ['UDP_FORWARD_ENABLED'] = 'true'
+            init_udp_forwarder()
+
+            status = get_status()
+            self.assertTrue(status['enabled'])
+            self.assertEqual(len(status['targets']), 2)
+            self.assertEqual(status['targets'][0], {'host': '127.0.0.1', 'port': port1})
+            self.assertEqual(status['targets'][1], {'host': '127.0.0.1', 'port': port2})
+
+            pocsag_payload = {
+                'type': 'message',
+                'id': 99,
+                'address': '7654321',
+                'message': 'LARM: Multihost UDP test',
+                'protocol': 'POCSAG',
+                'bitrate': '1200'
+            }
+
+            res = forward_pocsag(pocsag_payload)
+            self.assertTrue(res)
+
+            data1, _ = sock1.recvfrom(4096)
+            data2, _ = sock2.recvfrom(4096)
+
+            json1 = json.loads(data1.decode('utf-8'))
+            json2 = json.loads(data2.decode('utf-8'))
+
+            self.assertEqual(json1['id'], 99)
+            self.assertEqual(json2['id'], 99)
+            self.assertEqual(json1['message'], 'LARM: Multihost UDP test')
+            self.assertEqual(json2['message'], 'LARM: Multihost UDP test')
+        finally:
+            sock1.close()
+            sock2.close()
+
 
 if __name__ == '__main__':
     unittest.main()

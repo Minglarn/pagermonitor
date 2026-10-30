@@ -24,7 +24,7 @@ services:
       - ACARS_HOST=${ACARS_HOST:-192.168.1.242}
       - ACARS_PORT=${ACARS_PORT:-15550}
       - ACARS_ENABLED=${ACARS_ENABLED:-true}
-      # UDP JSON vidarebefordran för POCSAG
+      # UDP JSON vidarebefordran för POCSAG (stödjer kommaseparerade mottagare: t.ex. 192.168.1.100,192.168.1.101 eller host1:port1,host2:port2)
       - UDP_FORWARD_ENABLED=${UDP_FORWARD_ENABLED:-false}
       - UDP_FORWARD_HOST=${UDP_FORWARD_HOST:-}
       - UDP_FORWARD_PORT=${UDP_FORWARD_PORT:-}

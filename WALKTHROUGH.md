@@ -1,13 +1,32 @@
 # Walkthrough: PagerMonitor Development and Features
 
 ## Version Information
-- **CalVer**: `2026.10.27.1`
-- **Date**: 2026-10-27
+- **CalVer**: `2026.10.30.1`
+- **Date**: 2026-10-30
 - **Language**: English / Swedish
 
 ---
 
 ## Overview of Implemented Features
+
+### 000025. Multihost-stöd för UDP JSON Forwarder för POCSAG (v2026.10.30.1)
+- **Kärnkrav & Bakgrund**:
+  - Möjliggöra samtidig vidarebefordran av avkodade POCSAG JSON-paket till flera mottagare (hosts/portar) utan att bryta bakåtkompatibiliteten i befintlig konfiguration.
+- **Teknisk Implementering**:
+  - **Utökad målparsning i [udp_forwarder.py](file:///d:/antigravity/pager-monitor/udp_forwarder.py)**:
+    - Implementerat `_parse_targets(host_raw, port_raw)` som stödjer:
+      1. Enskild mottagare (`UDP_FORWARD_HOST=192.168.1.100`, `UDP_FORWARD_PORT=5599`).
+      2. Kommaseparerade mottagare som delar standardport (`UDP_FORWARD_HOST=192.168.1.100,192.168.1.101`, `UDP_FORWARD_PORT=5599`).
+      3. Individuella portar direkt i värdsträngen (`UDP_FORWARD_HOST=192.168.1.100:5599,192.168.1.101:6000`) eller i kombination med en standardport i `UDP_FORWARD_PORT`.
+      4. Kommaseparerade listor i både `UDP_FORWARD_HOST` och `UDP_FORWARD_PORT`.
+    - `forward_pocsag(payload)` serialiserar JSON-nyttolasten en gång och sänder paketet sekventiellt till samtliga konfigurerade `(host, port)`-mål.
+    - `get_status()` exponerar nu även listan `targets` med alla aktiva mottagare.
+  - **Dokumentation och Konfiguration ([docker-compose.yml](file:///d:/antigravity/pager-monitor/docker-compose.yml), [.env.example](file:///d:/antigravity/pager-monitor/.env.example), [app.py](file:///d:/antigravity/pager-monitor/app.py))**:
+    - Uppdaterat kommentarer i `docker-compose.yml` och `.env.example` med exempel på multihost-konfiguration.
+    - Uppdaterat `APP_VERSION` till `2026.10.30.1`.
+- **Kvalitetssäkring & Verifiering ([tests/test_udp_forwarder.py](file:///d:/antigravity/pager-monitor/tests/test_udp_forwarder.py))**:
+  - Lagt till enhetstestet `test_forward_pocsag_to_multiple_hosts_and_ports` som binder två lokala UDP-sockets och verifierar att båda mottagarna tar emot det kompletta POCSAG JSON-paketet samtidigt.
+  - Samtliga enhetstester i testsviten är 100% godkända.
 
 ### 000024. UDP JSON Forwarder för POCSAG (v2026.10.27.1)
 - **Kärnkrav & Bakgrund**:
